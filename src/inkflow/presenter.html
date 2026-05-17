@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inkflow</title>
+  <style>
+    /* Catppuccin Mocha */
+    :root {
+      --bg:      #1e1e2e;
+      --surface: #313244;
+      --overlay: #45475a;
+      --text:    #cdd6f4;
+      --subtext: #a6adc8;
+      --accent:  #cba6f7;
+      --green:   #a6e3a1;
+      --red:     #f38ba8;
+      --blue:    #89b4fa;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem;
+      min-height: 0;
+    }
+
+    #stage > svg,
+    #stage > :first-child {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+    }
+
+    #stage svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #statusbar {
+      flex-shrink: 0;
+      background: var(--surface);
+      color: var(--subtext);
+      font-size: 0.7rem;
+      padding: 0.25rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border-top: 1px solid var(--accent);
+    }
+
+    #statusbar .sep { color: var(--overlay); }
+
+    #ws-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      margin-right: 4px;
+      transition: background 0.3s;
+    }
+    #ws-dot.connected { background: var(--green); }
+
+    #hint {
+      margin-left: auto;
+      color: var(--overlay);
+    }
+
+    /* ── Animation classes ── */
+
+    .anim-fade-in {
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .anim-fade-in.active {
+      opacity: 1;
+    }
+
+    .anim-fade-out {
+      opacity: 1;
+      transition: opacity 0.4s ease;
+    }
+    .anim-fade-out.active {
+      opacity: 0;
+    }
+
+    /* Bounce-in from below */
+    .anim-bounce {
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .anim-bounce.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="statusbar">
+    <span id="slide-info">– / –</span>
+    <span class="sep">|</span>
+    <span id="step-info">step –</span>
+    <span class="sep">|</span>
+    <span><span id="ws-dot"></span><span id="ws-label">disconnected</span></span>
+    <span id="hint">← → Space · navigate</span>
+  </div>
+
+  <script>
+    // ── Injected by server ──
+    const INITIAL_SLIDES = __SLIDES_JSON__;
+    const WS_PORT = __WS_PORT__;
+
+    // ── State ──
+    let slides = INITIAL_SLIDES;
+    let slideIndex = 0;
+    let step = 0;
+    let _maxStepCache = null;
+
+    // ── DOM refs ──
+    const stage     = document.getElementById('stage');
+    const slideInfo = document.getElementById('slide-info');
+    const stepInfo  = document.getElementById('step-info');
+    const wsDot     = document.getElementById('ws-dot');
+    const wsLabel   = document.getElementById('ws-label');
+
+    // ── Helpers ──
+    function maxStep() {
+      if (_maxStepCache !== null) return _maxStepCache;
+      let m = 0;
+      stage.querySelectorAll('[data-step]').forEach(el => {
+        const s = +el.getAttribute('data-step');
+        if (s > m) m = s;
+      });
+      return (_maxStepCache = m);
+    }
+
+    function updateStatus() {
+      slideInfo.textContent = `${slideIndex + 1} / ${slides.length}`;
+      stepInfo.textContent  = `step ${step}`;
+    }
+
+    // Toggle .active on already-loaded SVG elements — triggers CSS transitions.
+    // Never touches innerHTML, so transitions fire correctly.
+    function applyStep() {
+      stage.querySelectorAll('[data-step]').forEach(el =>
+        el.classList.toggle('active', +el.getAttribute('data-step') <= step)
+      );
+      updateStatus();
+    }
+
+    // Replace innerHTML with new slide content. Always resets step to 0.
+    // Does NOT call applyStep() — elements start in their pre-transition state
+    // so the next advance() triggers a real animated transition.
+    function loadSlide() {
+      if (!slides.length) {
+        stage.innerHTML = '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+        return;
+      }
+      stage.innerHTML = slides[slideIndex];
+      _maxStepCache = null;
+      updateStatus();
+    }
+
+    // ── Navigation ──
+    function advance() {
+      if (step < maxStep()) {
+        step++;
+        applyStep();                              // animate within current slide
+      } else if (slideIndex < slides.length - 1) {
+        slideIndex++;
+        step = 0;
+        loadSlide();                              // load new slide, step starts at 0
+      }
+    }
+
+    function retreat() {
+      if (slideIndex > 0) {
+        slideIndex--;
+        step = 0;
+        loadSlide();
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === ' ')            { e.preventDefault(); advance(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'Backspace'){ e.preventDefault(); retreat(); }
+      else if (e.key === 'Home') { slideIndex = 0; step = 0; loadSlide(); }
+      else if (e.key === 'End')  { slideIndex = slides.length - 1; step = 0; loadSlide(); }
+    });
+
+    // ── WebSocket live reload ──
+    function connectWS() {
+      const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+
+      ws.onopen = () => {
+        wsDot.className = 'connected';
+        wsLabel.textContent = 'live';
+      };
+
+      ws.onmessage = (ev) => {
+        if (ev.data === 'reload') location.reload();
+      };
+
+      ws.onclose = () => {
+        wsDot.className = '';
+        wsLabel.textContent = 'disconnected';
+        setTimeout(connectWS, 2000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    // ── Boot ──
+    loadSlide();
+    connectWS();
+  </script>
+</body>
+</html>

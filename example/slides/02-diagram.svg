@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1920 1080"
+  width="1920"
+  height="1080">
+
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7"
+            refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#a6e3a1"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="#1e1e2e"/>
+  <rect x="0" y="1056" width="1920" height="4" fill="#cba6f7" opacity="0.6"/>
+
+  <!-- Slide title -->
+  <text
+    x="960" y="130"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="sans-serif"
+    font-size="56"
+    font-weight="bold"
+    fill="#cdd6f4">How it works</text>
+
+  <!-- Box 1: Inkscape -->
+  <g id="box-deck">
+    <rect x="140" y="400" width="380" height="200" rx="18"
+          fill="#313244" stroke="#cba6f7" stroke-width="3"/>
+    <text x="330" y="488" text-anchor="middle" dominant-baseline="middle"
+          font-family="sans-serif" font-size="36" font-weight="bold"
+          fill="#cba6f7">Inkscape</text>
+    <text x="330" y="538" text-anchor="middle" dominant-baseline="middle"
+          font-family="sans-serif" font-size="24" fill="#a6adc8">Design in SVG</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <g id="arrow-1">
+    <line x1="524" y1="500" x2="680" y2="500"
+          stroke="#a6e3a1" stroke-width="4"
+          marker-end="url(#arr)"/>
+    <text x="602" y="472" text-anchor="middle"
+          font-family="monospace" font-size="20" fill="#6c7086">deck.py</text>
+  </g>
+
+  <!-- Box 2: Pipeline -->
+  <g id="box-pipeline">
+    <rect x="700" y="400" width="520" height="200" rx="18"
+          fill="#313244" stroke="#89b4fa" stroke-width="3"/>
+    <text x="960" y="488" text-anchor="middle" dominant-baseline="middle"
+          font-family="sans-serif" font-size="36" font-weight="bold"
+          fill="#89b4fa">inkflow serve</text>
+    <text x="960" y="538" text-anchor="middle" dominant-baseline="middle"
+          font-family="sans-serif" font-size="24" fill="#a6adc8">export · annotate · watch</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <g id="arrow-2">
+    <line x1="1224" y1="500" x2="1380" y2="500"
+          stroke="#a6e3a1" stroke-width="4"
+          marker-end="url(#arr)"/>
+    <text x="1302" y="472" text-anchor="middle"
+          font-family="monospace" font-size="20" fill="#6c7086">ws</text>
+  </g>
+
+  <!-- Box 3: Browser -->
+  <g id="box-browser">
+    <rect x="1400" y="400" width="380" height="200" rx="18"
+          fill="#313244" stroke="#a6e3a1" stroke-width="3"/>
+    <text x="1590" y="488" text-anchor="middle" dominant-baseline="middle"
+          font-family="sans-serif" font-size="36" font-weight="bold"
+          fill="#a6e3a1">Browser</text>
+    <text x="1590" y="538" text-anchor="middle" dominant-baseline="middle"
+          font-family="sans-serif" font-size="24" fill="#a6adc8">present live</text>
+  </g>
+
+</svg>

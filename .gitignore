@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.inkflow_cache/
+dist/
+*.egg-info/

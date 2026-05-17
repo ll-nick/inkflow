@@ -1,0 +1,20 @@
+[project]
+name = "inkflow"
+version = "0.1.0"
+description = "Terminal-native SVG presentation tool"
+requires-python = ">=3.11"
+dependencies = [
+    "lxml>=5.0",
+    "websockets>=12.0",
+    "watchfiles>=0.21",
+]
+
+[project.scripts]
+inkflow = "inkflow.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inkflow"]
