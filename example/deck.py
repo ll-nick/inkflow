@@ -1,12 +1,12 @@
-from inkflow import Bounce, Deck, Fade, Slide
+from inkflow import Bounce, Deck, FadeIn, Slide
 
 deck = Deck(main=None)
 
 deck.slides = [
     Slide("slides/01-title.svg", animations=[
-        Fade("#headline", step=1),
-        Fade("#subtitle", step=2),
-        Fade("#byline",   step=3),
+        FadeIn("#headline", step=1),
+        FadeIn("#subtitle", step=2),
+        FadeIn("#byline",   step=3),
     ]),
     Slide("slides/02-diagram.svg", animations=[
         Bounce("#box-deck",      step=1),

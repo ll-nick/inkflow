@@ -4,10 +4,10 @@ from pathlib import Path
 
 from lxml import etree
 
-from inkflow.manifest import Animation, Bounce, Deck, Fade, FadeOut, Morph, Slide
+from inkflow.manifest import Animation, Bounce, Deck, FadeIn, FadeOut, Morph, Slide
 
 _ANIM_CLASS: dict[type, str] = {
-    Fade: "anim-fade-in",
+    FadeIn: "anim-fade-in",
     FadeOut: "anim-fade-out",
     Bounce: "anim-bounce",
 }
@@ -77,4 +77,4 @@ def process_slide(slide: Slide, project_dir: Path) -> str:
 
 
 def process_deck(deck: Deck, project_dir: Path) -> list[str]:
-    return [process_slide(s, project_dir) for s in deck.slides]
+    return [process_slide(slide, project_dir) for slide in deck.slides]

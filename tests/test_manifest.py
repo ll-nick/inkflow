@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inkflow.manifest import Bounce, Deck, Fade, FadeOut, Morph, Slide
+from inkflow.manifest import Bounce, Deck, FadeIn, FadeOut, Morph, Slide
 
 
 def test_slide_step_count_no_animations() -> None:
@@ -11,7 +11,7 @@ def test_slide_step_count_returns_max() -> None:
     slide = Slide(
         src="test.svg",
         animations=[
-            Fade("#a", step=1),
+            FadeIn("#a", step=1),
             Bounce("#b", step=3),
             FadeOut("#c", step=2),
         ],
@@ -38,7 +38,7 @@ def test_deck_custom_main() -> None:
 
 
 def test_animation_fields_stored() -> None:
-    fade = Fade("#headline", step=2)
+    fade = FadeIn("#headline", step=2)
     assert fade.element == "#headline"
     assert fade.step == 2
 

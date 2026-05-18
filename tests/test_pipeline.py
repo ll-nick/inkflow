@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.manifest import Bounce, Fade, FadeOut
+from inkflow.manifest import Bounce, FadeIn, FadeOut
 from inkflow.pipeline import annotate_svg, clean_inkscape_svg
 
 _PLAIN_SVG = textwrap.dedent("""\
@@ -30,7 +30,7 @@ _INKSCAPE_SVG = textwrap.dedent("""\
 
 class TestAnnotateSvg:
     def test_fade_adds_class_and_step(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [Fade("#box", step=1)])
+        result = annotate_svg(_PLAIN_SVG, [FadeIn("#box", step=1)])
         assert 'class="anim-fade-in"' in result
         assert 'data-step="1"' in result
 
@@ -46,19 +46,19 @@ class TestAnnotateSvg:
 
     def test_preserves_existing_class(self) -> None:
         svg = _PLAIN_SVG.replace('<rect id="box"', '<rect id="box" class="my-class"')
-        result = annotate_svg(svg, [Fade("#box", step=1)])
+        result = annotate_svg(svg, [FadeIn("#box", step=1)])
         assert 'class="my-class anim-fade-in"' in result
 
     def test_missing_element_warns_and_continues(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        result = annotate_svg(_PLAIN_SVG, [Fade("#nonexistent", step=1)])
+        result = annotate_svg(_PLAIN_SVG, [FadeIn("#nonexistent", step=1)])
         assert "nonexistent" in capsys.readouterr().out
         assert 'id="box"' in result  # rest of SVG intact
 
     def test_multiple_animations_applied(self) -> None:
         result = annotate_svg(
-            _PLAIN_SVG, [Fade("#box", step=1), Bounce("#dot", step=2)]
+            _PLAIN_SVG, [FadeIn("#box", step=1), Bounce("#dot", step=2)]
         )
         assert "anim-fade-in" in result
         assert "anim-bounce" in result
