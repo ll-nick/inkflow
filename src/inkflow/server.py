@@ -65,7 +65,9 @@ async def rebuild(deck_path: Path) -> None:
         _state["transitions"] = transitions
         _state["error"] = None
         print(f"[inkflow] built {len(slides)} slide(s)")
-        await broadcast(json.dumps({"type": "update", "slides": slides, "transitions": transitions}))
+        await broadcast(
+            json.dumps({"type": "update", "slides": slides, "transitions": transitions})
+        )
     except Exception as exc:
         tb = traceback.format_exc()
         _state["error"] = tb
@@ -103,13 +105,14 @@ _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitabl
 
 
 def _build_html(ws_port: int) -> bytes:
-    template = (
-        importlib.resources.files("inkflow")
-        .joinpath("presenter.html")
-        .read_text(encoding="utf-8")
-    )
+    pkg = importlib.resources.files("inkflow")
+    template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
+    css = pkg.joinpath("presenter.css").read_text(encoding="utf-8")
+    js = pkg.joinpath("presenter.js").read_text(encoding="utf-8")
     html = (
-        template.replace("__SLIDES_JSON__", json.dumps(_state["slides"]))
+        template.replace("__CSS__", css)
+        .replace("__JS__", js)
+        .replace("__SLIDES_JSON__", json.dumps(_state["slides"]))
         .replace("__WS_PORT__", str(ws_port))
         .replace("__ERROR_JSON__", json.dumps(_state["error"]))
         .replace("__TRANSITIONS_JSON__", json.dumps(_state["transitions"]))
