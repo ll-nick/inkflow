@@ -2,20 +2,31 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import importlib.resources
 import importlib.util
 import json
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import TypedDict
 
 from watchfiles import awatch
+from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
+from inkflow.manifest import Deck
 from inkflow.pipeline import process_deck
 
 # ── Shared mutable state ──────────────────────────────────────────────────────
 
-_state: dict = {
+
+class _State(TypedDict):
+    slides: list[str]
+    ws_clients: set[ServerConnection]
+
+
+_state: _State = {
     "slides": [],
     "ws_clients": set(),
 }
@@ -23,18 +34,22 @@ _state: dict = {
 
 # ── Deck loader ───────────────────────────────────────────────────────────────
 
-def load_deck(deck_path: Path):
+
+def load_deck(deck_path: Path) -> Deck:
     spec = importlib.util.spec_from_file_location("_inkflow_deck", deck_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {deck_path}")
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
     if not hasattr(mod, "deck"):
         raise AttributeError(
             f"{deck_path} must define a module-level variable named 'deck'"
         )
-    return mod.deck
+    return mod.deck  # type: ignore[return-value]
 
 
 # ── Build pipeline ────────────────────────────────────────────────────────────
+
 
 async def rebuild(deck_path: Path, out_dir: Path) -> None:
     try:
@@ -50,8 +65,9 @@ async def rebuild(deck_path: Path, out_dir: Path) -> None:
 
 # ── WebSocket broadcast ───────────────────────────────────────────────────────
 
+
 async def broadcast(msg: str) -> None:
-    dead: set = set()
+    dead: set[ServerConnection] = set()
     for ws in list(_state["ws_clients"]):
         try:
             await ws.send(msg)
@@ -62,7 +78,8 @@ async def broadcast(msg: str) -> None:
 
 # ── WebSocket handler ─────────────────────────────────────────────────────────
 
-async def ws_handler(websocket) -> None:
+
+async def ws_handler(websocket: ServerConnection) -> None:
     _state["ws_clients"].add(websocket)
     try:
         await websocket.wait_closed()
@@ -72,22 +89,25 @@ async def ws_handler(websocket) -> None:
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
 
+_StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
+
+
 def _build_html(ws_port: int) -> bytes:
     template = (
         importlib.resources.files("inkflow")
         .joinpath("presenter.html")
         .read_text(encoding="utf-8")
     )
-    html = template.replace(
-        "__SLIDES_JSON__", json.dumps(_state["slides"])
-    ).replace(
+    html = template.replace("__SLIDES_JSON__", json.dumps(_state["slides"])).replace(
         "__WS_PORT__", str(ws_port)
     )
     return html.encode("utf-8")
 
 
-async def make_http_handler(ws_port: int):
-    async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+def make_http_handler(ws_port: int) -> _StreamHandler:
+    async def handler(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         try:
             raw = await asyncio.wait_for(reader.read(4096), timeout=10)
             first_line = raw.decode(errors="replace").split("\r\n")[0]
@@ -101,7 +121,9 @@ async def make_http_handler(ws_port: int):
                     b"Content-Type: text/html; charset=utf-8\r\n"
                     b"Cache-Control: no-store\r\n"
                     b"Connection: close\r\n"
-                    + b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                    + b"Content-Length: "
+                    + str(len(body)).encode()
+                    + b"\r\n"
                     + b"\r\n"
                 )
                 writer.write(header + body)
@@ -113,49 +135,50 @@ async def make_http_handler(ws_port: int):
             pass
         finally:
             writer.close()
-            try:
+            with contextlib.suppress(Exception):
                 await writer.wait_closed()
-            except Exception:
-                pass
 
     return handler
 
 
 # ── File watcher ──────────────────────────────────────────────────────────────
 
+
 async def _watch(deck_path: Path, out_dir: Path) -> None:
     watch_dir = deck_path.parent
     out_str = str(out_dir)
     async for changes in awatch(str(watch_dir)):
-        relevant = any(
-            not str(path).startswith(out_str)
-            for _, path in changes
-        )
+        relevant = any(not str(path).startswith(out_str) for _, path in changes)
         if relevant:
-            print(f"[inkflow] change detected, rebuilding…")
+            print("[inkflow] change detected, rebuilding…")
             await rebuild(deck_path, out_dir)
 
 
 # ── Serve ─────────────────────────────────────────────────────────────────────
 
+
 async def _serve(deck_path: Path, out_dir: Path, http_port: int, ws_port: int) -> None:
     print(f"[inkflow] loading {deck_path}")
     await rebuild(deck_path, out_dir)
 
-    http_handler = await make_http_handler(ws_port)
+    http_handler = make_http_handler(ws_port)
     http_server = await asyncio.start_server(http_handler, "127.0.0.1", http_port)
 
     print(f"[inkflow] http://localhost:{http_port}")
     print(f"[inkflow] ws://localhost:{ws_port}")
     print(f"[inkflow] watching {deck_path.parent}  (Ctrl-C to stop)")
 
-    async with http_server, ws_serve(ws_handler, "127.0.0.1", ws_port):
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(http_server.serve_forever())
-            tg.create_task(_watch(deck_path, out_dir))
+    async with (
+        http_server,
+        ws_serve(ws_handler, "127.0.0.1", ws_port),
+        asyncio.TaskGroup() as tg,
+    ):
+        tg.create_task(http_server.serve_forever())
+        tg.create_task(_watch(deck_path, out_dir))
 
 
 # ── CLI entry point ───────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -187,7 +210,10 @@ def main() -> None:
 
     sub.add_parser(
         "setup-git",
-        help="Configure git hooks and SVG diff driver for this repository (run once after cloning)",
+        help=(
+            "Configure git hooks and SVG diff driver for this repository"
+            " (run once after cloning)"
+        ),
     )
 
     args = parser.parse_args()
@@ -204,6 +230,7 @@ def main() -> None:
 
     elif args.command == "clean":
         from inkflow.pipeline import clean_inkscape_svg
+
         errors = False
         for file_arg in args.files:
             p = Path(file_arg)
@@ -226,11 +253,21 @@ def main() -> None:
 
     elif args.command == "setup-git":
         import subprocess
+
         steps = [
-            (["git", "config", "core.hooksPath", ".githooks"],
-             "pre-commit hook → .githooks/pre-commit"),
-            (["git", "config", "diff.inkscape-svg.textconv", "uv run inkflow clean --stdout"],
-             "SVG diff driver → strips Inkscape metadata before diffs"),
+            (
+                ["git", "config", "core.hooksPath", ".githooks"],
+                "pre-commit hook → .githooks/pre-commit",
+            ),
+            (
+                [
+                    "git",
+                    "config",
+                    "diff.inkscape-svg.textconv",
+                    "uv run inkflow clean --stdout",
+                ],
+                "SVG diff driver → strips Inkscape metadata before diffs",
+            ),
         ]
         for cmd, label in steps:
             try:
@@ -238,7 +275,6 @@ def main() -> None:
                 print(f"[inkflow] {label}")
             except subprocess.CalledProcessError as exc:
                 sys.exit(f"[inkflow] setup-git failed: {exc.stderr.decode().strip()}")
-        # Ensure hook is executable
         hook = Path(".githooks/pre-commit")
         if hook.exists():
             hook.chmod(hook.stat().st_mode | 0o111)

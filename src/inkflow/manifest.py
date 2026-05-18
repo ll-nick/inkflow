@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TypeAlias
 
 
 @dataclass
@@ -29,10 +30,13 @@ class Morph:
     step: int = 1
 
 
+Animation: TypeAlias = Fade | FadeOut | Bounce | Morph
+
+
 @dataclass
 class Slide:
     src: str
-    animations: list = field(default_factory=list)
+    animations: list[Animation] = field(default_factory=list)
 
     @property
     def step_count(self) -> int:
@@ -40,6 +44,6 @@ class Slide:
 
 
 class Deck:
-    def __init__(self, main: str = None):
+    def __init__(self, main: str | None = None) -> None:
         self.main = main
         self.slides: list[Slide] = []
