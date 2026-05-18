@@ -106,7 +106,10 @@ class TestResolveTransitions:
         slide_ts: list[Crossfade | Cut | Morph | None] | None = None,
     ) -> Deck:
         d = Deck(transition=deck_t)
-        d.slides = [Slide(src=f"{i}.svg", transition=t) for i, t in enumerate(slide_ts or [None])]
+        d.slides = [
+            Slide(src=f"{i}.svg", transition=t)
+            for i, t in enumerate(slide_ts or [None])
+        ]
         return d
 
     def test_defaults_to_cut(self) -> None:
@@ -116,7 +119,10 @@ class TestResolveTransitions:
     def test_deck_level_crossfade(self) -> None:
         d = self._deck(deck_t=Crossfade(0.6), slide_ts=[None, None])
         result = resolve_transitions(d)
-        assert result == [{"type": "crossfade", "duration": 0.6}, {"type": "crossfade", "duration": 0.6}]
+        assert result == [
+            {"type": "crossfade", "duration": 0.6},
+            {"type": "crossfade", "duration": 0.6},
+        ]
 
     def test_slide_overrides_deck(self) -> None:
         d = self._deck(deck_t=Crossfade(), slide_ts=[Cut(), None])
