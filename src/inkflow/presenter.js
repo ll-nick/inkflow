@@ -14,11 +14,11 @@ let gotoMode = false;
 let gotoBuffer = '';
 
 // ── DOM refs ──
-const stage     = document.getElementById('stage');
-const slideInfo = document.getElementById('slide-info');
-const stepInfo  = document.getElementById('step-info');
-const wsDot     = document.getElementById('ws-dot');
-const wsLabel   = document.getElementById('ws-label');
+const stage        = document.getElementById('stage');
+const slideInfo    = document.getElementById('slide-info');
+const stepInfo     = document.getElementById('step-info');
+const wsDot        = document.getElementById('ws-dot');
+const wsLabel      = document.getElementById('ws-label');
 const curtain      = document.getElementById('curtain');
 const help         = document.getElementById('help');
 const errorOverlay = document.getElementById('error-overlay');
@@ -52,7 +52,7 @@ function updateStatus() {
   slideInfo.textContent = gotoMode
     ? `g: ${gotoBuffer}_`
     : `${slideIndex + 1} / ${slides.length}`;
-  stepInfo.textContent  = `step ${step}`;
+  stepInfo.textContent = `step ${step}`;
   syncURL();
 }
 
@@ -65,10 +65,107 @@ function applyStep() {
   updateStatus();
 }
 
+// ── Morph transition ──
+// Drives matched IDs via a rAF loop that sets SVG geometry attributes directly in
+// SVG user units — no CSS px ↔ SVG unit conversion, no coordinate space ambiguity.
+// Unmatched new elements fade in; unmatched old elements disappear immediately.
+
+function _geomAttrs(el) {
+  const g = k => parseFloat(el.getAttribute(k) ?? '0');
+  switch (el.tagName.toLowerCase()) {
+    case 'rect':    return { x: g('x'), y: g('y'), width: g('width'), height: g('height'), rx: g('rx') };
+    case 'circle':  return { cx: g('cx'), cy: g('cy'), r: g('r') };
+    case 'ellipse': return { cx: g('cx'), cy: g('cy'), rx: g('rx'), ry: g('ry') };
+    default:        return null;
+  }
+}
+
+function _lerpColor(a, b, t) {
+  const ph = s => { const h = (s ?? '').replace('#', ''); return h.length === 3 ? h.split('').map(c => parseInt(c+c, 16)) : h.length === 6 ? [0,2,4].map(i => parseInt(h.slice(i,i+2), 16)) : null; };
+  const ca = ph(a), cb = ph(b);
+  if (!ca || !cb) return t < 0.5 ? a : b;
+  return '#' + ca.map((c, i) => Math.round(c + (cb[i] - c) * t).toString(16).padStart(2, '0')).join('');
+}
+
+function _ease(t) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; }
+
+function morphSlide(duration, then) {
+  const ms = duration * 1000;
+
+  // 1. Snapshot old elements in SVG user units before swap
+  const fromMap = new Map();
+  stage.querySelectorAll('[id]').forEach(el =>
+    fromMap.set(el.id, {
+      tag:    el.tagName.toLowerCase(),
+      geom:   _geomAttrs(el),
+      fill:   el.getAttribute('fill'),
+      stroke: el.getAttribute('stroke'),
+    })
+  );
+
+  // 2. Swap to new slide
+  stage.innerHTML = slides[slideIndex];
+  _maxStepCache = null;
+  const newSvg = stage.querySelector('svg');
+  if (!newSvg) { updateStatus(); if (then) then(); return; }
+  updateStatus();
+
+  // 3. Build task list; snap morph elements to old positions before first paint
+  const tasks = [];
+  newSvg.querySelectorAll('[id]').forEach(el => {
+    const from   = fromMap.get(el.id);
+    const toGeom = _geomAttrs(el);
+    if (from && from.geom && toGeom && from.tag === el.tagName.toLowerCase()) {
+      // Capture target color before overwriting with old values
+      const toFill   = el.getAttribute('fill');
+      const toStroke = el.getAttribute('stroke');
+      // Snap to old geometry so first paint shows old position
+      for (const [k, v] of Object.entries(from.geom)) el.setAttribute(k, v);
+      if (from.fill)   el.setAttribute('fill',   from.fill);
+      if (from.stroke) el.setAttribute('stroke', from.stroke);
+      tasks.push({ type: 'morph', el, from, toGeom, toFill, toStroke });
+    } else if (!from) {
+      // New element — fade in
+      el.style.opacity = '0';
+      tasks.push({ type: 'fade', el, toOpacity: parseFloat(el.getAttribute('opacity') ?? '1') });
+    }
+    // matched but unmorphable (text, group, path) → instant cut, leave as-is
+  });
+
+  // 4. Drive animation via requestAnimationFrame
+  const t0 = performance.now();
+  function frame(now) {
+    const raw = Math.min((now - t0) / ms, 1);
+    const e   = _ease(raw);
+    for (const task of tasks) {
+      if (task.type === 'morph') {
+        for (const k of Object.keys(task.toGeom))
+          task.el.setAttribute(k, task.from.geom[k] + (task.toGeom[k] - task.from.geom[k]) * e);
+        if (task.from.fill   && task.toFill)   task.el.setAttribute('fill',   _lerpColor(task.from.fill,   task.toFill,   e));
+        if (task.from.stroke && task.toStroke) task.el.setAttribute('stroke', _lerpColor(task.from.stroke, task.toStroke, e));
+      } else {
+        task.el.style.opacity = String(_ease(Math.max(0, Math.min((raw - 0.3) / 0.5, 1))) * task.toOpacity);
+      }
+    }
+    if (raw < 1) { requestAnimationFrame(frame); return; }
+    // Restore final attribute state cleanly
+    for (const task of tasks) {
+      if (task.type === 'morph') {
+        for (const [k, v] of Object.entries(task.toGeom)) task.el.setAttribute(k, v);
+        if (task.toFill)   task.el.setAttribute('fill',   task.toFill);
+        if (task.toStroke) task.el.setAttribute('stroke', task.toStroke);
+      } else {
+        task.el.style.opacity = '';
+      }
+    }
+    if (then) then();
+  }
+  requestAnimationFrame(frame);
+}
+
 // Replace innerHTML with new slide content. Does NOT call applyStep() —
 // elements start in their pre-transition state so the next advance() triggers
-// a real animated transition. Optional `then` runs after content is swapped
-// (needed by callers that must applyStep() once the new DOM is in place).
+// a real animated transition. Optional `then` runs after content is swapped.
 function loadSlide(then = null) {
   const swap = () => {
     if (!slides.length) {
@@ -81,7 +178,13 @@ function loadSlide(then = null) {
     if (then) then();
   };
 
-  const t = transitions[slideIndex] ?? {type: 'cut', duration: 0};
+  const t = transitions[slideIndex] ?? { type: 'cut', duration: 0 };
+
+  if (t.type === 'morph' && t.duration > 0 && slides.length) {
+    morphSlide(t.duration, then);
+    return;
+  }
+
   if (t.type === 'crossfade' && t.duration > 0) {
     stage.style.transition = `opacity ${t.duration}s ease`;
     stage.style.opacity = '0';
