@@ -28,6 +28,6 @@ deck.slides = [
     ),
     Slide(
         "slides/04-morph.svg",
-        transition=Morph(),
+        transition=Morph(duration=2.0),
     ),
 ]

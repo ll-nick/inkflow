@@ -1,20 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
   <rect width="1920" height="1080" fill="#1e1e2e"/>
 
-  <!-- accent bar -->
-  <rect x="0" y="0" width="8" height="1080" fill="#a6e3a1"/>
+  <text x="60" y="52" font-family="monospace" font-size="28" fill="#45475a">slide 4 · same IDs — different positions, sizes, and colours</text>
+  <text x="960" y="1058" text-anchor="middle" font-family="monospace" font-size="26" fill="#45475a">Morph(duration=2.0) — shapes share IDs with slide 4; positions, sizes, and colours all change</text>
 
-  <text id="label" x="960" y="420" text-anchor="middle" font-family="monospace" font-size="48" fill="#a6e3a1" letter-spacing="6">
-    TRANSITION
-  </text>
-  <text id="title" x="960" y="540" text-anchor="middle" font-family="monospace" font-size="120" font-weight="bold" fill="#cdd6f4">
-    Morph
-  </text>
-  <text id="subtitle" x="960" y="660" text-anchor="middle" font-family="monospace" font-size="44" fill="#a6adc8">
-    elements with shared IDs interpolate between slides
-  </text>
+  <!-- box-a: was big left blue → now small right green -->
+  <rect id="box-a" x="1380" y="560" width="420" height="180" rx="14" fill="#a6e3a1"/>
 
-  <text id="duration" x="960" y="820" text-anchor="middle" font-family="monospace" font-size="36" fill="#6c7086">
-    Morph(duration=0.5)  ·  not yet implemented — falls back to Cut
-  </text>
+  <!-- box-b: was medium centre purple → now tall centre blue -->
+  <rect id="box-b" x="700" y="160" width="520" height="760" rx="20" fill="#89b4fa"/>
+
+  <!-- box-c: was small right green → now large left purple -->
+  <rect id="box-c" x="120" y="260" width="520" height="560" rx="20" fill="#cba6f7"/>
+
+  <!-- dot: was top-right red → now bottom-left yellow, bigger -->
+  <circle id="dot" cx="180" cy="860" r="180" fill="#f9e2af"/>
+
+  <!-- no exit-only here: it fades out -->
+
+  <!-- element that only exists on this slide — fades in -->
+  <rect id="enter-only" x="1520" y="900" width="280" height="72" rx="10" fill="#94e2d5"/>
+  <text x="1660" y="944" text-anchor="middle" font-family="monospace" font-size="26" fill="#1e1e2e">enters on morph</text>
 </svg>

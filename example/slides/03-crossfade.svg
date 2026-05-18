@@ -1,20 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
   <rect width="1920" height="1080" fill="#1e1e2e"/>
 
-  <!-- accent bar -->
-  <rect x="0" y="0" width="8" height="1080" fill="#cba6f7"/>
+  <text x="60" y="52" font-family="monospace" font-size="28" fill="#45475a">slide 3 · crossfade in · advance to morph out</text>
+  <text x="960" y="1058" text-anchor="middle" font-family="monospace" font-size="26" fill="#45475a">Morph(duration=2.0) — shapes share IDs with slide 4; positions, sizes, and colours all change</text>
 
-  <text id="label" x="960" y="420" text-anchor="middle" font-family="monospace" font-size="48" fill="#cba6f7" letter-spacing="6">
-    TRANSITION
-  </text>
-  <text id="title" x="960" y="540" text-anchor="middle" font-family="monospace" font-size="120" font-weight="bold" fill="#cdd6f4">
-    Crossfade
-  </text>
-  <text id="subtitle" x="960" y="660" text-anchor="middle" font-family="monospace" font-size="44" fill="#a6adc8">
-    opacity fades out, content swaps, opacity fades in
-  </text>
+  <!-- large blue rect, left -->
+  <rect id="box-a" x="120" y="260" width="520" height="560" rx="20" fill="#89b4fa"/>
 
-  <text id="duration" x="960" y="820" text-anchor="middle" font-family="monospace" font-size="36" fill="#6c7086">
-    Crossfade(duration=0.4)
-  </text>
+  <!-- medium purple rect, centre -->
+  <rect id="box-b" x="700" y="380" width="520" height="320" rx="20" fill="#cba6f7"/>
+
+  <!-- small green rect, right -->
+  <rect id="box-c" x="1380" y="560" width="420" height="180" rx="14" fill="#a6e3a1"/>
+
+  <!-- circle, top-right -->
+  <circle id="dot" cx="1740" cy="220" r="120" fill="#f38ba8"/>
+
+  <!-- element that only exists on this slide — will fade out -->
+  <rect id="exit-only" x="120" y="900" width="280" height="72" rx="10" fill="#fab387"/>
+  <text x="260" y="944" text-anchor="middle" font-family="monospace" font-size="26" fill="#1e1e2e">exits on morph</text>
 </svg>
