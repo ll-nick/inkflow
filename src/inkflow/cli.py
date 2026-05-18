@@ -174,6 +174,22 @@ def main() -> None:
     serve_p.add_argument("--port", type=int, default=7777, help="HTTP port")
     serve_p.add_argument("--ws-port", type=int, default=7778, help="WebSocket port")
 
+    clean_p = sub.add_parser(
+        "clean",
+        help="Strip Inkscape editor metadata from SVG files",
+    )
+    clean_p.add_argument("files", nargs="+", metavar="file.svg")
+    clean_p.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Write to stdout instead of modifying files in place",
+    )
+
+    sub.add_parser(
+        "setup-git",
+        help="Configure git hooks and SVG diff driver for this repository (run once after cloning)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "serve":
@@ -185,3 +201,45 @@ def main() -> None:
             asyncio.run(_serve(deck_path, out_dir, args.port, args.ws_port))
         except KeyboardInterrupt:
             print("\n[inkflow] stopped")
+
+    elif args.command == "clean":
+        from inkflow.pipeline import clean_inkscape_svg
+        errors = False
+        for file_arg in args.files:
+            p = Path(file_arg)
+            if not p.exists():
+                print(f"[inkflow] clean: not found: {p}", file=sys.stderr)
+                errors = True
+                continue
+            try:
+                cleaned = clean_inkscape_svg(p)
+                if args.stdout:
+                    sys.stdout.write(cleaned)
+                else:
+                    p.write_text(cleaned, encoding="utf-8")
+                    print(f"[inkflow] cleaned {p}")
+            except Exception as exc:
+                print(f"[inkflow] clean: error processing {p}: {exc}", file=sys.stderr)
+                errors = True
+        if errors:
+            sys.exit(1)
+
+    elif args.command == "setup-git":
+        import subprocess
+        steps = [
+            (["git", "config", "core.hooksPath", ".githooks"],
+             "pre-commit hook → .githooks/pre-commit"),
+            (["git", "config", "diff.inkscape-svg.textconv", "uv run inkflow clean --stdout"],
+             "SVG diff driver → strips Inkscape metadata before diffs"),
+        ]
+        for cmd, label in steps:
+            try:
+                subprocess.run(cmd, check=True, capture_output=True)
+                print(f"[inkflow] {label}")
+            except subprocess.CalledProcessError as exc:
+                sys.exit(f"[inkflow] setup-git failed: {exc.stderr.decode().strip()}")
+        # Ensure hook is executable
+        hook = Path(".githooks/pre-commit")
+        if hook.exists():
+            hook.chmod(hook.stat().st_mode | 0o111)
+        print("[inkflow] done — git is configured for this repository")

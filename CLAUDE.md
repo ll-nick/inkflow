@@ -7,6 +7,20 @@ uv sync                                   # install deps into .venv
 uv run inkflow serve example/deck.py      # start server at localhost:7777
 ```
 
+## Git setup (one-time, per clone)
+
+```bash
+uv run inkflow setup-git
+```
+
+Configures two things:
+- **Pre-commit hook** (`.githooks/pre-commit`) — strips Inkscape editor metadata from staged SVGs before every commit, so viewport pan/zoom/window state never lands in history
+- **SVG diff driver** — `git diff`, `git log -p`, and GitHub's diff view show only visual changes even for SVGs that haven't been cleaned in-place
+
+Git won't run this automatically on clone — that's an intentional git security boundary — so it needs to be run once. After that it's invisible.
+
+SVG source files should be kept clean (no Inkscape metadata) in the repository. Run `uv run inkflow clean example/slides/*.svg` to clean any files committed before the hook was in place.
+
 ## Project layout
 
 ```

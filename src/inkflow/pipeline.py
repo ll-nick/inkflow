@@ -41,7 +41,7 @@ def clean_inkscape_svg(src: Path) -> str:
             del el.attrib[k]
 
     etree.cleanup_namespaces(root)
-    return etree.tostring(root, encoding="unicode")
+    return etree.tostring(root, encoding="unicode", pretty_print=True)
 
 
 def annotate_svg(svg_str: str, animations: list) -> str:
