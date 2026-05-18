@@ -34,7 +34,8 @@ def clean_inkscape_svg(src: Path) -> str:
         to_del = [
             k
             for k in el.attrib
-            if any(k.startswith(f"{{{ns}}}") for ns in _INKSCAPE_NAMESPACES)
+            if isinstance(k, str)
+            and any(k.startswith(f"{{{ns}}}") for ns in _INKSCAPE_NAMESPACES)
         ]
         for k in to_del:
             del el.attrib[k]

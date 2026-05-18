@@ -44,6 +44,9 @@ class Slide:
 
 
 class Deck:
+    main: str | None
+    slides: list[Slide]
+
     def __init__(self, main: str | None = None) -> None:
         self.main = main
-        self.slides: list[Slide] = []
+        self.slides = []
