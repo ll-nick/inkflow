@@ -199,6 +199,23 @@ In Inkscape the author places a plain `<rect>` where the content should go and g
 
 ---
 
+## Extensibility
+
+The current architecture is closed: animation types, CSS effects, and the pipeline itself are all hardcoded in `inkflow`. Three shallow additions would open it up without changing the overall shape of the code:
+
+**Custom animation classes**  
+Add a generic `Animate("#id", css_class="my-effect", step=1)` type that bypasses the `_ANIM_CLASS` lookup and uses whatever CSS class the author names. Authors define the CSS themselves (injected via `Deck(style=...)` — see below) and reference it by name. This makes `Fade`, `FadeOut`, and `Bounce` special cases of the same mechanism rather than a closed enum.
+
+**CSS injection**  
+A `style: str = ""` field on `Deck` (or optionally per-`Slide`) that the pipeline injects into a `<style>` block inside the SVG's `<defs>`. Combined with `Animate`, this lets authors define and use entirely custom transitions without touching inkflow's source. The field is a raw CSS string — no parsing, no abstraction.
+
+**Pre-annotation pipeline hook**  
+A `transform: Callable[[str], str] | None = None` field on `Slide` that, if set, is called with the cleaned SVG string before annotation runs. Lets authors inject content, manipulate the DOM, apply text substitutions, or call external tools — anything expressible as a string-to-string function in Python. Heavier than `content` substitutions but maximally flexible as an escape hatch.
+
+None of these require changes to the HTTP server, WebSocket layer, or presenter JS. They are pure additions to `manifest.py` and `pipeline.py`.
+
+---
+
 ## Out of scope and hard limits
 
 **Auto-reflow and bullet lists for Inkscape-authored text**  
