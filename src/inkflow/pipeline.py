@@ -4,18 +4,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from inkflow.manifest import (
-    Animation,
-    Crossfade,
-    Cut,
-    Deck,
-    FadeIn,
-    FadeOut,
-    Bounce,
-    Morph,
-    Slide,
-    Transition,
-)
+from inkflow.manifest import Animation, Bounce, Deck, FadeIn, FadeOut, Slide, Transition
 
 _ANIM_CLASS: dict[type, str] = {
     FadeIn: "anim-fade-in",
@@ -76,17 +65,13 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
     return etree.tostring(root, encoding="unicode")
 
 
-def _serialize_transition(t: Transition | None) -> dict[str, str | float]:
-    if t is None or isinstance(t, Cut):
+def _serialize_transition(t: Transition | None) -> dict[str, object]:
+    if t is None:
         return {"type": "cut", "duration": 0.0}
-    if isinstance(t, Crossfade):
-        return {"type": "crossfade", "duration": t.duration}
-    if isinstance(t, Morph):
-        return {"type": "morph", "duration": t.duration}
-    return {"type": "cut", "duration": 0.0}
+    return {"type": type(t).__name__.lower(), **vars(t)}
 
 
-def resolve_transitions(deck: Deck) -> list[dict[str, str | float]]:
+def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
     return [
         _serialize_transition(
             slide.transition if slide.transition is not None else deck.transition

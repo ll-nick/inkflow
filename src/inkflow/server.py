@@ -23,7 +23,7 @@ from inkflow.pipeline import process_deck, resolve_transitions
 
 class _State(TypedDict):
     slides: list[str]
-    transitions: list[dict[str, str | float]]
+    transitions: list[dict[str, object]]
     ws_clients: set[ServerConnection]
     error: str | None
 
