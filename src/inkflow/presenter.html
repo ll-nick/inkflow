@@ -153,9 +153,23 @@
       return (_maxStepCache = m);
     }
 
+    function syncURL() {
+      const search = step > 0 ? `?clicks=${step}` : '';
+      history.replaceState(null, '', `/${slideIndex + 1}${search}`);
+    }
+
+    function readURL() {
+      const seg = window.location.pathname.replace(/^\//, '');
+      const n = parseInt(seg, 10);
+      if (!isNaN(n) && n >= 1 && n <= slides.length) slideIndex = n - 1;
+      const clicks = parseInt(new URLSearchParams(window.location.search).get('clicks') ?? '0', 10);
+      if (!isNaN(clicks) && clicks >= 0) step = clicks;
+    }
+
     function updateStatus() {
       slideInfo.textContent = `${slideIndex + 1} / ${slides.length}`;
       stepInfo.textContent  = `step ${step}`;
+      syncURL();
     }
 
     // Toggle .active on already-loaded SVG elements — triggers CSS transitions.
@@ -230,7 +244,9 @@
     }
 
     // ── Boot ──
+    readURL();
     loadSlide();
+    if (step > 0) applyStep();
     connectWS();
   </script>
 </body>

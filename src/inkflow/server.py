@@ -108,25 +108,18 @@ def make_http_handler(ws_port: int) -> _StreamHandler:
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         try:
-            raw = await asyncio.wait_for(reader.read(4096), timeout=10)
-            first_line = raw.decode(errors="replace").split("\r\n")[0]
-            parts = first_line.split()
-            path = parts[1] if len(parts) >= 2 else "/"
-
-            if path == "/":
-                body = _build_html(ws_port)
-                header = (
-                    b"HTTP/1.1 200 OK\r\n"
-                    + b"Content-Type: text/html; charset=utf-8\r\n"
-                    + b"Cache-Control: no-store\r\n"
-                    + b"Connection: close\r\n"
-                    + b"Content-Length: "
-                    + str(len(body)).encode()
-                    + b"\r\n\r\n"
-                )
-                writer.write(header + body)
-            else:
-                writer.write(b"HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n")
+            await asyncio.wait_for(reader.read(4096), timeout=10)
+            body = _build_html(ws_port)
+            header = (
+                b"HTTP/1.1 200 OK\r\n"
+                + b"Content-Type: text/html; charset=utf-8\r\n"
+                + b"Cache-Control: no-store\r\n"
+                + b"Connection: close\r\n"
+                + b"Content-Length: "
+                + str(len(body)).encode()
+                + b"\r\n\r\n"
+            )
+            writer.write(header + body)
 
             await writer.drain()
         except Exception:
