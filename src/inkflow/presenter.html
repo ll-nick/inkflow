@@ -182,6 +182,7 @@
         <tr><td>↑ k</td><td>Previous slide (skip steps)</td></tr>
         <tr><td>^ Home</td><td>First slide</td></tr>
         <tr><td>$ End</td><td>Last slide</td></tr>
+        <tr><td>g 12 ↵</td><td>Go to slide 12</td></tr>
         <tr><td>b .</td><td>Blackout</td></tr>
         <tr><td>w</td><td>Whiteout</td></tr>
         <tr><td>f</td><td>Toggle fullscreen</td></tr>
@@ -197,7 +198,7 @@
     <span id="step-info">step –</span>
     <span class="sep">|</span>
     <span><span id="ws-dot"></span><span id="ws-label">disconnected</span></span>
-    <span id="hint">← → Space · navigate  ·  ? help</span>
+    <span id="hint">← → Space · navigate  ·  g goto  ·  ? help</span>
   </div>
 
   <script>
@@ -210,6 +211,8 @@
     let slideIndex = 0;
     let step = 0;
     let _maxStepCache = null;
+    let gotoMode = false;
+    let gotoBuffer = '';
 
     // ── DOM refs ──
     const stage     = document.getElementById('stage');
@@ -245,7 +248,9 @@
     }
 
     function updateStatus() {
-      slideInfo.textContent = `${slideIndex + 1} / ${slides.length}`;
+      slideInfo.textContent = gotoMode
+        ? `g: ${gotoBuffer}_`
+        : `${slideIndex + 1} / ${slides.length}`;
       stepInfo.textContent  = `step ${step}`;
       syncURL();
     }
@@ -318,6 +323,19 @@
 
     function toggleHelp() { help.classList.toggle('visible'); }
 
+    // ── Go-to-slide ──
+    function enterGoto() { gotoMode = true; gotoBuffer = ''; updateStatus(); }
+    function exitGoto()  { gotoMode = false; gotoBuffer = ''; updateStatus(); }
+    function commitGoto() {
+      const n = parseInt(gotoBuffer, 10);
+      exitGoto();
+      if (!isNaN(n) && n >= 1 && n <= slides.length) {
+        slideIndex = n - 1;
+        step = 0;
+        loadSlide();
+      }
+    }
+
     curtain.addEventListener('click', hideCurtain);
     help.addEventListener('click', e => { if (e.target === help) toggleHelp(); });
     stage.addEventListener('click', advance);
@@ -329,7 +347,16 @@
       }
       if (curtain.classList.contains('visible')) { hideCurtain(); return; }
 
-      if      (e.key === 'f') { toggleFullscreen(); }
+      if (gotoMode) {
+        if (e.key >= '0' && e.key <= '9')  { gotoBuffer += e.key; updateStatus(); }
+        else if (e.key === 'Enter')         { e.preventDefault(); commitGoto(); }
+        else if (e.key === 'Backspace')     { e.preventDefault(); gotoBuffer = gotoBuffer.slice(0, -1); updateStatus(); }
+        else if (e.key === 'Escape')        { exitGoto(); }
+        return;
+      }
+
+      if      (e.key === 'g') { enterGoto(); }
+      else if (e.key === 'f') { toggleFullscreen(); }
       else if (e.key === 'b' || e.key === '.') { toggleCurtain('black'); }
       else if (e.key === 'w') { toggleCurtain('white'); }
       else if (e.key === '?') { toggleHelp(); }
