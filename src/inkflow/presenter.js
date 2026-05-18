@@ -112,7 +112,9 @@ function morphSlide(duration, then) {
 
   // 3. Build task list; snap morph elements to old positions before first paint
   const tasks = [];
+  const seenIds = new Set();
   newSvg.querySelectorAll('[id]').forEach(el => {
+    seenIds.add(el.id);
     const from   = fromMap.get(el.id);
     const toGeom = _geomAttrs(el);
     if (from && from.geom && toGeom && from.tag === el.tagName.toLowerCase()) {
@@ -132,6 +134,17 @@ function morphSlide(duration, then) {
     // matched but unmorphable (text, group, path) → instant cut, leave as-is
   });
 
+  // Exit elements: had geometry on old slide, absent from new — ghost them in and fade out
+  for (const [id, from] of fromMap) {
+    if (seenIds.has(id) || !from.geom) continue;
+    const ghost = document.createElementNS('http://www.w3.org/2000/svg', from.tag);
+    for (const [k, v] of Object.entries(from.geom)) ghost.setAttribute(k, v);
+    if (from.fill)   ghost.setAttribute('fill',   from.fill);
+    if (from.stroke) ghost.setAttribute('stroke', from.stroke);
+    newSvg.appendChild(ghost);
+    tasks.push({ type: 'exit', el: ghost });
+  }
+
   // 4. Drive animation via requestAnimationFrame
   const t0 = performance.now();
   function frame(now) {
@@ -143,6 +156,8 @@ function morphSlide(duration, then) {
           task.el.setAttribute(k, task.from.geom[k] + (task.toGeom[k] - task.from.geom[k]) * e);
         if (task.from.fill   && task.toFill)   task.el.setAttribute('fill',   _lerpColor(task.from.fill,   task.toFill,   e));
         if (task.from.stroke && task.toStroke) task.el.setAttribute('stroke', _lerpColor(task.from.stroke, task.toStroke, e));
+      } else if (task.type === 'exit') {
+        task.el.style.opacity = String(1 - _ease(Math.min(raw / 0.7, 1)));
       } else {
         task.el.style.opacity = String(_ease(Math.max(0, Math.min((raw - 0.3) / 0.5, 1))) * task.toOpacity);
       }
@@ -154,6 +169,8 @@ function morphSlide(duration, then) {
         for (const [k, v] of Object.entries(task.toGeom)) task.el.setAttribute(k, v);
         if (task.toFill)   task.el.setAttribute('fill',   task.toFill);
         if (task.toStroke) task.el.setAttribute('stroke', task.toStroke);
+      } else if (task.type === 'exit') {
+        task.el.remove();
       } else {
         task.el.style.opacity = '';
       }
@@ -166,7 +183,9 @@ function morphSlide(duration, then) {
 // Replace innerHTML with new slide content. Does NOT call applyStep() —
 // elements start in their pre-transition state so the next advance() triggers
 // a real animated transition. Optional `then` runs after content is swapped.
-function loadSlide(then = null) {
+// Pass `transition` to override the destination slide's declared transition (used
+// when navigating backward so the outgoing slide's transition plays in reverse).
+function loadSlide(then = null, transition = null) {
   const swap = () => {
     if (!slides.length) {
       stage.innerHTML = '<p style="color:var(--accent);padding:2rem">No slides.</p>';
@@ -178,7 +197,7 @@ function loadSlide(then = null) {
     if (then) then();
   };
 
-  const t = transitions[slideIndex] ?? { type: 'cut', duration: 0 };
+  const t = transition ?? transitions[slideIndex] ?? { type: 'cut', duration: 0 };
 
   if (t.type === 'morph' && t.duration > 0 && slides.length) {
     morphSlide(t.duration, then);
@@ -216,9 +235,10 @@ function retreat() {
     step--;
     applyStep();
   } else if (slideIndex > 0) {
+    const t = transitions[slideIndex];
     slideIndex--;
     step = 0;
-    loadSlide(() => { step = maxStep(); applyStep(); });
+    loadSlide(() => { step = maxStep(); applyStep(); }, t);
   }
 }
 
@@ -227,7 +247,12 @@ function nextSlide() {
 }
 
 function prevSlide() {
-  if (slideIndex > 0) { slideIndex--; step = 0; loadSlide(); }
+  if (slideIndex > 0) {
+    const t = transitions[slideIndex];
+    slideIndex--;
+    step = 0;
+    loadSlide(null, t);
+  }
 }
 
 function toggleFullscreen() {
