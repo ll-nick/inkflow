@@ -4,7 +4,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from inkflow.manifest import Animation, Bounce, Deck, Fade, FadeOut, Slide
+from inkflow.manifest import Animation, Bounce, Deck, Fade, FadeOut, Morph, Slide
 
 _ANIM_CLASS: dict[type, str] = {
     Fade: "anim-fade-in",
@@ -49,6 +49,9 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
     for anim in animations:
         css_class = _ANIM_CLASS.get(type(anim))
         if css_class is None:
+            if isinstance(anim, Morph):
+                eid = anim.element.lstrip("#")
+                print(f"[inkflow] warning: Morph is not yet implemented (#{eid})")
             continue
 
         eid = anim.element.lstrip("#")
@@ -72,6 +75,5 @@ def process_slide(slide: Slide, project_dir: Path) -> str:
     return svg_str
 
 
-def process_deck(deck: Deck, project_dir: Path, out_dir: Path) -> list[str]:
-    out_dir.mkdir(parents=True, exist_ok=True)
+def process_deck(deck: Deck, project_dir: Path) -> list[str]:
     return [process_slide(s, project_dir) for s in deck.slides]

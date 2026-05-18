@@ -51,11 +51,11 @@ def load_deck(deck_path: Path) -> Deck:
 # ── Build pipeline ────────────────────────────────────────────────────────────
 
 
-async def rebuild(deck_path: Path, out_dir: Path) -> None:
+async def rebuild(deck_path: Path) -> None:
     try:
         deck = await asyncio.to_thread(load_deck, deck_path)
         project_dir = deck_path.parent
-        slides = await asyncio.to_thread(process_deck, deck, project_dir, out_dir)
+        slides = await asyncio.to_thread(process_deck, deck, project_dir)
         _state["slides"] = slides
         print(f"[inkflow] built {len(slides)} slide(s)")
         await broadcast("reload")
@@ -144,22 +144,18 @@ def make_http_handler(ws_port: int) -> _StreamHandler:
 # ── File watcher ──────────────────────────────────────────────────────────────
 
 
-async def _watch(deck_path: Path, out_dir: Path) -> None:
-    watch_dir = deck_path.parent
-    out_str = str(out_dir)
-    async for changes in awatch(str(watch_dir)):
-        relevant = any(not str(path).startswith(out_str) for _, path in changes)
-        if relevant:
-            print("[inkflow] change detected, rebuilding…")
-            await rebuild(deck_path, out_dir)
+async def _watch(deck_path: Path) -> None:
+    async for _changes in awatch(str(deck_path.parent)):
+        print("[inkflow] change detected, rebuilding…")
+        await rebuild(deck_path)
 
 
 # ── Serve ─────────────────────────────────────────────────────────────────────
 
 
-async def _serve(deck_path: Path, out_dir: Path, http_port: int, ws_port: int) -> None:
+async def _serve(deck_path: Path, http_port: int, ws_port: int) -> None:
     print(f"[inkflow] loading {deck_path}")
-    await rebuild(deck_path, out_dir)
+    await rebuild(deck_path)
 
     http_handler = make_http_handler(ws_port)
     http_server = await asyncio.start_server(http_handler, "127.0.0.1", http_port)
@@ -174,7 +170,7 @@ async def _serve(deck_path: Path, out_dir: Path, http_port: int, ws_port: int) -
         asyncio.TaskGroup() as tg,
     ):
         tg.create_task(http_server.serve_forever())
-        tg.create_task(_watch(deck_path, out_dir))
+        tg.create_task(_watch(deck_path))
 
 
 # ── CLI entry point ───────────────────────────────────────────────────────────
@@ -222,9 +218,8 @@ def main() -> None:
         deck_path = Path(args.deck).resolve()
         if not deck_path.exists():
             sys.exit(f"[inkflow] deck not found: {deck_path}")
-        out_dir = deck_path.parent / ".inkflow_cache"
         try:
-            asyncio.run(_serve(deck_path, out_dir, args.port, args.ws_port))
+            asyncio.run(_serve(deck_path, args.port, args.ws_port))
         except KeyboardInterrupt:
             print("\n[inkflow] stopped")
 
