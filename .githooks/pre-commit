@@ -4,10 +4,10 @@
 
 set -e
 
-staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.svg$' || true)
-[ -z "$staged" ] && exit 0
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM | grep -E '\.svg$' || true)
+[ ${#staged[@]} -eq 0 ] && exit 0
 
 echo "[inkflow] cleaning staged SVGs..."
-uv run inkflow clean $staged
+uv run inkflow clean "${staged[@]}"
 
-git add $staged
+git add "${staged[@]}"
