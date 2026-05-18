@@ -140,6 +140,44 @@
       font-size: 0.85em;
     }
 
+    /* ── Error overlay ── */
+    #error-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(30, 30, 46, 0.95);
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 2rem;
+      overflow-y: auto;
+    }
+    #error-overlay.visible { display: flex; }
+
+    #error-box {
+      background: var(--surface);
+      border: 1px solid var(--red);
+      border-radius: 8px;
+      padding: 1.5rem 2rem;
+      max-width: 72rem;
+      width: 100%;
+    }
+
+    #error-box h2 {
+      color: var(--red);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      letter-spacing: 0.05em;
+    }
+
+    #error-box pre {
+      color: var(--text);
+      font-size: 0.75rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+
     /* ── Animation classes ── */
 
     .anim-fade-in {
@@ -171,6 +209,12 @@
   </style>
 </head>
 <body>
+  <div id="error-overlay">
+    <div id="error-box">
+      <h2>BUILD ERROR</h2>
+      <pre id="error-msg"></pre>
+    </div>
+  </div>
   <div id="curtain"></div>
   <div id="help" role="dialog" aria-modal="true">
     <div id="help-box">
@@ -205,6 +249,7 @@
     // ── Injected by server ──
     const INITIAL_SLIDES = __SLIDES_JSON__;
     const WS_PORT = __WS_PORT__;
+    const INITIAL_ERROR = __ERROR_JSON__;
 
     // ── State ──
     let slides = INITIAL_SLIDES;
@@ -220,8 +265,10 @@
     const stepInfo  = document.getElementById('step-info');
     const wsDot     = document.getElementById('ws-dot');
     const wsLabel   = document.getElementById('ws-label');
-    const curtain   = document.getElementById('curtain');
-    const help      = document.getElementById('help');
+    const curtain      = document.getElementById('curtain');
+    const help         = document.getElementById('help');
+    const errorOverlay = document.getElementById('error-overlay');
+    const errorMsg     = document.getElementById('error-msg');
 
     // ── Helpers ──
     function maxStep() {
@@ -323,6 +370,13 @@
 
     function toggleHelp() { help.classList.toggle('visible'); }
 
+    // ── Error display ──
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorOverlay.classList.add('visible');
+    }
+    function hideError() { errorOverlay.classList.remove('visible'); }
+
     // ── Go-to-slide ──
     function enterGoto() { gotoMode = true; gotoBuffer = ''; updateStatus(); }
     function exitGoto()  { gotoMode = false; gotoBuffer = ''; updateStatus(); }
@@ -378,7 +432,16 @@
       };
 
       ws.onmessage = (ev) => {
-        if (ev.data === 'reload') location.reload();
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'update') {
+          slides = msg.slides;
+          hideError();
+          slideIndex = Math.min(slideIndex, Math.max(0, slides.length - 1));
+          step = 0;
+          loadSlide();
+        } else if (msg.type === 'error') {
+          showError(msg.message);
+        }
       };
 
       ws.onclose = () => {
@@ -394,6 +457,7 @@
     readURL();
     loadSlide();
     if (step > 0) applyStep();
+    if (INITIAL_ERROR) showError(INITIAL_ERROR);
     connectWS();
   </script>
 </body>

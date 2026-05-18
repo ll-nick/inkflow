@@ -6,6 +6,7 @@ import importlib.resources
 import importlib.util
 import json
 import sys
+import traceback
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TypedDict, cast
@@ -23,11 +24,13 @@ from inkflow.pipeline import process_deck
 class _State(TypedDict):
     slides: list[str]
     ws_clients: set[ServerConnection]
+    error: str | None
 
 
 _state: _State = {
     "slides": [],
     "ws_clients": set(),
+    "error": None,
 }
 
 
@@ -56,10 +59,14 @@ async def rebuild(deck_path: Path) -> None:
         project_dir = deck_path.parent
         slides = await asyncio.to_thread(process_deck, deck, project_dir)
         _state["slides"] = slides
+        _state["error"] = None
         print(f"[inkflow] built {len(slides)} slide(s)")
-        await broadcast("reload")
+        await broadcast(json.dumps({"type": "update", "slides": slides}))
     except Exception as exc:
+        tb = traceback.format_exc()
+        _state["error"] = tb
         print(f"[inkflow] build error: {exc}", file=sys.stderr)
+        await broadcast(json.dumps({"type": "error", "message": tb}))
 
 
 # ── WebSocket broadcast ───────────────────────────────────────────────────────
@@ -97,8 +104,10 @@ def _build_html(ws_port: int) -> bytes:
         .joinpath("presenter.html")
         .read_text(encoding="utf-8")
     )
-    html = template.replace("__SLIDES_JSON__", json.dumps(_state["slides"])).replace(
-        "__WS_PORT__", str(ws_port)
+    html = (
+        template.replace("__SLIDES_JSON__", json.dumps(_state["slides"]))
+        .replace("__WS_PORT__", str(ws_port))
+        .replace("__ERROR_JSON__", json.dumps(_state["error"]))
     )
     return html.encode("utf-8")
 
