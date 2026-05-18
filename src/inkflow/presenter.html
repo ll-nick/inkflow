@@ -83,6 +83,63 @@
       color: var(--overlay);
     }
 
+    /* ── Curtain (blackout / whiteout) ── */
+    #curtain {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      cursor: pointer;
+    }
+    #curtain.visible { display: block; }
+
+    /* ── Help overlay ── */
+    #help {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: center;
+    }
+    #help.visible { display: flex; }
+
+    #help-box {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 1.5rem 2rem;
+      min-width: 26rem;
+    }
+
+    #help-box h2 {
+      color: var(--accent);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      letter-spacing: 0.05em;
+    }
+
+    #help-box table { border-collapse: collapse; width: 100%; }
+    #help-box td { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
+    #help-box td:first-child { color: var(--accent); white-space: nowrap; text-align: right; }
+    #help-box td:last-child  { color: var(--subtext); padding-left: 1rem; }
+
+    #help-box p {
+      margin-top: 1rem;
+      font-size: 0.7rem;
+      color: var(--overlay);
+      text-align: center;
+    }
+
+    kbd {
+      background: var(--overlay);
+      color: var(--text);
+      border-radius: 3px;
+      padding: 0.1em 0.35em;
+      font-size: 0.85em;
+    }
+
     /* ── Animation classes ── */
 
     .anim-fade-in {
@@ -114,6 +171,25 @@
   </style>
 </head>
 <body>
+  <div id="curtain"></div>
+  <div id="help" role="dialog" aria-modal="true">
+    <div id="help-box">
+      <h2>KEYBINDINGS</h2>
+      <table>
+        <tr><td>→ Space l</td><td>Advance step / next slide</td></tr>
+        <tr><td>← Backspace h</td><td>Back one step / previous slide</td></tr>
+        <tr><td>↓ j</td><td>Next slide (skip steps)</td></tr>
+        <tr><td>↑ k</td><td>Previous slide (skip steps)</td></tr>
+        <tr><td>^ Home</td><td>First slide</td></tr>
+        <tr><td>$ End</td><td>Last slide</td></tr>
+        <tr><td>b .</td><td>Blackout</td></tr>
+        <tr><td>w</td><td>Whiteout</td></tr>
+        <tr><td>f</td><td>Toggle fullscreen</td></tr>
+        <tr><td>?</td><td>This help</td></tr>
+      </table>
+      <p>Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
+    </div>
+  </div>
   <div id="stage"></div>
   <div id="statusbar">
     <span id="slide-info">– / –</span>
@@ -121,7 +197,7 @@
     <span id="step-info">step –</span>
     <span class="sep">|</span>
     <span><span id="ws-dot"></span><span id="ws-label">disconnected</span></span>
-    <span id="hint">← → Space · navigate</span>
+    <span id="hint">← → Space · navigate  ·  ? help</span>
   </div>
 
   <script>
@@ -141,6 +217,8 @@
     const stepInfo  = document.getElementById('step-info');
     const wsDot     = document.getElementById('ws-dot');
     const wsLabel   = document.getElementById('ws-label');
+    const curtain   = document.getElementById('curtain');
+    const help      = document.getElementById('help');
 
     // ── Helpers ──
     function maxStep() {
@@ -232,8 +310,29 @@
       else document.exitFullscreen();
     }
 
+    function showCurtain(color) { curtain.style.background = color; curtain.classList.add('visible'); }
+    function hideCurtain()      { curtain.classList.remove('visible'); }
+    function toggleCurtain(color) {
+      curtain.classList.contains('visible') ? hideCurtain() : showCurtain(color);
+    }
+
+    function toggleHelp() { help.classList.toggle('visible'); }
+
+    curtain.addEventListener('click', hideCurtain);
+    help.addEventListener('click', e => { if (e.target === help) toggleHelp(); });
+    stage.addEventListener('click', advance);
+
     document.addEventListener('keydown', e => {
+      if (help.classList.contains('visible')) {
+        if (e.key === '?' || e.key === 'Escape') toggleHelp();
+        return;
+      }
+      if (curtain.classList.contains('visible')) { hideCurtain(); return; }
+
       if      (e.key === 'f') { toggleFullscreen(); }
+      else if (e.key === 'b' || e.key === '.') { toggleCurtain('black'); }
+      else if (e.key === 'w') { toggleCurtain('white'); }
+      else if (e.key === '?') { toggleHelp(); }
       else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'l') { e.preventDefault(); advance(); }
       else if (e.key === 'ArrowLeft'  || e.key === 'Backspace' || e.key === 'h') { e.preventDefault(); retreat(); }
       else if (e.key === 'ArrowDown'  || e.key === 'j') { e.preventDefault(); nextSlide(); }
