@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypeAlias
+from typing import Protocol, runtime_checkable
 
 
 @dataclass
@@ -30,7 +30,10 @@ class Morph:
     step: int = 1
 
 
-Animation: TypeAlias = Fade | FadeOut | Bounce | Morph
+@runtime_checkable
+class Animation(Protocol):
+    element: str
+    step: int
 
 
 @dataclass
