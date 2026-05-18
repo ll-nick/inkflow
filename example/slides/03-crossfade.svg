@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#1e1e2e"/>
+
+  <!-- accent bar -->
+  <rect x="0" y="0" width="8" height="1080" fill="#cba6f7"/>
+
+  <text id="label" x="960" y="420" text-anchor="middle" font-family="monospace" font-size="48" fill="#cba6f7" letter-spacing="6">
+    TRANSITION
+  </text>
+  <text id="title" x="960" y="540" text-anchor="middle" font-family="monospace" font-size="120" font-weight="bold" fill="#cdd6f4">
+    Crossfade
+  </text>
+  <text id="subtitle" x="960" y="660" text-anchor="middle" font-family="monospace" font-size="44" fill="#a6adc8">
+    opacity fades out, content swaps, opacity fades in
+  </text>
+
+  <text id="duration" x="960" y="820" text-anchor="middle" font-family="monospace" font-size="36" fill="#6c7086">
+    Crossfade(duration=0.4)
+  </text>
+</svg>

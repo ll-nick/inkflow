@@ -1,4 +1,4 @@
-from inkflow import Bounce, Deck, FadeIn, Slide
+from inkflow import Bounce, Crossfade, Cut, Deck, FadeIn, Morph, Slide
 
 deck = Deck(main=None)
 
@@ -13,6 +13,7 @@ deck.slides = [
     ),
     Slide(
         "slides/02-diagram.svg",
+        transition=Cut(),
         animations=[
             Bounce("#box-deck", step=1),
             Bounce("#arrow-1", step=2),
@@ -20,5 +21,13 @@ deck.slides = [
             Bounce("#arrow-2", step=4),
             Bounce("#box-browser", step=5),
         ],
+    ),
+    Slide(
+        "slides/03-crossfade.svg",
+        transition=Crossfade(),
+    ),
+    Slide(
+        "slides/04-morph.svg",
+        transition=Morph(),
     ),
 ]
