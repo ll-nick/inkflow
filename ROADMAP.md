@@ -6,67 +6,144 @@ Items are roughly ordered by how much they matter. The first two sections are lo
 
 ---
 
-## Open design questions
+## Decided: design questions
 
-These need a decision before the relevant features can be built.
-
-**Slide master: authoring vs presentation mismatch**  
-The planned approach is to define shared layout elements (`main.svg`) as SVG `<symbol>` blocks and resolve them in the Python pipeline via `<use>`. This means Inkscape shows slides *without* the master frame while authoring — you're editing a content canvas, not the final slide. The pipeline inlines the template at build time. This is an intentional tradeoff (same as any template system), but it needs to be documented clearly and the authoring workflow needs to account for it. An alternative — putting master elements in a locked Inkscape layer inside each slide file — preserves WYSIWYG at the cost of duplication and harder template updates.
+**Slide master: pipeline inlining with inject-preview**  
+Chosen approach: pipeline inlines master templates at build time. Inkscape shows only slide content during authoring (no master frame). WYSIWYG gap is addressed not by duplicating master content into each file, but by a CLI command (`inkflow inject-master`) that injects ancestors as locked, non-selectable Inkscape layers for spatial reference. These layers are stripped by the pipeline and never reach the browser. See the "Template inheritance" section below for the full model.
 
 **One file per slide vs multi-page SVG**  
-The current design uses one SVG file per slide. Inkscape 1.2+ supports multi-page SVGs via `inkscape:page` elements, which would let the whole deck live in one file and be edited without switching documents. The downside is that parsing multi-page SVGs requires understanding Inkscape's internal namespace rather than standard SVG, which tightly couples the tool to Inkscape's implementation. One-file-per-slide is simpler, produces cleaner git diffs, and maps naturally to the standard SVG model. Worth revisiting if Inkscape formalises the multi-page format.
+Staying with one file per slide. Inkscape's multi-page SVG format uses `inkscape:page` elements that are not standard SVG; parsing them would tightly couple the tool to Inkscape's internal implementation. One-file-per-slide produces cleaner git diffs and maps to the standard SVG model. Worth revisiting only if Inkscape formalises the format.
 
-**Markdown slide types: how to inject text content**  
-For content-heavy slides (title + bullets, quote, code), requiring a full Inkscape SVG is overkill. The idea: a `MarkdownSlide` type in `deck.py` that references a template by name and fills named placeholder zones with text content from a `.md` file or inline string. The relationship is inverted from Slidev — Inkscape (or a built-in template) defines *where* text lives and how it looks, Markdown defines *what* it says.
+**Markdown slide types: foreignObject**  
+Chosen approach: `foreignObject` injection. An existing Markdown library (`mistune` or `markdown-it-py`) converts content to HTML in one call — no custom Markdown parsing. The HTML is injected into a `<foreignObject>` at the placeholder zone's geometry. Typography and color come from a theme CSS file, not per-slide. The SVG text generation approach is not pursued: it cannot support tables, images, or nested lists and hits a ceiling quickly.
 
-Two implementation approaches with different tradeoffs:
-- **SVG `<foreignObject>`** — inject rendered Markdown as HTML inside placeholder zones. Works well in browsers; Inkscape shows an empty box, so the Inkscape view is meaningless for these slides. Appropriate for pure content slides where you're not doing layout work in Inkscape anyway.
-- **SVG text generation** — the pipeline converts Markdown to `<text>`/`<tspan>` trees placed into named zones. Keeps the SVG-native model and renders in Inkscape, but cannot support all Markdown features (tables, images, nested lists).
+---
 
-The `foreignObject` approach is simpler and more capable; the text-generation approach is more principled but hits a ceiling quickly. Note that SVG is fixed-geometry — there is no text reflow. Either approach requires authors to think about how much content fits in a zone, which is a real ceiling compared to PowerPoint or Slidev's "just keep typing" text boxes.
+## Open design questions
+
+**Parent path resolution**  
+`inkflow:parent` paths in SVG files need a consistent resolution base. Options: relative to the SVG file's own location; relative to the project root (where `deck.py` lives); or theme-relative (resolved via the active theme). The choice affects portability — a theme-relative reference stays valid if the project is moved, a file-relative one does not. Decision pending.
+
+**Optional zones in MarkdownSlide templates**  
+Template SVGs declare placeholder zones as `<rect>` elements with zone IDs. `MarkdownSlide` maps kwargs to zone IDs. If a kwarg is omitted (e.g. no `subtitle=` for a title slide), the corresponding rect needs to be handled. Candidates: leave it visible (shows an empty box in the browser — bad), remove it from the SVG (pipeline deletes unreferenced zone rects), or mark it invisible. Remove-if-unreferenced is the likely answer but needs confirmation.
+
+**Layout-level master overrides**  
+Some layouts visually override the master frame — a section divider or full-bleed title slide typically drops the footer and page number. The mechanism for opting out (per-layout or per-slide) is not yet decided. Candidates: a flag attribute on the layout SVG root (`inkflow:no-master="true"`), Inkscape layers inside `main.svg` that layouts can selectively suppress, or a `master_zones` exclusion list in `deck.py`. This affects both inject-master (which layers to inject) and the pipeline (which elements to include).
+
+---
+
+## Template inheritance
+
+The master system uses a general parent/child model rather than a fixed two-level hierarchy. Each SVG file can declare its parent via an `inkflow:parent` attribute on the root `<svg>` element:
+
+```xml
+<svg xmlns:inkflow="https://inkflow.dev/ns"
+     inkflow:parent="themes/catppuccin-mocha/templates/bullets.svg"
+     ...>
+```
+
+This creates an arbitrary-depth chain. A typical deck has three levels:
+
+```
+slides/05-bullets.svg
+  ↑ inkflow:parent
+themes/catppuccin-mocha/templates/bullets.svg   ← layout: content zone positions
+  ↑ inkflow:parent
+themes/catppuccin-mocha/main.svg                ← global master: background, logo, footer, slide number tokens
+  (no parent — chain terminates)
+```
+
+The attribute is set by tooling (`inkflow new`, `inkflow set-parent`), not by hand. Authors do not type it into Inkscape's XML editor.
+
+**`Deck.main` as implicit root**  
+`Deck(main="themes/catppuccin-mocha/main.svg")` is the fallback parent for slides whose chain does not already reach a root. If a slide's SVG has no `inkflow:parent`, the pipeline prepends `Deck.main` to the chain. `Deck(main=None)` disables this and slides get no master frame — the current behaviour for the example deck.
+
+**`inject-master` command**  
+`inkflow inject-master <files>` resolves the parent chain for each file and injects each ancestor as a separate locked Inkscape layer below the slide's own content:
+
+```xml
+<g inkscape:groupmode="layer"
+   inkscape:label="__inkflow: main__"
+   sodipodi:insensitive="true"
+   data-inkflow-src="themes/catppuccin-mocha/main.svg"
+   data-inkflow-hash="a3f9c2">
+  ...main.svg content...
+</g>
+<g inkscape:groupmode="layer"
+   inkscape:label="__inkflow: bullets layout__"
+   sodipodi:insensitive="true"
+   data-inkflow-src="themes/catppuccin-mocha/templates/bullets.svg"
+   data-inkflow-hash="b71e04">
+  ...zone rects and guide elements...
+</g>
+<!-- slide's own editable content above -->
+```
+
+The command is idempotent: it compares each layer's `data-inkflow-hash` against the current file content and only rewrites stale layers. The pipeline strips all `__inkflow:*__` layers before processing; they never appear in the browser.
+
+`inkflow new <template> <path>` calls `inject-master` automatically after creating the file.
+
+**Theme directory structure**
+
+```
+themes/catppuccin-mocha/
+  main.svg              ← global master (background, logo, footer, {{slide_number}}, {{slide_total}})
+  content.css           ← typography for foreignObject zones (headings, bullets, code blocks)
+  templates/
+    title.svg           ← zones: #zone-title, #zone-subtitle
+    bullets.svg         ← zones: #zone-title, #zone-content
+    two-column.svg      ← zones: #zone-title, #zone-left, #zone-right
+    code.svg            ← zones: #zone-title, #zone-code
+    section.svg         ← zones: #zone-section-title
+```
+
+`Deck(theme="catppuccin-mocha")` resolves a built-in theme by name. `Deck(theme="./my-theme/")` accepts a path to a directory with the same structure. The initial built-in theme is Catppuccin Mocha.
 
 ---
 
 ## Pipeline completeness
 
-**Content substitutions (`Video`, `TextBox`, `Math`)**  
-The `content` list on `Slide` lets `deck.py` declare what goes into named placeholder elements in the SVG. The pipeline finds each element by ID, reads its bounding box, and replaces it with the appropriate content at the same position and size. Initial set of substitution types:
+**Template chain inlining**  
+The pipeline resolves each slide's `inkflow:parent` chain (see "Template inheritance" above), strips any `__inkflow:*__` preview layers, then composes the ancestor SVGs below the slide content before annotation runs. The composition order is root-first (main.svg at the bottom, slide content at the top). `{{slide_number}}` and `{{slide_total}}` tokens in any `<text>` element across the chain are substituted at this stage. Hidden slides (`visible=False`) are excluded from both numbering and totals.
 
-- `TextBox("#id", src="file.md")` or `TextBox("#id", text="...")` — renders Markdown to HTML inside a `<foreignObject>`, giving full text reflow within the placeholder bounds
-- `Video("#id", src="assets/demo.mp4")` — replaces the placeholder with an HTML `<video>` element; dimensions come from the rect's geometry in the SVG
-- `Math("#id", latex="...")` — renders LaTeX to SVG via KaTeX at build time and inlines the result
+**Content substitutions (`TextBox`, `Image`, `Video`, `Math`)**  
+The `content` list on `Slide` declares what replaces named placeholder elements in the SVG. The pipeline finds each element by ID, reads its bounding box, and substitutes the appropriate content at the same position and size:
+
+- `TextBox("#id", src="file.md")` or `TextBox("#id", text="...")` — Markdown is converted to HTML by an existing library (no custom parsing), then injected into a `<foreignObject>`. The theme's `content.css` is inlined inside the `<foreignObject>` as a scoped `<style>` block so typography applies without bleeding into the surrounding SVG. `overflow: hidden` is set on the container so overflow is immediately visible in the live preview.
+- `Image("#id", src="assets/photo.png")` — replaces the placeholder with an SVG `<image>` element at the rect's geometry.
+- `Video("#id", src="assets/demo.mp4")` — replaces the placeholder with an HTML `<video>` element; dimensions come from the rect's geometry.
+- `Math("#id", latex="...")` — renders LaTeX to SVG via KaTeX at build time and inlines the result.
 
 An element can have both a substitution and an animation: the substitution determines what the element becomes, the animation determines how it appears.
 
 Bounding box extraction requires that placeholders be `<rect>` elements (explicit `x`, `y`, `width`, `height` attributes). `<g>` groups and transformed elements are harder to measure without a render tree; document this constraint clearly.
 
-**Markdown slide types**  
-A `MarkdownSlide` class that lets content-heavy slides be authored in Markdown rather than Inkscape, without leaving `deck.py` or changing the mental model. Mixed decks — some slides designed in Inkscape, some written as text — should work naturally:
+**`MarkdownSlide`**  
+A `MarkdownSlide` class for content-heavy slides authored without Inkscape. It is syntactic sugar: it expands in `manifest.py` to a `Slide` pointing at the resolved theme template, with auto-generated `TextBox` substitutions derived from its kwargs. The pipeline then processes it identically to any other slide.
 
 ```python
 deck = Deck(theme="catppuccin-mocha")
 deck.slides = [
     MarkdownSlide("title", title="My Talk", subtitle="A subtitle"),
-    MarkdownSlide("bullets", src="slides/02-agenda.md"),
-    MarkdownSlide("code", language="python", src="slides/03-example.py"),
-    Slide("slides/04-diagram.svg", animations=[Fade("#arrow", step=1)]),
+    MarkdownSlide("bullets", title="Agenda", src="slides/02-agenda.md"),
+    MarkdownSlide("code", title="Example", src="slides/03-example.py"),
+    Slide("slides/04-diagram.svg", animations=[FadeIn("#arrow", step=1)]),
 ]
 ```
 
-The named first argument (`"title"`, `"bullets"`, `"code"`) selects a built-in template SVG. Inkflow ships a set of Catppuccin Mocha-styled templates covering the common cases. User-defined templates (custom SVGs with named placeholder zones) should also be possible.
+The first argument selects a template from the active theme. Kwargs map to zone IDs by name convention (`title=` → `#zone-title`, `src=` → the template's primary zone). `MarkdownSlide` does not add a new pipeline path — it is resolved before the pipeline runs.
 
-**Markdown parsing** is handled by an existing library (`markdown`, `mistune`, or `markdown-it-py`) — no custom parsing. A Markdown file becomes HTML in three lines of Python. That HTML is injected into a `<foreignObject>` in the SVG and the browser renders it normally, including bullet lists, code blocks, bold/italic, tables.
+**`inkflow new` command**  
+`inkflow new <template> <path>` creates a new slide file from a theme template and wires it up for authoring:
+1. Copies the template SVG to the target path.
+2. Writes `inkflow:parent` pointing at the template.
+3. Runs `inject-master` to inject ancestor layers for Inkscape preview.
+4. Prints the `deck.py` snippet to add to the deck.
 
-**Styling** (font sizes, colors, heading hierarchy, bullet appearance) is defined by a CSS theme file, not per-slide. The theme is set once on `Deck(theme=...)`. The default Catppuccin Mocha theme ships with Inkflow. Users can point to a custom CSS file. The `TextBox` placeholder in the SVG provides position and size; the theme provides typography and color; the Markdown file provides content — three separate concerns that don't interfere with each other. See the design question above for the `foreignObject` vs SVG text generation decision.
-
-**Main SVG template inlining**  
-`main.svg` defines shared layout (background, logo, footer) as SVG `<symbol>` blocks. Each slide SVG references them via `<use>`. The pipeline resolves and inlines them at build time. Authors accept that the Inkscape view is a content canvas, not the final slide — the template is only visible in the browser presenter.
+CLI-only for now. A companion `.md` file is created alongside for templates whose primary zone expects a `src=` argument.
 
 **Font embedding**  
 SVGs reference fonts by name. On the authoring machine this works; on any other machine it may not. Use fonttools to resolve fonts via fontconfig, base64-encode them, and inline `@font-face` declarations inside a `<defs>` block. Makes each output SVG self-contained without converting text to paths.
-
-**Cross-slide Morph (PowerPoint-style)**  
-The signature animation feature. When the same element ID appears on two consecutive slides, Inkflow interpolates its path, position, and size during the slide transition — the element appears to physically move or reshape as you advance. This is more powerful than within-slide morphing: a diagram can grow more complex across multiple slides without duplicating authoring work. Implementation: detect shared IDs between adjacent slides at build time, generate CSS keyframe or JS-stepper animations for the transition. The `Morph` class is already a stub in the manifest but currently describes the wrong thing; the API needs rethinking around slide transitions rather than within-slide steps.
 
 **PDF export**  
 Distinct from static HTML export. PDF is how you share slides with conference organizers, submit to proceedings, and post a permanent copy online. The cleanest path: build the static HTML, then print it to PDF via headless Chromium (`--print-to-pdf`). Each slide needs to map to exactly one PDF page, which requires a print stylesheet that shows one slide at a time.
@@ -99,9 +176,6 @@ A `notes` field on `Slide` that appears in the presenter view but not the main d
 **Drawing and annotation mode**  
 During Q&A, freehand drawing on the current slide is more useful than a laser pointer. A toggle (e.g. D key) that overlays a canvas element and lets you draw with the mouse or stylus. Drawings are ephemeral — they don't persist between slides. Slidev has this; PowerPoint with a pen does too.
 
-**Slide transitions**  
-Currently a hard cut between slides. A simple crossfade makes the experience feel less jarring. Cross-slide Morph (see above) is the more interesting case, but a basic opacity transition should come first.
-
 **Laser pointer**  
 A coloured dot that follows the mouse while a modifier key is held. Lower effort than drawing mode and useful for directing attention without marking the slide.
 
@@ -121,6 +195,12 @@ A `SectionSlide("title")` type that marks a section boundary. The pipeline can a
 ---
 
 ## Authoring experience
+
+**`inkflow inject-master` command**  
+Resolves the `inkflow:parent` chain for each target file and injects ancestor SVGs as locked Inkscape layers (see "Template inheritance"). Idempotent: compares `data-inkflow-hash` on existing layers against current file content and only rewrites stale entries. Run after editing `main.svg` or any template to refresh Inkscape preview layers across the deck. `inkflow inject-master --check` reports which files have stale layers without rewriting.
+
+**`inkflow set-parent <file> <parent-path>` command**  
+Updates `inkflow:parent` on an existing slide SVG and re-runs `inject-master` on that file. Use when changing a slide's layout after initial creation.
 
 **Element ID validation**  
 When `deck.py` references `#headline` but the SVG has no matching element, the pipeline prints a warning and silently skips it. This should be a hard build error: name the slide file and the missing ID, stop the build.
@@ -155,10 +235,11 @@ A PyPI release so `uvx inkflow serve deck.py` works without a checkout. Possibly
 ## Nice to have
 
 - **More animation types** — `Scale`, `Rotate`, `Draw` (stroke-dashoffset path drawing), `Highlight` (brief colour pulse)
+- **Morph for paths and groups** — the current morph interpolates geometry attributes for `<rect>`, `<circle>`, and `<ellipse>`; `<path>`, `<polygon>`, `<g>`, and `<text>` fall back to an instant cut. Path morphing requires interpolating the `d` attribute (same command count and structure between slides).
 - **Auto-advance** — timed slides for kiosk or lightning-talk use
 - **Slide overview** — press Escape for a thumbnail grid, click to jump
 - **Hyperlinks** — SVG `<a>` elements open in a new tab during presentation
-- **Within-slide Morph** — an element changes shape as part of a step sequence on a single slide; distinct from and less powerful than cross-slide Morph but still useful for things like a circle expanding into a diagram
+- **Within-slide Morph** — an element changes shape as part of a step sequence on a single slide, distinct from the cross-slide morph that already exists
 - **Configurable keybindings** — a `keybindings` dict on `Deck` that overrides the defaults, injected into the presenter as JSON. The keydown handler becomes a lookup table; the current defaults become the fallback. Low effort once the presenter JS is refactored for it; not needed until someone has a concrete conflict with the defaults.
 
 ---

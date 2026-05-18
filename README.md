@@ -4,9 +4,10 @@
 
 ## What is Inkflow?
 
-At this stage, Inkflow is more of an idea than a product. There is a working prototype that proves the pipeline end-to-end, but it is rough and missing most of what would make it genuinely usable. Whether it grows into something more is an open question.
-
-If the concept resonates with you anyway, here it is:
+Inkflow is early-stage but functional: the full pipeline works end-to-end, step animations run,
+a couple of transitions are implemented, and live reload is in place.
+It's still missing quite a few key features and the config spec is far from final
+so you should probably not be using this tool at the current stage.
 
 ## The idea
 
@@ -28,18 +29,20 @@ my-talk/
 `deck.py` is a plain Python file that declares the deck:
 
 ```python
-from inkflow import Deck, Slide, Fade, Bounce
+from inkflow import Bounce, Crossfade, Cut, Deck, FadeIn, Morph, Slide
 
-deck = Deck()
+deck = Deck(main=None)
 deck.slides = [
     Slide("slides/01-title.svg", animations=[
-        Fade("#headline", step=1),
-        Fade("#subtitle", step=2),
+        FadeIn("#headline", step=1),
+        FadeIn("#subtitle", step=2),
     ]),
-    Slide("slides/02-diagram.svg", animations=[
+    Slide("slides/02-diagram.svg", transition=Cut(), animations=[
         Bounce("#box-a", step=1),
         Bounce("#box-b", step=2),
     ]),
+    Slide("slides/03-chart.svg", transition=Crossfade()),
+    Slide("slides/04-summary.svg", transition=Morph(duration=0.7)),
 ]
 ```
 
@@ -61,11 +64,11 @@ git clone ...
 cd inkflow
 uv run inkflow serve example/deck.py
 # open http://localhost:7777
-# Space / → : next step or slide
-# ← / Backspace : previous slide
 ```
 
-Requires Inkscape installed (used as the authoring environment, not invoked at serve time).
+Type `?` in the presenter for keyboard shortcuts.
+
+Inkscape is the authoring environment; it is not invoked at serve time.
 
 ## Tech stack
 
