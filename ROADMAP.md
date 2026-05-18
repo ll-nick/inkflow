@@ -78,23 +78,11 @@ Distinct from static HTML export. PDF is how you share slides with conference or
 
 ## Presenter experience
 
-**URL-based slide and step tracking**  
-The current implementation keeps slide index and step in JavaScript memory only. A browser refresh resets to slide 1, step 0. Slidev encodes position in the URL hash (e.g. `#/3/2` for slide 3, step 2). This should just be done: write `location.hash` on every navigation, parse it on page load. The only cost is a trivial amount of implementation; the gain is that refresh keeps your position, browser history works, and you can share a link to a specific slide.
+**Slide picker**  
+`g` currently enters a numeric goto buffer (`g: 12_`, Enter jumps, Escape cancels). The next step is replacing `enterGoto()` with a full picker overlay that opens immediately on `g`: a small modal where typing digits narrows by slide number and Enter or click jumps. Requires an optional `title` field on `Slide` in `deck.py` (`Slide("slides/01.svg", title="Introduction")`); the manifest field is cleaner than auto-extracting from SVG. Worth doing once `Slide` grows a title field for other reasons (presenter view, TOC) — at that point the popup comes nearly for free.
 
-**Full-screen mode**  
-Press F to enter full-screen. Status bar hides and reappears on mouse movement. Table stakes for actually presenting.
-
-**Keyboard navigation refinement**  
-Current keys (Space/→ for next step, ← for previous slide) conflate step-wise and slide-wise movement. A cleaner split: Space/→/← advance and retreat through steps, while ↑/↓ jump directly to the previous or next slide regardless of the current step. Useful when you need to skip back several slides quickly during Q&A without stepping through all the animations. Vim bindings (h/j/k/l, gg/G for first/last slide) as an opt-in alternative for the terminally inclined.
-
-**Go-to-slide by number**  
-Essential for recovering mid-talk ("can you go back to slide 8?"). Two implementation tiers:
-
-- **Number + Enter** (PowerPoint style): digit keypresses accumulate in a buffer shown in the status bar (`→ 8`), Enter jumps, Escape or a short timeout clears. About 20 lines of JS, no backend changes. Implement this first — it covers the use case immediately.
-- **`g` popup with slide titles** (Slidev style): pressing `g` opens a small modal overlay, typing a number shows a filtered list of slides by number and title, Enter or click to jump. Substantially better UX, but requires slide titles. This means either adding an optional `title` field to `Slide` in `deck.py` (`Slide("slides/01.svg", title="Introduction")`) or auto-extracting a title from the SVG. The manifest field is cleaner; auto-extraction from SVG is fragile. Worth doing once `Slide` grows a title field for other reasons (presenter view, slide overview, TOC) — at that point the popup comes nearly for free.
-
-**Slide numbers**  
-Display current slide number and total in the presenter status bar (already partially there). Optionally expose a `{{slide_number}}` / `{{total_slides}}` token that can be placed as a text element in `main.svg` and substituted by the pipeline, so slide numbers appear on the slides themselves. Hidden slides (see below) should not count toward the total.
+**Slide number tokens**  
+Expose `{{slide_number}}` / `{{total_slides}}` tokens that can be placed as text elements in `main.svg` and substituted by the pipeline, so slide numbers appear on the slides themselves. Hidden slides (see below) should not count toward the total.
 
 **Hidden / draft slides**  
 `Slide("...", visible=False)` keeps a slide in `deck.py` and its SVG on disk but excludes it from the presentation. Essential for working decks where you trim slides depending on audience or time without deleting anything.
@@ -171,6 +159,7 @@ A PyPI release so `uvx inkflow serve deck.py` works without a checkout. Possibly
 - **Slide overview** — press Escape for a thumbnail grid, click to jump
 - **Hyperlinks** — SVG `<a>` elements open in a new tab during presentation
 - **Within-slide Morph** — an element changes shape as part of a step sequence on a single slide; distinct from and less powerful than cross-slide Morph but still useful for things like a circle expanding into a diagram
+- **Configurable keybindings** — a `keybindings` dict on `Deck` that overrides the defaults, injected into the presenter as JSON. The keydown handler becomes a lookup table; the current defaults become the fallback. Low effort once the presenter JS is refactored for it; not needed until someone has a concrete conflict with the defaults.
 
 ---
 
