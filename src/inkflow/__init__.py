@@ -1,3 +1,25 @@
-from inkflow.manifest import Bounce, Deck, FadeIn, FadeOut, Morph, Slide
+from inkflow.manifest import (
+    Animation,
+    Bounce,
+    Crossfade,
+    Cut,
+    Deck,
+    FadeIn,
+    FadeOut,
+    Morph,
+    Slide,
+    Transition,
+)
 
-__all__ = ["Bounce", "Deck", "FadeIn", "FadeOut", "Morph", "Slide"]
+__all__ = [
+    "Animation",
+    "Bounce",
+    "Crossfade",
+    "Cut",
+    "Deck",
+    "FadeIn",
+    "FadeOut",
+    "Morph",
+    "Slide",
+    "Transition",
+]

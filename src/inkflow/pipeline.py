@@ -4,7 +4,18 @@ from pathlib import Path
 
 from lxml import etree
 
-from inkflow.manifest import Animation, Bounce, Deck, FadeIn, FadeOut, Morph, Slide
+from inkflow.manifest import (
+    Animation,
+    Crossfade,
+    Cut,
+    Deck,
+    FadeIn,
+    FadeOut,
+    Bounce,
+    Morph,
+    Slide,
+    Transition,
+)
 
 _ANIM_CLASS: dict[type, str] = {
     FadeIn: "anim-fade-in",
@@ -50,9 +61,6 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
     for anim in animations:
         css_class = _ANIM_CLASS.get(type(anim))
         if css_class is None:
-            if isinstance(anim, Morph):
-                eid = anim.element.lstrip("#")
-                print(f"[inkflow] warning: Morph is not yet implemented (#{eid})")
             continue
 
         eid = anim.element.lstrip("#")
@@ -66,6 +74,25 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
         el.set("data-step", str(anim.step))
 
     return etree.tostring(root, encoding="unicode")
+
+
+def _serialize_transition(t: Transition | None) -> dict[str, str | float]:
+    if t is None or isinstance(t, Cut):
+        return {"type": "cut", "duration": 0.0}
+    if isinstance(t, Crossfade):
+        return {"type": "crossfade", "duration": t.duration}
+    if isinstance(t, Morph):
+        return {"type": "morph", "duration": t.duration}
+    return {"type": "cut", "duration": 0.0}
+
+
+def resolve_transitions(deck: Deck) -> list[dict[str, str | float]]:
+    return [
+        _serialize_transition(
+            slide.transition if slide.transition is not None else deck.transition
+        )
+        for slide in deck.slides
+    ]
 
 
 def process_slide(slide: Slide, project_dir: Path) -> str:

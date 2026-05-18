@@ -248,11 +248,13 @@
   <script>
     // ── Injected by server ──
     const INITIAL_SLIDES = __SLIDES_JSON__;
+    const INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
     const WS_PORT = __WS_PORT__;
     const INITIAL_ERROR = __ERROR_JSON__;
 
     // ── State ──
     let slides = INITIAL_SLIDES;
+    let transitions = INITIAL_TRANSITIONS;
     let slideIndex = 0;
     let step = 0;
     let _maxStepCache = null;
@@ -311,17 +313,35 @@
       updateStatus();
     }
 
-    // Replace innerHTML with new slide content. Always resets step to 0.
-    // Does NOT call applyStep() — elements start in their pre-transition state
-    // so the next advance() triggers a real animated transition.
-    function loadSlide() {
-      if (!slides.length) {
-        stage.innerHTML = '<p style="color:var(--accent);padding:2rem">No slides.</p>';
-        return;
+    // Replace innerHTML with new slide content. Does NOT call applyStep() —
+    // elements start in their pre-transition state so the next advance() triggers
+    // a real animated transition. Optional `then` runs after content is swapped
+    // (needed by callers that must applyStep() once the new DOM is in place).
+    function loadSlide(then = null) {
+      const swap = () => {
+        if (!slides.length) {
+          stage.innerHTML = '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+        } else {
+          stage.innerHTML = slides[slideIndex];
+        }
+        _maxStepCache = null;
+        updateStatus();
+        if (then) then();
+      };
+
+      const t = transitions[slideIndex] ?? {type: 'cut', duration: 0};
+      if (t.type === 'crossfade' && t.duration > 0) {
+        stage.style.transition = `opacity ${t.duration}s ease`;
+        stage.style.opacity = '0';
+        setTimeout(() => {
+          swap();
+          requestAnimationFrame(() => { stage.style.opacity = '1'; });
+        }, t.duration * 1000);
+      } else {
+        stage.style.transition = 'none';
+        stage.style.opacity = '1';
+        swap();
       }
-      stage.innerHTML = slides[slideIndex];
-      _maxStepCache = null;
-      updateStatus();
     }
 
     // ── Navigation ──
@@ -343,9 +363,7 @@
       } else if (slideIndex > 0) {
         slideIndex--;
         step = 0;
-        loadSlide();
-        step = maxStep();
-        applyStep();
+        loadSlide(() => { step = maxStep(); applyStep(); });
       }
     }
 
@@ -435,6 +453,7 @@
         const msg = JSON.parse(ev.data);
         if (msg.type === 'update') {
           slides = msg.slides;
+          transitions = msg.transitions ?? [];
           hideError();
           slideIndex = Math.min(slideIndex, Math.max(0, slides.length - 1));
           step = 0;
@@ -455,8 +474,7 @@
 
     // ── Boot ──
     readURL();
-    loadSlide();
-    if (step > 0) applyStep();
+    loadSlide(() => { if (step > 0) applyStep(); });
     if (INITIAL_ERROR) showError(INITIAL_ERROR);
     connectWS();
   </script>

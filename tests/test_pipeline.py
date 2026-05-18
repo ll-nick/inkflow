@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.manifest import Bounce, FadeIn, FadeOut
-from inkflow.pipeline import annotate_svg, clean_inkscape_svg
+from inkflow.manifest import Bounce, Crossfade, Cut, Deck, FadeIn, FadeOut, Morph, Slide
+from inkflow.pipeline import annotate_svg, clean_inkscape_svg, resolve_transitions
 
 _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -97,3 +97,33 @@ class TestCleanInkscapeSvg:
         result = clean_inkscape_svg(svg_file)
         assert "http://www.inkscape.org/namespaces/inkscape" not in result
         assert "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" not in result
+
+
+class TestResolveTransitions:
+    def _deck(
+        self,
+        deck_t: Crossfade | Cut | Morph | None = None,
+        slide_ts: list[Crossfade | Cut | Morph | None] | None = None,
+    ) -> Deck:
+        d = Deck(transition=deck_t)
+        d.slides = [Slide(src=f"{i}.svg", transition=t) for i, t in enumerate(slide_ts or [None])]
+        return d
+
+    def test_defaults_to_cut(self) -> None:
+        d = self._deck()
+        assert resolve_transitions(d) == [{"type": "cut", "duration": 0.0}]
+
+    def test_deck_level_crossfade(self) -> None:
+        d = self._deck(deck_t=Crossfade(0.6), slide_ts=[None, None])
+        result = resolve_transitions(d)
+        assert result == [{"type": "crossfade", "duration": 0.6}, {"type": "crossfade", "duration": 0.6}]
+
+    def test_slide_overrides_deck(self) -> None:
+        d = self._deck(deck_t=Crossfade(), slide_ts=[Cut(), None])
+        result = resolve_transitions(d)
+        assert result[0] == {"type": "cut", "duration": 0.0}
+        assert result[1] == {"type": "crossfade", "duration": 0.4}
+
+    def test_morph_serialized(self) -> None:
+        d = self._deck(slide_ts=[Morph(0.8)])
+        assert resolve_transitions(d) == [{"type": "morph", "duration": 0.8}]
