@@ -41,11 +41,6 @@ body {
   height: auto;
 }
 
-#stage svg {
-  max-width: 100%;
-  max-height: 100%;
-}
-
 #statusbar {
   flex-shrink: 0;
   background: var(--surface);
