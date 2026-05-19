@@ -8,8 +8,8 @@ Items are roughly ordered by how much they matter. The first two sections are lo
 
 ## Decided: design questions
 
-**Slide master: pipeline inlining with inject-preview**  
-Chosen approach: pipeline inlines master templates at build time. Inkscape shows only slide content during authoring (no master frame). WYSIWYG gap is addressed not by duplicating master content into each file, but by a CLI command (`inkflow inject-master`) that injects ancestors as locked, non-selectable Inkscape layers for spatial reference. These layers are stripped by the pipeline and never reach the browser. See the "Template inheritance" section below for the full model.
+**Slide layouts: pipeline inlining with inject-layout**  
+Chosen approach: pipeline inlines the layout chain at build time. Inkscape shows only slide content during authoring (no layout frame). WYSIWYG gap is addressed not by duplicating layout content into each file, but by a CLI command (`inkflow inject-layout`) that injects ancestor layouts as locked, non-selectable Inkscape layers for spatial reference. These layers are stripped by the pipeline and never reach the browser. See the "Layout inheritance" section below for the full model.
 
 **One file per slide vs multi-page SVG**  
 Staying with one file per slide. Inkscape's multi-page SVG format uses `inkscape:page` elements that are not standard SVG; parsing them would tightly couple the tool to Inkscape's internal implementation. One-file-per-slide produces cleaner git diffs and maps to the standard SVG model. Worth revisiting only if Inkscape formalises the format.
@@ -27,14 +27,14 @@ Chosen approach: `foreignObject` injection. An existing Markdown library (`mistu
 **Optional zones in MarkdownSlide templates**  
 Template SVGs declare placeholder zones as `<rect>` elements with zone IDs. `MarkdownSlide` maps kwargs to zone IDs. If a kwarg is omitted (e.g. no `subtitle=` for a title slide), the corresponding rect needs to be handled. Candidates: leave it visible (shows an empty box in the browser — bad), remove it from the SVG (pipeline deletes unreferenced zone rects), or mark it invisible. Remove-if-unreferenced is the likely answer but needs confirmation.
 
-**Layout-level master overrides**  
-Some layouts visually override the master frame — a section divider or full-bleed title slide typically drops the footer and page number. The mechanism for opting out (per-layout or per-slide) is not yet decided. Candidates: a flag attribute on the layout SVG root (`inkflow:no-master="true"`), Inkscape layers inside `main.svg` that layouts can selectively suppress, or a `master_zones` exclusion list in `deck.py`. This affects both inject-master (which layers to inject) and the pipeline (which elements to include).
+**Layout overrides**  
+Some layouts visually override the base layout frame — a section divider or full-bleed title slide typically drops the footer and page number. The mechanism for opting out (per-layout or per-slide) is not yet decided. Candidates: a flag attribute on the layout SVG root (`inkflow:no-layout="true"`), Inkscape layers inside `main.svg` that child layouts can selectively suppress, or a `layout_zones` exclusion list in `deck.py`. This affects both inject-layout (which layers to inject) and the pipeline (which elements to include).
 
 ---
 
-## Template inheritance
+## Layout inheritance
 
-The master system uses a general parent/child model rather than a fixed two-level hierarchy. Each SVG file can declare its parent via an `inkflow:parent` attribute on the root `<svg>` element:
+The layout system uses a general parent/child model rather than a fixed two-level hierarchy. Each SVG file can declare its parent via an `inkflow:parent` attribute on the root `<svg>` element:
 
 ```xml
 <svg xmlns:inkflow="https://inkflow.dev/ns"
@@ -49,47 +49,47 @@ slides/05-bullets.svg
   ↑ inkflow:parent
 themes/catppuccin-mocha/templates/bullets.svg   ← layout: content zone positions
   ↑ inkflow:parent
-themes/catppuccin-mocha/main.svg                ← global master: background, logo, footer, slide number tokens
+themes/catppuccin-mocha/main.svg                ← root layout: background, logo, footer, slide number tokens
   (no parent — chain terminates)
 ```
 
 The attribute is set by tooling (`inkflow new`, `inkflow set-parent`), not by hand. Authors do not type it into Inkscape's XML editor.
 
 **`Deck.main` as implicit root**  
-`Deck(main="themes/catppuccin-mocha/main.svg")` is the fallback parent for slides whose chain does not already reach a root. If a slide's SVG has no `inkflow:parent`, the pipeline prepends `Deck.main` to the chain. `Deck(main=None)` disables this and slides get no master frame — the current behaviour for the example deck.
+`Deck(main="themes/catppuccin-mocha/main.svg")` is the fallback parent for slides whose chain does not already reach a root. If a slide's SVG has no `inkflow:parent`, the pipeline prepends `Deck.main` to the chain. `Deck(main=None)` disables this and slides get no layout frame — the current behaviour for the example deck.
 
-**`inject-master` command**  
-`inkflow inject-master <files>` resolves the parent chain for each file and injects each ancestor as a separate locked Inkscape layer below the slide's own content:
+**`inject-layout` command**  
+`inkflow inject-layout <files>` resolves the parent chain for each file and injects each ancestor as a separate locked Inkscape layer below the slide's own content:
 
 ```xml
 <g inkscape:groupmode="layer"
-   inkscape:label="__inkflow: main__"
+   inkscape:label="__inkflow:layout:main__"
    sodipodi:insensitive="true"
    data-inkflow-src="themes/catppuccin-mocha/main.svg"
    data-inkflow-hash="a3f9c2">
   ...main.svg content...
 </g>
 <g inkscape:groupmode="layer"
-   inkscape:label="__inkflow: bullets layout__"
+   inkscape:label="__inkflow:layout:bullets__"
    sodipodi:insensitive="true"
-   data-inkflow-src="themes/catppuccin-mocha/templates/bullets.svg"
+   data-inkflow-src="themes/catppuccin-mocha/layouts/bullets.svg"
    data-inkflow-hash="b71e04">
   ...zone rects and guide elements...
 </g>
 <!-- slide's own editable content above -->
 ```
 
-The command is idempotent: it compares each layer's `data-inkflow-hash` against the current file content and only rewrites stale layers. The pipeline strips all `__inkflow:*__` layers before processing; they never appear in the browser.
+The command is idempotent: it compares each layer's `data-inkflow-hash` against the current file content and only rewrites stale layers. The pipeline strips all `__inkflow:layout:*__` layers before processing; they never appear in the browser.
 
-`inkflow new <template> <path>` calls `inject-master` automatically after creating the file.
+`inkflow new <layout> <path>` calls `inject-layout` automatically after creating the file.
 
 **Theme directory structure**
 
 ```
 themes/catppuccin-mocha/
-  main.svg              ← global master (background, logo, footer, {{slide_number}}, {{slide_total}})
+  main.svg              ← root layout (background, logo, footer, {{slide_number}}, {{slide_total}})
   content.css           ← typography for foreignObject zones (headings, bullets, code blocks)
-  templates/
+  layouts/
     title.svg           ← zones: #zone-title, #zone-subtitle
     bullets.svg         ← zones: #zone-title, #zone-content
     two-column.svg      ← zones: #zone-title, #zone-left, #zone-right
@@ -131,16 +131,16 @@ deck.slides = [
 ]
 ```
 
-The first argument selects a template from the active theme. Kwargs map to zone IDs by name convention (`title=` → `#zone-title`, `src=` → the template's primary zone). `MarkdownSlide` does not add a new pipeline path — it is resolved before the pipeline runs.
+The first argument selects a layout from the active theme. Kwargs map to zone IDs by name convention (`title=` → `#zone-title`, `src=` → the layout's primary zone). `MarkdownSlide` does not add a new pipeline path — it is resolved before the pipeline runs.
 
 **`inkflow new` command**  
-`inkflow new <template> <path>` creates a new slide file from a theme template and wires it up for authoring:
-1. Copies the template SVG to the target path.
-2. Writes `inkflow:parent` pointing at the template.
-3. Runs `inject-master` to inject ancestor layers for Inkscape preview.
+`inkflow new <layout> <path>` creates a new slide file from a theme layout and wires it up for authoring:
+1. Copies the layout SVG to the target path.
+2. Writes `inkflow:parent` pointing at the layout.
+3. Runs `inject-layout` to inject ancestor layers for Inkscape preview.
 4. Prints the `deck.py` snippet to add to the deck.
 
-CLI-only for now. A companion `.md` file is created alongside for templates whose primary zone expects a `src=` argument.
+CLI-only for now. A companion `.md` file is created alongside for layouts whose primary zone expects a `src=` argument.
 
 **Font embedding**  
 SVGs reference fonts by name. On the authoring machine this works; on any other machine it may not. Use fonttools to resolve fonts via fontconfig, base64-encode them, and inline `@font-face` declarations inside a `<defs>` block. Makes each output SVG self-contained without converting text to paths.
@@ -196,11 +196,11 @@ A `SectionSlide("title")` type that marks a section boundary. The pipeline can a
 
 ## Authoring experience
 
-**`inkflow inject-master` command**  
-Resolves the `inkflow:parent` chain for each target file and injects ancestor SVGs as locked Inkscape layers (see "Template inheritance"). Idempotent: compares `data-inkflow-hash` on existing layers against current file content and only rewrites stale entries. Run after editing `main.svg` or any template to refresh Inkscape preview layers across the deck. `inkflow inject-master --check` reports which files have stale layers without rewriting.
+**`inkflow inject-layout` command**  
+Resolves the `inkflow:parent` chain for each target file and injects ancestor SVGs as locked Inkscape layers (see "Layout inheritance"). Idempotent: compares `data-inkflow-hash` on existing layers against current file content and only rewrites stale entries. Run after editing `main.svg` or any layout file to refresh Inkscape preview layers across the deck. `inkflow inject-layout --check` reports which files have stale layers without rewriting.
 
 **`inkflow set-parent <file> <parent-path>` command**  
-Updates `inkflow:parent` on an existing slide SVG and re-runs `inject-master` on that file. Use when changing a slide's layout after initial creation.
+Updates `inkflow:parent` on an existing slide SVG and re-runs `inject-layout` on that file. Use when changing a slide's layout after initial creation.
 
 **Element ID validation**  
 When `deck.py` references `#headline` but the SVG has no matching element, the pipeline prints a warning and silently skips it. This should be a hard build error: name the slide file and the missing ID, stop the build.
@@ -296,8 +296,8 @@ In practice this is not a problem: if you need bullet lists or reflowing text, u
 **PPTX export**  
 SVG is arbitrary vector geometry; PPTX has its own shape/text model. Conversion fidelity for anything non-trivial would be poor, and maintaining that mapping as both sides evolve is not worth it. If you need a PPTX, use PowerPoint.
 
-**WYSIWYG template preview in Inkscape**  
-A structural consequence of the pipeline-inlining approach: if the master template is resolved at build time, Inkscape cannot show it during authoring. The tool commits to this and authors need to accept the split. The alternative — putting master elements in a locked layer in every slide file — trades the split view for a duplication problem.
+**WYSIWYG layout preview in Inkscape**  
+A structural consequence of the pipeline-inlining approach: if the layout chain is resolved at build time, Inkscape cannot show it during authoring without `inject-layout`. The tool commits to this model — the injected layers are a spatial reference, not a live preview. The alternative — putting layout elements in a locked layer inside every slide file permanently — trades the split view for a duplication problem with no staleness detection.
 
 **Real-time collaboration**  
 SVG files on disk and a local Python server are the wrong substrate. Git handles version history already; simultaneous multi-user editing is a different product.

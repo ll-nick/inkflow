@@ -77,6 +77,6 @@ watchfiles>=0.21 inotify-based file watcher
 
 ## Not yet implemented
 
-- Template chain inlining (`inkflow:parent` resolution, `inject-master`, `inkflow new`) — see ROADMAP.md
+- Layout chain inlining (`inkflow:parent` resolution, `inject-layout`, `inkflow new`) — see ROADMAP.md
 - Font embedding (fonttools)
 - Morph for non-primitive shapes: `<path>` and `<polygon>` fall back to instant cut; `<g>` groups are cloned and faded as a unit — put the ID on the `<g>` (not on individual children) when you want a shape+label pair to enter/exit together
