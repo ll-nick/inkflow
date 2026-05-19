@@ -80,9 +80,15 @@ function _geomAttrs(el) {
   }
 }
 
+function _parseHexColor(s) {
+  const h = (s ?? '').replace('#', '');
+  if (h.length === 3) return h.split('').map(c => parseInt(c + c, 16));
+  if (h.length === 6) return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  return null;
+}
+
 function _lerpColor(a, b, t) {
-  const ph = s => { const h = (s ?? '').replace('#', ''); return h.length === 3 ? h.split('').map(c => parseInt(c+c, 16)) : h.length === 6 ? [0,2,4].map(i => parseInt(h.slice(i,i+2), 16)) : null; };
-  const ca = ph(a), cb = ph(b);
+  const ca = _parseHexColor(a), cb = _parseHexColor(b);
   if (!ca || !cb) return t < 0.5 ? a : b;
   return '#' + ca.map((c, i) => Math.round(c + (cb[i] - c) * t).toString(16).padStart(2, '0')).join('');
 }
@@ -180,6 +186,22 @@ function morphSlide(duration, then) {
   requestAnimationFrame(frame);
 }
 
+const TRANSITIONS = {
+  morph(swap, t, then) {
+    if (t.duration > 0 && slides.length) { morphSlide(t.duration, then); return; }
+    swap(); if (then) then();
+  },
+  crossfade(swap, t, then) {
+    if (t.duration <= 0) { swap(); if (then) then(); return; }
+    stage.style.transition = `opacity ${t.duration}s ease`;
+    stage.style.opacity = '0';
+    setTimeout(() => {
+      swap();
+      requestAnimationFrame(() => { stage.style.opacity = '1'; if (then) then(); });
+    }, t.duration * 1000);
+  },
+};
+
 // Replace innerHTML with new slide content. Does NOT call applyStep() —
 // elements start in their pre-transition state so the next advance() triggers
 // a real animated transition. Optional `then` runs after content is swapped.
@@ -187,35 +209,19 @@ function morphSlide(duration, then) {
 // when navigating backward so the outgoing slide's transition plays in reverse).
 function loadSlide(then = null, transition = null) {
   const swap = () => {
-    if (!slides.length) {
-      stage.innerHTML = '<p style="color:var(--accent);padding:2rem">No slides.</p>';
-    } else {
-      stage.innerHTML = slides[slideIndex];
-    }
+    stage.innerHTML = slides.length ? slides[slideIndex] : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
     _maxStepCache = null;
     updateStatus();
-    if (then) then();
   };
 
   const t = transition ?? transitions[slideIndex] ?? { type: 'cut', duration: 0 };
+  const handler = TRANSITIONS[t.type];
+  if (handler) { handler(swap, t, then); return; }
 
-  if (t.type === 'morph' && t.duration > 0 && slides.length) {
-    morphSlide(t.duration, then);
-    return;
-  }
-
-  if (t.type === 'crossfade' && t.duration > 0) {
-    stage.style.transition = `opacity ${t.duration}s ease`;
-    stage.style.opacity = '0';
-    setTimeout(() => {
-      swap();
-      requestAnimationFrame(() => { stage.style.opacity = '1'; });
-    }, t.duration * 1000);
-  } else {
-    stage.style.transition = 'none';
-    stage.style.opacity = '1';
-    swap();
-  }
+  stage.style.transition = 'none';
+  stage.style.opacity = '1';
+  swap();
+  if (then) then();
 }
 
 // ── Navigation ──
@@ -268,6 +274,9 @@ function toggleCurtain(color) {
 
 function toggleHelp() { help.classList.toggle('visible'); }
 
+function gotoFirst() { slideIndex = 0; step = 0; loadSlide(); }
+function gotoLast()  { slideIndex = slides.length - 1; step = 0; loadSlide(); }
+
 // ── Error display ──
 function showError(msg) {
   errorMsg.textContent = msg;
@@ -292,6 +301,32 @@ curtain.addEventListener('click', hideCurtain);
 help.addEventListener('click', e => { if (e.target === help) toggleHelp(); });
 stage.addEventListener('click', advance);
 
+// ── Keybindings ──
+// To make keys configurable via deck.py in the future, merge a server-injected
+// KEYBINDINGS_OVERRIDES object into this map before the listener runs.
+const KEYBINDINGS = {
+  'ArrowRight': { action: advance,                          preventDefault: true },
+  ' ':          { action: advance,                          preventDefault: true },
+  'l':          { action: advance,                          preventDefault: true },
+  'ArrowLeft':  { action: retreat,                          preventDefault: true },
+  'Backspace':  { action: retreat,                          preventDefault: true },
+  'h':          { action: retreat,                          preventDefault: true },
+  'ArrowDown':  { action: nextSlide,                        preventDefault: true },
+  'j':          { action: nextSlide,                        preventDefault: true },
+  'ArrowUp':    { action: prevSlide,                        preventDefault: true },
+  'k':          { action: prevSlide,                        preventDefault: true },
+  'Home':       { action: gotoFirst },
+  '^':          { action: gotoFirst },
+  'End':        { action: gotoLast },
+  '$':          { action: gotoLast },
+  'g':          { action: enterGoto },
+  'f':          { action: toggleFullscreen },
+  'b':          { action: () => toggleCurtain('black') },
+  '.':          { action: () => toggleCurtain('black') },
+  'w':          { action: () => toggleCurtain('white') },
+  '?':          { action: toggleHelp },
+};
+
 document.addEventListener('keydown', e => {
   if (help.classList.contains('visible')) {
     if (e.key === '?' || e.key === 'Escape') toggleHelp();
@@ -307,17 +342,11 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  if      (e.key === 'g') { enterGoto(); }
-  else if (e.key === 'f') { toggleFullscreen(); }
-  else if (e.key === 'b' || e.key === '.') { toggleCurtain('black'); }
-  else if (e.key === 'w') { toggleCurtain('white'); }
-  else if (e.key === '?') { toggleHelp(); }
-  else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'l') { e.preventDefault(); advance(); }
-  else if (e.key === 'ArrowLeft'  || e.key === 'Backspace' || e.key === 'h') { e.preventDefault(); retreat(); }
-  else if (e.key === 'ArrowDown'  || e.key === 'j') { e.preventDefault(); nextSlide(); }
-  else if (e.key === 'ArrowUp'    || e.key === 'k') { e.preventDefault(); prevSlide(); }
-  else if (e.key === 'Home' || e.key === '^') { slideIndex = 0; step = 0; loadSlide(); }
-  else if (e.key === 'End'  || e.key === '$') { slideIndex = slides.length - 1; step = 0; loadSlide(); }
+  const binding = KEYBINDINGS[e.key];
+  if (binding) {
+    if (binding.preventDefault) e.preventDefault();
+    binding.action();
+  }
 });
 
 // ── WebSocket live reload ──
