@@ -71,8 +71,12 @@ def setup_git() -> None:
             "pre-commit hook → .githooks/pre-commit",
         ),
         (
-            ["git", "config", "diff.inkscape-svg.textconv",
-             "uv run inkflow clean --stdout"],
+            [
+                "git",
+                "config",
+                "diff.inkscape-svg.textconv",
+                "uv run inkflow clean --stdout",
+            ],
             "SVG diff driver → strips Inkscape metadata before diffs",
         ),
     ]
