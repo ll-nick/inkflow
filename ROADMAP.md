@@ -11,6 +11,13 @@ Items are roughly ordered by how much they matter. The first two sections are lo
 **Slide layouts: pipeline inlining with inject-layout**  
 Chosen approach: pipeline inlines the layout chain at build time. Inkscape shows only slide content during authoring (no layout frame). WYSIWYG gap is addressed not by duplicating layout content into each file, but by a CLI command (`inkflow inject-layout`) that injects ancestor layouts as locked, non-selectable Inkscape layers for spatial reference. These layers are stripped by the pipeline and never reach the browser. See the "Layout inheritance" section below for the full model.
 
+**SVG editor agnosticism**  
+The tool has no hard dependency on Inkscape at runtime. The pipeline only reads and writes standard SVG; it never spawns Inkscape as a subprocess. Any vector editor that exports well-formed SVG — Inkscape, Figma, Affinity Designer, Sketch, or hand-coded files — works as an authoring tool. `clean_svg()` (currently misnamed `clean_inkscape_svg`) strips Inkscape/Sodipodi editor metadata if present, and is a no-op on files from other tools.
+
+The one Inkscape-specific feature is `inject-layout`: it writes `inkscape:groupmode="layer"` and `sodipodi:insensitive` attributes so Inkscape's GUI renders the injected preview layers correctly. These attributes are harmless in any other tool (they appear as unknown attributes in the XML view and are ignored). A future refinement is to make the Inkscape layer attributes opt-in and write only `data-inkflow-*` attributes by default, so `inject-layout` produces clean output for non-Inkscape workflows.
+
+The `MarkdownSlide` path requires no GUI tool at all: layout SVGs with `<rect id="zone-...">` can be written by hand or generated. The SVG editor is only needed for slides with custom visual design.
+
 **One file per slide vs multi-page SVG**  
 Staying with one file per slide. Inkscape's multi-page SVG format uses `inkscape:page` elements that are not standard SVG; parsing them would tightly couple the tool to Inkscape's internal implementation. One-file-per-slide produces cleaner git diffs and maps to the standard SVG model. Worth revisiting only if Inkscape formalises the format.
 
@@ -216,6 +223,25 @@ Currently hardcoded 1920×1080. Should be a per-deck setting on `Deck(width=...,
 
 **Inkscape layer conventions for Morph**  
 For within-slide morphing, the two element states need to live somewhere in the SVG that the pipeline can find. A layer naming convention needs to be documented with a worked example. Currently there is nothing telling an author how to structure their file for any Inkflow-specific feature.
+
+---
+
+## Documentation
+
+The minimum bar is a small set of markdown files in the repository — a `README.md` that covers installation and a five-minute example, and a `docs/` folder with focused pages on the layout system, zone substitutions, `MarkdownSlide`, animations, and transitions. These could be read directly on GitHub and would unblock most new users.
+
+The preferred target is a static site on GitHub Pages, auto-built on every push to `main` via a GitHub Actions workflow. This is directly analogous to the [Slidev docs](https://sli.dev). The build cost is low: the right tool is either **MkDocs with the Material theme** (zero Node.js dependency, fits naturally in a Python project, `mkdocs.yml` + markdown files, `pip install mkdocs-material`) or **VitePress** (what Slidev itself uses, requires Node.js but produces a near-identical look and feel). MkDocs Material is the lower-friction choice given the Python ecosystem; VitePress is the better choice if the site needs interactive SVG demos or live slide embeds.
+
+Minimum page set:
+- **Getting started** — installation, `inkflow serve example/deck.py`, first custom slide
+- **Layout system** — `inkflow:parent`, zone rects, `inject-layout`, layout chains
+- **MarkdownSlide** — `::zone::` / `::step::` syntax, auto-extraction, `image=` / `video=` kwargs
+- **Animations** — `FadeIn`, `FadeOut`, `Bounce`, step model, `steps=True`
+- **Transitions** — Cut, Crossfade, Morph; per-slide and deck-level
+- **`deck.py` reference** — all `Deck`, `Slide`, `MarkdownSlide` fields in one place
+- **Themes** — directory structure, `content.css`, zone naming conventions
+
+A live demo deck embedded in the getting started page — rendered by inkflow itself, served as static SVGs — would close the loop and demonstrate the tool using the tool.
 
 ---
 
