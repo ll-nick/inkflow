@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 
 from inkflow.manifest import Bounce, Crossfade, Cut, Deck, FadeIn, FadeOut, Morph, Slide
-from inkflow.pipeline import annotate_svg, clean_inkscape_svg, resolve_transitions
+from inkflow.pipeline import (
+    annotate_svg,
+    clean_inkscape_svg,
+    compose_with_ancestors,
+    resolve_transitions,
+    substitute_tokens,
+)
 
 _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -133,3 +139,75 @@ class TestResolveTransitions:
     def test_morph_serialized(self) -> None:
         d = self._deck(slide_ts=[Morph(0.8)])
         assert resolve_transitions(d) == [{"type": "morph", "duration": 0.8}]
+
+
+_TOKEN_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg">
+      <text id="num">{{slide_number}}</text>
+      <text id="tot">{{slide_total}}</text>
+      <tspan id="span">slide {{slide_number}} of {{slide_total}}</tspan>
+    </svg>
+""")
+
+_ANCESTOR_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <defs><style>.anc{fill:red}</style></defs>
+      <rect id="anc-bg" class="anc" width="1920" height="1080"/>
+    </svg>
+""")
+
+_SLIDE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="slide-content" width="100" height="100"/>
+    </svg>
+""")
+
+
+class TestSubstituteTokens:
+    def test_slide_number_replaced(self) -> None:
+        result = substitute_tokens(_TOKEN_SVG, 3, 10)
+        assert ">3<" in result
+        assert "{{slide_number}}" not in result
+
+    def test_slide_total_replaced(self) -> None:
+        result = substitute_tokens(_TOKEN_SVG, 1, 10)
+        assert ">10<" in result
+        assert "{{slide_total}}" not in result
+
+    def test_replaced_in_tspan(self) -> None:
+        result = substitute_tokens(_TOKEN_SVG, 2, 5)
+        assert "slide 2 of 5" in result
+
+    def test_no_tokens_unchanged(self) -> None:
+        result = substitute_tokens(_PLAIN_SVG, 1, 1)
+        assert result  # just runs without error, no tokens to replace
+
+
+class TestComposeWithAncestors:
+    def test_ancestor_content_prepended(self, tmp_path: Path) -> None:
+        anc = tmp_path / "main.svg"
+        anc.write_text(_ANCESTOR_SVG, encoding="utf-8")
+        result = compose_with_ancestors(_SLIDE_SVG, [anc])
+        # ancestor rect appears before slide content
+        assert result.index("anc-bg") < result.index("slide-content")
+
+    def test_ancestor_defs_merged(self, tmp_path: Path) -> None:
+        anc = tmp_path / "main.svg"
+        anc.write_text(_ANCESTOR_SVG, encoding="utf-8")
+        result = compose_with_ancestors(_SLIDE_SVG, [anc])
+        assert ".anc{fill:red}" in result or ".anc" in result
+
+    def test_existing_layout_layers_stripped_from_slide(self, tmp_path: Path) -> None:
+        anc = tmp_path / "main.svg"
+        anc.write_text(_ANCESTOR_SVG, encoding="utf-8")
+        slide_with_layer = textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+              <g xmlns:inkflow="urn:inkflow"
+                 inkflow:layout-src="/stale/layer.svg"
+                 inkflow:layout-hash="000000"/>
+              <rect id="slide-content" width="100" height="100"/>
+            </svg>
+        """)
+        result = compose_with_ancestors(slide_with_layer, [anc])
+        assert "stale/layer.svg" not in result
+        assert "slide-content" in result
