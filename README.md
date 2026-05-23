@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="Inkflow logo" height="128">
+</p>
+
 # Inkflow
 
 *A Linux-native presentation tool for people who live in the terminal.*
