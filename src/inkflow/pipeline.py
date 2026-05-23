@@ -4,6 +4,8 @@ from pathlib import Path
 
 from lxml import etree
 
+from inkflow import ns
+from inkflow.layout import resolve_chain, strip_layout_layers
 from inkflow.manifest import Animation, Bounce, Deck, FadeIn, FadeOut, Slide, Transition
 
 _ANIM_CLASS: dict[type, str] = {
@@ -12,20 +14,15 @@ _ANIM_CLASS: dict[type, str] = {
     Bounce: "anim-bounce",
 }
 
-_INKSCAPE_NAMESPACES: frozenset[str] = frozenset(
-    {
-        "http://www.inkscape.org/namespaces/inkscape",
-        "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd",
-    }
-)
+_INKSCAPE_NAMESPACES: frozenset[str] = frozenset({ns.INKSCAPE, ns.SODIPODI})
 
 
 def clean_inkscape_svg(src: Path) -> str:
     tree = etree.parse(src)
     root = tree.getroot()
 
-    for ns in _INKSCAPE_NAMESPACES:
-        for el in root.findall(f".//{{{ns}}}*"):
+    for ns_uri in _INKSCAPE_NAMESPACES:
+        for el in root.findall(f".//{{{ns_uri}}}*"):
             parent = el.getparent()
             if parent is not None:
                 parent.remove(el)
@@ -35,7 +32,7 @@ def clean_inkscape_svg(src: Path) -> str:
             k
             for k in el.attrib
             if isinstance(k, str)
-            and any(k.startswith(f"{{{ns}}}") for ns in _INKSCAPE_NAMESPACES)
+            and any(k.startswith(f"{{{ns_uri}}}") for ns_uri in _INKSCAPE_NAMESPACES)
         ]
         for k in to_del:
             del el.attrib[k]
@@ -80,13 +77,85 @@ def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
     ]
 
 
-def process_slide(slide: Slide, project_dir: Path) -> str:
+def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
+    """Prepend ancestor SVG content below the slide's own content."""
+    slide_root = etree.fromstring(svg_str.encode())
+    strip_layout_layers(slide_root)
+
+    ancestor_groups: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+    merged_defs: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+
+    for ancestor_path in chain:
+        anc_str = clean_inkscape_svg(ancestor_path)
+        anc_root = etree.fromstring(anc_str.encode())
+        strip_layout_layers(anc_root)
+
+        for defs_el in anc_root.findall(f"{{{ns.SVG}}}defs"):
+            merged_defs.extend(list(defs_el))
+
+        children = [el for el in anc_root if el.tag != f"{{{ns.SVG}}}defs"]
+        if children:
+            g = etree.Element(f"{{{ns.SVG}}}g")
+            for child in children:
+                g.append(child)
+            ancestor_groups.append(g)
+
+    if merged_defs:
+        slide_defs = slide_root.find(f"{{{ns.SVG}}}defs")
+        if slide_defs is None:
+            slide_defs = etree.Element(f"{{{ns.SVG}}}defs")
+            slide_root.insert(0, slide_defs)
+        for i, def_el in enumerate(merged_defs):
+            slide_defs.insert(i, def_el)
+
+    insert_pos = next(
+        (i + 1 for i, el in enumerate(slide_root) if el.tag == f"{{{ns.SVG}}}defs"),
+        0,
+    )
+    for i, group in enumerate(ancestor_groups):
+        slide_root.insert(insert_pos + i, group)
+
+    return etree.tostring(slide_root, encoding="unicode")
+
+
+def substitute_tokens(svg_str: str, slide_number: int, total: int) -> str:
+    """Replace {{slide_number}} and {{slide_total}} in text/tspan elements."""
+    root = etree.fromstring(svg_str.encode())
+    replacements = {
+        "{{slide_number}}": str(slide_number),
+        "{{slide_total}}": str(total),
+    }
+    for el in root.iter(f"{{{ns.SVG}}}text", f"{{{ns.SVG}}}tspan"):
+        if el.text:
+            for token, value in replacements.items():
+                el.text = el.text.replace(token, value)
+        if el.tail:
+            for token, value in replacements.items():
+                el.tail = el.tail.replace(token, value)
+    return etree.tostring(root, encoding="unicode")
+
+
+def process_slide(
+    slide: Slide,
+    project_dir: Path,
+    themes: dict[str, str],
+    slide_number: int,
+    total_slides: int,
+) -> str:
     src = project_dir / slide.src
     svg_str = clean_inkscape_svg(src)
+    chain = resolve_chain(src, project_dir, themes)
+    if chain:
+        svg_str = compose_with_ancestors(svg_str, chain)
+    svg_str = substitute_tokens(svg_str, slide_number, total_slides)
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
     return svg_str
 
 
 def process_deck(deck: Deck, project_dir: Path) -> list[str]:
-    return [process_slide(slide, project_dir) for slide in deck.slides]
+    total = len(deck.slides)
+    return [
+        process_slide(slide, project_dir, deck.themes, i + 1, total)
+        for i, slide in enumerate(deck.slides)
+    ]

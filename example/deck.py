@@ -1,6 +1,6 @@
 from inkflow import Bounce, Crossfade, Cut, Deck, FadeIn, Morph, Slide
 
-deck = Deck(main=None)
+deck = Deck()
 
 deck.slides = [
     Slide(

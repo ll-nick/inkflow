@@ -29,12 +29,13 @@ def test_slide_animations_default_empty() -> None:
 
 def test_deck_defaults() -> None:
     deck = Deck()
-    assert deck.main is None
     assert deck.slides == []
+    assert deck.themes == {}
 
 
-def test_deck_custom_main() -> None:
-    assert Deck(main="main.svg").main == "main.svg"
+def test_deck_custom_themes() -> None:
+    themes = {"my-theme": "./themes/my-theme"}
+    assert Deck(themes=themes).themes == themes
 
 
 def test_animation_fields_stored() -> None:
