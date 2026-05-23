@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg3">
-  <defs id="defs3"/>
-  <!-- Catppuccin Mocha background -->
-  <rect width="1920" height="1080" fill="#1e1e2e" id="rect1"/>
-  <!-- Accent line at bottom -->
-  <rect x="0" y="1056" width="1920" height="4" fill="#cba6f7" opacity="0.6" id="rect2"/>
-  <!-- Decorative left accent bar -->
-  <!-- Main headline -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg3" inkflow:parent="root:main.svg">
+  <g inkflow:layout-src="root:main.svg" inkflow:layout-hash="9c735d85"><!-- Catppuccin Mocha background -->
+  <rect width="1920" height="1080" fill="#1e1e2e"/>
+  <!-- Footer bar -->
+  <rect y="1040" width="1920" height="40" fill="#313244"/>
+  <!-- Accent line above footer -->
+  <rect y="1036" width="1920" height="4" fill="#cba6f7"/>
+  <!-- Slide number -->
+  <text x="1880" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">{{slide_number}} / {{slide_total}}</text>
+</g><defs id="defs3"/>
   <text id="headline" x="960" y="490" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="120" font-weight="bold" letter-spacing="-2" fill="#cdd6f4">Inkflow</text>
-  <!-- Subtitle -->
   <text id="subtitle" x="960" y="620" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="40" fill="#cba6f7">SVG presentations, terminal-native</text>
-  <!-- Byline -->
   <text id="byline" x="960" y="750" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="26" fill="#6c7086">inkscape + python + browser  ·  2026</text>
 </svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs/>
+  <!-- Catppuccin Mocha background -->
+  <rect width="1920" height="1080" fill="#1e1e2e"/>
+  <!-- Footer bar -->
+  <rect y="1040" width="1920" height="40" fill="#313244"/>
+  <!-- Accent line above footer -->
+  <rect y="1036" width="1920" height="4" fill="#cba6f7"/>
+  <!-- Slide number -->
+  <text x="1880" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">{{slide_number}} / {{slide_total}}</text>
+</svg>
