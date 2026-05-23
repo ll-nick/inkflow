@@ -4,7 +4,7 @@
 
 # Inkflow
 
-*A Linux-native presentation tool for people who live in the terminal.*
+**Beautiful slides from SVG. Your editor, your style.**
 
 ## What is Inkflow?
 

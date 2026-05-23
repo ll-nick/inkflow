@@ -1,7 +1,7 @@
 [project]
 name = "inkflow"
 version = "0.1.0"
-description = "Terminal-native SVG presentation tool"
+description = "Beautiful slides from SVG. Your editor, your style."
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.0",
