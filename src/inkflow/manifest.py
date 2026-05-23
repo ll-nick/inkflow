@@ -68,15 +68,15 @@ class Slide:
 
 
 class Deck:
-    main: str | None
     slides: list[Slide]
     transition: Transition | None
+    themes: dict[str, str]
 
     def __init__(
         self,
-        main: str | None = None,
         transition: Transition | None = None,
+        themes: dict[str, str] | None = None,
     ) -> None:
-        self.main = main
         self.slides = []
         self.transition = transition
+        self.themes = themes or {}
