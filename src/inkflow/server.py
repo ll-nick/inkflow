@@ -120,12 +120,44 @@ def _build_html(ws_port: int) -> bytes:
     return html.encode("utf-8")
 
 
-def make_http_handler(ws_port: int) -> _StreamHandler:
+_SERVED_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
+_MIME_TYPES = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".ogg": "video/ogg",
+    ".mov": "video/quicktime",
+}
+
+
+def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamHandler:
     async def handler(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         try:
-            await asyncio.wait_for(reader.read(4096), timeout=10)
+            raw = await asyncio.wait_for(reader.read(4096), timeout=10)
+            request_line = raw.split(b"\r\n", 1)[0].decode(errors="replace")
+            parts = request_line.split(" ", 2)
+            request_path = parts[1] if len(parts) >= 2 else "/"
+
+            if project_dir is not None and request_path != "/":
+                asset_path = project_dir / request_path.lstrip("/")
+                suffix = asset_path.suffix.lower()
+                if asset_path.is_file() and suffix in _SERVED_SUFFIXES:
+                    mime = _MIME_TYPES[suffix]
+                    body = asset_path.read_bytes()
+                    header = (
+                        b"HTTP/1.1 200 OK\r\n"
+                        + f"Content-Type: {mime}\r\n".encode()
+                        + b"Cache-Control: no-store\r\n"
+                        + b"Connection: close\r\n"
+                        + b"Content-Length: "
+                        + str(len(body)).encode()
+                        + b"\r\n\r\n"
+                    )
+                    writer.write(header + body)
+                    await writer.drain()
+                    return
+
             body = _build_html(ws_port)
             header = (
                 b"HTTP/1.1 200 OK\r\n"
@@ -165,7 +197,7 @@ async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
     print(f"[inkflow] loading {deck_path}")
     await rebuild(deck_path)
 
-    http_handler = make_http_handler(ws_port)
+    http_handler = make_http_handler(ws_port, deck_path.parent)
     http_server = await asyncio.start_server(http_handler, "127.0.0.1", http_port)
 
     print(f"[inkflow] http://localhost:{http_port}")
