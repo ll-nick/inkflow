@@ -6,9 +6,13 @@ from inkflow.manifest import (
     Deck,
     FadeIn,
     FadeOut,
+    Image,
+    MarkdownSlide,
     Morph,
     Slide,
+    TextBox,
     Transition,
+    Video,
 )
 
 __all__ = [
@@ -19,7 +23,11 @@ __all__ = [
     "Deck",
     "FadeIn",
     "FadeOut",
+    "Image",
+    "MarkdownSlide",
     "Morph",
     "Slide",
+    "TextBox",
     "Transition",
+    "Video",
 ]

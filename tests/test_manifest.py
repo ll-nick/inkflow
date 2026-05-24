@@ -1,6 +1,19 @@
 from __future__ import annotations
 
-from inkflow.manifest import Bounce, Crossfade, Cut, Deck, FadeIn, FadeOut, Morph, Slide
+from inkflow.manifest import (
+    Bounce,
+    Crossfade,
+    Cut,
+    Deck,
+    FadeIn,
+    FadeOut,
+    Image,
+    MarkdownSlide,
+    Morph,
+    Slide,
+    TextBox,
+    Video,
+)
 
 
 def test_slide_step_count_no_animations() -> None:
@@ -69,3 +82,80 @@ def test_slide_transition_default_none() -> None:
 def test_slide_transition_stored() -> None:
     slide = Slide(src="x.svg", transition=Cut())
     assert isinstance(slide.transition, Cut)
+
+
+def test_textbox_fields() -> None:
+    tb = TextBox("#zone-content", text="<p>hello</p>", steps=True)
+    assert tb.element == "#zone-content"
+    assert tb.text == "<p>hello</p>"
+    assert tb.steps is True
+    assert tb.src is None
+
+
+def test_textbox_defaults() -> None:
+    tb = TextBox("#zone-content")
+    assert tb.src is None
+    assert tb.text is None
+    assert tb.steps is False
+
+
+def test_image_fields() -> None:
+    img = Image("#zone-image", src="photo.png")
+    assert img.element == "#zone-image"
+    assert img.src == "photo.png"
+
+
+def test_video_fields() -> None:
+    vid = Video("#zone-video", src="clip.mp4")
+    assert vid.element == "#zone-video"
+    assert vid.src == "clip.mp4"
+
+
+def test_slide_content_defaults_empty() -> None:
+    assert Slide(src="x.svg").content == []
+
+
+def test_slide_style_defaults_empty() -> None:
+    assert Slide(src="x.svg").style == ""
+
+
+def test_slide_content_stored() -> None:
+    slide = Slide(src="x.svg", content=[TextBox("#zone-content", text="hi")])
+    assert len(slide.content) == 1
+
+
+def test_deck_style_defaults_empty() -> None:
+    assert Deck().style == ""
+
+
+def test_deck_style_stored() -> None:
+    assert Deck(style="body { color: red; }").style == "body { color: red; }"
+
+
+def test_deck_font_size_defaults() -> None:
+    assert Deck().font_size == 36
+
+
+def test_deck_font_size_stored() -> None:
+    assert Deck(font_size=48).font_size == 48
+
+
+def test_markdownslide_fields() -> None:
+    ms = MarkdownSlide("layouts/bullets.svg", src="slides/05.md", steps=True)
+    assert ms.layout == "layouts/bullets.svg"
+    assert ms.src == "slides/05.md"
+    assert ms.steps is True
+    assert ms.animations == []
+    assert ms.transition is None
+    assert ms.style == ""
+
+
+def test_markdownslide_animations_stored() -> None:
+    anim = FadeIn("#logo", step=1)
+    ms = MarkdownSlide("layout.svg", animations=[anim])
+    assert ms.animations == [anim]
+
+
+def test_markdownslide_kwargs_captured() -> None:
+    ms = MarkdownSlide("layout.svg", image="photo.png", video="clip.mp4")
+    assert ms._extra == {"image": "photo.png", "video": "clip.mp4"}  # pyright: ignore[reportPrivateUsage]
