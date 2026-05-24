@@ -15,6 +15,7 @@ from inkflow.layout import (
     resolve_chain,
     resolve_parent_path,
 )
+from inkflow.manifest import MarkdownSlide
 from inkflow.pipeline import clean_inkscape_svg
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
@@ -120,7 +121,8 @@ def inject_layout_cmd(deck: Path, check: bool) -> None:
     stale_found = False
 
     for slide in deck_obj.slides:
-        svg_path = (project_dir / slide.src).resolve()
+        svg_src = slide.layout if isinstance(slide, MarkdownSlide) else slide.src
+        svg_path = (project_dir / svg_src).resolve()
         chain = resolve_chain(svg_path, project_dir, deck_obj.themes)
         if not chain:
             continue

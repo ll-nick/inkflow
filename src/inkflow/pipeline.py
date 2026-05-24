@@ -5,8 +5,24 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
+from inkflow.content import (
+    DEFAULT_ZONE_CSS,
+    inject_style,
+    remove_unreferenced_zones,
+    substitute_content,
+    substitute_zone_numbers,
+)
 from inkflow.layout import resolve_chain, strip_layout_layers
-from inkflow.manifest import Animation, Bounce, Deck, FadeIn, FadeOut, Slide, Transition
+from inkflow.manifest import (
+    Animation,
+    Bounce,
+    Deck,
+    FadeIn,
+    FadeOut,
+    MarkdownSlide,
+    Slide,
+    Transition,
+)
 
 _ANIM_CLASS: dict[type, str] = {
     FadeIn: "anim-fade-in",
@@ -118,21 +134,17 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
     return etree.tostring(slide_root, encoding="unicode")
 
 
-def substitute_tokens(svg_str: str, slide_number: int, total: int) -> str:
-    """Replace {{slide_number}} and {{slide_total}} in text/tspan elements."""
-    root = etree.fromstring(svg_str.encode())
-    replacements = {
-        "{{slide_number}}": str(slide_number),
-        "{{slide_total}}": str(total),
-    }
-    for el in root.iter(f"{{{ns.SVG}}}text", f"{{{ns.SVG}}}tspan"):
-        if el.text:
-            for token, value in replacements.items():
-                el.text = el.text.replace(token, value)
-        if el.tail:
-            for token, value in replacements.items():
-                el.tail = el.tail.replace(token, value)
-    return etree.tostring(root, encoding="unicode")
+def _expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> Slide:
+    from inkflow.markdown import expand_markdown_slide
+
+    content = expand_markdown_slide(ms, project_dir)
+    return Slide(
+        src=ms.layout,
+        animations=ms.animations,
+        content=content,
+        transition=ms.transition,
+        style=ms.style,
+    )
 
 
 def process_slide(
@@ -141,21 +153,42 @@ def process_slide(
     themes: dict[str, str],
     slide_number: int,
     total_slides: int,
+    deck_style: str = "",
+    font_size: int = 36,
 ) -> str:
     src = project_dir / slide.src
     svg_str = clean_inkscape_svg(src)
     chain = resolve_chain(src, project_dir, themes)
     if chain:
         svg_str = compose_with_ancestors(svg_str, chain)
-    svg_str = substitute_tokens(svg_str, slide_number, total_slides)
+    svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
+    if slide.content:
+        svg_str = substitute_content(svg_str, slide.content, project_dir, font_size)
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
+    combined_css = "\n".join(filter(None, [DEFAULT_ZONE_CSS, deck_style, slide.style]))
+    svg_str = inject_style(svg_str, combined_css)
+    svg_str = remove_unreferenced_zones(svg_str)
     return svg_str
 
 
 def process_deck(deck: Deck, project_dir: Path) -> list[str]:
     total = len(deck.slides)
-    return [
-        process_slide(slide, project_dir, deck.themes, i + 1, total)
-        for i, slide in enumerate(deck.slides)
-    ]
+    results: list[str] = []
+    for i, entry in enumerate(deck.slides):
+        if isinstance(entry, MarkdownSlide):
+            slide = _expand_markdown_slide(entry, project_dir)
+        else:
+            slide = entry
+        results.append(
+            process_slide(
+                slide,
+                project_dir,
+                deck.themes,
+                i + 1,
+                total,
+                deck.style,
+                deck.font_size,
+            )
+        )
+    return results
