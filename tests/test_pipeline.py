@@ -5,13 +5,24 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.manifest import Bounce, Crossfade, Cut, Deck, FadeIn, FadeOut, Morph, Slide
+from inkflow.manifest import (
+    Bounce,
+    Crossfade,
+    Cut,
+    Deck,
+    FadeIn,
+    FadeOut,
+    MarkdownSlide,
+    Morph,
+    Slide,
+    TextBox,
+)
 from inkflow.pipeline import (
     annotate_svg,
     clean_inkscape_svg,
     compose_with_ancestors,
+    process_deck,
     resolve_transitions,
-    substitute_tokens,
 )
 
 _PLAIN_SVG = textwrap.dedent("""\
@@ -141,14 +152,6 @@ class TestResolveTransitions:
         assert resolve_transitions(d) == [{"type": "morph", "duration": 0.8}]
 
 
-_TOKEN_SVG = textwrap.dedent("""\
-    <svg xmlns="http://www.w3.org/2000/svg">
-      <text id="num">{{slide_number}}</text>
-      <text id="tot">{{slide_total}}</text>
-      <tspan id="span">slide {{slide_number}} of {{slide_total}}</tspan>
-    </svg>
-""")
-
 _ANCESTOR_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
       <defs><style>.anc{fill:red}</style></defs>
@@ -163,24 +166,99 @@ _SLIDE_SVG = textwrap.dedent("""\
 """)
 
 
-class TestSubstituteTokens:
-    def test_slide_number_replaced(self) -> None:
-        result = substitute_tokens(_TOKEN_SVG, 3, 10)
-        assert ">3<" in result
-        assert "{{slide_number}}" not in result
+_ZONE_SLIDE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
 
-    def test_slide_total_replaced(self) -> None:
-        result = substitute_tokens(_TOKEN_SVG, 1, 10)
-        assert ">10<" in result
-        assert "{{slide_total}}" not in result
+_LAYOUT_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="zone-title" x="80" y="60" width="1760" height="100"/>
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
 
-    def test_replaced_in_tspan(self) -> None:
-        result = substitute_tokens(_TOKEN_SVG, 2, 5)
-        assert "slide 2 of 5" in result
 
-    def test_no_tokens_unchanged(self) -> None:
-        result = substitute_tokens(_PLAIN_SVG, 1, 1)
-        assert result  # just runs without error, no tokens to replace
+class TestProcessSlideWithContent:
+    def test_foreignobject_replaces_zone_rect(self, tmp_path: Path) -> None:
+        svg_file = tmp_path / "slide.svg"
+        svg_file.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        deck = Deck()
+        deck.slides = [
+            Slide(
+                src="slide.svg", content=[TextBox("#zone-content", text="<p>hello</p>")]
+            )
+        ]
+        results = process_deck(deck, tmp_path)
+        assert len(results) == 1
+        assert "foreignObject" in results[0]
+        assert "hello" in results[0]
+
+    def test_zone_rect_id_inherited_by_foreignobject(self, tmp_path: Path) -> None:
+        svg_file = tmp_path / "slide.svg"
+        svg_file.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        deck = Deck()
+        deck.slides = [
+            Slide(src="slide.svg", content=[TextBox("#zone-content", text="hi")])
+        ]
+        results = process_deck(deck, tmp_path)
+        assert 'id="zone-content"' in results[0]
+
+    def test_unreferenced_zone_rects_removed(self, tmp_path: Path) -> None:
+        svg_file = tmp_path / "slide.svg"
+        svg_file.write_text(_LAYOUT_SVG, encoding="utf-8")
+        deck = Deck()
+        # Only supply content for zone-content, leave zone-title unconsumed
+        deck.slides = [
+            Slide(src="slide.svg", content=[TextBox("#zone-content", text="body")])
+        ]
+        results = process_deck(deck, tmp_path)
+        assert 'id="zone-title"' not in results[0]
+
+    def test_default_zone_css_injected(self, tmp_path: Path) -> None:
+        svg_file = tmp_path / "slide.svg"
+        svg_file.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        deck = Deck()
+        deck.slides = [
+            Slide(src="slide.svg", content=[TextBox("#zone-content", text="x")])
+        ]
+        results = process_deck(deck, tmp_path)
+        assert "inkflow-content" in results[0]
+
+
+class TestMarkdownSlideExpansion:
+    def test_markdown_slide_expands_to_foreignobject(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layout.svg"
+        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        md = tmp_path / "content.md"
+        md.write_text("# Hello\n\nBody text here.\n", encoding="utf-8")
+        deck = Deck()
+        deck.slides = [MarkdownSlide("layout.svg", content="content.md")]
+        results = process_deck(deck, tmp_path)
+        assert len(results) == 1
+        assert "foreignObject" in results[0]
+        assert "Body text" in results[0]
+
+    def test_markdown_slide_title_extracted(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layout.svg"
+        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        md = tmp_path / "content.md"
+        md.write_text("# My Title\n\nSome content.\n", encoding="utf-8")
+        deck = Deck()
+        deck.slides = [MarkdownSlide("layout.svg", content="content.md")]
+        results = process_deck(deck, tmp_path)
+        assert "My Title" in results[0]
+
+    def test_markdown_slide_animations_applied(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layout.svg"
+        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        deck = Deck()
+        deck.slides = [
+            MarkdownSlide("layout.svg", animations=[FadeIn("#zone-title", step=1)])
+        ]
+        results = process_deck(deck, tmp_path)
+        assert "anim-fade-in" in results[0]
 
 
 class TestComposeWithAncestors:

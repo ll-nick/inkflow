@@ -1,4 +1,14 @@
-from inkflow import Bounce, Crossfade, Cut, Deck, FadeIn, Morph, Slide
+from inkflow import (
+    Bounce,
+    Crossfade,
+    Cut,
+    Deck,
+    FadeIn,
+    MarkdownSlide,
+    Media,
+    Morph,
+    Slide,
+)
 
 deck = Deck()
 
@@ -29,5 +39,19 @@ deck.slides = [
     Slide(
         "slides/04-morph.svg",
         transition=Morph(duration=2.0),
+    ),
+    MarkdownSlide(
+        "layouts/content.svg",
+        content="slides/05-markdown.md",
+    ),
+    MarkdownSlide(
+        "layouts/media-right.svg",
+        content="slides/06-image.md",
+        media=Media("assets/demo.jpg", fit="cover"),
+    ),
+    MarkdownSlide(
+        "layouts/media-right.svg",
+        content="slides/07-video.md",
+        media="assets/demo.mp4",
     ),
 ]

@@ -1,4 +1,5 @@
 SVG = "http://www.w3.org/2000/svg"
+XHTML = "http://www.w3.org/1999/xhtml"
 INKFLOW = "urn:inkflow"
 INKSCAPE = "http://www.inkscape.org/namespaces/inkscape"
 SODIPODI = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"

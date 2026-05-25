@@ -22,7 +22,23 @@ The `MarkdownSlide` path requires no GUI tool at all: layout SVGs with `<rect id
 Staying with one file per slide. Inkscape's multi-page SVG format uses `inkscape:page` elements that are not standard SVG; parsing them would tightly couple the tool to Inkscape's internal implementation. One-file-per-slide produces cleaner git diffs and maps to the standard SVG model. Worth revisiting only if Inkscape formalises the format.
 
 **Markdown slide types: foreignObject**  
-Chosen approach: `foreignObject` injection. An existing Markdown library (`mistune` or `markdown-it-py`) converts content to HTML in one call — no custom Markdown parsing. The HTML is injected into a `<foreignObject>` at the placeholder zone's geometry. Typography and color come from a theme CSS file scoped inside the `<foreignObject>`, not per-slide. The SVG text generation approach is not pursued: it cannot support tables, images, or nested lists and hits a ceiling quickly.
+Chosen approach: `foreignObject` injection. An existing Markdown library (`markdown-it-py`) converts content to HTML in one call — no custom Markdown parsing. The HTML is injected into a `<foreignObject>` at the placeholder zone's geometry. Typography and color come from CSS injected into the slide's `<defs>` — either from `zone_defaults.css` (the built-in fallback) or from the theme's `main.svg` (see "Theme model" below). The SVG text generation approach is not pursued: it cannot support tables, images, or nested lists and hits a ceiling quickly.
+
+**Theme model: CSS travels through the parent chain**  
+The parent chain is the single mechanism for both visual composition and styling. A theme's `main.svg` carries a `<defs><style>` block that defines both the visual identity of SVG elements (background, accent shapes, footer) and the typography of `<foreignObject>` HTML content (`.inkflow-content` rules). When the pipeline composes the ancestor chain, ancestor `<defs>` — including `<style>` blocks — are merged into the slide's `<defs>`. Theme CSS is therefore present in every composed slide without any separate injection step.
+
+Layout SVGs that contain theme-sensitive decorative elements (a divider line, a code block background) tag those elements with semantic CSS class names (e.g. `class="theme-accent"`, `class="theme-surface"`) rather than hardcoding SVG fill/stroke attributes. The theme's `main.svg` defines what those class names mean. Layout SVGs themselves carry no color information and are reusable across theme variants that share the same class vocabulary.
+
+This is opt-in. A one-off presentation can hardcode everything in SVG attributes with no CSS classes and no theme — the parent chain still composes visual layers correctly and the built-in `zone_defaults.css` fallback styles the `<foreignObject>` content. The class-name approach is only needed when layouts should adapt to multiple color schemes.
+
+**CSS cascade order**  
+The pipeline injects CSS at three priority levels, applied in this order (later = higher priority in CSS cascade):
+
+1. `zone_defaults.css` — structural baseline: list resets, box-sizing, heading proportions. Injected before the compose step so theme CSS beats it.
+2. Theme CSS from `main.svg` — colors, typography, element decoration. Arrives via the compose step.
+3. `Deck(style=...)` and `Slide(style=...)` — author overrides. Injected after compose, always win.
+
+*Current state:* `zone_defaults.css` is injected after compose (step 2 and 3 are merged), which means defaults currently beat theme CSS at equal specificity. This is harmless now — no shipped theme provides its own CSS yet. When the first theme ships CSS in `main.svg`, the injection order in `process_slide` needs splitting: prepend defaults before compose, append deck/slide overrides after.
 
 **Zone naming convention**  
 Content placeholder zones in layout SVGs are `<rect>` elements with `id="zone-{name}"`. The `zone-` prefix distinguishes inkflow zones from other SVG elements and is the single naming rule authors need to learn. Zone rects must carry explicit `x`, `y`, `width`, `height` attributes; the pipeline reads these to position the substituted content.
@@ -55,20 +71,24 @@ Explicit markers always override auto-extraction. Single-zone layouts need no ma
 Unreferenced zones — zone rects present in a layout SVG but not filled by the current slide — are silently removed from the pipeline output. An empty visible rect is worse than nothing, and erroring on omission would make shared layout templates unusable for slides that legitimately omit optional zones (e.g. a title slide using a bullets layout without a body zone).
 
 **Parent path resolution**  
-`inkflow:parent` uses three syntaxes, parsed unambiguously:
+Bare names (no prefix, no leading `/`, `./`, or `../`) are resolved by searching a PATH-like sequence in order. `.svg` is appended automatically if absent.
 
-- `root:layouts/bullets` — reserved theme name: project-root-relative (anchored to the directory containing `deck.py`).
-- `theme-name:layouts/bullets` — named theme: resolved to `{theme_dir}/layouts/bullets.svg`. Theme name is mapped to a directory path in `Deck(themes={"name": "./path/to/theme"})`.
-- `../layouts/bullets` or `./layouts/bullets` — relative path, no colon: relative to the SVG file's own location.
+1. `{project_root}/layouts/{name}.svg` — project-local layouts take precedence over all themes
+2. `{theme_dir}/layouts/{name}.svg` — each entry in `Deck(themes={...})` searched in insertion order; first match wins
 
-Themes are entirely optional. Project-relative and file-relative parents always work without any theme declaration. A theme is only needed when referencing pre-packaged layouts by name. Multiple themes can be declared and mixed in the same deck.
+This resolution applies uniformly wherever a layout name appears: the first argument of `MarkdownSlide`, the `inkflow:parent` attribute on any SVG, and `inkflow new`. Switching the entire deck to a different theme is a single change to `Deck(themes={...})`.
+
+**Explicit overrides** bypass the search entirely:
+- `./foo` or `../foo` — relative to the *current SVG file's* location. Used by layout SVGs chaining to `../main.svg` or `../numbered-main.svg`; these are theme-internal links, not user-facing.
+- `/absolute/path` — literal filesystem path, no search.
+- `root:name` — pins to `{project_root}/layouts/{name}.svg`, unambiguous even if a theme shadows the name.
+- `theme-name:name` — pins to `{theme_dir}/layouts/{name}.svg` for a specific named theme, useful when deliberately mixing layouts from multiple themes.
+
+The `layouts/` subdirectory is implicit for all bare names and both `root:`/`theme:` prefixes — you never type it. Themes are entirely optional; project-local layouts and relative/absolute paths always work without any theme declaration.
 
 ---
 
 ## Open design questions
-
-**Optional zones in MarkdownSlide templates**  
-Template SVGs declare placeholder zones as `<rect>` elements with zone IDs. `MarkdownSlide` maps kwargs to zone IDs. If a kwarg is omitted (e.g. no `subtitle=` for a title slide), the corresponding rect needs to be handled. Candidates: leave it visible (shows an empty box in the browser — bad), remove it from the SVG (pipeline deletes unreferenced zone rects), or mark it invisible. Remove-if-unreferenced is the likely answer but needs confirmation.
 
 **Optional zones in MarkdownSlide templates**  
 Template SVGs declare placeholder zones as `<rect>` elements with zone IDs. `MarkdownSlide` maps kwargs to zone IDs. If a kwarg is omitted (e.g. no `subtitle=` for a title slide), the corresponding rect needs to be handled. Candidates: leave it visible (shows an empty box in the browser — bad), remove it from the SVG (pipeline deletes unreferenced zone rects), or mark it invisible. Remove-if-unreferenced is the likely answer but needs confirmation.
@@ -133,15 +153,25 @@ The command is idempotent: it compares each layer's `inkflow:layout-hash` agains
 
 ```
 themes/catppuccin-mocha/
-  main.svg              ← root layout (background, logo, footer, zone-slide-number, zone-slide-total)
-  content.css           ← typography for foreignObject zones (headings, bullets, code blocks)
+  main.svg              ← root layout: background, logo, footer, zone-slide-number, zone-slide-total;
+                          carries <defs><style> with CSS for both SVG elements (.theme-accent etc.)
+                          and foreignObject typography (.inkflow-content h1, ul, code, …)
+  numbered-main.svg     ← extends main.svg (inkflow:parent="main.svg"); adds zone-slide-number/total
+                          area for layouts that want a page counter; layouts that don't want numbers
+                          parent to main.svg directly instead
   layouts/
-    title.svg           ← zones: #zone-title, #zone-subtitle
-    bullets.svg         ← zones: #zone-title, #zone-content
-    two-column.svg      ← zones: #zone-title, #zone-left, #zone-right
-    code.svg            ← zones: #zone-title, #zone-code
-    section.svg         ← zones: #zone-section-title
+    title.svg           ← inkflow:parent="numbered-main.svg"; zones: #zone-title, #zone-subtitle
+    bullets.svg         ← inkflow:parent="numbered-main.svg"; zones: #zone-title, #zone-content
+    two-column.svg      ← inkflow:parent="numbered-main.svg"; zones: #zone-title, #zone-left, #zone-right
+    code.svg            ← inkflow:parent="numbered-main.svg"; zones: #zone-title, #zone-code
+    section.svg         ← inkflow:parent="main.svg"; zones: #zone-section-title (no page number)
 ```
+
+There is no separate CSS file. All styling — SVG element colors, `<foreignObject>` typography, theme variable definitions — lives in `main.svg`'s `<defs><style>` block. It propagates to every slide automatically via the compose step.
+
+Theme-sensitive decorative elements in layouts (divider lines, code block backgrounds, accent shapes) carry semantic CSS class names (`class="theme-accent"`, `class="theme-surface"`) rather than hardcoded SVG fill/stroke attributes. The class definitions live in `main.svg`. Switching variants means swapping `main.svg`; layout SVGs are unchanged.
+
+A dark variant and a light variant each have their own `main.svg` (and optionally `numbered-main.svg`). Layout SVGs are shared between variants — they contain no color information. The parent chain baked into layout SVGs points at the variant-specific root, so variant switching happens once in `deck.py`, not in every layout file.
 
 Themes are optional. A deck with only project-relative or file-relative layout parents needs no theme declaration at all. To use named theme references (`catppuccin-mocha:layouts/bullets`), declare the theme as a path in `deck.py`:
 
@@ -163,13 +193,14 @@ The initial built-in theme is Catppuccin Mocha; it ships with inkflow and its pa
 **Template chain inlining**  
 The pipeline resolves each slide's `inkflow:parent` chain (see "Layout inheritance" above), strips any `__inkflow:*__` preview layers, then composes the ancestor SVGs below the slide content before annotation runs. The composition order is root-first (main.svg at the bottom, slide content at the top). `<text>` elements with `id="zone-slide-number"` or `id="zone-slide-total"` anywhere in the composed chain have their text content replaced with the actual values. Hidden slides (`visible=False`) are excluded from both numbering and totals.
 
-**Content substitutions (`TextBox`, `Image`, `Video`, `Math`)**  
+**Content substitutions (`TextBox`, `Media`)**  
 The `content` list on `Slide` declares what replaces named placeholder zones in the SVG. The pipeline finds each zone `<rect>` by ID, reads its bounding box, and substitutes the appropriate content at the same position and size. Zone rect IDs follow the `zone-{name}` convention (see "Zone naming convention" in Decided).
 
-- `TextBox("#zone-content", src="file.md")` or `TextBox("#zone-content", text="...")` — Markdown is converted to HTML, then injected into a `<foreignObject>`. The theme's `content.css` is inlined inside the `<foreignObject>` as a scoped `<style>` block so typography does not bleed into the surrounding SVG. `overflow: hidden` makes overflow immediately visible in the live preview.
-- `Image("#zone-image", src="assets/photo.png")` — replaces the zone rect with an SVG `<image>` element at the rect's geometry.
-- `Video("#zone-video", src="assets/demo.mp4")` — replaces the zone rect with an HTML `<video>` element; dimensions come from the rect's geometry.
-- `Math("#zone-formula", latex="...")` — renders LaTeX to SVG via KaTeX at build time and inlines the result at the zone's position.
+- `TextBox("#zone-content", src="file.md")` or `TextBox("#zone-content", text="...")` — Markdown is converted to HTML, then injected into a `<foreignObject>`. Typography comes from CSS already present in the slide's `<defs><style>` (via the theme's `main.svg` or the built-in `zone_defaults.css` fallback). `overflow: hidden` makes overflow immediately visible in the live preview.
+- `Media("#zone-photo", src="assets/photo.png")` — both images and video render via `<foreignObject>` so that CSS `object-fit` / `object-position` apply uniformly. File extension determines the inner element: images (`.png`, `.jpg`, `.webp`, `.gif`, `.svg`) become `<img src="data:{mime};base64,..."/>` with the file base64-inlined; video (`.mp4`, `.webm`) becomes `<video src="/{path}" controls/>`. A `type=` override is available for cases where the extension is not reliable (e.g. video stream URLs). Three parameters control fitting and crop:
+  - `fit="contain"` (default) | `"cover"` | `"fill"` — maps to CSS `object-fit`
+  - `align="center"` (default) | `"top"` | `"bottom"` | `"left"` | `"right"` | `"top-left"` | `"top-right"` | `"bottom-left"` | `"bottom-right"` — maps to CSS `object-position` percentage pairs
+  - `x=0.0`, `y=0.0` — fine-tune offset in SVG user units, converted to CSS percentage at build time using the zone's width/height; composes with `align` so `align="top", y=-20` nudges above the top-aligned position
 
 An element can have both a substitution and an animation: the substitution determines what it becomes, the animation determines how it appears.
 
@@ -180,15 +211,15 @@ A `MarkdownSlide` class for content-heavy slides authored without Inkscape. Expa
 
 ```python
 deck.slides = [
-    MarkdownSlide("layouts/title.svg",       src="slides/01.md"),
-    MarkdownSlide("layouts/bullets.svg",     src="slides/02.md"),
-    MarkdownSlide("layouts/two-column.svg",  src="slides/03.md"),
-    MarkdownSlide("layouts/image-right.svg", src="slides/04.md", image="assets/photo.png"),
+    MarkdownSlide("layouts/title.svg",       content="slides/01.md"),
+    MarkdownSlide("layouts/bullets.svg",     content="slides/02.md"),
+    MarkdownSlide("layouts/two-column.svg",  content="slides/03.md"),
+    MarkdownSlide("layouts/image-right.svg", content="slides/04.md", photo="assets/photo.png"),
     Slide("slides/05-diagram.svg", animations=[FadeIn("#arrow", step=1)]),
 ]
 ```
 
-The first argument is the layout SVG path. The `.md` file is the primary content source (see "Markdown file format" in Decided). Image and video zones are specified as kwargs — `image="path"` fills `zone-image`, `video="path"` fills `zone-video` — following the same `kwarg-name → zone-{name}` convention. Inline images within markdown text (`![alt](path)`) render normally inside the `<foreignObject>` and do not involve zone replacement.
+The first argument is the template SVG path. The `.md` file is the primary content source (see "Markdown file format" in Decided). Media zones are specified as kwargs following the `kwarg-name → zone-{name}` convention: `photo="assets/hero.png"` fills `zone-photo`, `demo="assets/clip.mp4"` fills `zone-demo`. The rendering path (image vs video) is inferred from the file extension, exactly as with `Media` in an explicit `content=[]` list. Inline images within markdown text (`![alt](path)`) render normally inside the `<foreignObject>` and do not involve zone replacement.
 
 **Step animations in zones.** `steps=True` on `MarkdownSlide` or `TextBox` wraps each top-level `<li>` in the rendered HTML as its own animation step, equivalent to placing `::step::` before every list item. The same CSS class toggle mechanism used for SVG element animations applies inside `<foreignObject>` — no new presenter JS code path needed.
 
@@ -214,9 +245,10 @@ A `style` field on `Deck` and `Slide` that injects a raw CSS string into a `<sty
 
 - `Deck(style=...)` — applied to every slide; the right place for custom animation effects and `@font-face` declarations before font embedding is in place
 - `Slide(..., style=...)` — applied to a single slide only
-- Zone CSS (from the theme's `content.css`) — scoped inside each `<foreignObject>` so typography and bullet styling do not bleed into the surrounding SVG
+- Theme CSS from `main.svg` — travels through the compose step; defines both SVG element styling and `<foreignObject>` typography in one `<defs><style>` block
+- Built-in `zone_defaults.css` — structural fallback for `<foreignObject>` content (heading proportions, list resets, box-sizing) when no theme is present
 
-Zone CSS is the load-bearing case: without it, `<foreignObject>` content renders with browser defaults. Deck-level and per-slide CSS are the author escape hatch for overriding the default opacity fade on `::step::` animations and anything the theme does not cover.
+Theme CSS and zone defaults together are the load-bearing case: without them, `<foreignObject>` content renders with browser defaults. Deck-level and per-slide CSS are the author escape hatch for overriding the default opacity fade on `::step::` animations and anything the theme does not cover.
 
 **Static HTML export**  
 `inkflow build deck.py` produces a single self-contained HTML file — all slides inlined, fonts embedded, no server required. How you present from an unfamiliar machine and the intermediate step before PDF export.
@@ -254,7 +286,7 @@ A coloured dot that follows the mouse while a modifier key is held. Lower effort
 In technical presentations, stepping through a code block with specific lines highlighted per keypress is one of the most-used Slidev features. A `CodeSlide` template (or a `Highlight` animation that targets line ranges) that dims non-highlighted lines and brightens the relevant ones on each step. This needs to work both for `MarkdownSlide("code", ...)` and for code blocks embedded inside custom SVGs via `<foreignObject>`.
 
 **Math / LaTeX**  
-KaTeX rendered at build time and inlined as SVG. Any scientific or engineering presentation needs this. For `MarkdownSlide`, math delimiters (`$...$`, `$$...$$`) should be supported automatically. For Inkscape slides, use `Math("#id", latex="...")` in `deck.py` — place a `<rect>` placeholder in Inkscape and the pipeline replaces it with the rendered SVG at the same position.
+Math works naturally in `MarkdownSlide` content via standard `$...$` (inline) and `$$...$$` (display) delimiters. The approach: enable the `dollarmath` plugin in `markdown-it-py` (emits `<span class="math-inline">` / `<div class="math-block">` with raw LaTeX content), and load KaTeX in the presenter to render those spans client-side. Since `<foreignObject>` content is real HTML in the browser, KaTeX's auto-render works there without modification. For Inkscape-authored slides that need a standalone equation zone, the same `TextBox` zone pattern applies — write the markdown with math delimiters as the text content.
 
 **Section dividers and table of contents**  
 A `SectionSlide("title")` type that marks a section boundary. The pipeline can auto-generate a TOC slide from all section boundaries, and section titles can appear in the presenter status bar so you know where you are in the talk structure.
@@ -299,7 +331,7 @@ Minimum page set:
 - **Animations** — `FadeIn`, `FadeOut`, `Bounce`, step model, `steps=True`
 - **Transitions** — Cut, Crossfade, Morph; per-slide and deck-level
 - **`deck.py` reference** — all `Deck`, `Slide`, `MarkdownSlide` fields in one place
-- **Themes** — directory structure, `content.css`, zone naming conventions
+- **Themes** — directory structure, CSS-in-SVG model, semantic class names, variant layouts
 
 A live demo deck embedded in the getting started page — rendered by inkflow itself, served as static SVGs — would close the loop and demonstrate the tool using the tool.
 
@@ -344,14 +376,13 @@ Slide("slides/03-demo.svg",
         FadeIn("#zone-title", step=1),
     ],
     content=[
-        Video("#zone-demo",    src="assets/demo.mp4"),
-        TextBox("#zone-body",  src="slides/03-content.md"),
-        Math("#zone-formula",  latex=r"\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}"),
+        Media("#zone-demo",   src="assets/demo.mp4"),
+        TextBox("#zone-body", src="slides/03-content.md"),
     ],
 )
 ```
 
-In Inkscape the author places a `<rect id="zone-{name}">` where the content should go. The pipeline reads the rect's `x`, `y`, `width`, `height` and replaces it with the real content at the same geometry — a `<foreignObject>` with flowing HTML for text, a `<video>` element for video, rendered KaTeX SVG for math. The Inkscape view shows spatial placeholders. The browser view shows content.
+In Inkscape the author places a `<rect id="zone-{name}">` where the content should go. The pipeline reads the rect's `x`, `y`, `width`, `height` and replaces it with the real content at the same geometry — a `<foreignObject>` with flowing HTML for text, or a `<video>` element for video. The Inkscape view shows spatial placeholders. The browser view shows content.
 
 `content` substitutions are **build-time** (the pipeline replaces elements before the slide is served). `animations` are **display-time** (the presenter JS toggles CSS classes). The distinction is clean and composable: an element can have both a substitution (what it becomes) and an animation (how it appears). Step animations inside `<foreignObject>` zones — `::step::` markers in markdown or `steps=True` on a `TextBox` — use the same CSS class toggle mechanism as SVG element animations; no separate code path.
 

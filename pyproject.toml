@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "click>=8.0",
     "lxml>=5.0",
+    "markdown-it-py>=3.0",
     "watchfiles>=0.21",
     "websockets>=12.0",
 ]
@@ -24,9 +25,19 @@ packages = ["src/inkflow"]
 dev = [
     "basedpyright>=1.39.5",
     "lxml-stubs>=0.5",
+    "poethepoet>=0.46.0",
     "pytest>=9.0.3",
     "ruff>=0.15.13",
 ]
+
+[tool.poe.tasks]
+lint      = "ruff check ."
+fmt       = "ruff format --check ."
+typecheck = "basedpyright src/"
+test      = "pytest"
+
+[tool.poe.tasks.check]
+sequence = ["lint", "fmt", "typecheck", "test"]
 
 [tool.pyright]
 reportUnusedCallResult = "none"
