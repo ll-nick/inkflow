@@ -25,9 +25,19 @@ packages = ["src/inkflow"]
 dev = [
     "basedpyright>=1.39.5",
     "lxml-stubs>=0.5",
+    "poethepoet>=0.46.0",
     "pytest>=9.0.3",
     "ruff>=0.15.13",
 ]
+
+[tool.poe.tasks]
+lint      = "ruff check ."
+fmt       = "ruff format --check ."
+typecheck = "basedpyright src/"
+test      = "pytest"
+
+[tool.poe.tasks.check]
+sequence = ["lint", "fmt", "typecheck", "test"]
 
 [tool.pyright]
 reportUnusedCallResult = "none"
