@@ -7,6 +7,7 @@ dependencies = [
     "click>=8.0",
     "lxml>=5.0",
     "markdown-it-py>=3.0",
+    "rich>=15.0.0",
     "watchfiles>=0.21",
     "websockets>=12.0",
 ]
