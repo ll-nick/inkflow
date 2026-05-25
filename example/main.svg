@@ -7,5 +7,7 @@
   <!-- Accent line above footer -->
   <rect y="1036" width="1920" height="4" fill="#cba6f7"/>
   <!-- Slide number -->
-  <text x="1880" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">{{slide_number}} / {{slide_total}}</text>
+  <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">99</text>
+  <text x="1852" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086">/</text>
+  <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="start">99</text>
 </svg>
