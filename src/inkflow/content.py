@@ -9,7 +9,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Content, Media, TextBox
+from inkflow.manifest import Content, TextBox
 
 _MIME_MAP = {
     ".png": "image/png",
@@ -199,7 +199,7 @@ def substitute_content(
 
         if isinstance(item, TextBox):
             _replace_with_foreignobject(el, item.text or "", zone_id, font_size)
-        elif isinstance(item, Media):
+        else:
             _replace_with_media(
                 el, item.src, zone_id, item.fit, item.align, item.x, item.y, project_dir
             )
