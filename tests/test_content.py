@@ -84,14 +84,14 @@ class TestSubstituteContent:
         img = tmp_path / "photo.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png")], tmp_path
+            _ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
         )
         assert "foreignObject" in result
         assert "data:image/png;base64," in result
 
     def test_video_replaced_with_foreignobject(self, tmp_path: Path) -> None:
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-video", src="video.mp4")], tmp_path
+            _ZONE_SVG, [Media("video.mp4", element="#zone-video")], tmp_path
         )
         assert "foreignObject" in result
         assert "/video.mp4" in result
@@ -100,7 +100,7 @@ class TestSubstituteContent:
         img = tmp_path / "photo.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png")], tmp_path
+            _ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
         )
         assert "object-fit:contain" in result
 
@@ -108,7 +108,9 @@ class TestSubstituteContent:
         img = tmp_path / "photo.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png", fit="cover")], tmp_path
+            _ZONE_SVG,
+            [Media("photo.png", fit="cover", element="#zone-image")],
+            tmp_path,
         )
         assert "object-fit:cover" in result
 
@@ -116,7 +118,7 @@ class TestSubstituteContent:
         img = tmp_path / "photo.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png")], tmp_path
+            _ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
         )
         assert "object-position:50% 50%" in result
 
@@ -124,7 +126,9 @@ class TestSubstituteContent:
         img = tmp_path / "photo.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png", align="top")], tmp_path
+            _ZONE_SVG,
+            [Media("photo.png", align="top", element="#zone-image")],
+            tmp_path,
         )
         assert "object-position:50% 0%" in result
 
@@ -133,7 +137,7 @@ class TestSubstituteContent:
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         # zone-image height=300; y=-60 → -20%
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png", y=-60.0)], tmp_path
+            _ZONE_SVG, [Media("photo.png", y=-60.0, element="#zone-image")], tmp_path
         )
         assert "calc(50% - 20%" in result
 
@@ -142,7 +146,7 @@ class TestSubstituteContent:
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         # zone-image width=400; x=100 → +25%
         result = substitute_content(
-            _ZONE_SVG, [Media("#zone-image", src="photo.png", x=100.0)], tmp_path
+            _ZONE_SVG, [Media("photo.png", x=100.0, element="#zone-image")], tmp_path
         )
         assert "calc(50% + 25%" in result
 

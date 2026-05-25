@@ -99,7 +99,7 @@ def test_textbox_defaults() -> None:
 
 
 def test_media_fields_defaults() -> None:
-    m = Media("#zone-photo", src="photo.png")
+    m = Media("photo.png", element="#zone-photo")
     assert m.element == "#zone-photo"
     assert m.src == "photo.png"
     assert m.fit == "contain"
@@ -109,7 +109,9 @@ def test_media_fields_defaults() -> None:
 
 
 def test_media_fields_custom() -> None:
-    m = Media("#zone-hero", src="hero.jpg", fit="cover", align="top", x=10.0, y=-80.0)
+    m = Media(
+        "hero.jpg", fit="cover", align="top", x=10.0, y=-80.0, element="#zone-hero"
+    )
     assert m.fit == "cover"
     assert m.align == "top"
     assert m.x == 10.0

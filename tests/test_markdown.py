@@ -173,6 +173,18 @@ class TestExpandMarkdownSlide:
         assert media[0].element == "#zone-video"
         assert media[0].src == "clip.mp4"
 
+    def test_media_kwarg_accepts_media_object_with_tuning(self, tmp_path: Path) -> None:
+        ms = MarkdownSlide(
+            "layout.svg", image=Media("photo.png", fit="cover", align="top")
+        )
+        content = expand_markdown_slide(ms, tmp_path)
+        media = [c for c in content if isinstance(c, Media)]
+        assert len(media) == 1
+        assert media[0].element == "#zone-image"
+        assert media[0].src == "photo.png"
+        assert media[0].fit == "cover"
+        assert media[0].align == "top"
+
     def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("- One\n- Two\n- Three\n", encoding="utf-8")

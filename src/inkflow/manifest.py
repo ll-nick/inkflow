@@ -66,12 +66,12 @@ class TextBox:
 
 @dataclass
 class Media:
-    element: str
     src: str
     fit: str = "contain"
     align: str = "center"
     x: float = 0.0
     y: float = 0.0
+    element: str = field(default="", kw_only=True)
 
 
 Content = TextBox | Media
@@ -100,7 +100,7 @@ class MarkdownSlide:
     animations: list[Animation]
     transition: Transition | None
     style: str
-    _extra: dict[str, str]
+    _extra: dict[str, str | Media]
 
     def __init__(
         self,
@@ -111,7 +111,7 @@ class MarkdownSlide:
         animations: list[Animation] | None = None,
         transition: Transition | None = None,
         style: str = "",
-        **kwargs: str,
+        **kwargs: str | Media,
     ) -> None:
         self.layout = layout
         self.src = src

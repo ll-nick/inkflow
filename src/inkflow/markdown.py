@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -144,6 +145,9 @@ def expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> list[Content]
         content.append(TextBox(f"#zone-{zone_name}", text=html))
 
     for key, val in ms._extra.items():  # pyright: ignore[reportPrivateUsage]
-        content.append(Media(f"#zone-{key}", src=val))
+        if isinstance(val, Media):
+            content.append(replace(val, element=f"#zone-{key}"))
+        else:
+            content.append(Media(val, element=f"#zone-{key}"))
 
     return content
