@@ -88,12 +88,10 @@ def test_textbox_fields() -> None:
     assert tb.element == "#zone-content"
     assert tb.text == "<p>hello</p>"
     assert tb.steps is True
-    assert tb.src is None
 
 
 def test_textbox_defaults() -> None:
     tb = TextBox("#zone-content")
-    assert tb.src is None
     assert tb.text is None
     assert tb.steps is False
 

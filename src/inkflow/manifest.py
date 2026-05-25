@@ -59,7 +59,6 @@ class Transition(Protocol):
 @dataclass
 class TextBox:
     element: str
-    src: str | None = None
     text: str | None = None
     steps: bool = False
 
