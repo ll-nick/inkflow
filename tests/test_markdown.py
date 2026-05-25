@@ -41,6 +41,20 @@ class TestParseMarkdownZones:
         assert "content" in zones
         assert "extra" in zones
 
+    def test_h1_before_first_marker_extracted_to_title_zone(
+        self, tmp_path: Path
+    ) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text(
+            "# My Title\n\n::left::\nLeft content.\n::right::\nRight content.\n",
+            encoding="utf-8",
+        )
+        zones = parse_markdown_zones(md)
+        assert "title" in zones
+        assert "left" in zones
+        assert "right" in zones
+        assert "content" not in zones
+
     def test_step_marker_creates_chunk_boundary(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::body::\nFirst.\n::step::\nSecond.\n", encoding="utf-8")

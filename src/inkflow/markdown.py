@@ -67,10 +67,11 @@ def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
 
     zones: dict[str, list[str]] = {}
 
-    # Content before the first marker → "content" default zone
+    # Content before the first marker:
+    # auto-extract title/subtitle, remainder → "content"
     before = text[: markers[0].start()].strip()
     if before:
-        zones["content"] = _split_steps(before)
+        zones.update(_auto_extract(before))
 
     for idx, m in enumerate(markers):
         zone_name = m.group(1)
