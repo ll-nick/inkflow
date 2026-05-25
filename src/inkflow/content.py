@@ -9,7 +9,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Content, Image, TextBox, Video
+from inkflow.manifest import Content, Media, TextBox
 
 _MIME_MAP = {
     ".png": "image/png",
@@ -18,6 +18,20 @@ _MIME_MAP = {
     ".gif": "image/gif",
     ".webp": "image/webp",
     ".svg": "image/svg+xml",
+}
+
+_VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
+
+_ALIGN_MAP: dict[str, tuple[int, int]] = {
+    "center": (50, 50),
+    "top": (50, 0),
+    "bottom": (50, 100),
+    "left": (0, 50),
+    "right": (100, 50),
+    "top-left": (0, 0),
+    "top-right": (100, 0),
+    "bottom-left": (0, 100),
+    "bottom-right": (100, 100),
 }
 
 DEFAULT_ZONE_CSS: str = (
@@ -110,43 +124,61 @@ def _replace_with_foreignobject(
     _swap_zone(el, fo, rect, zone_id)
 
 
-def _replace_with_image(
+def _fmt_pos(base: int, offset_pct: float) -> str:
+    if offset_pct == 0.0:
+        return f"{base}%"
+    sign = "+" if offset_pct >= 0 else "-"
+    return f"calc({base}% {sign} {abs(offset_pct):.6g}%)"
+
+
+def _replace_with_media(
     el: etree._Element,  # pyright: ignore[reportPrivateUsage]
     src: str,
+    zone_id: str,
+    fit: str,
+    align: str,
+    x: float,
+    y: float,
     project_dir: Path,
-    zone_id: str,
 ) -> None:
     rect = _rect_geometry(el)
 
-    img_path = project_dir / src
-    suffix = img_path.suffix.lower()
-    mime = (
-        _MIME_MAP.get(suffix) or mimetypes.guess_type(str(img_path))[0] or "image/png"
+    base_x, base_y = _ALIGN_MAP.get(align, (50, 50))
+    x_pct = x / float(rect.width) * 100
+    y_pct = y / float(rect.height) * 100
+    style = (
+        f"width:100%;height:100%;"
+        f"object-fit:{fit};"
+        f"object-position:{_fmt_pos(base_x, x_pct)} {_fmt_pos(base_y, y_pct)};"
+        f"display:block;"
     )
-    b64 = base64.b64encode(img_path.read_bytes()).decode()
-
-    img = etree.Element(f"{{{ns.SVG}}}image")
-    img.set("href", f"data:{mime};base64,{b64}")
-    img.set("preserveAspectRatio", "xMidYMid meet")
-
-    _swap_zone(el, img, rect, zone_id)
-
-
-def _replace_with_video(
-    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    src: str,
-    zone_id: str,
-) -> None:
-    rect = _rect_geometry(el)
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
-    video = etree.Element(
-        f"{{{ns.XHTML}}}video",
-        {"src": f"/{src}", "width": "100%", "height": "100%", "controls": ""},
-        nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-    )
-    fo.append(video)
+    fo.set("overflow", "hidden")
 
+    suffix = Path(src).suffix.lower()
+    if suffix in _VIDEO_SUFFIXES:
+        media_el = etree.Element(
+            f"{{{ns.XHTML}}}video",
+            {"src": f"/{src}", "controls": ""},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    else:
+        img_path = project_dir / src
+        mime = (
+            _MIME_MAP.get(suffix)
+            or mimetypes.guess_type(str(img_path))[0]
+            or "image/png"
+        )
+        b64 = base64.b64encode(img_path.read_bytes()).decode()
+        media_el = etree.Element(
+            f"{{{ns.XHTML}}}img",
+            {"src": f"data:{mime};base64,{b64}"},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+
+    media_el.set("style", style)
+    fo.append(media_el)
     _swap_zone(el, fo, rect, zone_id)
 
 
@@ -167,10 +199,10 @@ def substitute_content(
 
         if isinstance(item, TextBox):
             _replace_with_foreignobject(el, item.text or "", zone_id, font_size)
-        elif isinstance(item, Image):
-            _replace_with_image(el, item.src, project_dir, zone_id)
-        elif isinstance(item, Video):
-            _replace_with_video(el, item.src, zone_id)
+        elif isinstance(item, Media):
+            _replace_with_media(
+                el, item.src, zone_id, item.fit, item.align, item.x, item.y, project_dir
+            )
 
     return etree.tostring(root, encoding="unicode")
 

@@ -65,18 +65,16 @@ class TextBox:
 
 
 @dataclass
-class Image:
+class Media:
     element: str
     src: str
+    fit: str = "contain"
+    align: str = "center"
+    x: float = 0.0
+    y: float = 0.0
 
 
-@dataclass
-class Video:
-    element: str
-    src: str
-
-
-Content = TextBox | Image | Video
+Content = TextBox | Media
 
 
 # ── Slide / Deck ──────────────────────────────────────────────────────────────

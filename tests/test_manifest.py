@@ -7,12 +7,11 @@ from inkflow.manifest import (
     Deck,
     FadeIn,
     FadeOut,
-    Image,
     MarkdownSlide,
+    Media,
     Morph,
     Slide,
     TextBox,
-    Video,
 )
 
 
@@ -99,16 +98,22 @@ def test_textbox_defaults() -> None:
     assert tb.steps is False
 
 
-def test_image_fields() -> None:
-    img = Image("#zone-image", src="photo.png")
-    assert img.element == "#zone-image"
-    assert img.src == "photo.png"
+def test_media_fields_defaults() -> None:
+    m = Media("#zone-photo", src="photo.png")
+    assert m.element == "#zone-photo"
+    assert m.src == "photo.png"
+    assert m.fit == "contain"
+    assert m.align == "center"
+    assert m.x == 0.0
+    assert m.y == 0.0
 
 
-def test_video_fields() -> None:
-    vid = Video("#zone-video", src="clip.mp4")
-    assert vid.element == "#zone-video"
-    assert vid.src == "clip.mp4"
+def test_media_fields_custom() -> None:
+    m = Media("#zone-hero", src="hero.jpg", fit="cover", align="top", x=10.0, y=-80.0)
+    assert m.fit == "cover"
+    assert m.align == "top"
+    assert m.x == 10.0
+    assert m.y == -80.0
 
 
 def test_slide_content_defaults_empty() -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inkflow.manifest import Image, MarkdownSlide, TextBox, Video
+from inkflow.manifest import MarkdownSlide, Media, TextBox
 from inkflow.markdown import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
@@ -157,21 +157,21 @@ class TestExpandMarkdownSlide:
         assert "My Title" in titles[0].text
         assert "<h1>" in titles[0].text
 
-    def test_image_kwarg_creates_image(self, tmp_path: Path) -> None:
+    def test_image_kwarg_creates_media(self, tmp_path: Path) -> None:
         ms = MarkdownSlide("layout.svg", image="photo.png")
         content = expand_markdown_slide(ms, tmp_path)
-        images = [c for c in content if isinstance(c, Image)]
-        assert len(images) == 1
-        assert images[0].element == "#zone-image"
-        assert images[0].src == "photo.png"
+        media = [c for c in content if isinstance(c, Media)]
+        assert len(media) == 1
+        assert media[0].element == "#zone-image"
+        assert media[0].src == "photo.png"
 
-    def test_video_kwarg_creates_video(self, tmp_path: Path) -> None:
+    def test_video_kwarg_creates_media(self, tmp_path: Path) -> None:
         ms = MarkdownSlide("layout.svg", video="clip.mp4")
         content = expand_markdown_slide(ms, tmp_path)
-        videos = [c for c in content if isinstance(c, Video)]
-        assert len(videos) == 1
-        assert videos[0].element == "#zone-video"
-        assert videos[0].src == "clip.mp4"
+        media = [c for c in content if isinstance(c, Media)]
+        assert len(media) == 1
+        assert media[0].element == "#zone-video"
+        assert media[0].src == "clip.mp4"
 
     def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"

@@ -12,7 +12,7 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.manifest import Image, TextBox, Video
+from inkflow.manifest import Media, TextBox
 
 _NUMBER_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg">
@@ -80,22 +80,71 @@ class TestSubstituteContent:
         assert 'width="1760"' in result
         assert 'height="780"' in result
 
-    def test_image_replaced_with_image_element(self, tmp_path: Path) -> None:
+    def test_image_replaced_with_foreignobject(self, tmp_path: Path) -> None:
         img = tmp_path / "photo.png"
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _ZONE_SVG, [Image("#zone-image", src="photo.png")], tmp_path
-        )
-        assert "<image" in result or "image" in result
-        assert "data:image/png;base64," in result
-
-    def test_video_replaced_with_foreignobject_video(self, tmp_path: Path) -> None:
-        result = substitute_content(
-            _ZONE_SVG, [Video("#zone-video", src="video.mp4")], tmp_path
+            _ZONE_SVG, [Media("#zone-image", src="photo.png")], tmp_path
         )
         assert "foreignObject" in result
-        assert "video" in result
+        assert "data:image/png;base64," in result
+
+    def test_video_replaced_with_foreignobject(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-video", src="video.mp4")], tmp_path
+        )
+        assert "foreignObject" in result
         assert "/video.mp4" in result
+
+    def test_media_default_fit_is_contain(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-image", src="photo.png")], tmp_path
+        )
+        assert "object-fit:contain" in result
+
+    def test_media_cover_fit(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-image", src="photo.png", fit="cover")], tmp_path
+        )
+        assert "object-fit:cover" in result
+
+    def test_media_default_align_is_center(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-image", src="photo.png")], tmp_path
+        )
+        assert "object-position:50% 50%" in result
+
+    def test_media_align_top(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-image", src="photo.png", align="top")], tmp_path
+        )
+        assert "object-position:50% 0%" in result
+
+    def test_media_y_offset_produces_calc(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        # zone-image height=300; y=-60 → -20%
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-image", src="photo.png", y=-60.0)], tmp_path
+        )
+        assert "calc(50% - 20%" in result
+
+    def test_media_x_offset_produces_calc(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        # zone-image width=400; x=100 → +25%
+        result = substitute_content(
+            _ZONE_SVG, [Media("#zone-image", src="photo.png", x=100.0)], tmp_path
+        )
+        assert "calc(50% + 25%" in result
 
     def test_missing_zone_warns_and_continues(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

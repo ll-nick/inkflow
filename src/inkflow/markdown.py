@@ -6,7 +6,7 @@ from typing import cast
 
 from markdown_it import MarkdownIt
 
-from inkflow.manifest import Content, Image, MarkdownSlide, TextBox, Video
+from inkflow.manifest import Content, MarkdownSlide, Media, TextBox
 
 _ZONE_PATTERN = re.compile(r"^::((?!step\b)[\w-]+)::\s*$", re.MULTILINE)
 _STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
@@ -144,9 +144,6 @@ def expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> list[Content]
         content.append(TextBox(f"#zone-{zone_name}", text=html))
 
     for key, val in ms._extra.items():  # pyright: ignore[reportPrivateUsage]
-        if key == "video":
-            content.append(Video(f"#zone-{key}", src=val))
-        else:
-            content.append(Image(f"#zone-{key}", src=val))
+        content.append(Media(f"#zone-{key}", src=val))
 
     return content
