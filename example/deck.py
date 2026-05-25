@@ -42,16 +42,16 @@ deck.slides = [
     ),
     MarkdownSlide(
         "layouts/content.svg",
-        src="slides/05-markdown.md",
+        content="slides/05-markdown.md",
     ),
     MarkdownSlide(
         "layouts/media-right.svg",
-        src="slides/06-image.md",
+        content="slides/06-image.md",
         media=Media("assets/demo.jpg", fit="cover"),
     ),
     MarkdownSlide(
         "layouts/media-right.svg",
-        src="slides/07-video.md",
+        content="slides/07-video.md",
         media="assets/demo.mp4",
     ),
 ]

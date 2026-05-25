@@ -132,8 +132,8 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
 
 def expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> list[Content]:
     zones: dict[str, list[str]] = {}
-    if ms.src:
-        zones = parse_markdown_zones(project_dir / ms.src)
+    if ms.content:
+        zones = parse_markdown_zones(project_dir / ms.content)
 
     content: list[Content] = []
     base_step = 0

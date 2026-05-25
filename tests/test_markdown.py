@@ -138,7 +138,7 @@ class TestExpandMarkdownSlide:
     def test_plain_markdown_becomes_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("Body content here.\n", encoding="utf-8")
-        ms = MarkdownSlide("layout.svg", src="slide.md")
+        ms = MarkdownSlide("layout.svg", content="slide.md")
         content = expand_markdown_slide(ms, tmp_path)
         assert any(
             isinstance(c, TextBox) and "#zone-content" in c.element for c in content
@@ -147,7 +147,7 @@ class TestExpandMarkdownSlide:
     def test_h1_creates_title_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# My Title\n\nBody.\n", encoding="utf-8")
-        ms = MarkdownSlide("layout.svg", src="slide.md")
+        ms = MarkdownSlide("layout.svg", content="slide.md")
         content = expand_markdown_slide(ms, tmp_path)
         titles = [
             c for c in content if isinstance(c, TextBox) and "#zone-title" in c.element
@@ -188,7 +188,7 @@ class TestExpandMarkdownSlide:
     def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("- One\n- Two\n- Three\n", encoding="utf-8")
-        ms = MarkdownSlide("layout.svg", src="slide.md", steps=True)
+        ms = MarkdownSlide("layout.svg", content="slide.md", steps=True)
         content = expand_markdown_slide(ms, tmp_path)
         box = next(c for c in content if isinstance(c, TextBox))
         assert box.text is not None

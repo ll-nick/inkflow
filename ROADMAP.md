@@ -211,15 +211,15 @@ A `MarkdownSlide` class for content-heavy slides authored without Inkscape. Expa
 
 ```python
 deck.slides = [
-    MarkdownSlide("layouts/title.svg",       src="slides/01.md"),
-    MarkdownSlide("layouts/bullets.svg",     src="slides/02.md"),
-    MarkdownSlide("layouts/two-column.svg",  src="slides/03.md"),
-    MarkdownSlide("layouts/image-right.svg", src="slides/04.md", photo="assets/photo.png"),
+    MarkdownSlide("layouts/title.svg",       content="slides/01.md"),
+    MarkdownSlide("layouts/bullets.svg",     content="slides/02.md"),
+    MarkdownSlide("layouts/two-column.svg",  content="slides/03.md"),
+    MarkdownSlide("layouts/image-right.svg", content="slides/04.md", photo="assets/photo.png"),
     Slide("slides/05-diagram.svg", animations=[FadeIn("#arrow", step=1)]),
 ]
 ```
 
-The first argument is the layout SVG path. The `.md` file is the primary content source (see "Markdown file format" in Decided). Media zones are specified as kwargs following the `kwarg-name → zone-{name}` convention: `photo="assets/hero.png"` fills `zone-photo`, `demo="assets/clip.mp4"` fills `zone-demo`. The rendering path (image vs video) is inferred from the file extension, exactly as with `Media` in an explicit `content=[]` list. Inline images within markdown text (`![alt](path)`) render normally inside the `<foreignObject>` and do not involve zone replacement.
+The first argument is the template SVG path. The `.md` file is the primary content source (see "Markdown file format" in Decided). Media zones are specified as kwargs following the `kwarg-name → zone-{name}` convention: `photo="assets/hero.png"` fills `zone-photo`, `demo="assets/clip.mp4"` fills `zone-demo`. The rendering path (image vs video) is inferred from the file extension, exactly as with `Media` in an explicit `content=[]` list. Inline images within markdown text (`![alt](path)`) render normally inside the `<foreignObject>` and do not involve zone replacement.
 
 **Step animations in zones.** `steps=True` on `MarkdownSlide` or `TextBox` wraps each top-level `<li>` in the rendered HTML as its own animation step, equivalent to placing `::step::` before every list item. The same CSS class toggle mechanism used for SVG element animations applies inside `<foreignObject>` — no new presenter JS code path needed.
 

@@ -234,7 +234,7 @@ class TestMarkdownSlideExpansion:
         md = tmp_path / "content.md"
         md.write_text("# Hello\n\nBody text here.\n", encoding="utf-8")
         deck = Deck()
-        deck.slides = [MarkdownSlide("layout.svg", src="content.md")]
+        deck.slides = [MarkdownSlide("layout.svg", content="content.md")]
         results = process_deck(deck, tmp_path)
         assert len(results) == 1
         assert "foreignObject" in results[0]
@@ -246,7 +246,7 @@ class TestMarkdownSlideExpansion:
         md = tmp_path / "content.md"
         md.write_text("# My Title\n\nSome content.\n", encoding="utf-8")
         deck = Deck()
-        deck.slides = [MarkdownSlide("layout.svg", src="content.md")]
+        deck.slides = [MarkdownSlide("layout.svg", content="content.md")]
         results = process_deck(deck, tmp_path)
         assert "My Title" in results[0]
 

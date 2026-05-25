@@ -146,9 +146,9 @@ def test_deck_font_size_stored() -> None:
 
 
 def test_markdownslide_fields() -> None:
-    ms = MarkdownSlide("layouts/bullets.svg", src="slides/05.md", steps=True)
-    assert ms.layout == "layouts/bullets.svg"
-    assert ms.src == "slides/05.md"
+    ms = MarkdownSlide("layouts/bullets.svg", content="slides/05.md", steps=True)
+    assert ms.template == "layouts/bullets.svg"
+    assert ms.content == "slides/05.md"
     assert ms.steps is True
     assert ms.animations == []
     assert ms.transition is None

@@ -93,8 +93,8 @@ class Slide:
 
 
 class MarkdownSlide:
-    layout: str
-    src: str | None
+    template: str
+    content: str | None
     steps: bool
     animations: list[Animation]
     transition: Transition | None
@@ -103,17 +103,17 @@ class MarkdownSlide:
 
     def __init__(
         self,
-        layout: str,
+        template: str,
         *,
-        src: str | None = None,
+        content: str | None = None,
         steps: bool = False,
         animations: list[Animation] | None = None,
         transition: Transition | None = None,
         style: str = "",
         **kwargs: str | Media,
     ) -> None:
-        self.layout = layout
-        self.src = src
+        self.template = template
+        self.content = content
         self.steps = steps
         self.animations = animations or []
         self.transition = transition

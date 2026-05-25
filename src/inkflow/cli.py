@@ -121,7 +121,7 @@ def inject_layout_cmd(deck: Path, check: bool) -> None:
     stale_found = False
 
     for slide in deck_obj.slides:
-        svg_src = slide.layout if isinstance(slide, MarkdownSlide) else slide.src
+        svg_src = slide.template if isinstance(slide, MarkdownSlide) else slide.src
         svg_path = (project_dir / svg_src).resolve()
         chain = resolve_chain(svg_path, project_dir, deck_obj.themes)
         if not chain:
@@ -129,16 +129,16 @@ def inject_layout_cmd(deck: Path, check: bool) -> None:
 
         if check:
             if is_layout_current(svg_path, chain):
-                click.echo(f"[ok]     {slide.src}")
+                click.echo(f"[ok]     {svg_src}")
             else:
-                click.echo(f"[stale]  {slide.src}")
+                click.echo(f"[stale]  {svg_src}")
                 stale_found = True
         else:
             changed = inject_layout_layers(svg_path, chain)
             if changed:
-                click.echo(f"[injected]    {slide.src}")
+                click.echo(f"[injected]    {svg_src}")
             else:
-                click.echo(f"[up to date]  {slide.src}")
+                click.echo(f"[up to date]  {svg_src}")
 
     if check and stale_found:
         sys.exit(1)

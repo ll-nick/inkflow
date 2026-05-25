@@ -139,7 +139,7 @@ def _expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> Slide:
 
     content = expand_markdown_slide(ms, project_dir)
     return Slide(
-        src=ms.layout,
+        src=ms.template,
         animations=ms.animations,
         content=content,
         transition=ms.transition,
