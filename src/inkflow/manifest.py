@@ -124,19 +124,22 @@ class MarkdownSlide:
 class Deck:
     slides: list[Slide | MarkdownSlide]
     transition: Transition | None
-    themes: dict[str, str]
+    theme: str | None
+    dark_mode: bool
     style: str
     font_size: int
 
     def __init__(
         self,
         transition: Transition | None = None,
-        themes: dict[str, str] | None = None,
+        theme: str | None = None,
+        dark_mode: bool = True,
         style: str = "",
         font_size: int = 36,
     ) -> None:
         self.slides = []
         self.transition = transition
-        self.themes = themes or {}
+        self.theme = theme
+        self.dark_mode = dark_mode
         self.style = style
         self.font_size = font_size
