@@ -297,6 +297,11 @@ function commitGoto() {
   }
 }
 
+function toggleTheme() {
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === 'light' ? '' : 'light';
+}
+
 curtain.addEventListener('click', hideCurtain);
 help.addEventListener('click', e => { if (e.target === help) toggleHelp(); });
 stage.addEventListener('click', advance);
@@ -325,6 +330,7 @@ const KEYBINDINGS = {
   '.':          { action: () => toggleCurtain('black') },
   'w':          { action: () => toggleCurtain('white') },
   '?':          { action: toggleHelp },
+  't':          { action: toggleTheme },
 };
 
 document.addEventListener('keydown', e => {

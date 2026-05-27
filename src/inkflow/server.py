@@ -26,6 +26,8 @@ class _State(TypedDict):
     transitions: list[dict[str, object]]
     ws_clients: set[ServerConnection]
     error: str | None
+    styles_css: str
+    dark_mode: bool
 
 
 _state: _State = {
@@ -33,6 +35,8 @@ _state: _State = {
     "transitions": [],
     "ws_clients": set(),
     "error": None,
+    "styles_css": "",
+    "dark_mode": True,
 }
 
 
@@ -61,8 +65,11 @@ async def rebuild(deck_path: Path) -> None:
         project_dir = deck_path.parent
         slides = await asyncio.to_thread(process_deck, deck, project_dir)
         transitions = resolve_transitions(deck)
+        styles_css = await asyncio.to_thread(_load_styles, deck, project_dir)
         _state["slides"] = slides
         _state["transitions"] = transitions
+        _state["styles_css"] = styles_css
+        _state["dark_mode"] = deck.dark_mode
         _state["error"] = None
         print(f"[inkflow] built {len(slides)} slide(s)")
         await broadcast(
@@ -104,14 +111,39 @@ async def ws_handler(websocket: ServerConnection) -> None:
 _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
 
 
-def _build_html(ws_port: int) -> bytes:
+def _load_styles(deck: Deck, project_dir: Path) -> str:
+    from inkflow.layout import _resolve_theme_dir  # pyright: ignore[reportPrivateUsage]
+
+    pkg = importlib.resources.files("inkflow")
+    parts = [pkg.joinpath("theme", "styles.css").read_text(encoding="utf-8")]
+
+    if deck.theme is not None:
+        try:
+            theme_dir = _resolve_theme_dir(deck.theme, project_dir)
+            theme_css = theme_dir / "styles.css"
+            if theme_css.exists():
+                parts.append(theme_css.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+
+    project_css = project_dir / "styles.css"
+    if project_css.exists():
+        parts.append(project_css.read_text(encoding="utf-8"))
+
+    return "\n".join(parts)
+
+
+def _build_html(ws_port: int, styles_css: str, dark_mode: bool) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
     css = pkg.joinpath("presenter.css").read_text(encoding="utf-8")
     js = pkg.joinpath("presenter.js").read_text(encoding="utf-8")
+    data_theme = "" if dark_mode else "light"
     html = (
         template.replace("__CSS__", css)
         .replace("__JS__", js)
+        .replace("__STYLES__", styles_css)
+        .replace("__DATA_THEME__", data_theme)
         .replace("__SLIDES_JSON__", json.dumps(_state["slides"]))
         .replace("__WS_PORT__", str(ws_port))
         .replace("__ERROR_JSON__", json.dumps(_state["error"]))
@@ -158,7 +190,7 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
                     await writer.drain()
                     return
 
-            body = _build_html(ws_port)
+            body = _build_html(ws_port, _state["styles_css"], _state["dark_mode"])
             header = (
                 b"HTTP/1.1 200 OK\r\n"
                 + b"Content-Type: text/html; charset=utf-8\r\n"
