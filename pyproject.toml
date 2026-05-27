@@ -35,7 +35,7 @@ dev = [
 [tool.poe.tasks]
 lint      = "ruff check ."
 fmt       = "ruff format --check ."
-typecheck = "basedpyright src/"
+typecheck = "basedpyright"
 test      = "pytest"
 
 [tool.poe.tasks.check]
