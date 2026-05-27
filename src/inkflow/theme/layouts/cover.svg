@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="../main.svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect id="zone-title" x="160" y="340" width="1600" height="220"/>
+  <rect id="zone-subtitle" x="160" y="580" width="1600" height="120"/>
+  <rect id="zone-note" x="160" y="730" width="1600" height="100"/>
+</svg>
