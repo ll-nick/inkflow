@@ -16,7 +16,7 @@ from inkflow.layout import (
     resolve_parent_path,
 )
 from inkflow.manifest import MarkdownSlide
-from inkflow.pipeline import clean_inkscape_svg
+from inkflow.pipeline import clean_inkscape_svg, resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
 
@@ -121,24 +121,25 @@ def inject_layout_cmd(deck: Path, check: bool) -> None:
     stale_found = False
 
     for slide in deck_obj.slides:
-        svg_src = slide.template if isinstance(slide, MarkdownSlide) else slide.src
-        svg_path = (project_dir / svg_src).resolve()
-        chain = resolve_chain(svg_path, project_dir, deck_obj.themes)
+        if isinstance(slide, MarkdownSlide):
+            continue  # MarkdownSlide has no per-slide SVG to inject into
+        svg_path = resolve_slide_src(slide.src, project_dir)
+        chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
         if not chain:
             continue
 
         if check:
             if is_layout_current(svg_path, chain):
-                click.echo(f"[ok]     {svg_src}")
+                click.echo(f"[ok]     {slide.src}")
             else:
-                click.echo(f"[stale]  {svg_src}")
+                click.echo(f"[stale]  {slide.src}")
                 stale_found = True
         else:
             changed = inject_layout_layers(svg_path, chain)
             if changed:
-                click.echo(f"[injected]    {svg_src}")
+                click.echo(f"[injected]    {slide.src}")
             else:
-                click.echo(f"[up to date]  {svg_src}")
+                click.echo(f"[up to date]  {slide.src}")
 
     if check and stale_found:
         sys.exit(1)
@@ -157,7 +158,8 @@ def inject_layout_cmd(deck: Path, check: bool) -> None:
 def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     """Create a new slide SVG wired to a layout parent.
 
-    PARENT is an inkflow:parent string: 'theme:layouts/foo', 'root:layouts/foo',
+    PARENT is a layout name or inkflow:parent string:
+    bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
     or a relative path. OUTPUT is the path for the new SVG file.
     """
     from lxml import etree as _etree
@@ -178,7 +180,7 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     # Resolve parent to get viewBox from the parent SVG if available.
     try:
         parent_abs = resolve_parent_path(
-            parent, output_path, project_dir, deck_obj.themes
+            parent, output_path, project_dir, deck_obj.theme
         )
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -202,7 +204,7 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     )
     output_path.write_text(svg_content, encoding="utf-8")
 
-    chain = resolve_chain(output_path, project_dir, deck_obj.themes)
+    chain = resolve_chain(output_path, project_dir, deck_obj.theme)
     if chain:
         inject_layout_layers(output_path, chain)
 
