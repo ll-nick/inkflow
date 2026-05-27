@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inkflow.manifest import MarkdownSlide, Media, TextBox
+from inkflow.manifest import Media, TextBox
 from inkflow.markdown import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
+    build_slide_content,
     chunks_to_html,
-    expand_markdown_slide,
     parse_markdown_zones,
     steps_wrap_list_items,
 )
@@ -148,12 +148,11 @@ class TestStepsWrapListItems:
         assert result.count("data-step") == 1
 
 
-class TestExpandMarkdownSlide:
+class TestBuildSlideContent:
     def test_plain_markdown_becomes_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("Body content here.\n", encoding="utf-8")
-        ms = MarkdownSlide("layout.svg", content="slide.md")
-        content = expand_markdown_slide(ms, tmp_path)
+        content = build_slide_content(md, False, {})
         assert any(
             isinstance(c, TextBox) and "#zone-content" in c.element for c in content
         )
@@ -161,8 +160,7 @@ class TestExpandMarkdownSlide:
     def test_h1_creates_title_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# My Title\n\nBody.\n", encoding="utf-8")
-        ms = MarkdownSlide("layout.svg", content="slide.md")
-        content = expand_markdown_slide(ms, tmp_path)
+        content = build_slide_content(md, False, {})
         titles = [
             c for c in content if isinstance(c, TextBox) and "#zone-title" in c.element
         ]
@@ -172,26 +170,23 @@ class TestExpandMarkdownSlide:
         assert "<h1>" in titles[0].text
 
     def test_image_kwarg_creates_media(self, tmp_path: Path) -> None:
-        ms = MarkdownSlide("layout.svg", image="photo.png")
-        content = expand_markdown_slide(ms, tmp_path)
+        content = build_slide_content(None, False, {"image": "photo.png"})
         media = [c for c in content if isinstance(c, Media)]
         assert len(media) == 1
         assert media[0].element == "#zone-image"
         assert media[0].src == "photo.png"
 
     def test_video_kwarg_creates_media(self, tmp_path: Path) -> None:
-        ms = MarkdownSlide("layout.svg", video="clip.mp4")
-        content = expand_markdown_slide(ms, tmp_path)
+        content = build_slide_content(None, False, {"video": "clip.mp4"})
         media = [c for c in content if isinstance(c, Media)]
         assert len(media) == 1
         assert media[0].element == "#zone-video"
         assert media[0].src == "clip.mp4"
 
     def test_media_kwarg_accepts_media_object_with_tuning(self, tmp_path: Path) -> None:
-        ms = MarkdownSlide(
-            "layout.svg", image=Media("photo.png", fit="cover", align="top")
+        content = build_slide_content(
+            None, False, {"image": Media("photo.png", fit="cover", align="top")}
         )
-        content = expand_markdown_slide(ms, tmp_path)
         media = [c for c in content if isinstance(c, Media)]
         assert len(media) == 1
         assert media[0].element == "#zone-image"
@@ -202,13 +197,11 @@ class TestExpandMarkdownSlide:
     def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("- One\n- Two\n- Three\n", encoding="utf-8")
-        ms = MarkdownSlide("layout.svg", content="slide.md", steps=True)
-        content = expand_markdown_slide(ms, tmp_path)
+        content = build_slide_content(md, True, {})
         box = next(c for c in content if isinstance(c, TextBox))
         assert box.text is not None
         assert "data-step" in box.text
 
-    def test_no_src_returns_empty_content_for_no_kwargs(self, tmp_path: Path) -> None:
-        ms = MarkdownSlide("layout.svg")
-        content = expand_markdown_slide(ms, tmp_path)
+    def test_no_content_no_extra_returns_empty(self, tmp_path: Path) -> None:
+        content = build_slide_content(None, False, {})
         assert content == []
