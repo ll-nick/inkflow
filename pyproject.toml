@@ -20,6 +20,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inkflow"]
+artifacts = ["src/inkflow/theme/**"]
+exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**"]
 
 [dependency-groups]
 dev = [
@@ -33,7 +35,7 @@ dev = [
 [tool.poe.tasks]
 lint      = "ruff check ."
 fmt       = "ruff format --check ."
-typecheck = "basedpyright src/"
+typecheck = "basedpyright"
 test      = "pytest"
 
 [tool.poe.tasks.check]

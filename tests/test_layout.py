@@ -44,40 +44,58 @@ def _svg_with_parent(parent: str) -> str:
 
 
 class TestResolveParentPath:
-    def test_project_relative(self, tmp_path: Path) -> None:
+    def test_local_prefix(self, tmp_path: Path) -> None:
         svg = tmp_path / "slides" / "01.svg"
-        result = resolve_parent_path("root:layouts/main", svg, tmp_path, {})
-        assert result == (tmp_path / "layouts" / "main.svg").resolve()
+        layout = tmp_path / "layouts" / "main.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_SIMPLE_SVG, encoding="utf-8")
+        result = resolve_parent_path("local:main", svg, tmp_path, None)
+        assert result == layout.resolve()
 
     def test_file_relative(self, tmp_path: Path) -> None:
         svg = tmp_path / "slides" / "01.svg"
-        result = resolve_parent_path("../layouts/main", svg, tmp_path, {})
+        result = resolve_parent_path("../layouts/main", svg, tmp_path, None)
         assert result == (tmp_path / "layouts" / "main.svg").resolve()
 
-    def test_theme_relative(self, tmp_path: Path) -> None:
-        themes = {"my-theme": "themes/my-theme"}
+    def test_theme_prefix(self, tmp_path: Path) -> None:
+        theme_dir = tmp_path / "themes" / "my-theme"
+        layout = theme_dir / "layouts" / "bullets.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_SIMPLE_SVG, encoding="utf-8")
         svg = tmp_path / "slides" / "01.svg"
-        result = resolve_parent_path("my-theme:layouts/bullets", svg, tmp_path, themes)
-        assert (
-            result
-            == (tmp_path / "themes" / "my-theme" / "layouts" / "bullets.svg").resolve()
+        result = resolve_parent_path(
+            "theme:bullets", svg, tmp_path, "./themes/my-theme"
         )
+        assert result == layout.resolve()
 
     def test_svg_extension_auto_appended(self, tmp_path: Path) -> None:
         svg = tmp_path / "01.svg"
-        result = resolve_parent_path("root:main", svg, tmp_path, {})
+        result = resolve_parent_path("../main", svg, tmp_path, None)
         assert result.suffix == ".svg"
 
     def test_svg_extension_not_doubled(self, tmp_path: Path) -> None:
         svg = tmp_path / "01.svg"
-        result = resolve_parent_path("root:main.svg", svg, tmp_path, {})
+        result = resolve_parent_path("../main.svg", svg, tmp_path, None)
         assert str(result).endswith("main.svg")
         assert not str(result).endswith("main.svg.svg")
 
-    def test_unknown_theme_raises(self, tmp_path: Path) -> None:
+    def test_theme_prefix_without_theme_raises(self, tmp_path: Path) -> None:
         svg = tmp_path / "01.svg"
-        with pytest.raises(ValueError, match="Unknown theme 'missing'"):
-            resolve_parent_path("missing:layouts/foo", svg, tmp_path, {})
+        with pytest.raises(ValueError, match="requires Deck"):
+            resolve_parent_path("theme:bullets", svg, tmp_path, None)
+
+    def test_bare_name_found_in_project_layouts(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layouts" / "default.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_SIMPLE_SVG, encoding="utf-8")
+        svg = tmp_path / "slides" / "01.svg"
+        result = resolve_parent_path("default", svg, tmp_path, None)
+        assert result == layout.resolve()
+
+    def test_bare_name_not_found_raises(self, tmp_path: Path) -> None:
+        svg = tmp_path / "01.svg"
+        with pytest.raises(ValueError, match="not found"):
+            resolve_parent_path("nonexistent-layout", svg, tmp_path, None)
 
 
 # ── resolve_chain ─────────────────────────────────────────────────────────────
@@ -86,34 +104,34 @@ class TestResolveParentPath:
 class TestResolveChain:
     def test_no_parent_returns_empty(self, tmp_path: Path) -> None:
         slide = _write_svg(tmp_path / "slide.svg", _SIMPLE_SVG)
-        assert resolve_chain(slide, tmp_path, {}) == []
+        assert resolve_chain(slide, tmp_path, None) == []
 
     def test_single_parent(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
-        chain = resolve_chain(slide, tmp_path, {})
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
+        chain = resolve_chain(slide, tmp_path, None)
         assert chain == [main.resolve()]
 
     def test_two_level_chain_root_first(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
         layout = _write_svg(
             tmp_path / "layouts" / "bullets.svg",
-            _svg_with_parent("root:main.svg"),
+            _svg_with_parent("../main.svg"),
         )
         slide = _write_svg(
             tmp_path / "slide.svg",
-            _svg_with_parent("root:layouts/bullets.svg"),
+            _svg_with_parent("./layouts/bullets.svg"),
         )
-        chain = resolve_chain(slide, tmp_path, {})
+        chain = resolve_chain(slide, tmp_path, None)
         assert chain == [main.resolve(), layout.resolve()]
 
     def test_cycle_detection(self, tmp_path: Path) -> None:
         a = tmp_path / "a.svg"
         b = tmp_path / "b.svg"
-        _write_svg(a, _svg_with_parent("root:b.svg"))
-        _write_svg(b, _svg_with_parent("root:a.svg"))
+        _write_svg(a, _svg_with_parent("./b.svg"))
+        _write_svg(b, _svg_with_parent("./a.svg"))
         with pytest.raises(ValueError, match="Circular"):
-            resolve_chain(a, tmp_path, {})
+            resolve_chain(a, tmp_path, None)
 
 
 # ── strip_layout_layers ──────────────────────────────────────────────────────
@@ -164,31 +182,31 @@ class TestStripLayoutLayers:
 class TestInjectLayoutLayers:
     def test_injects_and_returns_true(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
         chain = [main.resolve()]
         assert inject_layout_layers(slide, chain) is True
         root = etree.parse(slide).getroot()
         layers = [el for el in root if el.get(ns.INKFLOW_LAYOUT_SRC)]
         assert len(layers) == 1
-        assert layers[0].get(ns.INKFLOW_LAYOUT_SRC) == "root:main.svg"
+        assert layers[0].get(ns.INKFLOW_LAYOUT_SRC) == "./main.svg"
 
     def test_idempotent_returns_false(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
         chain = [main.resolve()]
         inject_layout_layers(slide, chain)
         assert inject_layout_layers(slide, chain) is False
 
     def test_is_layout_current_after_inject(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
         chain = [main.resolve()]
         inject_layout_layers(slide, chain)
         assert is_layout_current(slide, chain) is True
 
     def test_stale_after_ancestor_change(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
         chain = [main.resolve()]
         inject_layout_layers(slide, chain)
         main.write_text(_SIMPLE_SVG.replace("1e1e2e", "313244"), encoding="utf-8")
@@ -196,7 +214,7 @@ class TestInjectLayoutLayers:
 
     def test_ancestor_content_appears_in_slide(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
         inject_layout_layers(slide, [main.resolve()])
         content = slide.read_text(encoding="utf-8")
         assert "1e1e2e" in content  # rect from main.svg is present
@@ -213,7 +231,7 @@ class TestInjectLayoutLayers:
             </svg>
         """)
         main = _write_svg(tmp_path / "main.svg", main_svg)
-        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("root:main.svg"))
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
         inject_layout_layers(slide, [main.resolve()])
         content = slide.read_text(encoding="utf-8")
         assert "bg-grad" in content

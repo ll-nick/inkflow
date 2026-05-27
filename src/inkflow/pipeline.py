@@ -6,13 +6,12 @@ from lxml import etree
 
 from inkflow import ns
 from inkflow.content import (
-    DEFAULT_ZONE_CSS,
     inject_style,
     remove_unreferenced_zones,
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.layout import resolve_chain, strip_layout_layers
+from inkflow.layout import resolve_chain, resolve_parent_path, strip_layout_layers
 from inkflow.manifest import (
     Animation,
     Bounce,
@@ -23,6 +22,44 @@ from inkflow.manifest import (
     Slide,
     Transition,
 )
+
+# ── Path conventions ─────────────────────────────────────────────────────────
+
+
+def resolve_slide_src(src: str, project_dir: Path) -> Path:
+    """Resolve a Slide.src string to an absolute Path.
+
+    Bare single-part names (no separator) are looked up in slides/.
+    Explicit paths (with / or absolute) are resolved relative to project_dir.
+    """
+    p = Path(src)
+    if p.is_absolute():
+        return p if p.suffix else p.with_suffix(".svg")
+    if len(p.parts) == 1:
+        name = p.stem if p.suffix else src
+        return project_dir / "slides" / (name + ".svg")
+    if not p.suffix:
+        p = p.with_suffix(".svg")
+    return (project_dir / p).resolve()
+
+
+def _resolve_content_src(src: str, project_dir: Path) -> Path:
+    """Resolve a MarkdownSlide content path to an absolute Path.
+
+    Bare single-part names are looked up in slides/ with a .md suffix.
+    """
+    p = Path(src)
+    if p.is_absolute():
+        return p if p.suffix else p.with_suffix(".md")
+    if len(p.parts) == 1:
+        name = p.stem if p.suffix else src
+        return project_dir / "slides" / (name + ".md")
+    if not p.suffix:
+        p = p.with_suffix(".md")
+    return (project_dir / p).resolve()
+
+
+# ── Animation classes ─────────────────────────────────────────────────────────
 
 _ANIM_CLASS: dict[type, str] = {
     FadeIn: "anim-fade-in",
@@ -134,12 +171,24 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
     return etree.tostring(slide_root, encoding="unicode")
 
 
-def _expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> Slide:
-    from inkflow.markdown import expand_markdown_slide
+def _resolve_markdown_slide(
+    ms: MarkdownSlide, project_dir: Path, theme: str | None
+) -> Slide:
+    from inkflow.markdown import build_slide_content
 
-    content = expand_markdown_slide(ms, project_dir)
+    # Use project_dir as the synthetic svg_path parent so multi-part relative
+    # paths in the template string resolve relative to the project root.
+    template_path = resolve_parent_path(
+        ms.template, project_dir / "_", project_dir, theme
+    )
+    content_path = (
+        _resolve_content_src(ms.content, project_dir)
+        if ms.content is not None
+        else None
+    )
+    content = build_slide_content(content_path, ms.steps, ms._extra)  # pyright: ignore[reportPrivateUsage]
     return Slide(
-        src=ms.template,
+        src=str(template_path),
         animations=ms.animations,
         content=content,
         transition=ms.transition,
@@ -150,15 +199,15 @@ def _expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> Slide:
 def process_slide(
     slide: Slide,
     project_dir: Path,
-    themes: dict[str, str],
+    theme: str | None,
     slide_number: int,
     total_slides: int,
     deck_style: str = "",
     font_size: int = 36,
 ) -> str:
-    src = project_dir / slide.src
+    src = resolve_slide_src(slide.src, project_dir)
     svg_str = clean_inkscape_svg(src)
-    chain = resolve_chain(src, project_dir, themes)
+    chain = resolve_chain(src, project_dir, theme)
     if chain:
         svg_str = compose_with_ancestors(svg_str, chain)
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
@@ -166,8 +215,9 @@ def process_slide(
         svg_str = substitute_content(svg_str, slide.content, project_dir, font_size)
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
-    combined_css = "\n".join(filter(None, [DEFAULT_ZONE_CSS, deck_style, slide.style]))
-    svg_str = inject_style(svg_str, combined_css)
+    combined_css = "\n".join(filter(None, [deck_style, slide.style]))
+    if combined_css:
+        svg_str = inject_style(svg_str, combined_css)
     svg_str = remove_unreferenced_zones(svg_str)
     return svg_str
 
@@ -177,14 +227,14 @@ def process_deck(deck: Deck, project_dir: Path) -> list[str]:
     results: list[str] = []
     for i, entry in enumerate(deck.slides):
         if isinstance(entry, MarkdownSlide):
-            slide = _expand_markdown_slide(entry, project_dir)
+            slide = _resolve_markdown_slide(entry, project_dir, deck.theme)
         else:
             slide = entry
         results.append(
             process_slide(
                 slide,
                 project_dir,
-                deck.themes,
+                deck.theme,
                 i + 1,
                 total,
                 deck.style,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.resources
 from copy import deepcopy
 from pathlib import Path
 from typing import cast
@@ -13,6 +14,24 @@ from inkflow.ns import (
     INKFLOW_LAYOUT_SRC,
     INKFLOW_PARENT,
 )
+
+# ── Built-in theme ───────────────────────────────────────────────────────────
+
+
+def _builtin_theme_dir() -> Path:
+    return Path(str(importlib.resources.files("inkflow").joinpath("theme")))
+
+
+def _resolve_theme_dir(theme: str, project_root: Path) -> Path:
+    p = Path(theme)
+    if p.is_absolute():
+        return p
+    if theme.startswith(("./", "../")):
+        return (project_root / p).resolve()
+    raise ValueError(
+        f"Named theme '{theme}' is not yet supported. Use a path like './my-theme'."
+    )
+
 
 # ── Parent attribute ──────────────────────────────────────────────────────────
 
@@ -29,34 +48,77 @@ def resolve_parent_path(
     parent_str: str,
     svg_path: Path,
     project_root: Path,
-    themes: dict[str, str],
+    theme: str | None,
 ) -> Path:
     """Resolve an inkflow:parent string to an absolute Path.
 
-    Three syntaxes:
-      root:layouts/foo        →  {project_root}/layouts/foo.svg
-      theme-name:layouts/foo  →  {theme_dir}/layouts/foo.svg
-      ../layouts/foo          →  relative to svg_path's directory
-    """
-    if ":" in parent_str:
-        theme_name, theme_path = parent_str.split(":", 1)
-        if theme_name == "root":
-            theme_root = project_root
-        else:
-            theme_dir = themes.get(theme_name)
-            if theme_dir is None:
-                hint = f"Deck(themes={{'{theme_name}': '/path/to/theme'}})"
-                raise ValueError(f"Unknown theme '{theme_name}'. Declare it in {hint}.")
-            theme_root = Path(theme_dir)
-            if not theme_root.is_absolute():
-                theme_root = project_root / theme_root
-        resolved = (theme_root / theme_path).resolve()
-    else:
-        resolved = (svg_path.parent / parent_str).resolve()
+    Prefix syntaxes (bypass the search):
+      local:foo      →  {project_root}/layouts/foo.svg
+      theme:foo      →  {theme_dir}/layouts/foo.svg
+      builtin:foo    →  {builtin_theme_dir}/layouts/foo.svg
+      ./foo, ../foo  →  relative to svg_path's directory
+      /absolute      →  literal filesystem path
 
-    if not resolved.suffix:
-        resolved = resolved.with_suffix(".svg")
-    return resolved
+    Bare single-part name (no prefix, no separator):
+      Three-level search: project layouts/ → theme layouts/ → built-in layouts/
+    Multi-part relative path (has /, no prefix):
+      Relative to svg_path's directory (backward-compatible with inkflow:parent).
+    """
+
+    def _with_svg(p: Path) -> Path:
+        return p if p.suffix else p.with_suffix(".svg")
+
+    if parent_str.startswith("local:"):
+        name = parent_str[len("local:") :]
+        resolved = _with_svg(project_root / "layouts" / name)
+        if not resolved.exists():
+            raise ValueError(f"local:{name} not found at {resolved}")
+        return resolved
+
+    if parent_str.startswith("theme:"):
+        name = parent_str[len("theme:") :]
+        if theme is None:
+            raise ValueError(f"theme:{name} requires Deck(theme=...) to be set")
+        theme_dir = _resolve_theme_dir(theme, project_root)
+        resolved = _with_svg(theme_dir / "layouts" / name)
+        if not resolved.exists():
+            raise ValueError(f"theme:{name} not found at {resolved}")
+        return resolved
+
+    if parent_str.startswith("builtin:"):
+        name = parent_str[len("builtin:") :]
+        resolved = _with_svg(_builtin_theme_dir() / "layouts" / name)
+        if not resolved.exists():
+            raise ValueError(
+                f"builtin:{name} not found — no built-in layout named '{name}'"
+            )
+        return resolved
+
+    if parent_str.startswith(("./", "../")):
+        return _with_svg((svg_path.parent / parent_str).resolve())
+
+    if parent_str.startswith("/"):
+        return _with_svg(Path(parent_str))
+
+    # Multi-part relative path (has /) — relative to svg_path's parent
+    if "/" in parent_str:
+        return _with_svg((svg_path.parent / parent_str).resolve())
+
+    # Bare single-part name — three-level search
+    name = parent_str
+    candidates: list[Path] = [_with_svg(project_root / "layouts" / name)]
+    if theme is not None:
+        candidates.append(
+            _with_svg(_resolve_theme_dir(theme, project_root) / "layouts" / name)
+        )
+    candidates.append(_with_svg(_builtin_theme_dir() / "layouts" / name))
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    searched = "\n".join(f"  {c}" for c in candidates)
+    raise ValueError(f"Layout '{name}' not found. Searched:\n{searched}")
 
 
 # ── Chain resolution ──────────────────────────────────────────────────────────
@@ -65,7 +127,7 @@ def resolve_parent_path(
 def resolve_chain(
     svg_path: Path,
     project_root: Path,
-    themes: dict[str, str],
+    theme: str | None,
 ) -> list[Path]:
     """Return the ancestor chain for svg_path, root-first, excluding svg_path itself.
 
@@ -80,7 +142,7 @@ def resolve_chain(
         parent_str = _read_parent_attr(current)
         if parent_str is None:
             break
-        parent_path = resolve_parent_path(parent_str, current, project_root, themes)
+        parent_path = resolve_parent_path(parent_str, current, project_root, theme)
         if parent_path in visited:
             raise ValueError(f"Circular inkflow:parent chain detected at {parent_path}")
         visited.add(parent_path)

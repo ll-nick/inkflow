@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import importlib.resources
 import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,12 +32,6 @@ _ALIGN_MAP: dict[str, tuple[int, int]] = {
     "bottom-left": (0, 100),
     "bottom-right": (100, 100),
 }
-
-DEFAULT_ZONE_CSS: str = (
-    importlib.resources.files("inkflow")
-    .joinpath("zone_defaults.css")
-    .read_text(encoding="utf-8")
-)
 
 
 @dataclass

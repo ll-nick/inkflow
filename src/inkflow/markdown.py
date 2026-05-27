@@ -7,7 +7,7 @@ from typing import cast
 
 from markdown_it import MarkdownIt
 
-from inkflow.manifest import Content, MarkdownSlide, Media, TextBox
+from inkflow.manifest import Content, Media, TextBox
 
 _ZONE_PATTERN = re.compile(r"^::((?!step\b)[\w-]+)::\s*$", re.MULTILINE)
 _STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
@@ -131,21 +131,25 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
     return inner, step
 
 
-def expand_markdown_slide(ms: MarkdownSlide, project_dir: Path) -> list[Content]:
+def build_slide_content(
+    content_path: Path | None,
+    steps: bool,
+    extra: dict[str, str | Media],
+) -> list[Content]:
     zones: dict[str, list[str]] = {}
-    if ms.content:
-        zones = parse_markdown_zones(project_dir / ms.content)
+    if content_path is not None:
+        zones = parse_markdown_zones(content_path)
 
     content: list[Content] = []
     base_step = 0
 
     for zone_name, chunks in zones.items():
         html, base_step = chunks_to_html(chunks, base_step)
-        if ms.steps:
+        if steps:
             html, base_step = steps_wrap_list_items(html, base_step)
         content.append(TextBox(f"#zone-{zone_name}", text=html))
 
-    for key, val in ms._extra.items():  # pyright: ignore[reportPrivateUsage]
+    for key, val in extra.items():
         if isinstance(val, Media):
             content.append(replace(val, element=f"#zone-{key}"))
         else:

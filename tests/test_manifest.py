@@ -42,12 +42,12 @@ def test_slide_animations_default_empty() -> None:
 def test_deck_defaults() -> None:
     deck = Deck()
     assert deck.slides == []
-    assert deck.themes == {}
+    assert deck.theme is None
+    assert deck.dark_mode is True
 
 
-def test_deck_custom_themes() -> None:
-    themes = {"my-theme": "./themes/my-theme"}
-    assert Deck(themes=themes).themes == themes
+def test_deck_custom_theme() -> None:
+    assert Deck(theme="./my-theme").theme == "./my-theme"
 
 
 def test_animation_fields_stored() -> None:
