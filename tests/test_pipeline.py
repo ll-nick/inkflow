@@ -181,9 +181,14 @@ _LAYOUT_SVG = textwrap.dedent("""\
 
 
 class TestProcessSlideWithContent:
+    def _write_slide(self, tmp_path: Path, name: str, content: str) -> Path:
+        p = tmp_path / "slides" / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return p
+
     def test_foreignobject_replaces_zone_rect(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "slide.svg"
-        svg_file.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
         deck = Deck()
         deck.slides = [
             Slide(
@@ -196,8 +201,7 @@ class TestProcessSlideWithContent:
         assert "hello" in results[0]
 
     def test_zone_rect_id_inherited_by_foreignobject(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "slide.svg"
-        svg_file.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
         deck = Deck()
         deck.slides = [
             Slide(src="slide.svg", content=[TextBox("#zone-content", text="hi")])
@@ -206,8 +210,7 @@ class TestProcessSlideWithContent:
         assert 'id="zone-content"' in results[0]
 
     def test_unreferenced_zone_rects_removed(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "slide.svg"
-        svg_file.write_text(_LAYOUT_SVG, encoding="utf-8")
+        self._write_slide(tmp_path, "slide.svg", _LAYOUT_SVG)
         deck = Deck()
         # Only supply content for zone-content, leave zone-title unconsumed
         deck.slides = [
@@ -216,9 +219,10 @@ class TestProcessSlideWithContent:
         results = process_deck(deck, tmp_path)
         assert 'id="zone-title"' not in results[0]
 
-    def test_default_zone_css_injected(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "slide.svg"
-        svg_file.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+    def test_foreignobject_content_has_inkflow_content_class(
+        self, tmp_path: Path
+    ) -> None:
+        self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
         deck = Deck()
         deck.slides = [
             Slide(src="slide.svg", content=[TextBox("#zone-content", text="x")])
@@ -228,34 +232,39 @@ class TestProcessSlideWithContent:
 
 
 class TestMarkdownSlideExpansion:
-    def test_markdown_slide_expands_to_foreignobject(self, tmp_path: Path) -> None:
-        layout = tmp_path / "layout.svg"
+    def _setup(self, tmp_path: Path) -> tuple[Path, Path]:
+        layout = tmp_path / "layouts" / "layout.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
         layout.write_text(_LAYOUT_SVG, encoding="utf-8")
-        md = tmp_path / "content.md"
+        slides_dir = tmp_path / "slides"
+        slides_dir.mkdir(parents=True, exist_ok=True)
+        return layout, slides_dir
+
+    def test_markdown_slide_expands_to_foreignobject(self, tmp_path: Path) -> None:
+        _, slides_dir = self._setup(tmp_path)
+        md = slides_dir / "content.md"
         md.write_text("# Hello\n\nBody text here.\n", encoding="utf-8")
         deck = Deck()
-        deck.slides = [MarkdownSlide("layout.svg", content="content.md")]
+        deck.slides = [MarkdownSlide("layout", content="content")]
         results = process_deck(deck, tmp_path)
         assert len(results) == 1
         assert "foreignObject" in results[0]
         assert "Body text" in results[0]
 
     def test_markdown_slide_title_extracted(self, tmp_path: Path) -> None:
-        layout = tmp_path / "layout.svg"
-        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
-        md = tmp_path / "content.md"
+        _, slides_dir = self._setup(tmp_path)
+        md = slides_dir / "content.md"
         md.write_text("# My Title\n\nSome content.\n", encoding="utf-8")
         deck = Deck()
-        deck.slides = [MarkdownSlide("layout.svg", content="content.md")]
+        deck.slides = [MarkdownSlide("layout", content="content")]
         results = process_deck(deck, tmp_path)
         assert "My Title" in results[0]
 
     def test_markdown_slide_animations_applied(self, tmp_path: Path) -> None:
-        layout = tmp_path / "layout.svg"
-        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        self._setup(tmp_path)
         deck = Deck()
         deck.slides = [
-            MarkdownSlide("layout.svg", animations=[FadeIn("#zone-title", step=1)])
+            MarkdownSlide("layout", animations=[FadeIn("#zone-title", step=1)])
         ]
         results = process_deck(deck, tmp_path)
         assert "anim-fade-in" in results[0]
