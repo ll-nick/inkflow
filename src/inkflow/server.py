@@ -2,15 +2,27 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import errno
 import importlib.resources
 import importlib.util
 import json
+import signal
 import sys
+import termios
+import time
 import traceback
+import tty
+import webbrowser
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from pathlib import Path
 from typing import TypedDict, cast
 
+from rich.console import Console, Group, RenderableType
+from rich.live import Live
+from rich.panel import Panel
+from rich.spinner import Spinner
+from rich.text import Text
 from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
@@ -40,6 +52,124 @@ _state: _State = {
 }
 
 
+# ── Live UI state ─────────────────────────────────────────────────────────────
+
+
+class _LiveUI:
+    """Owns the entire terminal UI: header panel + status line."""
+
+    def __init__(
+        self, live: Live, http_port: int, ws_port: int, watch_path: Path
+    ) -> None:
+        self._live: Live = live
+        self._http_port: int = http_port
+        self._ws_port: int = ws_port
+        self._watch_path: Path = watch_path
+        self._phase: str = "idle"  # "building" | "ok" | "error"
+        self._slides: int = 0
+        self._elapsed: float = 0.0
+        self._built_at: str = ""
+        self._error_tb: str | None = None
+        self._show_trace: bool = False
+
+    def _header(self) -> RenderableType:
+        clients = len(_state["ws_clients"])
+        client_str = f"{clients} client{'s' if clients != 1 else ''}"
+
+        title = Text()
+        title.append("ink", style="bold white")
+        title.append("flow", style="bold blue")
+
+        content = Group(
+            Text.assemble(
+                (f"http://localhost:{self._http_port}", "bold"),
+                ("  ·  ", "dim"),
+                (client_str, "dim"),
+            ),
+            Text.assemble(
+                (str(self._watch_path), "dim"),
+                overflow="ellipsis",
+                no_wrap=True,
+            ),
+            Text(""),
+            Text.assemble(
+                ("o", "bold"),
+                ("  open", "dim"),
+                ("  ·  ", "dim"),
+                ("r", "bold"),
+                ("  rebuild", "dim"),
+                ("  ·  ", "dim"),
+                ("q", "bold"),
+                ("  quit", "dim"),
+            ),
+        )
+        return Panel(
+            content, title=title, title_align="left", expand=False, padding=(0, 2)
+        )
+
+    def _renderable(self) -> RenderableType:
+        parts: list[RenderableType] = [Text(""), self._header(), Text("")]
+
+        if self._phase == "building":
+            parts.append(Spinner("dots", text=" Building…"))
+        elif self._phase == "ok":
+            slide_word = "slide" if self._slides == 1 else "slides"
+            summary = f" ✓  built {self._slides} {slide_word} in {self._elapsed:.2f}s"
+            parts.append(
+                Text.assemble(
+                    (summary, "bold green"),
+                    (" · ", "white"),
+                    (self._built_at, "white"),
+                )
+            )
+        elif self._phase == "error":
+            tb = self._error_tb or ""
+            last = next(
+                (ln for ln in reversed(tb.splitlines()) if ln.strip()),
+                "unknown error",
+            )
+            parts.append(Text(f"✗  {last}", style="bold red", no_wrap=True))
+            if self._show_trace:
+                for line in tb.rstrip().splitlines():
+                    parts.append(Text(line, style="dim red"))
+                parts.append(Text("[t] hide trace", style="dim"))
+            else:
+                parts.append(Text("[t] show trace", style="dim"))
+
+        return Group(*parts)
+
+    def refresh(self) -> None:
+        self._live.update(self._renderable())
+        self._live.refresh()
+
+    def set_building(self) -> None:
+        self._phase = "building"
+        self.refresh()
+
+    def set_ok(self, slides: int, elapsed: float) -> None:
+        self._phase = "ok"
+        self._slides = slides
+        self._elapsed = elapsed
+        self._built_at = datetime.now().strftime("%H:%M:%S")
+        self._error_tb = None
+        self._show_trace = False
+        self.refresh()
+
+    def set_error(self, tb: str) -> None:
+        self._phase = "error"
+        self._error_tb = tb
+        self._show_trace = False
+        self.refresh()
+
+    def toggle_trace(self) -> None:
+        if self._phase == "error":
+            self._show_trace = not self._show_trace
+            self.refresh()
+
+
+_ui: _LiveUI | None = None
+
+
 # ── Deck loader ───────────────────────────────────────────────────────────────
 
 
@@ -59,7 +189,16 @@ def load_deck(deck_path: Path) -> Deck:
 # ── Build pipeline ────────────────────────────────────────────────────────────
 
 
-async def rebuild(deck_path: Path) -> None:
+async def rebuild(deck_path: Path, ui: _LiveUI) -> None:
+    ui.set_building()
+
+    async def _animate() -> None:
+        while True:
+            await asyncio.sleep(0.1)
+            ui.refresh()
+
+    spin = asyncio.create_task(_animate())
+    t0 = time.monotonic()
     try:
         deck = await asyncio.to_thread(load_deck, deck_path)
         project_dir = deck_path.parent
@@ -71,15 +210,20 @@ async def rebuild(deck_path: Path) -> None:
         _state["styles_css"] = styles_css
         _state["dark_mode"] = deck.dark_mode
         _state["error"] = None
-        print(f"[inkflow] built {len(slides)} slide(s)")
+        ui.set_ok(len(slides), time.monotonic() - t0)
         await broadcast(
             json.dumps({"type": "update", "slides": slides, "transitions": transitions})
         )
-    except Exception as exc:
+    except Exception:
         tb = traceback.format_exc()
         _state["error"] = tb
-        print(f"[inkflow] build error: {exc}", file=sys.stderr)
+        ui.set_error(tb)
         await broadcast(json.dumps({"type": "error", "message": tb}))
+    finally:
+        spin.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await spin
+        ui.refresh()
 
 
 # ── WebSocket broadcast ───────────────────────────────────────────────────────
@@ -100,10 +244,14 @@ async def broadcast(msg: str) -> None:
 
 async def ws_handler(websocket: ServerConnection) -> None:
     _state["ws_clients"].add(websocket)
+    if _ui is not None:
+        _ui.refresh()
     try:
         await websocket.wait_closed()
     finally:
         _state["ws_clients"].discard(websocket)
+        if _ui is not None:
+            _ui.refresh()
 
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
@@ -216,10 +364,11 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 # ── File watcher ──────────────────────────────────────────────────────────────
 
 
-async def _watch(deck_path: Path) -> None:
+async def _watch(deck_path: Path, ui: _LiveUI, lock: asyncio.Lock) -> None:
     async for _changes in awatch(str(deck_path.parent)):
-        print("[inkflow] change detected, rebuilding…")
-        await rebuild(deck_path)
+        if not lock.locked():  # skip if a rebuild is already in progress
+            async with lock:
+                await rebuild(deck_path, ui)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
