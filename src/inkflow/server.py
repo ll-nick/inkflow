@@ -371,6 +371,48 @@ async def _watch(deck_path: Path, ui: _LiveUI, lock: asyncio.Lock) -> None:
                 await rebuild(deck_path, ui)
 
 
+# ── Keyboard handler ──────────────────────────────────────────────────────────
+
+
+async def _read_keys(
+    deck_path: Path,
+    http_port: int,
+    ui: _LiveUI,
+    lock: asyncio.Lock,
+    shutdown: asyncio.Event,
+) -> None:
+    if not sys.stdin.isatty():
+        return
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[str] = asyncio.Queue()
+
+    def _on_stdin() -> None:
+        ch = sys.stdin.read(1)
+        loop.call_soon_threadsafe(queue.put_nowait, ch)
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)  # single-char reads, output processing (ONLCR) intact
+        loop.add_reader(fd, _on_stdin)
+        while True:
+            ch = await queue.get()
+            if ch in ("\x04", "q"):  # Ctrl-D, q (Ctrl-C handled via SIGINT)
+                shutdown.set()
+                return
+            elif ch == "o":
+                webbrowser.open(f"http://localhost:{http_port}")
+            elif ch == "r":
+                async with lock:
+                    await rebuild(deck_path, ui)
+            elif ch == "t":
+                ui.toggle_trace()
+    finally:
+        loop.remove_reader(fd)
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
