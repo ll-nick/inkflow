@@ -417,20 +417,62 @@ async def _read_keys(
 
 
 async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
-    print(f"[inkflow] loading {deck_path}")
-    await rebuild(deck_path)
+    global _ui
 
-    http_handler = make_http_handler(ws_port, deck_path.parent)
-    http_server = await asyncio.start_server(http_handler, "127.0.0.1", http_port)
+    console = Console()
+    rebuild_lock = asyncio.Lock()
+    shutdown = asyncio.Event()
 
-    print(f"[inkflow] http://localhost:{http_port}")
-    print(f"[inkflow] ws://localhost:{ws_port}")
-    print(f"[inkflow] watching {deck_path.parent}  (Ctrl-C to stop)")
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGINT, shutdown.set)
+    loop.add_signal_handler(signal.SIGTERM, shutdown.set)
 
-    async with (
-        http_server,
-        ws_serve(ws_handler, "127.0.0.1", ws_port),
-        asyncio.TaskGroup() as tg,
-    ):
-        tg.create_task(http_server.serve_forever())
-        tg.create_task(_watch(deck_path))
+    try:
+        http_handler = make_http_handler(ws_port, deck_path.parent)
+        # Bind before the Live UI so port conflicts fail fast with a clean message
+        try:
+            http_server = await asyncio.start_server(
+                http_handler, "127.0.0.1", http_port
+            )
+        except OSError as e:
+            if e.errno == errno.EADDRINUSE:
+                msg = (
+                    f"[red]error:[/red] port {http_port} is already in use."
+                    f" Pass [dim]--port PORT[/dim] to serve on a different port."
+                )
+                console.print(msg)
+                return
+            raise
+
+        try:
+            async with http_server, ws_serve(ws_handler, "127.0.0.1", ws_port):
+                # auto_refresh=False: spinner driven by asyncio task in rebuild()
+                with Live(Text(""), console=console, auto_refresh=False) as live:
+                    _ui = _LiveUI(live, http_port, ws_port, deck_path.parent)
+                    await rebuild(deck_path, _ui)
+                    tasks = [
+                        asyncio.create_task(http_server.serve_forever()),
+                        asyncio.create_task(_watch(deck_path, _ui, rebuild_lock)),
+                        asyncio.create_task(
+                            _read_keys(
+                                deck_path, http_port, _ui, rebuild_lock, shutdown
+                            )
+                        ),
+                    ]
+                    await shutdown.wait()
+                    for t in tasks:
+                        t.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+        except OSError as e:
+            if e.errno == errno.EADDRINUSE:
+                msg = (
+                    f"[red]error:[/red] port {ws_port} is already in use."
+                    f" Pass [dim]--ws-port PORT[/dim] to use a different one."
+                )
+                console.print(msg)
+            else:
+                raise
+    finally:
+        _ui = None
+        loop.remove_signal_handler(signal.SIGINT)
+        loop.remove_signal_handler(signal.SIGTERM)
