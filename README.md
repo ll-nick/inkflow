@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Inkflow logo" height="128">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark-landscape.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light-landscape.svg">
+    <img src="assets/logo-light-landscape.svg" width="80%">
+  </picture>
 </p>
 
 # Inkflow
