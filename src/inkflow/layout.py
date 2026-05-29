@@ -22,7 +22,7 @@ def _builtin_theme_dir() -> Path:
     return Path(str(importlib.resources.files("inkflow").joinpath("theme")))
 
 
-def _resolve_theme_dir(theme: str, project_root: Path) -> Path:
+def resolve_theme_dir(theme: str, project_root: Path) -> Path:
     p = Path(theme)
     if p.is_absolute():
         return p
@@ -79,7 +79,7 @@ def resolve_parent_path(
         name = parent_str[len("theme:") :]
         if theme is None:
             raise ValueError(f"theme:{name} requires Deck(theme=...) to be set")
-        theme_dir = _resolve_theme_dir(theme, project_root)
+        theme_dir = resolve_theme_dir(theme, project_root)
         resolved = _with_svg(theme_dir / "layouts" / name)
         if not resolved.exists():
             raise ValueError(f"theme:{name} not found at {resolved}")
@@ -109,7 +109,7 @@ def resolve_parent_path(
     candidates: list[Path] = [_with_svg(project_root / "layouts" / name)]
     if theme is not None:
         candidates.append(
-            _with_svg(_resolve_theme_dir(theme, project_root) / "layouts" / name)
+            _with_svg(resolve_theme_dir(theme, project_root) / "layouts" / name)
         )
     candidates.append(_with_svg(_builtin_theme_dir() / "layouts" / name))
 

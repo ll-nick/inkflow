@@ -27,6 +27,7 @@ from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
+from inkflow.layout import resolve_theme_dir
 from inkflow.manifest import Deck
 from inkflow.pipeline import process_deck, resolve_transitions
 
@@ -260,14 +261,12 @@ _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitabl
 
 
 def _load_styles(deck: Deck, project_dir: Path) -> str:
-    from inkflow.layout import _resolve_theme_dir  # pyright: ignore[reportPrivateUsage]
-
     pkg = importlib.resources.files("inkflow")
     parts = [pkg.joinpath("theme", "styles.css").read_text(encoding="utf-8")]
 
     if deck.theme is not None:
         try:
-            theme_dir = _resolve_theme_dir(deck.theme, project_dir)
+            theme_dir = resolve_theme_dir(deck.theme, project_dir)
             theme_css = theme_dir / "styles.css"
             if theme_css.exists():
                 parts.append(theme_css.read_text(encoding="utf-8"))
