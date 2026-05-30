@@ -14,14 +14,11 @@ import traceback
 import tty
 import webbrowser
 from collections.abc import Awaitable, Callable
-from datetime import datetime
 from pathlib import Path
 from typing import TypedDict, cast
 
-from rich.console import Console, Group, RenderableType
+from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
-from rich.spinner import Spinner
 from rich.text import Text
 from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
@@ -30,6 +27,7 @@ from websockets.asyncio.server import serve as ws_serve
 from inkflow.layout import resolve_theme_dir
 from inkflow.manifest import Deck
 from inkflow.pipeline import process_deck, resolve_transitions
+from inkflow.tui import LiveUI
 
 # ── Shared mutable state ──────────────────────────────────────────────────────
 
@@ -53,124 +51,6 @@ _state: _State = {
 }
 
 
-# ── Live UI state ─────────────────────────────────────────────────────────────
-
-
-class _LiveUI:
-    """Owns the entire terminal UI: header panel + status line."""
-
-    def __init__(
-        self, live: Live, http_port: int, ws_port: int, watch_path: Path
-    ) -> None:
-        self._live: Live = live
-        self._http_port: int = http_port
-        self._ws_port: int = ws_port
-        self._watch_path: Path = watch_path
-        self._phase: str = "idle"  # "building" | "ok" | "error"
-        self._slides: int = 0
-        self._elapsed: float = 0.0
-        self._built_at: str = ""
-        self._error_tb: str | None = None
-        self._show_trace: bool = False
-
-    def _header(self) -> RenderableType:
-        clients = len(_state["ws_clients"])
-        client_str = f"{clients} client{'s' if clients != 1 else ''}"
-
-        title = Text()
-        title.append("ink", style="bold white")
-        title.append("flow", style="bold blue")
-
-        content = Group(
-            Text.assemble(
-                (f"http://localhost:{self._http_port}", "bold"),
-                ("  ·  ", "dim"),
-                (client_str, "dim"),
-            ),
-            Text.assemble(
-                (str(self._watch_path), "dim"),
-                overflow="ellipsis",
-                no_wrap=True,
-            ),
-            Text(""),
-            Text.assemble(
-                ("o", "bold"),
-                ("  open", "dim"),
-                ("  ·  ", "dim"),
-                ("r", "bold"),
-                ("  rebuild", "dim"),
-                ("  ·  ", "dim"),
-                ("q", "bold"),
-                ("  quit", "dim"),
-            ),
-        )
-        return Panel(
-            content, title=title, title_align="left", expand=False, padding=(0, 2)
-        )
-
-    def _renderable(self) -> RenderableType:
-        parts: list[RenderableType] = [Text(""), self._header(), Text("")]
-
-        if self._phase == "building":
-            parts.append(Spinner("dots", text=" Building…"))
-        elif self._phase == "ok":
-            slide_word = "slide" if self._slides == 1 else "slides"
-            summary = f" ✓  built {self._slides} {slide_word} in {self._elapsed:.2f}s"
-            parts.append(
-                Text.assemble(
-                    (summary, "bold green"),
-                    (" · ", "white"),
-                    (self._built_at, "white"),
-                )
-            )
-        elif self._phase == "error":
-            tb = self._error_tb or ""
-            last = next(
-                (ln for ln in reversed(tb.splitlines()) if ln.strip()),
-                "unknown error",
-            )
-            parts.append(Text(f"✗  {last}", style="bold red", no_wrap=True))
-            if self._show_trace:
-                for line in tb.rstrip().splitlines():
-                    parts.append(Text(line, style="dim red"))
-                parts.append(Text("[t] hide trace", style="dim"))
-            else:
-                parts.append(Text("[t] show trace", style="dim"))
-
-        return Group(*parts)
-
-    def refresh(self) -> None:
-        self._live.update(self._renderable())
-        self._live.refresh()
-
-    def set_building(self) -> None:
-        self._phase = "building"
-        self.refresh()
-
-    def set_ok(self, slides: int, elapsed: float) -> None:
-        self._phase = "ok"
-        self._slides = slides
-        self._elapsed = elapsed
-        self._built_at = datetime.now().strftime("%H:%M:%S")
-        self._error_tb = None
-        self._show_trace = False
-        self.refresh()
-
-    def set_error(self, tb: str) -> None:
-        self._phase = "error"
-        self._error_tb = tb
-        self._show_trace = False
-        self.refresh()
-
-    def toggle_trace(self) -> None:
-        if self._phase == "error":
-            self._show_trace = not self._show_trace
-            self.refresh()
-
-
-_ui: _LiveUI | None = None
-
-
 # ── Deck loader ───────────────────────────────────────────────────────────────
 
 
@@ -190,7 +70,7 @@ def load_deck(deck_path: Path) -> Deck:
 # ── Build pipeline ────────────────────────────────────────────────────────────
 
 
-async def rebuild(deck_path: Path, ui: _LiveUI) -> None:
+async def rebuild(deck_path: Path, ui: LiveUI) -> None:
     ui.set_building()
 
     async def _animate() -> None:
@@ -243,16 +123,17 @@ async def broadcast(msg: str) -> None:
 # ── WebSocket handler ─────────────────────────────────────────────────────────
 
 
-async def ws_handler(websocket: ServerConnection) -> None:
-    _state["ws_clients"].add(websocket)
-    if _ui is not None:
-        _ui.refresh()
-    try:
-        await websocket.wait_closed()
-    finally:
-        _state["ws_clients"].discard(websocket)
-        if _ui is not None:
-            _ui.refresh()
+def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]:
+    async def handler(websocket: ServerConnection) -> None:
+        _state["ws_clients"].add(websocket)
+        ui.refresh()
+        try:
+            await websocket.wait_closed()
+        finally:
+            _state["ws_clients"].discard(websocket)
+            ui.refresh()
+
+    return handler
 
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
@@ -363,7 +244,7 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 # ── File watcher ──────────────────────────────────────────────────────────────
 
 
-async def _watch(deck_path: Path, ui: _LiveUI, lock: asyncio.Lock) -> None:
+async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
     async for _changes in awatch(str(deck_path.parent)):
         if not lock.locked():  # skip if a rebuild is already in progress
             async with lock:
@@ -376,7 +257,7 @@ async def _watch(deck_path: Path, ui: _LiveUI, lock: asyncio.Lock) -> None:
 async def _read_keys(
     deck_path: Path,
     http_port: int,
-    ui: _LiveUI,
+    ui: LiveUI,
     lock: asyncio.Lock,
     shutdown: asyncio.Event,
 ) -> None:
@@ -416,8 +297,6 @@ async def _read_keys(
 
 
 async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
-    global _ui
-
     console = Console()
     rebuild_lock = asyncio.Lock()
     shutdown = asyncio.Event()
@@ -443,35 +322,39 @@ async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
                 return
             raise
 
-        try:
-            async with http_server, ws_serve(ws_handler, "127.0.0.1", ws_port):
-                # auto_refresh=False: spinner driven by asyncio task in rebuild()
-                with Live(Text(""), console=console, auto_refresh=False) as live:
-                    _ui = _LiveUI(live, http_port, ws_port, deck_path.parent)
-                    await rebuild(deck_path, _ui)
+        with Live(Text(""), console=console, auto_refresh=False) as live:
+            ui = LiveUI(
+                live,
+                http_port,
+                deck_path.parent,
+                get_clients=lambda: len(_state["ws_clients"]),
+            )
+            try:
+                async with (
+                    http_server,
+                    ws_serve(make_ws_handler(ui), "127.0.0.1", ws_port),
+                ):
+                    await rebuild(deck_path, ui)
                     tasks = [
                         asyncio.create_task(http_server.serve_forever()),
-                        asyncio.create_task(_watch(deck_path, _ui, rebuild_lock)),
+                        asyncio.create_task(_watch(deck_path, ui, rebuild_lock)),
                         asyncio.create_task(
-                            _read_keys(
-                                deck_path, http_port, _ui, rebuild_lock, shutdown
-                            )
+                            _read_keys(deck_path, http_port, ui, rebuild_lock, shutdown)
                         ),
                     ]
                     await shutdown.wait()
                     for t in tasks:
                         t.cancel()
                     await asyncio.gather(*tasks, return_exceptions=True)
-        except OSError as e:
-            if e.errno == errno.EADDRINUSE:
-                msg = (
-                    f"[red]error:[/red] port {ws_port} is already in use."
-                    f" Pass [dim]--ws-port PORT[/dim] to use a different one."
-                )
-                console.print(msg)
-            else:
-                raise
+            except OSError as e:
+                if e.errno == errno.EADDRINUSE:
+                    msg = (
+                        f"[red]error:[/red] port {ws_port} is already in use."
+                        f" Pass [dim]--ws-port PORT[/dim] to use a different one."
+                    )
+                    console.print(msg)
+                else:
+                    raise
     finally:
-        _ui = None
         loop.remove_signal_handler(signal.SIGINT)
         loop.remove_signal_handler(signal.SIGTERM)
