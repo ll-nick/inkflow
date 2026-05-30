@@ -2,21 +2,33 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import errno
 import importlib.resources
 import importlib.util
 import json
+import os
+import signal
 import sys
+import termios
+import time
 import traceback
+import tty
+import webbrowser
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TypedDict, cast
 
+from rich.console import Console
+from rich.live import Live
+from rich.text import Text
 from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
+from inkflow.layout import resolve_theme_dir
 from inkflow.manifest import Deck
 from inkflow.pipeline import process_deck, resolve_transitions
+from inkflow.tui import LiveUI
 
 # ── Shared mutable state ──────────────────────────────────────────────────────
 
@@ -59,7 +71,16 @@ def load_deck(deck_path: Path) -> Deck:
 # ── Build pipeline ────────────────────────────────────────────────────────────
 
 
-async def rebuild(deck_path: Path) -> None:
+async def rebuild(deck_path: Path, ui: LiveUI) -> None:
+    ui.set_building()
+
+    async def _animate() -> None:
+        while True:
+            await asyncio.sleep(0.1)
+            ui.refresh()
+
+    spin = asyncio.create_task(_animate())
+    t0 = time.monotonic()
     try:
         deck = await asyncio.to_thread(load_deck, deck_path)
         project_dir = deck_path.parent
@@ -71,15 +92,20 @@ async def rebuild(deck_path: Path) -> None:
         _state["styles_css"] = styles_css
         _state["dark_mode"] = deck.dark_mode
         _state["error"] = None
-        print(f"[inkflow] built {len(slides)} slide(s)")
+        ui.set_ok(len(slides), time.monotonic() - t0)
         await broadcast(
             json.dumps({"type": "update", "slides": slides, "transitions": transitions})
         )
-    except Exception as exc:
+    except Exception:
         tb = traceback.format_exc()
         _state["error"] = tb
-        print(f"[inkflow] build error: {exc}", file=sys.stderr)
+        ui.set_error(tb)
         await broadcast(json.dumps({"type": "error", "message": tb}))
+    finally:
+        spin.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await spin
+        ui.refresh()
 
 
 # ── WebSocket broadcast ───────────────────────────────────────────────────────
@@ -98,12 +124,17 @@ async def broadcast(msg: str) -> None:
 # ── WebSocket handler ─────────────────────────────────────────────────────────
 
 
-async def ws_handler(websocket: ServerConnection) -> None:
-    _state["ws_clients"].add(websocket)
-    try:
-        await websocket.wait_closed()
-    finally:
-        _state["ws_clients"].discard(websocket)
+def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]:
+    async def handler(websocket: ServerConnection) -> None:
+        _state["ws_clients"].add(websocket)
+        ui.refresh()
+        try:
+            await websocket.wait_closed()
+        finally:
+            _state["ws_clients"].discard(websocket)
+            ui.refresh()
+
+    return handler
 
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
@@ -112,14 +143,12 @@ _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitabl
 
 
 def _load_styles(deck: Deck, project_dir: Path) -> str:
-    from inkflow.layout import _resolve_theme_dir  # pyright: ignore[reportPrivateUsage]
-
     pkg = importlib.resources.files("inkflow")
     parts = [pkg.joinpath("theme", "styles.css").read_text(encoding="utf-8")]
 
     if deck.theme is not None:
         try:
-            theme_dir = _resolve_theme_dir(deck.theme, project_dir)
+            theme_dir = resolve_theme_dir(deck.theme, project_dir)
             theme_css = theme_dir / "styles.css"
             if theme_css.exists():
                 parts.append(theme_css.read_text(encoding="utf-8"))
@@ -216,30 +245,135 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 # ── File watcher ──────────────────────────────────────────────────────────────
 
 
-async def _watch(deck_path: Path) -> None:
+async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
     async for _changes in awatch(str(deck_path.parent)):
-        print("[inkflow] change detected, rebuilding…")
-        await rebuild(deck_path)
+        if not lock.locked():  # skip if a rebuild is already in progress
+            async with lock:
+                await rebuild(deck_path, ui)
+
+
+# ── Keyboard handler ──────────────────────────────────────────────────────────
+
+
+def _open_browser(url: str) -> None:
+    # Redirect fd 1/2 to /dev/null so the browser process can't write startup
+    # noise to the terminal and corrupt the Rich Live cursor tracking.
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    saved_out = os.dup(1)
+    saved_err = os.dup(2)
+    try:
+        os.dup2(devnull, 1)
+        os.dup2(devnull, 2)
+        webbrowser.open(url)
+    finally:
+        os.dup2(saved_out, 1)
+        os.dup2(saved_err, 2)
+        os.close(devnull)
+        os.close(saved_out)
+        os.close(saved_err)
+
+
+async def _read_keys(
+    deck_path: Path,
+    http_port: int,
+    ui: LiveUI,
+    lock: asyncio.Lock,
+    shutdown: asyncio.Event,
+) -> None:
+    if not sys.stdin.isatty():
+        return
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[str] = asyncio.Queue()
+
+    def _on_stdin() -> None:
+        ch = sys.stdin.read(1)
+        loop.call_soon_threadsafe(queue.put_nowait, ch)
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)  # single-char reads, output processing (ONLCR) intact
+        loop.add_reader(fd, _on_stdin)
+        while True:
+            ch = await queue.get()
+            if ch in ("\x04", "q"):  # Ctrl-D, q (Ctrl-C handled via SIGINT)
+                shutdown.set()
+                return
+            elif ch == "o":
+                _open_browser(f"http://localhost:{http_port}")
+            elif ch == "r":
+                async with lock:
+                    await rebuild(deck_path, ui)
+            elif ch == "t":
+                ui.toggle_trace()
+    finally:
+        loop.remove_reader(fd)
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
 async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
-    print(f"[inkflow] loading {deck_path}")
-    await rebuild(deck_path)
+    console = Console()
+    rebuild_lock = asyncio.Lock()
+    shutdown = asyncio.Event()
 
-    http_handler = make_http_handler(ws_port, deck_path.parent)
-    http_server = await asyncio.start_server(http_handler, "127.0.0.1", http_port)
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGINT, shutdown.set)
+    loop.add_signal_handler(signal.SIGTERM, shutdown.set)
 
-    print(f"[inkflow] http://localhost:{http_port}")
-    print(f"[inkflow] ws://localhost:{ws_port}")
-    print(f"[inkflow] watching {deck_path.parent}  (Ctrl-C to stop)")
+    try:
+        http_handler = make_http_handler(ws_port, deck_path.parent)
+        # Bind before the Live UI so port conflicts fail fast with a clean message
+        try:
+            http_server = await asyncio.start_server(
+                http_handler, "127.0.0.1", http_port
+            )
+        except OSError as e:
+            if e.errno == errno.EADDRINUSE:
+                msg = (
+                    f"[red]error:[/red] port {http_port} is already in use."
+                    f" Pass [dim]--port PORT[/dim] to serve on a different port."
+                )
+                console.print(msg)
+                return
+            raise
 
-    async with (
-        http_server,
-        ws_serve(ws_handler, "127.0.0.1", ws_port),
-        asyncio.TaskGroup() as tg,
-    ):
-        tg.create_task(http_server.serve_forever())
-        tg.create_task(_watch(deck_path))
+        with Live(Text(""), console=console, auto_refresh=False) as live:
+            ui = LiveUI(
+                live,
+                http_port,
+                deck_path.parent,
+                get_clients=lambda: len(_state["ws_clients"]),
+            )
+            try:
+                async with (
+                    http_server,
+                    ws_serve(make_ws_handler(ui), "127.0.0.1", ws_port),
+                ):
+                    await rebuild(deck_path, ui)
+                    tasks = [
+                        asyncio.create_task(http_server.serve_forever()),
+                        asyncio.create_task(_watch(deck_path, ui, rebuild_lock)),
+                        asyncio.create_task(
+                            _read_keys(deck_path, http_port, ui, rebuild_lock, shutdown)
+                        ),
+                    ]
+                    await shutdown.wait()
+                    for t in tasks:
+                        t.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+            except OSError as e:
+                if e.errno == errno.EADDRINUSE:
+                    msg = (
+                        f"[red]error:[/red] port {ws_port} is already in use."
+                        f" Pass [dim]--ws-port PORT[/dim] to use a different one."
+                    )
+                    console.print(msg)
+                else:
+                    raise
+    finally:
+        loop.remove_signal_handler(signal.SIGINT)
+        loop.remove_signal_handler(signal.SIGTERM)

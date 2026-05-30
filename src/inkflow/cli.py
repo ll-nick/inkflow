@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import subprocess
 import sys
 from pathlib import Path
@@ -35,10 +36,8 @@ def serve(deck: str, port: int, ws_port: int) -> None:
     deck_path = Path(deck).resolve()
     if not deck_path.exists():
         raise click.ClickException(f"deck not found: {deck_path}")
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(_serve(deck_path, port, ws_port))
-    except KeyboardInterrupt:
-        click.echo("\n[inkflow] stopped")
 
 
 @main.command()
