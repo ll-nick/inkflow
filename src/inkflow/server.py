@@ -6,6 +6,7 @@ import errno
 import importlib.resources
 import importlib.util
 import json
+import os
 import signal
 import sys
 import termios
@@ -254,6 +255,24 @@ async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
 # ── Keyboard handler ──────────────────────────────────────────────────────────
 
 
+def _open_browser(url: str) -> None:
+    # Redirect fd 1/2 to /dev/null so the browser process can't write startup
+    # noise to the terminal and corrupt the Rich Live cursor tracking.
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    saved_out = os.dup(1)
+    saved_err = os.dup(2)
+    try:
+        os.dup2(devnull, 1)
+        os.dup2(devnull, 2)
+        webbrowser.open(url)
+    finally:
+        os.dup2(saved_out, 1)
+        os.dup2(saved_err, 2)
+        os.close(devnull)
+        os.close(saved_out)
+        os.close(saved_err)
+
+
 async def _read_keys(
     deck_path: Path,
     http_port: int,
@@ -282,7 +301,7 @@ async def _read_keys(
                 shutdown.set()
                 return
             elif ch == "o":
-                webbrowser.open(f"http://localhost:{http_port}")
+                _open_browser(f"http://localhost:{http_port}")
             elif ch == "r":
                 async with lock:
                     await rebuild(deck_path, ui)
