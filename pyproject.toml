@@ -50,6 +50,9 @@ dev = [
     "pytest>=9.0.3",
     "ruff>=0.15.13",
 ]
+docs = [
+    "mkdocs-material>=9.0",
+]
 
 [tool.poe.tasks]
 lint      = "ruff check ."
@@ -57,8 +60,20 @@ fmt       = "ruff format --check ."
 typecheck = "basedpyright"
 test      = "pytest"
 
+[tool.poe.env]
+NO_MKDOCS_2_WARNING.default = "1"
+
 [tool.poe.tasks.check]
 sequence = ["lint", "fmt", "typecheck", "test"]
+
+[tool.poe.tasks.docs]
+cmd = "mkdocs serve"
+
+[tool.poe.tasks.docs-build]
+cmd = "mkdocs build"
+
+[tool.poe.tasks.docs-deploy]
+cmd = "mkdocs gh-deploy"
 
 [tool.pyright]
 reportUnusedCallResult = "none"
