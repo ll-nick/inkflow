@@ -10,6 +10,7 @@ from typing import cast
 import click
 
 from inkflow import ns
+from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     inject_layout_layers,
     is_layout_current,
@@ -211,3 +212,55 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     click.echo(f"[inkflow] created {output_rel}")
     click.echo("[inkflow] add to deck.py:")
     click.echo(f'    Slide("{output_rel}"),')
+
+
+@main.command("build")
+@click.argument("deck", default="deck.py")
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output directory (default: build/ next to deck.py)",
+)
+def build_cmd(deck: str, output: str | None) -> None:
+    """Export a self-contained presentation directory for offline use."""
+    deck_path = Path(deck).resolve()
+    if not deck_path.exists():
+        raise click.ClickException(f"deck not found: {deck_path}")
+    out_dir = Path(output).resolve() if output else deck_path.parent / "build"
+    build_static_html(deck_path, out_dir)
+    click.echo(f"[inkflow] built {out_dir / 'index.html'}")
+
+
+@main.command("export")
+@click.argument("deck", default="deck.py")
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output PDF path (default: <deck-stem>.pdf next to deck.py)",
+)
+@click.option(
+    "--chromium",
+    default=None,
+    help="Path to chromium/chrome binary (auto-detected if not set)",
+)
+@click.option(
+    "--no-sandbox",
+    "no_sandbox",
+    is_flag=True,
+    help="Pass --no-sandbox to Chromium (needed when running as root or in Docker).",
+)
+def export_cmd(
+    deck: str, output: str | None, chromium: str | None, no_sandbox: bool
+) -> None:
+    """Export a PDF via headless Chromium (one page per slide)."""
+    deck_path = Path(deck).resolve()
+    if not deck_path.exists():
+        raise click.ClickException(f"deck not found: {deck_path}")
+    out = Path(output).resolve() if output else deck_path.with_suffix(".pdf")
+    try:
+        build_pdf(deck_path, out, chromium, no_sandbox)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"[inkflow] exported {out}")
