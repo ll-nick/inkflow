@@ -2,7 +2,21 @@
 name = "inkflow"
 version = "0.1.0.dev0"
 description = "Beautiful slides from SVG. Your editor, your style."
-requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Nick Le Large"}]
+requires-python = ">=3.10"
+keywords = ["presentation", "slides", "svg", "inkscape", "animation"]
+classifiers = [
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics :: Presentation",
+]
 dependencies = [
     "click>=8.0",
     "lxml>=5.0",
@@ -11,6 +25,10 @@ dependencies = [
     "watchfiles>=0.21",
     "websockets>=12.0",
 ]
+
+[project.urls]
+Homepage = "https://ll-nick.github.io/inkflow"
+Repository = "https://github.com/ll-nick/inkflow"
 
 [project.scripts]
 inkflow = "inkflow.cli:main"
