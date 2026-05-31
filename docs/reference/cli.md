@@ -1,0 +1,135 @@
+# CLI reference
+
+All commands are available via the `inkflow` entry point.
+
+```bash
+inkflow --help
+```
+
+---
+
+## `inkflow serve`
+
+Start the presentation server with live reload.
+
+```bash
+inkflow serve [DECK] [--port PORT] [--ws-port WS_PORT]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `DECK` | `deck.py` | Path to `deck.py` |
+| `--port` | `7777` | HTTP server port |
+| `--ws-port` | `7778` | WebSocket server port |
+
+Opens `http://localhost:{port}` in the default browser.
+File changes trigger a live reload over WebSocket.
+The presenter updates in place without a full page reload.
+
+Press `?` in the browser for keyboard shortcut help.
+
+---
+
+## `inkflow build`
+
+Export a self-contained presentation directory for offline use.
+
+```bash
+inkflow build [DECK] [--output DIR]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `DECK` | `deck.py` | Path to `deck.py` |
+| `--output`, `-o` | `build/` next to `deck.py` | Output directory |
+
+Produces `index.html` with all slides inlined.
+No server required.
+Assets referenced by the deck are copied into the output directory.
+
+---
+
+## `inkflow export`
+
+Export a PDF via headless Chromium. One page per slide, no animations.
+
+```bash
+inkflow export [DECK] [--output FILE] [--chromium PATH] [--no-sandbox]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `DECK` | `deck.py` | Path to `deck.py` |
+| `--output`, `-o` | `<deck-stem>.pdf` | Output PDF path |
+| `--chromium` | auto-detected | Path to `chromium` or `google-chrome` binary |
+| `--no-sandbox` | off | Pass `--no-sandbox` to Chromium (needed when running as root or in Docker) |
+
+Requires a Chromium-based browser on the system.
+
+---
+
+## `inkflow clean`
+
+Strip editor metadata from SVG files in place.
+
+```bash
+inkflow clean FILE [FILE ...] [--stdout]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILE` | required | One or more SVG file paths |
+| `--stdout` | off | Write cleaned SVG to stdout instead of modifying files |
+
+Removes elements and attributes in the Inkscape and Sodipodi namespaces.
+
+---
+
+## `inkflow inject-layout`
+
+Refresh ancestor layout layers in all slide SVGs for editor preview.
+
+```bash
+inkflow inject-layout [DECK] [--check]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `DECK` | `deck.py` | Path to `deck.py` |
+| `--check` | off | Report stale files without rewriting. Exits 1 if any are stale |
+
+Writes each ancestor layout as a locked layer into each slide SVG.
+These layers are visible in Inkscape as a spatial reference
+and are stripped by the pipeline before serving.
+
+Idempotent: compares a hash of each ancestor against an existing layer's stored hash
+and only rewrites stale entries.
+
+---
+
+## `inkflow add`
+
+Create a new slide SVG wired to a layout parent.
+
+```bash
+inkflow add PARENT OUTPUT [--deck DECK]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `PARENT` | required | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
+| `OUTPUT` | required | Path for the new SVG file |
+| `--deck` | `deck.py` | Path to `deck.py` |
+
+Creates the SVG with `inkflow:parent` set,
+then automatically runs `inject-layout` to add preview layers.
+Prints the `Slide(...)` line to add to `deck.py`.
+
+Example:
+
+```bash
+inkflow add content slides/07-new.svg
+# [inkflow] created slides/07-new.svg
+# [inkflow] add to deck.py:
+#     Slide("slides/07-new.svg"),
+```

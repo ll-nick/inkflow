@@ -1,0 +1,102 @@
+# Getting started
+
+This page takes you from zero to a running presentation in about five minutes.
+
+## Prerequisites
+
+- Python 3.10 or newer
+- [uv](https://docs.astral.sh/uv/) (recommended), or pip in a virtualenv
+- An SVG editor.
+  [Inkscape](https://inkscape.org/) is the primary authoring tool,
+  but any editor that exports standard SVG works
+
+## Installation
+
+=== "uv (recommended)"
+
+    ```bash
+    uv add inkflow
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install inkflow
+    ```
+
+!!! note "Early release"
+    Inkflow is early-stage.
+    The package is on PyPI as a pre-release,
+    so you may need to opt in to pre-release versions explicitly:
+
+    ```bash
+    uv add inkflow --prerelease allow
+    ```
+
+    or
+
+    ```bash
+    pip install inkflow --pre
+    ```
+
+## Run the example
+
+The repository ships with a working example deck:
+
+```bash
+uv run inkflow serve example/deck.py
+```
+
+Open [http://localhost:7777](http://localhost:7777) in your browser.
+Use the keyboard to navigate:
+
+| Key | Action |
+|---|---|
+| `→` / `Space` | Next step or slide |
+| `←` | Previous step or slide |
+| `f` | Toggle fullscreen |
+| `?` | Show all shortcuts |
+
+## Create your first deck
+
+**1. Create the project directory:**
+
+```bash
+mkdir my-talk && cd my-talk
+mkdir slides
+```
+
+**2. Draw your first slide in your SVG editor.**
+Save it as `slides/01-title.svg`.
+Give the element you want to animate an ID.
+For example, select the title text and set its ID to `headline`.
+In Inkscape, open Object Properties via the Object menu (or <kbd>Ctrl+Shift+O</kbd>) and type the ID there.
+
+**3. Create `deck.py`:**
+
+```python
+from inkflow import Deck, FadeIn, Slide
+
+deck = Deck()
+deck.slides = [
+    Slide("slides/01-title.svg", animations=[
+        FadeIn("#headline", step=1),
+    ]),
+]
+```
+
+**4. Serve it:**
+
+```bash
+inkflow serve deck.py
+```
+
+Every time you save a change in your editor, the presenter updates automatically.
+No refresh needed.
+
+## Next steps
+
+- [Concepts](concepts.md): understand the mental model before writing more slides
+- [SVG slides](guides/svg-slides.md): animations, element IDs, and what the pipeline does
+- [Markdown slides](guides/markdown-slides.md): write text content in Markdown instead of SVG
+- [Layout system](guides/layout-system.md): reusable slide templates
