@@ -245,14 +245,22 @@ def build_cmd(deck: str, output: str | None) -> None:
     default=None,
     help="Path to chromium/chrome binary (auto-detected if not set)",
 )
-def export_cmd(deck: str, output: str | None, chromium: str | None) -> None:
+@click.option(
+    "--no-sandbox",
+    "no_sandbox",
+    is_flag=True,
+    help="Pass --no-sandbox to Chromium (needed when running as root or in Docker).",
+)
+def export_cmd(
+    deck: str, output: str | None, chromium: str | None, no_sandbox: bool
+) -> None:
     """Export a PDF via headless Chromium (one page per slide)."""
     deck_path = Path(deck).resolve()
     if not deck_path.exists():
         raise click.ClickException(f"deck not found: {deck_path}")
     out = Path(output).resolve() if output else deck_path.with_suffix(".pdf")
     try:
-        build_pdf(deck_path, out, chromium)
+        build_pdf(deck_path, out, chromium, no_sandbox)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"[inkflow] exported {out}")

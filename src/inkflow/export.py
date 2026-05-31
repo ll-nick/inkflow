@@ -67,7 +67,12 @@ def _copy_videos(paths: list[str], project_dir: Path, out_dir: Path) -> None:
 # ── export (PDF) ──────────────────────────────────────────────────────────────
 
 
-def build_pdf(deck_path: Path, output: Path, chromium: str | None = None) -> None:
+def build_pdf(
+    deck_path: Path,
+    output: Path,
+    chromium: str | None = None,
+    no_sandbox: bool = False,
+) -> None:
     exe = chromium or _find_chromium()
     if exe is None:
         raise RuntimeError(
@@ -93,18 +98,17 @@ def build_pdf(deck_path: Path, output: Path, chromium: str | None = None) -> Non
     with tempfile.TemporaryDirectory() as tmp:
         html_path = Path(tmp) / "slides.html"
         html_path.write_text(html, encoding="utf-8")
-        subprocess.run(
-            [
-                exe,
-                "--headless",
-                "--disable-gpu",
-                "--no-sandbox",
-                "--print-to-pdf-no-header",
-                f"--print-to-pdf={output.resolve()}",
-                html_path.as_uri(),
-            ],
-            check=True,
-        )
+        cmd = [
+            exe,
+            "--headless",
+            "--disable-gpu",
+            "--print-to-pdf-no-header",
+            f"--print-to-pdf={output.resolve()}",
+            html_path.as_uri(),
+        ]
+        if no_sandbox:
+            cmd.insert(1, "--no-sandbox")
+        subprocess.run(cmd, check=True)
 
 
 def _find_chromium() -> str | None:
