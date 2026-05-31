@@ -94,7 +94,7 @@ class TestSubstituteContent:
             _ZONE_SVG, [Media("video.mp4", element="#zone-video")], tmp_path
         )
         assert "foreignObject" in result
-        assert "/video.mp4" in result
+        assert "video.mp4" in result
 
     def test_media_default_fit_is_contain(self, tmp_path: Path) -> None:
         img = tmp_path / "photo.png"

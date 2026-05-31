@@ -153,7 +153,7 @@ def _replace_with_media(
     if suffix in _VIDEO_SUFFIXES:
         media_el = etree.Element(
             f"{{{ns.XHTML}}}video",
-            {"src": f"/{src}", "controls": ""},
+            {"src": src, "controls": ""},
             nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
         )
     else:
