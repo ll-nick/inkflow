@@ -1,0 +1,65 @@
+site_name: Inkflow
+site_description: Beautiful slides from SVG. Your editor, your style.
+site_url: https://ll-nick.github.io/inkflow
+repo_url: https://github.com/ll-nick/inkflow
+repo_name: ll-nick/inkflow
+
+theme:
+  name: material
+  logo: assets/logo-light-icon.svg
+  favicon: assets/logo-light-icon.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Concepts: concepts.md
+  - Guides:
+    - SVG slides: guides/svg-slides.md
+    - Markdown slides: guides/markdown-slides.md
+    - Layout system: guides/layout-system.md
+    - Transitions: guides/transitions.md
+    - Themes: guides/themes.md
+    - Export: guides/export.md
+  - Reference:
+    - Manifest: reference/manifest.md
+    - CLI: reference/cli.md
+  - Demo: demo/index.md

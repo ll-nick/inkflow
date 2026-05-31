@@ -3,7 +3,6 @@ from inkflow import (
     Crossfade,
     Cut,
     Deck,
-    FadeIn,
     MarkdownSlide,
     Media,
     Morph,
@@ -15,11 +14,6 @@ deck = Deck()
 deck.slides = [
     Slide(
         "slides/01-title.svg",
-        animations=[
-            FadeIn("#headline", step=1),
-            FadeIn("#subtitle", step=2),
-            FadeIn("#byline", step=3),
-        ],
     ),
     Slide(
         "slides/02-diagram.svg",

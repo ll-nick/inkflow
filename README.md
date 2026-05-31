@@ -9,30 +9,30 @@
 <p align="center"><strong>Beautiful slides from SVG. Your editor, your style.</strong></p>
 
 > **Early-stage software.**
-> The core pipeline works end-to-end —
+> The core pipeline works end-to-end:
 > animations, transitions, live reload, markdown slides, static export.
 > The API is not stable and key features are still missing.
 > Use at your own risk.
 
 ## The idea
 
-Every presentation tool makes the same tradeoff:
-either you get a nice visual authoring environment (PowerPoint, Keynote, Google Slides)
-or you get something that plays well with version control and plaintext workflows (Beamer, Slidev, reveal.js).
-You rarely get both,
-and you almost never get freeform visual design with git-friendly source files and animated, sequenced output.
-Worse, the tools with the best visual editors tend to lock your content into proprietary formats
-that are tied to a specific platform or subscription.
+Every presentation tool makes you choose.
 
-Inkflow tries to bridge that gap.
-The source files are SVGs, Markdown, and a Python config file.
-Any SVG editor works.
-Inkscape is the first-class supported environment,
-but you can use Inkscape, Affinity Designer, a text editor, or anything else that produces valid SVG.
-The presentation layer is a **Python pipeline** that turns those files into an animated, browser-based presenter.
-Because everything is open formats, plaintext, and diffable,
-you are not tied to any particular software or cloud service.
-Switch editors, move repos, or swap tools at any time without losing your work.
+**Visual editors** (PowerPoint, Keynote, Google Slides) give you a canvas.
+Drag shapes, resize freely, iterate until it looks right.
+But your work lives in proprietary formats tied to a platform or subscription,
+and exporting to anything else means fighting a lossy conversion.
+
+**Code-based tools** (Beamer, Slidev, reveal.js) keep everything as plain text.
+Files are diffable, version-controlled, reproducible.
+But you describe layout in markup instead of drawing it.
+Creativity suffers when moving a box means editing a coordinate.
+The blank page is a text cursor, not a canvas.
+
+**Inkflow gives you both.**
+Your authoring environment is a proper vector editor.
+Draw freely, iterate visually.
+Your source files are SVG, Markdown, and Python: open formats, plain text, not tied to any software or service.
 
 ## How it works
 
@@ -84,15 +84,15 @@ inkflow serve deck.py
 # press ? in the presenter for keyboard shortcuts
 ```
 
-To try the bundled example:
+To try the bundled demo:
 
 ```bash
 git clone https://github.com/ll-nick/inkflow
 cd inkflow
-uv run inkflow serve example/deck.py
+uv run inkflow serve demo/deck.py
 ```
 
-No SVG editor is invoked at serve time — Inkscape or any other tool writes the files, Inkflow reads them.
+No SVG editor is invoked at serve time. Inkscape or any other tool writes the files, Inkflow reads them.
 Saving a slide reloads the presenter automatically.
 
 ## Commands
@@ -105,12 +105,22 @@ Saving a slide reloads the presenter automatically.
 
 ## Architecture
 
-- **`deck.py`:** Python manifest; gives you autocomplete and programmatic slide generation for free
+- **`deck.py`:** Python manifest. Gives you autocomplete and programmatic slide generation for free
 - **SVG pipeline:** lxml strips Inkscape editor metadata,
   then annotates elements with CSS animation classes and `data-step` attributes based on the manifest
-- **Layout system:** `MarkdownSlide` injects Markdown content into layout SVGs;
-  built-in theme layouts cover common slide types
-- **Local server:** asyncio HTTP server serves the presenter HTML with slides embedded as JSON;
-  a WebSocket server pushes live-reload signals when files change
-- **Browser presenter:** — vanilla HTML/JS/CSS, no framework
+- **Layout system:** `MarkdownSlide` injects Markdown content into layout SVGs.
+  Built-in theme layouts cover common slide types
+- **Local server:** asyncio HTTP server serves the presenter HTML with slides embedded as JSON.
+  A WebSocket server pushes live-reload signals when files change
+- **Browser presenter:** vanilla HTML/JS/CSS, no framework
 
+## Acknowledgements
+
+[Slidev](https://sli.dev) is an excellent presentation tool and a direct inspiration for this project.
+It's built on Vue and is capable of making full use of your browser's features
+including many things Inkflow will never do.
+
+This project was built making heavy use of coding agents.
+Does that make it "slopware"?
+I'll let you be the judge of that, but every architectural decision is mine
+and every line of code has been reviewed in good old-fashioned manual labor.
