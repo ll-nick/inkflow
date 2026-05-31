@@ -114,3 +114,13 @@ Saving a slide reloads the presenter automatically.
   A WebSocket server pushes live-reload signals when files change
 - **Browser presenter:** vanilla HTML/JS/CSS, no framework
 
+## Acknowledgements
+
+[Slidev](https://sli.dev) is an excellent presentation tool and a direct inspiration for this project.
+It's built on Vue and is capable of making full use of your browser's features
+including many things Inkflow will never do.
+
+This project was built making heavy use of coding agents.
+Does that make it "slopware"?
+I'll let you be the judge of that, but every architectural decision is mine
+and every line of code has been reviewed in good old-fashioned manual labor.
