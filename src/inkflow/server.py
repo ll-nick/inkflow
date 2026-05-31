@@ -33,7 +33,7 @@ from inkflow.tui import LiveUI
 # ── Shared mutable state ──────────────────────────────────────────────────────
 
 
-class _State(TypedDict):
+class State(TypedDict):
     slides: list[str]
     transitions: list[dict[str, object]]
     ws_clients: set[ServerConnection]
@@ -42,7 +42,7 @@ class _State(TypedDict):
     dark_mode: bool
 
 
-_state: _State = {
+_state: State = {
     "slides": [],
     "transitions": [],
     "ws_clients": set(),
@@ -86,7 +86,7 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         project_dir = deck_path.parent
         slides = await asyncio.to_thread(process_deck, deck, project_dir)
         transitions = resolve_transitions(deck)
-        styles_css = await asyncio.to_thread(_load_styles, deck, project_dir)
+        styles_css = await asyncio.to_thread(load_styles, deck, project_dir)
         _state["slides"] = slides
         _state["transitions"] = transitions
         _state["styles_css"] = styles_css
@@ -142,7 +142,7 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
 _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
 
 
-def _load_styles(deck: Deck, project_dir: Path) -> str:
+def load_styles(deck: Deck, project_dir: Path) -> str:
     pkg = importlib.resources.files("inkflow")
     parts = [pkg.joinpath("theme", "styles.css").read_text(encoding="utf-8")]
 
@@ -162,21 +162,22 @@ def _load_styles(deck: Deck, project_dir: Path) -> str:
     return "\n".join(parts)
 
 
-def _build_html(ws_port: int, styles_css: str, dark_mode: bool) -> bytes:
+def build_html(state: State, ws_port: int | None) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
     css = pkg.joinpath("presenter.css").read_text(encoding="utf-8")
     js = pkg.joinpath("presenter.js").read_text(encoding="utf-8")
-    data_theme = "" if dark_mode else "light"
+    data_theme = "" if state["dark_mode"] else "light"
+    ws_port_js = "null" if ws_port is None else str(ws_port)
     html = (
         template.replace("__CSS__", css)
         .replace("__JS__", js)
-        .replace("__STYLES__", styles_css)
+        .replace("__STYLES__", state["styles_css"])
         .replace("__DATA_THEME__", data_theme)
-        .replace("__SLIDES_JSON__", json.dumps(_state["slides"]))
-        .replace("__WS_PORT__", str(ws_port))
-        .replace("__ERROR_JSON__", json.dumps(_state["error"]))
-        .replace("__TRANSITIONS_JSON__", json.dumps(_state["transitions"]))
+        .replace("__SLIDES_JSON__", json.dumps(state["slides"]))
+        .replace("__TRANSITIONS_JSON__", json.dumps(state["transitions"]))
+        .replace("__WS_PORT__", ws_port_js)
+        .replace("__ERROR_JSON__", json.dumps(state["error"]))
     )
     return html.encode("utf-8")
 
@@ -219,7 +220,7 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
                     await writer.drain()
                     return
 
-            body = _build_html(ws_port, _state["styles_css"], _state["dark_mode"])
+            body = build_html(_state, ws_port)
             header = (
                 b"HTTP/1.1 200 OK\r\n"
                 + b"Content-Type: text/html; charset=utf-8\r\n"
