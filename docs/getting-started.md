@@ -48,12 +48,14 @@ uv run inkflow serve demo/deck.py
 ```
 
 Open [http://localhost:7777](http://localhost:7777) in your browser.
-Use the keyboard to navigate:
+Use the keyboard to navigate.
+Here are a few shortcuts to get you started:
 
 | Key | Action |
 |---|---|
-| `→` / `Space` | Next step or slide |
-| `←` | Previous step or slide |
+| `←` / `→` | Navigate slides step-wise |
+| `↓` / `↑` | Jump to next / previous slide (skip steps) |
+| `g` + number + `Enter` | Go to slide number |
 | `f` | Toggle fullscreen |
 | `?` | Show all shortcuts |
 

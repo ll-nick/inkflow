@@ -3,20 +3,22 @@
 This page explains the mental model behind Inkflow.
 Reading it first makes everything else click faster.
 
-## The three-layer model
+## Your project has two things
 
-An Inkflow project has three layers:
+**Your drawings:** SVG files, one per slide.
+Open them in any editor, draw freely, save.
+Plain `Slide` files carry no Inkflow-specific markup at all.
+The one exception is slides that use the layout system: they carry an `inkflow:parent` attribute on the SVG root
+that tells Inkflow which layout SVG to inherit from.
+This is covered in the layout system section below.
 
-```
-deck.py          ← what to show, in what order, with what animations
-slides/*.svg     ← the visual content (your drawings)
-pipeline         ← connects the two: strips editor metadata, injects animation hooks, serves
-```
+**Your deck:** `deck.py`, a plain Python file.
+It says which slides to show, in what order, and which elements to animate.
+It references SVGs by path and elements by ID.
+The SVG files themselves are not modified.
 
-None of these layers knows too much about the others.
-The SVGs are plain vector files. No Inkflow-specific markup is required.
-The `deck.py` references elements by their SVG ID.
-The pipeline is invisible during authoring.
+Inkflow reads both at serve time and connects them in memory.
+Nothing on disk changes.
 
 ## The deck manifest
 
@@ -44,77 +46,77 @@ The pipeline handles the CSS classes and timing.
 
 A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
-Elements start invisible and become visible on their declared step.
-
-```
-Slide 1 — initial state: nothing visible
-Slide 1, step 1: #headline fades in
-Slide 1, step 2: #subtitle fades in
-→ (advance past step 2) → Slide 2
-```
-
-The last step on a slide and the first step on the next slide are separated by the same keypress.
-Inkflow handles the transition automatically.
+Elements targeted by an animation start hidden and appear when their step is reached.
 
 ## SVG slides vs Markdown slides
 
-There are two slide types:
+The simplest slide is just an SVG file.
+You draw everything in your editor, and Inkflow serves it as-is.
 
-**`Slide`**: a raw SVG file.
-You draw everything in your editor.
-Animations target elements by ID.
+Two things SVG editors do not handle well: formatted text and video.
+Text reflow, bullet lists, tables, and code blocks have no equivalent in SVG.
+Video is simply not something an SVG file contains.
+For both cases, Inkflow lets you mark a rectangular area in the SVG as a zone
+by giving it an ID like `zone-title` or `zone-content`.
+Inkflow replaces that rectangle with your content at build time.
+You fill zones from `deck.py` using `TextBox` for text or `Media` for images and video.
 
-**`MarkdownSlide`**: an SVG *template* (called a layout) with named rectangular placeholder zones.
-You write the text content in a `.md` file.
-The pipeline injects it as HTML into the zones at build time.
+`MarkdownSlide` is shorthand for the common case where most of the slide content is text.
+Instead of a source SVG you provide a layout template: an SVG that defines zones but little else.
+Instead of a `TextBox`, you point it at a `.md` file and Inkflow fills the zones automatically.
+Within the Markdown file, `::zone-name::` markers route sections to different zones,
+and `::step::` markers split content into reveal steps.
 
-Use `Slide` when the visual design is the point (diagrams, custom layouts, illustration-heavy slides).
-Use `MarkdownSlide` when you're writing prose, bullet lists, or code blocks
-and want the text to live outside the SVG.
+Use `Slide` when the visual design is the point.
+Use `MarkdownSlide` when the text content is the point.
 
 ## The layout system
 
-Layouts are reusable SVG templates.
-A layout defines **zones**: `<rect>` elements with `id="zone-title"`, `id="zone-content"`, etc.,
-that mark where content will be placed.
-The pipeline replaces each zone rect with a `<foreignObject>` containing the rendered HTML.
-
-Layouts can inherit from other layouts via the `inkflow:parent` attribute on the SVG root:
-
+Layouts are reusable SVG templates, similar to master slides in PowerPoint or Keynote.
+A slide points to a parent layout SVG via the `inkflow:parent` attribute on the root `<svg>` element.
+During the build process, Inkflow adds the layout as a background layer of the slide.
+Inkflow's layout system is hierarchical: a layout can itself inherit from another layout.
 ```
-slides/05-bullets.svg
+slides/05-some-slide.svg   ← your slide, with content and animations
   ↑ inkflow:parent
 layouts/content.svg         ← defines zone-title, zone-content
   ↑ inkflow:parent
-theme/main.svg              ← background, brand elements (no parent — chain terminates)
+theme/main.svg              ← background, brand elements (chain ends here)
 ```
 
-The pipeline resolves the full chain at build time.
-The SVG files on disk stay clean.
+Inkflow resolves the full chain at build time and composites the layers in memory.
+The SVG files on disk are not modified.
 `inject-layout` can optionally write locked preview layers into each SVG
-so you can see the inherited background while editing.
+so you can see the inherited background while editing in Inkscape.
+
+## Themes
+
+A theme is a directory that bundles a set of layouts and a CSS stylesheet.
+It defines the visual identity of a deck: background, color palette, typography.
+Inkflow ships with a built-in theme.
+To use your own, point `Deck` at the directory:
+
+```python
+deck = Deck(theme="./my-theme")
+```
+
+The CSS stylesheet is injected into every slide.
+You can override individual variables or rules at the deck or slide level using the `style` parameter,
+without touching the theme files.
+Themes can opt-in to provide light/dark-mode variants which can be toggled in the presenter.
 
 ## The pipeline
 
-When you run `inkflow serve deck.py`, the pipeline:
-
-1. Loads `deck.py` to get the slide list.
-2. For each slide:
-    - Parses the SVG with lxml.
-    - Strips Inkscape/Sodipodi editor namespaces.
-    - Resolves the layout chain and inlines ancestor layers.
-    - For `MarkdownSlide`, renders the `.md` file and injects HTML into zone rects.
-    - Adds `class` and `data-step` attributes to animated elements.
-3. Serialises each SVG to a string.
-4. Embeds all slides as JSON in the presenter HTML.
-5. Serves via HTTP on port 7777, with live WebSocket updates on port 7778.
-
-The SVG files on disk are never modified by the pipeline.
-All transformations happen in memory.
+When you run `inkflow serve`, Inkflow reads `deck.py` to get the slide list,
+then processes each SVG in memory: stripping editor metadata, resolving the layout chain,
+injecting zone content, and annotating animated elements.
+The result is served to the browser.
+Nothing on disk is touched.
 
 ## No SVG editor at runtime
 
-The pipeline reads plain SVG with lxml. No editor subprocess, no GUI window, no spawned processes.
+The pipeline reads plain SVG with lxml.
+No editor subprocess, no GUI window, no spawned processes.
 Any SVG editor that exports well-formed SVG works as an authoring environment.
 
 ## The presenter
@@ -124,8 +126,3 @@ Slides are embedded as JSON.
 Navigation and step animation are handled client-side.
 The WebSocket connection listens for file changes and swaps slide content in place
 (preserving the current slide index) without a full page reload.
-
-Transitions are CSS-based (Cut, Crossfade) or rAF-loop-based (Morph).
-The Morph transition interpolates SVG geometry attributes directly in SVG user units rather than CSS pixels,
-which avoids coordinate gaps from viewBox scaling.
-Interpolated attributes are `x`, `y`, `width`, `height`, `rx` for rects and `cx`, `cy`, `r` for circles.
