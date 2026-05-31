@@ -1,6 +1,7 @@
+*.egg-info/
+*.pyc
 .venv/
 __pycache__/
-*.pyc
-.inkflow_cache/
+build/
+deck.pdf
 dist/
-*.egg-info/
