@@ -37,7 +37,9 @@ function maxStep() {
 
 function syncURL() {
   const search = step > 0 ? `?clicks=${step}` : '';
-  history.replaceState(null, '', `/${slideIndex + 1}${search}`);
+  try {
+    history.replaceState(null, '', `/${slideIndex + 1}${search}`);
+  } catch (_) {}
 }
 
 function readURL() {
@@ -357,6 +359,10 @@ document.addEventListener('keydown', e => {
 
 // ── WebSocket live reload ──
 function connectWS() {
+  if (!WS_PORT) {
+    wsLabel.textContent = 'offline';
+    return;
+  }
   const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
 
   ws.onopen = () => {
