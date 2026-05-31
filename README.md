@@ -2,85 +2,115 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-light-landscape.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-dark-landscape.svg">
-    <img src="assets/logo-dark-landscape.svg" width="80%">
+    <img src="docs/assets/logo-dark-landscape.svg" width="80%">
   </picture>
 </p>
 
+<p align="center"><strong>Beautiful slides from SVG. Your editor, your style.</strong></p>
 
-**Beautiful slides from SVG. Your editor, your style.**
-
-## What is Inkflow?
-
-Inkflow is early-stage but functional: the full pipeline works end-to-end, step animations run,
-a couple of transitions are implemented, and live reload is in place.
-It's still missing quite a few key features and the config spec is far from final
-so you should probably not be using this tool at the current stage.
+> **Early-stage software.**
+> The core pipeline works end-to-end —
+> animations, transitions, live reload, markdown slides, static export.
+> The API is not stable and key features are still missing.
+> Use at your own risk.
 
 ## The idea
 
-Existing presentation tools on Linux all make the same tradeoff: either you get a nice visual authoring environment (LibreOffice Impress, Google Slides) or you get something that plays well with version control and plaintext workflows (Beamer, Slidev, reveal.js). You rarely get both, and you almost never get freeform visual design with git-friendly source files and animated, sequenced output.
+Every presentation tool makes the same tradeoff:
+either you get a nice visual authoring environment (PowerPoint, Keynote, Google Slides)
+or you get something that plays well with version control and plaintext workflows (Beamer, Slidev, reveal.js).
+You rarely get both,
+and you almost never get freeform visual design with git-friendly source files and animated, sequenced output.
+Worse, the tools with the best visual editors tend to lock your content into proprietary formats
+that are tied to a specific platform or subscription.
 
-Inkflow tries to bridge that gap. The authoring environment is **Inkscape** — a full vector editor where you can draw anything you want. The presentation layer is a **Python pipeline** that turns those SVG files into an animated, browser-based presenter. The source files are SVGs and a Python config file: plaintext, diffable, git-trackable.
+Inkflow tries to bridge that gap.
+The source files are SVGs, Markdown, and a Python config file.
+Any SVG editor works.
+Inkscape is the first-class supported environment,
+but you can use Inkscape, Affinity Designer, a text editor, or anything else that produces valid SVG.
+The presentation layer is a **Python pipeline** that turns those files into an animated, browser-based presenter.
+Because everything is open formats, plaintext, and diffable,
+you are not tied to any particular software or cloud service.
+Switch editors, move repos, or swap tools at any time without losing your work.
 
 ## How it works
 
-```
-my-talk/
-  deck.py             ← the manifest: slide order, animations, steps
-  slides/
-    01-title.svg
-    02-diagram.svg
-  out/                ← build artifacts, gitignored
-```
-
-`deck.py` is a plain Python file that declares the deck:
+A deck is a plain Python file:
 
 ```python
-from inkflow import Bounce, Crossfade, Cut, Deck, FadeIn, Morph, Slide
+from inkflow import Bounce, Crossfade, Cut, Deck, FadeIn, MarkdownSlide, Media, Morph, Slide
 
-deck = Deck(main=None)
+deck = Deck()
+
 deck.slides = [
-    Slide("slides/01-title.svg", animations=[
-        FadeIn("#headline", step=1),
-        FadeIn("#subtitle", step=2),
-    ]),
-    Slide("slides/02-diagram.svg", transition=Cut(), animations=[
+    # SVG slide: draw freely in Inkscape, animate elements by id
+    Slide(
+        "slides/01-title.svg",
+        animations=[
+            FadeIn("#headline", step=1),
+            FadeIn("#subtitle", step=2),
+        ],
+    ),
+    Slide("slides/02-diagram.svg", transition=Crossfade(), animations=[
         Bounce("#box-a", step=1),
         Bounce("#box-b", step=2),
     ]),
-    Slide("slides/03-chart.svg", transition=Crossfade()),
-    Slide("slides/04-summary.svg", transition=Morph(duration=0.7)),
+    Slide("slides/03-chart.svg", transition=Morph(duration=0.7)),
+
+    # Markdown slide: write content in .md, render into a layout SVG
+    MarkdownSlide("layouts/content.svg", content="slides/04-notes.md"),
+    MarkdownSlide(
+        "layouts/media-right.svg",
+        content="slides/05-image.md",
+        media=Media("assets/photo.jpg", fit="cover"),
+    ),
 ]
 ```
 
-Running `inkflow serve deck.py` starts a local server, opens the presenter in the browser, and watches the project directory. Saving a slide in Inkscape reloads the presenter automatically.
+Both slide types support injecting content into named SVG elements:
+`TextBox` to fill a text placeholder, `Media` to embed an image or video.
+`Slide` is SVG-first: the SVG carries the design, with optional content slots for dynamic parts.
+`MarkdownSlide` is layout-first: a template SVG defines the structure,
+a Markdown file provides the text, and named kwargs fill any additional slots.
+It is shorthand for the common case, built on the same injection mechanism.
 
-The presenter handles keyboard navigation and step-based animation.
+## Quick start
+
+```bash
+uv add inkflow # or: pip install inkflow
+inkflow serve deck.py
+# press "o" in the tui to open http://localhost:7777 in your browser,
+# press ? in the presenter for keyboard shortcuts
+```
+
+To try the bundled example:
+
+```bash
+git clone https://github.com/ll-nick/inkflow
+cd inkflow
+uv run inkflow serve example/deck.py
+```
+
+No SVG editor is invoked at serve time — Inkscape or any other tool writes the files, Inkflow reads them.
+Saving a slide reloads the presenter automatically.
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `inkflow serve deck.py` | Start the live-reload presenter |
+| `inkflow build deck.py` | Export a self-contained HTML directory for offline use |
+| `inkflow export deck.py` | Export a PDF via headless Chromium |
 
 ## Architecture
 
-- **`deck.py`** — Python manifest; gives you autocomplete and programmatic slide generation for free
-- **SVG pipeline** — lxml strips Inkscape editor metadata from saved SVGs, then annotates elements with CSS animation classes and `data-step` attributes based on the manifest
-- **Local server** — asyncio HTTP server serves the presenter HTML with slides embedded as JSON; a WebSocket server pushes live-reload signals when files change
-- **Browser presenter** — vanilla HTML/JS/CSS, Catppuccin Mocha color scheme, no framework
+- **`deck.py`:** Python manifest; gives you autocomplete and programmatic slide generation for free
+- **SVG pipeline:** lxml strips Inkscape editor metadata,
+  then annotates elements with CSS animation classes and `data-step` attributes based on the manifest
+- **Layout system:** `MarkdownSlide` injects Markdown content into layout SVGs;
+  built-in theme layouts cover common slide types
+- **Local server:** asyncio HTTP server serves the presenter HTML with slides embedded as JSON;
+  a WebSocket server pushes live-reload signals when files change
+- **Browser presenter:** — vanilla HTML/JS/CSS, no framework
 
-## Running the example
-
-```bash
-git clone ...
-cd inkflow
-uv run inkflow serve example/deck.py
-# open http://localhost:7777
-```
-
-Type `?` in the presenter for keyboard shortcuts.
-
-Inkscape is the authoring environment; it is not invoked at serve time.
-
-## Tech stack
-
-- Python 3.11+, [uv](https://docs.astral.sh/uv/)
-- [lxml](https://lxml.de/) for SVG processing
-- [watchfiles](https://watchfiles.helpmanual.io/) for file watching
-- [websockets](https://websockets.readthedocs.io/) for live reload
-- Vanilla HTML/JS/CSS for the browser presenter
