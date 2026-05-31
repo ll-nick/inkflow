@@ -21,6 +21,8 @@ jobs:
 
       - run: uv sync --group docs
 
+      - run: uv run inkflow build demo/deck.py --output docs/demo/presentation
+
       - run: uv run mkdocs build --strict
 
   deploy:
@@ -33,5 +35,7 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
 
       - run: uv sync --group docs
+
+      - run: uv run inkflow build demo/deck.py --output docs/demo/presentation
 
       - run: uv run mkdocs gh-deploy --force

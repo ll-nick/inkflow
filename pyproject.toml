@@ -67,13 +67,16 @@ NO_MKDOCS_2_WARNING.default = "1"
 sequence = ["lint", "fmt", "typecheck", "test"]
 
 [tool.poe.tasks.docs]
-cmd = "mkdocs serve"
+sequence = [
+  {cmd = "inkflow build demo/deck.py --output docs/demo/presentation"},
+  {cmd = "mkdocs serve"},
+]
 
 [tool.poe.tasks.docs-build]
-cmd = "mkdocs build"
-
-[tool.poe.tasks.docs-deploy]
-cmd = "mkdocs gh-deploy"
+sequence = [
+  {cmd = "inkflow build demo/deck.py --output docs/demo/presentation"},
+  {cmd = "mkdocs build"},
+]
 
 [tool.pyright]
 reportUnusedCallResult = "none"
