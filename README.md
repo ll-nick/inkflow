@@ -1,8 +1,11 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Inkflow logo" height="128">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-light-landscape.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-dark-landscape.svg">
+    <img src="assets/logo-dark-landscape.svg" width="80%">
+  </picture>
 </p>
 
-# Inkflow
 
 **Beautiful slides from SVG. Your editor, your style.**
 
