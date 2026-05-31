@@ -92,7 +92,7 @@ def _replace_with_foreignobject(
     rect = _rect_geometry(el)
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
-    fo.set("overflow", "hidden")
+    fo.set("overflow", "visible")
     fo.set(
         "font-size", str(font_size)
     )  # SVG user units; cascades into HTML content via em
@@ -147,7 +147,7 @@ def _replace_with_media(
     )
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
-    fo.set("overflow", "hidden")
+    fo.set("overflow", "visible")
 
     suffix = Path(src).suffix.lower()
     if suffix in _VIDEO_SUFFIXES:
