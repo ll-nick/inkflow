@@ -84,12 +84,12 @@ inkflow serve deck.py
 # press ? in the presenter for keyboard shortcuts
 ```
 
-To try the bundled example:
+To try the bundled demo:
 
 ```bash
 git clone https://github.com/ll-nick/inkflow
 cd inkflow
-uv run inkflow serve example/deck.py
+uv run inkflow serve demo/deck.py
 ```
 
 No SVG editor is invoked at serve time. Inkscape or any other tool writes the files, Inkflow reads them.

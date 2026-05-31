@@ -4,7 +4,7 @@
 
 ```bash
 uv sync                                   # install deps into .venv
-uv run inkflow serve example/deck.py      # start server at localhost:7777
+uv run inkflow serve demo/deck.py         # start server at localhost:7777
 ```
 
 ## Git setup (one-time, per clone)
@@ -19,7 +19,7 @@ Configures two things:
 
 Git won't run this automatically on clone — that's an intentional git security boundary — so it needs to be run once. After that it's invisible.
 
-SVG source files should be kept clean (no Inkscape metadata) in the repository. Run `uv run inkflow clean example/slides/*.svg` to clean any files committed before the hook was in place.
+SVG source files should be kept clean (no Inkscape metadata) in the repository. Run `uv run inkflow clean demo/slides/*.svg` to clean any files committed before the hook was in place.
 
 ## Project layout
 
@@ -43,8 +43,8 @@ src/inkflow/
   presenter.js      presenter logic (navigation, transitions, WS)
   pdf.html          PDF export template
   theme/            built-in theme: main.svg, layouts/*.svg, styles.css
-example/
-  deck.py           7-slide example deck (SVG slides + MarkdownSlides)
+demo/
+  deck.py           7-slide demo deck (SVG slides + MarkdownSlides)
   slides/           source SVGs and Markdown content files
 ```
 

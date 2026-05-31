@@ -39,12 +39,12 @@ This page takes you from zero to a running presentation in about five minutes.
     pip install inkflow --pre
     ```
 
-## Run the example
+## Run the demo
 
-The repository ships with a working example deck:
+The repository ships with a working demo deck:
 
 ```bash
-uv run inkflow serve example/deck.py
+uv run inkflow serve demo/deck.py
 ```
 
 Open [http://localhost:7777](http://localhost:7777) in your browser.
