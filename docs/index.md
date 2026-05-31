@@ -59,5 +59,10 @@ inkflow serve deck.py   # open http://localhost:7777
 
 ---
 
+!!! note
+    The Guides and Reference sections are currently AI-generated drafts and may contain inaccuracies or incomplete information.
+    I'll review and update them at some point.
+    The getting-started guide and the concepts page have been reviewed and are accurate.
+
 [Get started →](getting-started.md){ .md-button .md-button--primary }
 [Read the concepts →](concepts.md){ .md-button }
