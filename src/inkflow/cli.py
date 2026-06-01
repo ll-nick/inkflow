@@ -117,6 +117,28 @@ def setup_git() -> None:
     click.echo("[inkflow] git setup complete")
 
 
+@main.group()
+def parent() -> None:
+    """Manage slide layout parents."""
+
+
+def _deck_context(deck_path: Path) -> tuple[object, Path]:
+    resolved = deck_path.resolve()
+    if not resolved.exists():
+        raise click.ClickException(f"deck not found: {resolved}")
+    deck_obj = load_deck(resolved)
+    return deck_obj, resolved.parent
+
+
+_deck_option = click.option(
+    "--deck",
+    "deck_path",
+    default="deck.py",
+    type=click.Path(path_type=Path),
+    help="Path to deck.py (default: deck.py in cwd)",
+)
+
+
 @main.command("inject-layout")
 @click.argument("deck", default="deck.py", type=click.Path(path_type=Path))
 @click.option(
