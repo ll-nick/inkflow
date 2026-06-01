@@ -14,6 +14,7 @@ from inkflow.layout import (
     is_layout_current,
     resolve_chain,
     resolve_parent_path,
+    strip_parent,
     with_namespaces,
 )
 from inkflow.manifest import Deck, MarkdownSlide
@@ -198,6 +199,52 @@ def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
     if chain:
         inject_layout_layers(svg_path, chain)
         click.echo(f"[injected]    {svg_path.name}")
+
+
+@parent.command("strip")
+@click.argument("file", required=False, type=click.Path(path_type=Path))
+@click.option(
+    "-y", "--yes", "confirmed", is_flag=True, help="Skip confirmation prompt."
+)
+@_deck_option
+def parent_strip(file: Path | None, confirmed: bool, deck_path: Path) -> None:
+    """Remove inkflow:parent and injected layout layers from slide SVG(s).
+
+    If FILE is omitted, strips all slides in the deck.
+    """
+
+    if file is not None:
+        svg_path = Path(file).resolve()
+        if not svg_path.exists():
+            raise click.ClickException(f"file not found: {svg_path}")
+        if not confirmed:
+            click.confirm(
+                f"Remove inkflow:parent and injected layers from {svg_path.name}?",
+                abort=True,
+            )
+        had_parent = strip_parent(svg_path)
+        click.echo(
+            f"[stripped]    {svg_path.name}"
+            if had_parent
+            else f"[no parent]   {svg_path.name}"
+        )
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        slides = [s for s in deck_obj.slides if not isinstance(s, MarkdownSlide)]
+        if not confirmed:
+            n = len(slides)
+            click.confirm(
+                f"Remove inkflow:parent and injected layers from {n} slide(s)?",
+                abort=True,
+            )
+        for slide in slides:
+            svg_path = resolve_slide_src(slide.src, project_dir)
+            had_parent = strip_parent(svg_path)
+            click.echo(
+                f"[stripped]    {slide.src}"
+                if had_parent
+                else f"[no parent]   {slide.src}"
+            )
 
 @click.option(
     "--check",
