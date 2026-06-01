@@ -183,6 +183,12 @@ def _chain_refs(svg_path: Path, chain: list[Path]) -> list[str]:
     return [_read_parent_attr(child) or "" for child in children]
 
 
+_LAYER_ATTRS: dict[str, str] = {
+    f"{{{ns.INKSCAPE}}}groupmode": "layer",
+    f"{{{ns.SODIPODI}}}insensitive": "true",
+}
+
+
 def is_layout_current(svg_path: Path, chain: list[Path]) -> bool:
     """Return True if svg_path already has up-to-date inject-layout layers."""
     root = etree.parse(svg_path).getroot()
@@ -195,6 +201,8 @@ def is_layout_current(svg_path: Path, chain: list[Path]) -> bool:
         if el.get(INKFLOW_LAYOUT_SRC) != ref:
             return False
         if el.get(INKFLOW_LAYOUT_HASH) != new_hashes[str(p.resolve())]:
+            return False
+        if any(el.get(attr) != val for attr, val in _LAYER_ATTRS.items()):
             return False
     return True
 
