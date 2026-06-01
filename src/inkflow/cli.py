@@ -14,8 +14,10 @@ from inkflow.layout import (
     is_layout_current,
     resolve_chain,
     resolve_parent_path,
+    strip_parent,
+    with_namespaces,
 )
-from inkflow.manifest import MarkdownSlide
+from inkflow.manifest import Deck, MarkdownSlide
 from inkflow.pipeline import clean_inkscape_svg, resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
@@ -23,7 +25,7 @@ from inkflow.server import serve as _serve
 
 @click.group()
 def main() -> None:
-    """Terminal-native SVG presentation tool."""
+    """Beautiful slides from SVG. Your editor, your style."""
 
 
 @main.command()
@@ -116,46 +118,220 @@ def setup_git() -> None:
     click.echo("[inkflow] git setup complete")
 
 
-@main.command("inject-layout")
-@click.argument("deck", default="deck.py", type=click.Path(path_type=Path))
+@main.group()
+def parent() -> None:
+    """Manage slide layout parents."""
+
+
+def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
+    resolved = deck_path.resolve()
+    if not resolved.exists():
+        raise click.ClickException(f"deck not found: {resolved}")
+    deck_obj = load_deck(resolved)
+    return deck_obj, resolved.parent
+
+
+_deck_option = click.option(
+    "--deck",
+    "deck_path",
+    default="deck.py",
+    type=click.Path(path_type=Path),
+    help="Path to deck.py (default: deck.py in cwd)",
+)
+
+
+@parent.command("get")
+@click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
+def parent_get(files: tuple[Path, ...]) -> None:
+    """Print the inkflow:parent value of one or more slide SVGs."""
+    from lxml import etree as _etree
+
+    multi = len(files) > 1
+    for f in files:
+        svg_path = Path(f).resolve()
+        if not svg_path.exists():
+            raise click.ClickException(f"file not found: {svg_path}")
+        root = _etree.parse(svg_path).getroot()
+        value = root.get(ns.INKFLOW_PARENT)
+        label = value if value is not None else "(no parent)"
+        click.echo(f"{f}: {label}" if multi else label)
+
+
+@parent.command("set")
+@click.argument("file", type=click.Path(path_type=Path))
+@click.argument("parent_str", metavar="PARENT")
+@_deck_option
+def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
+    """Set the inkflow:parent of a slide SVG and refresh its layout layers.
+
+    PARENT is a layout name or inkflow:parent string:
+    bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
+    or a relative path.
+    """
+    from lxml import etree as _etree
+
+    svg_path = Path(file).resolve()
+    if not svg_path.exists():
+        raise click.ClickException(f"file not found: {svg_path}")
+
+    deck_obj, project_dir = _deck_context(deck_path)
+
+    try:
+        resolve_parent_path(parent_str, svg_path, project_dir, deck_obj.theme)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    tree = _etree.parse(svg_path)
+    root = tree.getroot()
+    old_parent = root.get(ns.INKFLOW_PARENT)
+
+    root = with_namespaces(root, {"inkflow": ns.INKFLOW})
+    root.set(ns.INKFLOW_PARENT, parent_str)
+    svg_path.write_text(
+        _etree.tostring(root, encoding="unicode", xml_declaration=False),
+        encoding="utf-8",
+    )
+
+    if old_parent is not None:
+        click.echo(f"[inkflow] {svg_path.name}: parent {old_parent!r} → {parent_str!r}")
+    else:
+        click.echo(f"[inkflow] {svg_path.name}: parent set to {parent_str!r}")
+
+    chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
+    if chain:
+        inject_layout_layers(svg_path, chain)
+        click.echo(f"[injected]    {svg_path.name}")
+
+
+@parent.command("strip")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@click.option(
+    "-y", "--yes", "confirmed", is_flag=True, help="Skip confirmation prompt."
+)
+@_deck_option
+def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> None:
+    """Remove inkflow:parent and injected layout layers from slide SVG(s).
+
+    If FILES is omitted, strips all slides in the deck.
+    """
+    if files:
+        targets = [(Path(f).resolve(), str(f)) for f in files]
+        for svg_path, _ in targets:
+            if not svg_path.exists():
+                raise click.ClickException(f"file not found: {svg_path}")
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        targets = [
+            (resolve_slide_src(s.src, project_dir), str(s.src))
+            for s in deck_obj.slides
+            if not isinstance(s, MarkdownSlide)
+        ]
+
+    if not confirmed:
+        n = len(targets)
+        click.confirm(
+            f"Remove inkflow:parent and injected layers from {n} file(s)?",
+            abort=True,
+        )
+    for svg_path, label in targets:
+        had_parent = strip_parent(svg_path)
+        click.echo(f"[stripped]    {label}" if had_parent else f"[no parent]   {label}")
+
+
+_no_deck_option = click.option(
+    "--no-deck",
+    "no_deck",
+    is_flag=True,
+    help=(
+        "Operate without a deck.py (for theme authoring). "
+        "Only builtin: and relative-path parents are allowed."
+    ),
+)
+
+
+@parent.command("inject")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
 @click.option(
     "--check",
     is_flag=True,
-    help="Report stale files without rewriting them. Exits 1 if any are stale.",
+    help="Report stale files without rewriting. Exits 1 if any are stale.",
 )
-def inject_layout_cmd(deck: Path, check: bool) -> None:
-    """Refresh ancestor layout layers in all slide SVGs for Inkscape preview."""
-    deck_path = Path(deck).resolve()
-    if not deck_path.exists():
-        raise click.ClickException(f"deck not found: {deck_path}")
+@_deck_option
+@_no_deck_option
+def parent_inject(
+    files: tuple[Path, ...], check: bool, deck_path: Path, no_deck: bool
+) -> None:
+    """Refresh ancestor layout layers in slide SVG(s) for editor preview.
 
-    deck_obj = load_deck(deck_path)
-    project_dir = deck_path.parent
+    If FILES is omitted, refreshes all slides in the deck.
+    Use --no-deck when authoring a theme without a project deck.py.
+    """
+    if no_deck:
+        if not files:
+            raise click.UsageError("FILES required with --no-deck")
+        project_dir: Path | None = None
+        theme: str | None = None
+        targets = [(Path(f).resolve(), str(f)) for f in files]
+        for svg_path, _ in targets:
+            if not svg_path.exists():
+                raise click.ClickException(f"file not found: {svg_path}")
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        theme = deck_obj.theme
+        if files:
+            targets = [(Path(f).resolve(), str(f)) for f in files]
+            for svg_path, _ in targets:
+                if not svg_path.exists():
+                    raise click.ClickException(f"file not found: {svg_path}")
+        else:
+            targets = [
+                (resolve_slide_src(s.src, project_dir), str(s.src))
+                for s in deck_obj.slides
+                if not isinstance(s, MarkdownSlide)
+            ]
+
     stale_found = False
-
-    for slide in deck_obj.slides:
-        if isinstance(slide, MarkdownSlide):
-            continue  # MarkdownSlide has no per-slide SVG to inject into
-        svg_path = resolve_slide_src(slide.src, project_dir)
-        chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
+    for svg_path, label in targets:
+        try:
+            chain = resolve_chain(svg_path, project_dir, theme)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
         if not chain:
+            if files or no_deck:
+                click.echo(f"[no parent]   {label}")
             continue
-
         if check:
             if is_layout_current(svg_path, chain):
-                click.echo(f"[ok]     {slide.src}")
+                click.echo(f"[ok]     {label}")
             else:
-                click.echo(f"[stale]  {slide.src}")
+                click.echo(f"[stale]  {label}")
                 stale_found = True
         else:
             changed = inject_layout_layers(svg_path, chain)
-            if changed:
-                click.echo(f"[injected]    {slide.src}")
-            else:
-                click.echo(f"[up to date]  {slide.src}")
+            click.echo(
+                f"[injected]    {label}" if changed else f"[up to date]  {label}"
+            )
 
     if check and stale_found:
         sys.exit(1)
+
+
+@parent.command("list")
+@_deck_option
+def parent_list(deck_path: Path) -> None:
+    """List all slides and their inkflow:parent values."""
+    from lxml import etree as _etree
+
+    deck_obj, project_dir = _deck_context(deck_path)
+
+    for slide in deck_obj.slides:
+        if isinstance(slide, MarkdownSlide):
+            click.echo(f"{'[markdown: ' + slide.template + ']':<45} (markdown slide)")
+            continue
+        svg_path = resolve_slide_src(slide.src, project_dir)
+        root = _etree.parse(svg_path).getroot()
+        value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
+        click.echo(f"{slide.src!s:<45} {value}")
 
 
 @main.command("add")

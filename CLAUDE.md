@@ -31,7 +31,7 @@ src/inkflow/
   manifest.py       dataclasses for the deck DSL
   pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
   content.py        TextBox / Media injection into zone rects
-  layout.py         inject-layout: layout chain resolution and Inkscape layer writing
+  layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
   markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing
   server.py         HTTP server, WebSocket server, file watcher, build pipeline
   export.py         static HTML export (inkflow build) and PDF export (inkflow export)

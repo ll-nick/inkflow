@@ -47,20 +47,21 @@ def _read_parent_attr(svg_path: Path) -> str | None:
 def resolve_parent_path(
     parent_str: str,
     svg_path: Path,
-    project_root: Path,
+    project_root: Path | None,
     theme: str | None,
 ) -> Path:
     """Resolve an inkflow:parent string to an absolute Path.
 
     Prefix syntaxes (bypass the search):
-      local:foo      →  {project_root}/layouts/foo.svg
-      theme:foo      →  {theme_dir}/layouts/foo.svg
+      local:foo      →  {project_root}/layouts/foo.svg   (requires project_root)
+      theme:foo      →  {theme_dir}/layouts/foo.svg      (requires theme)
       builtin:foo    →  {builtin_theme_dir}/layouts/foo.svg
       ./foo, ../foo  →  relative to svg_path's directory
       /absolute      →  literal filesystem path
 
     Bare single-part name (no prefix, no separator):
       Three-level search: project layouts/ → theme layouts/ → built-in layouts/
+      Levels are skipped when project_root or theme is None.
     Multi-part relative path (has /, no prefix):
       Relative to svg_path's directory (backward-compatible with inkflow:parent).
     """
@@ -70,6 +71,11 @@ def resolve_parent_path(
 
     if parent_str.startswith("local:"):
         name = parent_str[len("local:") :]
+        if project_root is None:
+            raise ValueError(
+                f"local:{name} requires a project root. "
+                + "Use --deck to point to a project."
+            )
         resolved = _with_svg(project_root / "layouts" / name)
         if not resolved.exists():
             raise ValueError(f"local:{name} not found at {resolved}")
@@ -78,8 +84,8 @@ def resolve_parent_path(
     if parent_str.startswith("theme:"):
         name = parent_str[len("theme:") :]
         if theme is None:
-            raise ValueError(f"theme:{name} requires Deck(theme=...) to be set")
-        theme_dir = resolve_theme_dir(theme, project_root)
+            raise ValueError(f"theme:{name} requires Deck(theme=...) to be set.")
+        theme_dir = resolve_theme_dir(theme, project_root or Path())
         resolved = _with_svg(theme_dir / "layouts" / name)
         if not resolved.exists():
             raise ValueError(f"theme:{name} not found at {resolved}")
@@ -104,12 +110,16 @@ def resolve_parent_path(
     if "/" in parent_str:
         return _with_svg((svg_path.parent / parent_str).resolve())
 
-    # Bare single-part name — three-level search
+    # Bare single-part name — three-level search; levels skipped when context is absent
     name = parent_str
-    candidates: list[Path] = [_with_svg(project_root / "layouts" / name)]
+    candidates: list[Path] = []
+    if project_root is not None:
+        candidates.append(_with_svg(project_root / "layouts" / name))
     if theme is not None:
         candidates.append(
-            _with_svg(resolve_theme_dir(theme, project_root) / "layouts" / name)
+            _with_svg(
+                resolve_theme_dir(theme, project_root or Path()) / "layouts" / name
+            )
         )
     candidates.append(_with_svg(_builtin_theme_dir() / "layouts" / name))
 
@@ -126,13 +136,14 @@ def resolve_parent_path(
 
 def resolve_chain(
     svg_path: Path,
-    project_root: Path,
+    project_root: Path | None,
     theme: str | None,
 ) -> list[Path]:
     """Return the ancestor chain for svg_path, root-first, excluding svg_path itself.
 
     Returns an empty list if the file has no inkflow:parent.
-    Raises ValueError on circular chains.
+    Raises ValueError on circular chains or when a parent string requires context
+    (project_root for local:, theme for theme:) that is not available.
     """
     chain: list[Path] = []
     current = svg_path.resolve()
@@ -160,6 +171,23 @@ def strip_layout_layers(root: etree._Element) -> None:  # pyright: ignore[report
     to_remove = [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]
     for el in to_remove:
         root.remove(el)
+
+
+def strip_parent(svg_path: Path) -> bool:
+    """Remove inkflow:parent and injected layout layers from svg_path in place.
+
+    Returns True if the file had an inkflow:parent attribute.
+    """
+    root = etree.parse(svg_path).getroot()
+    had_parent = INKFLOW_PARENT in root.attrib
+    if had_parent:
+        del root.attrib[INKFLOW_PARENT]
+    strip_layout_layers(root)
+    svg_path.write_text(
+        etree.tostring(root, encoding="unicode", xml_declaration=False),
+        encoding="utf-8",
+    )
+    return had_parent
 
 
 # ── inject_layout_layers ──────────────────────────────────────────────────────
@@ -239,7 +267,7 @@ def _build_layer_group(
     return g
 
 
-def _with_namespaces(
+def with_namespaces(
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
     additions: dict[str, str],
 ) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
@@ -279,7 +307,7 @@ def inject_layout_layers(svg_path: Path, chain: list[Path]) -> bool:
     for i, (ancestor_path, ref) in enumerate(zip(chain, refs, strict=True)):
         root.insert(i, _build_layer_group(ancestor_path, ref, hashes))
 
-    out = _with_namespaces(root, {"inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI})
+    out = with_namespaces(root, {"inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI})
     svg_path.write_text(
         etree.tostring(out, encoding="unicode", xml_declaration=False),
         encoding="utf-8",

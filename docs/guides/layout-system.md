@@ -81,7 +81,7 @@ inkflow add content slides/07-new.svg
 ```
 
 This creates `slides/07-new.svg` with `inkflow:parent="content"` set,
-then automatically runs `inject-layout` to add preview layers.
+then automatically runs `parent inject` to add preview layers.
 
 Add it to `deck.py`:
 
@@ -89,13 +89,27 @@ Add it to `deck.py`:
 Slide("slides/07-new.svg"),
 ```
 
+## Changing or removing a parent
+
+To rewire an existing slide to a different layout:
+
+```bash
+inkflow parent set slides/07-new.svg builtin:content
+```
+
+To detach a slide from all layout parents:
+
+```bash
+inkflow parent strip slides/07-new.svg
+```
+
 ## Previewing layouts in Inkscape
 
-`inject-layout` writes each ancestor as a locked layer into the slide SVG,
+`inkflow parent inject` writes each ancestor as a locked layer into the slide SVG,
 so you can see the inherited background and zone positions while editing in your SVG editor:
 
 ```bash
-inkflow inject-layout deck.py
+inkflow parent inject
 ```
 
 These layers are for authoring reference only.
@@ -104,10 +118,35 @@ The pipeline strips them before serving. They never appear in the browser.
 To check if any layers are stale without rewriting:
 
 ```bash
-inkflow inject-layout --check deck.py
+inkflow parent inject --check
 ```
 
 Exits with code 1 if any files need updating (useful in CI).
+
+## Authoring a theme
+
+Theme layouts live outside any project and have no `deck.py`.
+Within a theme, layouts may still chain to each other or to built-in layouts —
+but `local:` and `theme:` references are not available (they require a project context).
+Use `builtin:` or relative paths instead:
+
+```xml
+<!-- theme/layouts/content.svg -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkflow="urn:inkflow"
+     inkflow:parent="builtin:default"
+     viewBox="0 0 1920 1080" width="1920" height="1080">
+  ...
+</svg>
+```
+
+To refresh injected layout layers while working on theme files, use `--no-deck`:
+
+```bash
+inkflow parent inject --no-deck layouts/*.svg
+```
+
+Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediately.
 
 ## Writing a custom layout
 

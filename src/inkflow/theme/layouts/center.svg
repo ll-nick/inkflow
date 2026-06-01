@@ -1,3 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="../numbered-main.svg" viewBox="0 0 1920 1080" width="1920" height="1080">
-  <rect id="zone-content" x="80" y="80" width="1760" height="900"/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="../numbered-main.svg" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:main__" sodipodi:insensitive="true" inkflow:layout-src="./main.svg" inkflow:layout-hash="0a706ca8"><rect width="1920" height="1080" class="slide-bg"/>
+</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered-main__" sodipodi:insensitive="true" inkflow:layout-src="../numbered-main.svg" inkflow:layout-hash="0cb021d6"><text id="zone-slide-number" x="1820" y="1055" class="theme-text-muted" text-anchor="end" font-size="28px" font-family="sans-serif">99</text>
+  <text id="zone-slide-total" x="1860" y="1055" class="theme-text-muted" font-size="28px" font-family="sans-serif">99</text>
+  <text id="text1" x="1832.489" y="1055" class="theme-text-muted" font-size="28px" font-family="sans-serif">/</text>
+</g><rect id="zone-content" x="80" y="80" width="1760" height="900"/>
 </svg>

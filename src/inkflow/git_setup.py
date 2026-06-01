@@ -48,12 +48,13 @@ def git_root() -> Path:
 def resolve_textconv(root: Path) -> str:
     """Return the textconv command for the local git config.
 
-    The textconv lives in .git/config (per-clone, never committed)
-    so using an absolute path to the executable is fine.
+    Returns a command that will run inkflow clean --stdout.
+    Prefers a local .venv/bin/inkflow if it exists,
+    otherwise falls back to global inkflow.
     """
     venv_bin = root / ".venv" / "bin" / "inkflow"
     if venv_bin.exists():
-        return f"{venv_bin} clean --stdout"
+        return ".venv/bin/inkflow clean --stdout"
     if subprocess.run(["which", "inkflow"], capture_output=True).returncode == 0:
         return "inkflow clean --stdout"
     raise RuntimeError(
