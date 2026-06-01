@@ -142,13 +142,15 @@ inkflow parent COMMAND [ARGS]...
 Print the `inkflow:parent` value of a slide SVG.
 
 ```bash
-inkflow parent get FILE
+inkflow parent get FILE [FILE ...]
 ```
 
 | Argument | Description |
 |---|---|
-| `FILE` | Path to the slide SVG |
+| `FILE` | One or more slide SVGs |
 
+With a single file, prints just the value (useful for scripting).
+With multiple files, prefixes each line with the filename.
 Prints `(no parent)` if the attribute is absent.
 
 ---
@@ -177,12 +179,12 @@ then automatically runs `parent inject` on the file.
 Remove `inkflow:parent` and all injected layout layers from one or all slides.
 
 ```bash
-inkflow parent strip [FILE] [--deck DECK] [-y]
+inkflow parent strip [FILES...] [--deck DECK] [-y]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | all slides in deck | Path to the slide SVG |
+| `FILES` | all slides in deck | One or more slide SVGs (glob-friendly) |
 | `--deck` | `deck.py` | Path to `deck.py` |
 | `-y`, `--yes` | off | Skip the confirmation prompt |
 
@@ -197,14 +199,15 @@ The SVG's own content is untouched.
 Refresh ancestor layout layers in slide SVG(s) for editor preview.
 
 ```bash
-inkflow parent inject [FILE] [--deck DECK] [--check]
+inkflow parent inject [FILES...] [--deck DECK] [--check] [--no-deck]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | all slides in deck | Path to the slide SVG |
+| `FILES` | all slides in deck | One or more slide SVGs (glob-friendly) |
 | `--deck` | `deck.py` | Path to `deck.py` |
 | `--check` | off | Report stale files without rewriting. Exits 1 if any are stale |
+| `--no-deck` | off | Skip deck lookup (for theme authoring, see below) |
 
 Writes each ancestor layout as a locked layer into each slide SVG.
 These layers are visible in Inkscape as a spatial reference
@@ -212,6 +215,10 @@ and are stripped by the pipeline before serving.
 
 Idempotent: compares a hash of each ancestor against an existing layer's stored hash
 and only rewrites stale entries.
+
+`--no-deck` is intended for theme authors who work without a `deck.py`.
+It requires explicit `FILES` and restricts parent references to `builtin:` and
+relative paths (`./`, `../`). Using `local:` or `theme:` with `--no-deck` is an error.
 
 ---
 

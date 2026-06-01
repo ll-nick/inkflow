@@ -123,6 +123,31 @@ inkflow parent inject --check
 
 Exits with code 1 if any files need updating (useful in CI).
 
+## Authoring a theme
+
+Theme layouts live outside any project and have no `deck.py`.
+Within a theme, layouts may still chain to each other or to built-in layouts —
+but `local:` and `theme:` references are not available (they require a project context).
+Use `builtin:` or relative paths instead:
+
+```xml
+<!-- theme/layouts/content.svg -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkflow="urn:inkflow"
+     inkflow:parent="builtin:default"
+     viewBox="0 0 1920 1080" width="1920" height="1080">
+  ...
+</svg>
+```
+
+To refresh injected layout layers while working on theme files, use `--no-deck`:
+
+```bash
+inkflow parent inject --no-deck layouts/*.svg
+```
+
+Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediately.
+
 ## Writing a custom layout
 
 1. Create `layouts/my-layout.svg` in your project directory.
