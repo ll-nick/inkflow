@@ -127,17 +127,83 @@ They just need to run `inkflow setup-git` themselves to activate the config entr
 
 ---
 
-## `inkflow inject-layout`
+## `inkflow parent`
 
-Refresh ancestor layout layers in all slide SVGs for editor preview.
+Manage slide layout parents.
 
 ```bash
-inkflow inject-layout [DECK] [--check]
+inkflow parent COMMAND [ARGS]...
+```
+
+---
+
+### `inkflow parent get`
+
+Print the `inkflow:parent` value of a slide SVG.
+
+```bash
+inkflow parent get FILE
+```
+
+| Argument | Description |
+|---|---|
+| `FILE` | Path to the slide SVG |
+
+Prints `(no parent)` if the attribute is absent.
+
+---
+
+### `inkflow parent set`
+
+Set the `inkflow:parent` of a slide SVG and refresh its layout layers.
+
+```bash
+inkflow parent set FILE PARENT [--deck DECK]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `FILE` | required | Path to the slide SVG |
+| `PARENT` | required | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
+| `--deck` | `deck.py` | Path to `deck.py` |
+
+Validates that `PARENT` resolves, updates the attribute in place,
+then automatically runs `parent inject` on the file.
+
+---
+
+### `inkflow parent strip`
+
+Remove `inkflow:parent` and all injected layout layers from one or all slides.
+
+```bash
+inkflow parent strip [FILE] [--deck DECK] [-y]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILE` | all slides in deck | Path to the slide SVG |
+| `--deck` | `deck.py` | Path to `deck.py` |
+| `-y`, `--yes` | off | Skip the confirmation prompt |
+
+Always prompts for confirmation unless `-y` is passed.
+Use this to detach a slide from its layout.
+The SVG's own content is untouched.
+
+---
+
+### `inkflow parent inject`
+
+Refresh ancestor layout layers in slide SVG(s) for editor preview.
+
+```bash
+inkflow parent inject [FILE] [--deck DECK] [--check]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILE` | all slides in deck | Path to the slide SVG |
+| `--deck` | `deck.py` | Path to `deck.py` |
 | `--check` | off | Report stale files without rewriting. Exits 1 if any are stale |
 
 Writes each ancestor layout as a locked layer into each slide SVG.
@@ -146,6 +212,20 @@ and are stripped by the pipeline before serving.
 
 Idempotent: compares a hash of each ancestor against an existing layer's stored hash
 and only rewrites stale entries.
+
+---
+
+### `inkflow parent list`
+
+List all slides and their `inkflow:parent` values.
+
+```bash
+inkflow parent list [--deck DECK]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--deck` | `deck.py` | Path to `deck.py` |
 
 ---
 
@@ -164,7 +244,7 @@ inkflow add PARENT OUTPUT [--deck DECK]
 | `--deck` | `deck.py` | Path to `deck.py` |
 
 Creates the SVG with `inkflow:parent` set,
-then automatically runs `inject-layout` to add preview layers.
+then automatically runs `parent inject` to add preview layers.
 Prints the `Slide(...)` line to add to `deck.py`.
 
 Example:

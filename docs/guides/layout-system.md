@@ -81,7 +81,7 @@ inkflow add content slides/07-new.svg
 ```
 
 This creates `slides/07-new.svg` with `inkflow:parent="content"` set,
-then automatically runs `inject-layout` to add preview layers.
+then automatically runs `parent inject` to add preview layers.
 
 Add it to `deck.py`:
 
@@ -89,13 +89,27 @@ Add it to `deck.py`:
 Slide("slides/07-new.svg"),
 ```
 
+## Changing or removing a parent
+
+To rewire an existing slide to a different layout:
+
+```bash
+inkflow parent set slides/07-new.svg builtin:content
+```
+
+To detach a slide from all layout parents:
+
+```bash
+inkflow parent strip slides/07-new.svg
+```
+
 ## Previewing layouts in Inkscape
 
-`inject-layout` writes each ancestor as a locked layer into the slide SVG,
+`inkflow parent inject` writes each ancestor as a locked layer into the slide SVG,
 so you can see the inherited background and zone positions while editing in your SVG editor:
 
 ```bash
-inkflow inject-layout deck.py
+inkflow parent inject
 ```
 
 These layers are for authoring reference only.
@@ -104,7 +118,7 @@ The pipeline strips them before serving. They never appear in the browser.
 To check if any layers are stale without rewriting:
 
 ```bash
-inkflow inject-layout --check deck.py
+inkflow parent inject --check
 ```
 
 Exits with code 1 if any files need updating (useful in CI).
