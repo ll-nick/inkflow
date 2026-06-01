@@ -141,17 +141,20 @@ _deck_option = click.option(
 
 
 @parent.command("get")
-@click.argument("file", type=click.Path(path_type=Path))
-def parent_get(file: Path) -> None:
-    """Print the inkflow:parent value of a slide SVG."""
+@click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
+def parent_get(files: tuple[Path, ...]) -> None:
+    """Print the inkflow:parent value of one or more slide SVGs."""
     from lxml import etree as _etree
 
-    svg_path = Path(file).resolve()
-    if not svg_path.exists():
-        raise click.ClickException(f"file not found: {svg_path}")
-    root = _etree.parse(svg_path).getroot()
-    value = root.get(ns.INKFLOW_PARENT)
-    click.echo(value if value is not None else "(no parent)")
+    multi = len(files) > 1
+    for f in files:
+        svg_path = Path(f).resolve()
+        if not svg_path.exists():
+            raise click.ClickException(f"file not found: {svg_path}")
+        root = _etree.parse(svg_path).getroot()
+        value = root.get(ns.INKFLOW_PARENT)
+        label = value if value is not None else "(no parent)"
+        click.echo(f"{f}: {label}" if multi else label)
 
 
 @parent.command("set")
@@ -201,109 +204,84 @@ def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
 
 
 @parent.command("strip")
-@click.argument("file", required=False, type=click.Path(path_type=Path))
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
 @click.option(
     "-y", "--yes", "confirmed", is_flag=True, help="Skip confirmation prompt."
 )
 @_deck_option
-def parent_strip(file: Path | None, confirmed: bool, deck_path: Path) -> None:
+def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> None:
     """Remove inkflow:parent and injected layout layers from slide SVG(s).
 
-    If FILE is omitted, strips all slides in the deck.
+    If FILES is omitted, strips all slides in the deck.
     """
-
-    if file is not None:
-        svg_path = Path(file).resolve()
-        if not svg_path.exists():
-            raise click.ClickException(f"file not found: {svg_path}")
-        if not confirmed:
-            click.confirm(
-                f"Remove inkflow:parent and injected layers from {svg_path.name}?",
-                abort=True,
-            )
-        had_parent = strip_parent(svg_path)
-        click.echo(
-            f"[stripped]    {svg_path.name}"
-            if had_parent
-            else f"[no parent]   {svg_path.name}"
-        )
+    if files:
+        targets = [(Path(f).resolve(), str(f)) for f in files]
+        for svg_path, _ in targets:
+            if not svg_path.exists():
+                raise click.ClickException(f"file not found: {svg_path}")
     else:
         deck_obj, project_dir = _deck_context(deck_path)
-        slides = [s for s in deck_obj.slides if not isinstance(s, MarkdownSlide)]
-        if not confirmed:
-            n = len(slides)
-            click.confirm(
-                f"Remove inkflow:parent and injected layers from {n} slide(s)?",
-                abort=True,
-            )
-        for slide in slides:
-            svg_path = resolve_slide_src(slide.src, project_dir)
-            had_parent = strip_parent(svg_path)
-            click.echo(
-                f"[stripped]    {slide.src}"
-                if had_parent
-                else f"[no parent]   {slide.src}"
-            )
+        targets = [
+            (resolve_slide_src(s.src, project_dir), str(s.src))
+            for s in deck_obj.slides
+            if not isinstance(s, MarkdownSlide)
+        ]
+
+    if not confirmed:
+        n = len(targets)
+        click.confirm(
+            f"Remove inkflow:parent and injected layers from {n} file(s)?",
+            abort=True,
+        )
+    for svg_path, label in targets:
+        had_parent = strip_parent(svg_path)
+        click.echo(f"[stripped]    {label}" if had_parent else f"[no parent]   {label}")
 
 
 @parent.command("inject")
-@click.argument("file", required=False, type=click.Path(path_type=Path))
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
 @click.option(
     "--check",
     is_flag=True,
     help="Report stale files without rewriting. Exits 1 if any are stale.",
 )
 @_deck_option
-def parent_inject(file: Path | None, check: bool, deck_path: Path) -> None:
+def parent_inject(files: tuple[Path, ...], check: bool, deck_path: Path) -> None:
     """Refresh ancestor layout layers in slide SVG(s) for editor preview.
 
-    If FILE is omitted, refreshes all slides in the deck.
+    If FILES is omitted, refreshes all slides in the deck.
     """
     deck_obj, project_dir = _deck_context(deck_path)
     stale_found = False
 
-    if file is not None:
-        svg_path = Path(file).resolve()
-        if not svg_path.exists():
-            raise click.ClickException(f"file not found: {svg_path}")
-        chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
-        if not chain:
-            click.echo(f"[no parent]   {svg_path.name}")
-            return
-        if check:
-            if is_layout_current(svg_path, chain):
-                click.echo(f"[ok]     {svg_path.name}")
-            else:
-                click.echo(f"[stale]  {svg_path.name}")
-                sys.exit(1)
-        else:
-            changed = inject_layout_layers(svg_path, chain)
-            click.echo(
-                f"[injected]    {svg_path.name}"
-                if changed
-                else f"[up to date]  {svg_path.name}"
-            )
-        return
+    if files:
+        targets = [(Path(f).resolve(), str(f)) for f in files]
+        for svg_path, _ in targets:
+            if not svg_path.exists():
+                raise click.ClickException(f"file not found: {svg_path}")
+    else:
+        targets = [
+            (resolve_slide_src(s.src, project_dir), str(s.src))
+            for s in deck_obj.slides
+            if not isinstance(s, MarkdownSlide)
+        ]
 
-    for slide in deck_obj.slides:
-        if isinstance(slide, MarkdownSlide):
-            continue
-        svg_path = resolve_slide_src(slide.src, project_dir)
+    for svg_path, label in targets:
         chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
         if not chain:
+            if files:
+                click.echo(f"[no parent]   {label}")
             continue
         if check:
             if is_layout_current(svg_path, chain):
-                click.echo(f"[ok]     {slide.src}")
+                click.echo(f"[ok]     {label}")
             else:
-                click.echo(f"[stale]  {slide.src}")
+                click.echo(f"[stale]  {label}")
                 stale_found = True
         else:
             changed = inject_layout_layers(svg_path, chain)
             click.echo(
-                f"[injected]    {slide.src}"
-                if changed
-                else f"[up to date]  {slide.src}"
+                f"[injected]    {label}" if changed else f"[up to date]  {label}"
             )
 
     if check and stale_found:
