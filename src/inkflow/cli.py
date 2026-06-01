@@ -154,6 +154,51 @@ def parent_get(file: Path) -> None:
 
 @main.command("inject-layout")
 @click.argument("deck", default="deck.py", type=click.Path(path_type=Path))
+@parent.command("set")
+@click.argument("file", type=click.Path(path_type=Path))
+@click.argument("parent_str", metavar="PARENT")
+@_deck_option
+def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
+    """Set the inkflow:parent of a slide SVG and refresh its layout layers.
+
+    PARENT is a layout name or inkflow:parent string:
+    bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
+    or a relative path.
+    """
+    from lxml import etree as _etree
+
+    svg_path = Path(file).resolve()
+    if not svg_path.exists():
+        raise click.ClickException(f"file not found: {svg_path}")
+
+    deck_obj, project_dir = _deck_context(deck_path)
+
+    try:
+        resolve_parent_path(parent_str, svg_path, project_dir, deck_obj.theme)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    tree = _etree.parse(svg_path)
+    root = tree.getroot()
+    old_parent = root.get(ns.INKFLOW_PARENT)
+
+    root = with_namespaces(root, {"inkflow": ns.INKFLOW})
+    root.set(ns.INKFLOW_PARENT, parent_str)
+    svg_path.write_text(
+        _etree.tostring(root, encoding="unicode", xml_declaration=False),
+        encoding="utf-8",
+    )
+
+    if old_parent is not None:
+        click.echo(f"[inkflow] {svg_path.name}: parent {old_parent!r} → {parent_str!r}")
+    else:
+        click.echo(f"[inkflow] {svg_path.name}: parent set to {parent_str!r}")
+
+    chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
+    if chain:
+        inject_layout_layers(svg_path, chain)
+        click.echo(f"[injected]    {svg_path.name}")
+
 @click.option(
     "--check",
     is_flag=True,
@@ -261,63 +306,6 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     click.echo(f"[inkflow] created {output_rel}")
     click.echo("[inkflow] add to deck.py:")
     click.echo(f'    Slide("{output_rel}"),')
-
-
-@main.command("set-parent")
-@click.argument("file", type=click.Path(path_type=Path))
-@click.argument("parent")
-@click.option(
-    "--deck",
-    "deck_path",
-    default="deck.py",
-    type=click.Path(path_type=Path),
-    help="Path to deck.py (default: deck.py in cwd)",
-)
-def set_parent_cmd(file: Path, parent: str, deck_path: Path) -> None:
-    """Change the inkflow:parent of a slide SVG and refresh its layout layers.
-
-    FILE is the SVG slide to update. PARENT is a layout name or inkflow:parent string:
-    bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
-    or a relative path.
-    """
-    from lxml import etree as _etree
-
-    svg_path = Path(file).resolve()
-    if not svg_path.exists():
-        raise click.ClickException(f"file not found: {svg_path}")
-
-    resolved_deck = Path(deck_path).resolve()
-    if not resolved_deck.exists():
-        raise click.ClickException(f"deck not found: {resolved_deck}")
-
-    deck_obj = load_deck(resolved_deck)
-    project_dir = resolved_deck.parent
-
-    try:
-        resolve_parent_path(parent, svg_path, project_dir, deck_obj.theme)
-    except ValueError as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    tree = _etree.parse(svg_path)
-    root = tree.getroot()
-    old_parent = root.get(ns.INKFLOW_PARENT)
-
-    root = with_namespaces(root, {"inkflow": ns.INKFLOW})
-    root.set(ns.INKFLOW_PARENT, parent)
-    svg_path.write_text(
-        _etree.tostring(root, encoding="unicode", xml_declaration=False),
-        encoding="utf-8",
-    )
-
-    if old_parent is not None:
-        click.echo(f"[inkflow] {svg_path.name}: parent {old_parent!r} → {parent!r}")
-    else:
-        click.echo(f"[inkflow] {svg_path.name}: parent set to {parent!r}")
-
-    chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
-    if chain:
-        inject_layout_layers(svg_path, chain)
-        click.echo(f"[injected]    {svg_path.name}")
 
 
 @main.command("build")
