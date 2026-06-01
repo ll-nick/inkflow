@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import subprocess
 import sys
 from pathlib import Path
-from typing import cast
 
 import click
 
@@ -49,8 +47,16 @@ def serve(deck: str, port: int, ws_port: int) -> None:
     is_flag=True,
     help="Write to stdout instead of modifying files in place",
 )
-def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
+@click.option(
+    "--check",
+    is_flag=True,
+    help="Exit non-zero if any file would be modified, without writing changes",
+)
+def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
     """Strip Inkscape editor metadata from SVG files."""
+    if check and to_stdout:
+        raise click.UsageError("--check and --stdout are mutually exclusive")
+    dirty = False
     errors = False
     for p in files:
         if not p.exists():
@@ -59,7 +65,11 @@ def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
             continue
         try:
             cleaned = clean_inkscape_svg(p)
-            if to_stdout:
+            if check:
+                if cleaned != p.read_text(encoding="utf-8"):
+                    click.echo(f"[inkflow] would clean: {p}", err=True)
+                    dirty = True
+            elif to_stdout:
                 sys.stdout.write(cleaned)
             else:
                 p.write_text(cleaned, encoding="utf-8")
@@ -67,7 +77,7 @@ def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
         except Exception as exc:
             click.echo(f"[inkflow] clean: error processing {p}: {exc}", err=True)
             errors = True
-    if errors:
+    if dirty or errors:
         sys.exit(1)
 
 
