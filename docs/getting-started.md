@@ -96,6 +96,21 @@ inkflow serve deck.py
 Every time you save a change in your editor, the presenter updates automatically.
 No refresh needed.
 
+## Set up git integration (recommended)
+
+If your project is in a git repository, run this once after cloning:
+
+```bash
+inkflow setup-git
+```
+
+This installs a pre-commit hook that automatically strips Inkscape editor metadata
+(viewport position, zoom, window size) from SVGs before every commit,
+and configures the diff driver so `git diff` shows only visual changes.
+
+Commit `.githooks/pre-commit` and `.gitattributes` so teammates get the same setup.
+They just need to run `inkflow setup-git` in their own clone to activate it.
+
 ## Next steps
 
 - [Concepts](concepts.md): understand the mental model before writing more slides

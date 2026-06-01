@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import subprocess
 import sys
 from pathlib import Path
-from typing import cast
 
 import click
 
-from inkflow import ns
+from inkflow import git_setup, ns
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     inject_layout_layers,
@@ -49,8 +47,16 @@ def serve(deck: str, port: int, ws_port: int) -> None:
     is_flag=True,
     help="Write to stdout instead of modifying files in place",
 )
-def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
+@click.option(
+    "--check",
+    is_flag=True,
+    help="Exit non-zero if any file would be modified, without writing changes",
+)
+def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
     """Strip Inkscape editor metadata from SVG files."""
+    if check and to_stdout:
+        raise click.UsageError("--check and --stdout are mutually exclusive")
+    dirty = False
     errors = False
     for p in files:
         if not p.exists():
@@ -59,7 +65,11 @@ def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
             continue
         try:
             cleaned = clean_inkscape_svg(p)
-            if to_stdout:
+            if check:
+                if cleaned != p.read_text(encoding="utf-8"):
+                    click.echo(f"[inkflow] would clean: {p}", err=True)
+                    dirty = True
+            elif to_stdout:
                 sys.stdout.write(cleaned)
             else:
                 p.write_text(cleaned, encoding="utf-8")
@@ -67,40 +77,43 @@ def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
         except Exception as exc:
             click.echo(f"[inkflow] clean: error processing {p}: {exc}", err=True)
             errors = True
-    if errors:
+    if dirty or errors:
         sys.exit(1)
 
 
 @main.command("setup-git")
 def setup_git() -> None:
-    """Configure git hooks and SVG diff driver (run once after cloning)."""
-    steps = [
-        (
-            ["git", "config", "core.hooksPath", ".githooks"],
-            "pre-commit hook → .githooks/pre-commit",
-        ),
-        (
-            [
-                "git",
-                "config",
-                "diff.inkscape-svg.textconv",
-                "uv run inkflow clean --stdout",
-            ],
-            "SVG diff driver → strips Inkscape metadata before diffs",
-        ),
-    ]
-    for cmd, label in steps:
-        try:
-            _ = subprocess.run(cmd, check=True, capture_output=True)
-            click.echo(f"[inkflow] {label}")
-        except subprocess.CalledProcessError as exc:
-            stderr = cast(bytes | None, exc.stderr)
-            msg = stderr.decode().strip() if isinstance(stderr, bytes) else str(exc)
-            raise click.ClickException(f"setup-git failed: {msg}") from exc
-    hook = Path(".githooks/pre-commit")
-    if hook.exists():
-        hook.chmod(hook.stat().st_mode | 0o111)
-    click.echo("[inkflow] done — git is configured for this repository")
+    """Configure git hooks and SVG diff driver for any git repository."""
+
+    try:
+        root = git_setup.git_root()
+        textconv_cmd = git_setup.resolve_textconv(root)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    hook_created = git_setup.ensure_hook(root / ".githooks")
+    if hook_created:
+        click.echo("[inkflow] created .githooks/pre-commit")
+    else:
+        click.echo("[inkflow] .githooks/pre-commit already exists, left unchanged")
+
+    try:
+        git_setup.run_git_config("core.hooksPath", ".githooks")
+        click.echo("[inkflow] set git config: core.hooksPath = .githooks")
+        git_setup.run_git_config("diff.inkscape-svg.textconv", textconv_cmd)
+        click.echo(
+            f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
+        )
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    attr_result = git_setup.ensure_gitattributes(root)
+    if attr_result == "ok":
+        click.echo("[inkflow] .gitattributes already up to date")
+    else:
+        click.echo(f"[inkflow] {attr_result} .gitattributes")
+
+    click.echo("[inkflow] git setup complete")
 
 
 @main.command("inject-layout")

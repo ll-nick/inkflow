@@ -44,6 +44,24 @@ _INKSCAPE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+# SVG with inject-layout-style layer groups: structural attributes must survive clean.
+_INKSCAPE_LAYER_SVG = textwrap.dedent("""\
+    <?xml version="1.0" encoding="UTF-8"?>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+         xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+         inkscape:version="1.3.2"
+         width="100" height="100">
+      <sodipodi:namedview id="namedview1" inkscape:zoom="2.5"/>
+      <g inkscape:groupmode="layer"
+         inkscape:label="__inkflow:layout:main__"
+         sodipodi:insensitive="true">
+        <rect id="bg" width="100" height="100" fill="blue"/>
+      </g>
+      <rect id="box" x="0" y="0" width="50" height="50" fill="red"/>
+    </svg>
+""")
+
 
 class TestAnnotateSvg:
     def test_fade_adds_class_and_step(self) -> None:
@@ -114,6 +132,71 @@ class TestCleanInkscapeSvg:
         result = clean_inkscape_svg(svg_file)
         assert "http://www.inkscape.org/namespaces/inkscape" not in result
         assert "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" not in result
+
+    def test_preserves_layer_structural_attributes(self, tmp_path: Path) -> None:
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_INKSCAPE_LAYER_SVG, encoding="utf-8")
+        result = clean_inkscape_svg(svg_file)
+        assert 'inkscape:groupmode="layer"' in result
+        assert 'inkscape:label="__inkflow:layout:main__"' in result
+        assert 'sodipodi:insensitive="true"' in result
+
+    def test_still_strips_editor_noise_when_layers_present(
+        self, tmp_path: Path
+    ) -> None:
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_INKSCAPE_LAYER_SVG, encoding="utf-8")
+        result = clean_inkscape_svg(svg_file)
+        assert "namedview" not in result
+        assert "inkscape:version" not in result
+        assert "inkscape:zoom" not in result
+
+
+class TestCleanCheckFlag:
+    def test_exits_nonzero_for_dirty_file(self, tmp_path: Path) -> None:
+        from click.testing import CliRunner
+
+        from inkflow.cli import main
+
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
+        result = CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
+        assert result.exit_code != 0
+
+    def test_exits_zero_for_already_clean_file(self, tmp_path: Path) -> None:
+        from click.testing import CliRunner
+
+        from inkflow.cli import main
+        from inkflow.pipeline import clean_inkscape_svg
+
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
+        svg_file.write_text(clean_inkscape_svg(svg_file), encoding="utf-8")
+        result = CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
+        assert result.exit_code == 0
+
+    def test_does_not_modify_file(self, tmp_path: Path) -> None:
+        from click.testing import CliRunner
+
+        from inkflow.cli import main
+
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
+        original = svg_file.read_text(encoding="utf-8")
+        CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
+        assert svg_file.read_text(encoding="utf-8") == original
+
+    def test_check_and_stdout_are_mutually_exclusive(self, tmp_path: Path) -> None:
+        from click.testing import CliRunner
+
+        from inkflow.cli import main
+
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
+        result = CliRunner().invoke(
+            main, ["clean", "--check", "--stdout", str(svg_file)]
+        )
+        assert result.exit_code != 0
 
 
 class TestResolveTransitions:

@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+from typing import cast
+
+HOOK_SCRIPT = """\
+#!/usr/bin/env bash
+# Strip Inkscape editor metadata from staged SVG files before committing.
+# Installed by: inkflow setup-git
+
+set -e
+
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM \\
+  | grep -E '\\.svg$' || true)
+[ ${#staged[@]} -eq 0 ] && exit 0
+
+if [ -x ".venv/bin/inkflow" ]; then
+    INKFLOW=".venv/bin/inkflow"
+elif command -v inkflow &>/dev/null; then
+    INKFLOW="inkflow"
+else
+    echo "[inkflow] inkflow not found, skipping SVG clean" >&2
+    exit 0
+fi
+
+echo "[inkflow] cleaning staged SVGs..."
+"$INKFLOW" clean "${staged[@]}"
+
+git add "${staged[@]}"
+"""
+
+
+def git_root() -> Path:
+    """Return the root of the current git repository."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return Path(result.stdout.strip())
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("not inside a git repository") from exc
+
+
+def resolve_textconv(root: Path) -> str:
+    """Return the textconv command for the local git config.
+
+    The textconv lives in .git/config (per-clone, never committed)
+    so using an absolute path to the executable is fine.
+    """
+    venv_bin = root / ".venv" / "bin" / "inkflow"
+    if venv_bin.exists():
+        return f"{venv_bin} clean --stdout"
+    if subprocess.run(["which", "inkflow"], capture_output=True).returncode == 0:
+        return "inkflow clean --stdout"
+    raise RuntimeError(
+        "inkflow not found — no .venv/bin/inkflow in repo root "
+        + "and inkflow is not on PATH. "
+        + "Install inkflow globally to continue."
+    )
+
+
+def ensure_hook(hooks_dir: Path) -> bool:
+    """Write pre-commit hook if absent. Returns True if created."""
+    hooks_dir.mkdir(exist_ok=True)
+    hook = hooks_dir / "pre-commit"
+    created = not hook.exists()
+    if created:
+        hook.write_text(HOOK_SCRIPT)
+    hook.chmod(hook.stat().st_mode | 0o111)  # chmod +x
+    return created
+
+
+def run_git_config(key: str, value: str) -> None:
+    try:
+        subprocess.run(["git", "config", key, value], check=True, capture_output=True)
+    except subprocess.CalledProcessError as exc:
+        raw = cast(bytes | None, exc.stderr)
+        msg = raw.decode().strip() if isinstance(raw, bytes) else str(exc)
+        raise RuntimeError(f"git config {key} failed: {msg}") from exc
+
+
+def ensure_gitattributes(root: Path) -> str:
+    """Add SVG diff attribute if missing. Returns 'created', 'updated', or 'ok'."""
+    attr_line = "*.svg diff=inkscape-svg\n"
+    gitattributes = root / ".gitattributes"
+    if not gitattributes.exists():
+        gitattributes.write_text(attr_line, encoding="utf-8")
+        return "created"
+    content = gitattributes.read_text(encoding="utf-8")
+    if "diff=inkscape-svg" in content:
+        return "ok"
+    sep = "" if content.endswith("\n") else "\n"
+    gitattributes.write_text(content + sep + attr_line, encoding="utf-8")
+    return "updated"

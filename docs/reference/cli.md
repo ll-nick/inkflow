@@ -73,15 +73,57 @@ Requires a Chromium-based browser on the system.
 Strip editor metadata from SVG files in place.
 
 ```bash
-inkflow clean FILE [FILE ...] [--stdout]
+inkflow clean FILE [FILE ...] [--stdout] [--check]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
 | `FILE` | required | One or more SVG file paths |
 | `--stdout` | off | Write cleaned SVG to stdout instead of modifying files |
+| `--check` | off | Exit non-zero if any file would be modified, without writing changes |
 
-Removes elements and attributes in the Inkscape and Sodipodi namespaces.
+Removes elements and attributes in the Inkscape and Sodipodi namespaces that represent editor state
+(viewport position, zoom level, window geometry, etc.).
+Structural attributes that carry meaning inside Inkscape
+— layer identity (`inkscape:groupmode`, `inkscape:label`) and lock state (`sodipodi:insensitive`) —
+are preserved.
+
+`--check` is useful in CI to verify that no dirty SVGs were committed:
+
+```bash
+inkflow clean --check slides/*.svg
+```
+
+`--check` and `--stdout` are mutually exclusive.
+
+---
+
+## `inkflow setup-git`
+
+Configure git hooks and the SVG diff driver for any git repository.
+
+```bash
+inkflow setup-git
+```
+
+Run this once after cloning a repository that contains SVG slides.
+It configures two things:
+
+**Pre-commit hook:** writes `.githooks/pre-commit` (if not already present)
+and sets `core.hooksPath = .githooks` in the local git config.
+Before every commit the hook strips Inkscape editor metadata from any staged SVGs
+so viewport pan, zoom, and window state never land in history.
+The hook is portable: it detects the inkflow executable at commit time,
+trying `.venv/bin/inkflow` first, then falling back to `inkflow` on `PATH`.
+
+**SVG diff driver:** sets `diff.inkscape-svg.textconv` in the local git config.
+`git diff`, `git log -p`, and GitHub's diff view then show only visual changes,
+even for SVGs that have not been cleaned in place.
+
+Both git config entries go into `.git/config` (per-clone, never committed).
+The hook script and `.gitattributes` are committed to the repository
+so teammates get them on clone.
+They just need to run `inkflow setup-git` themselves to activate the config entries in their own clone.
 
 ---
 

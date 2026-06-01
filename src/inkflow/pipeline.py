@@ -69,6 +69,16 @@ _ANIM_CLASS: dict[type, str] = {
 
 _INKSCAPE_NAMESPACES: frozenset[str] = frozenset({ns.INKSCAPE, ns.SODIPODI})
 
+# These attributes carry structural meaning (layer identity and lock state) and
+# survive the clean pass so Inkscape keeps recognising layers correctly.
+_PRESERVE_ATTRS: frozenset[str] = frozenset(
+    {
+        f"{{{ns.INKSCAPE}}}groupmode",
+        f"{{{ns.INKSCAPE}}}label",
+        f"{{{ns.SODIPODI}}}insensitive",
+    }
+)
+
 
 def clean_inkscape_svg(src: Path) -> str:
     tree = etree.parse(src)
@@ -85,6 +95,7 @@ def clean_inkscape_svg(src: Path) -> str:
             k
             for k in el.attrib
             if isinstance(k, str)
+            and k not in _PRESERVE_ATTRS
             and any(k.startswith(f"{{{ns_uri}}}") for ns_uri in _INKSCAPE_NAMESPACES)
         ]
         for k in to_del:
