@@ -239,7 +239,7 @@ def _build_layer_group(
     return g
 
 
-def _with_namespaces(
+def with_namespaces(
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
     additions: dict[str, str],
 ) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
@@ -279,7 +279,7 @@ def inject_layout_layers(svg_path: Path, chain: list[Path]) -> bool:
     for i, (ancestor_path, ref) in enumerate(zip(chain, refs, strict=True)):
         root.insert(i, _build_layer_group(ancestor_path, ref, hashes))
 
-    out = _with_namespaces(root, {"inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI})
+    out = with_namespaces(root, {"inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI})
     svg_path.write_text(
         etree.tostring(out, encoding="unicode", xml_declaration=False),
         encoding="utf-8",
