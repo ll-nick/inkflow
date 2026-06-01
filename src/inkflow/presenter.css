@@ -14,7 +14,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--bg);
+  background: #000;
   color: var(--text);
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
   height: 100vh;
