@@ -74,9 +74,6 @@ The pipeline can auto-generate a TOC slide from all section boundaries.
 
 ## Authoring experience
 
-**`inkflow set-parent <file> <parent>` command**
-Updates `inkflow:parent` on an existing slide SVG and re-runs `inject-layout`.
-
 **Element ID validation**
 When `deck.py` references `#headline` but the SVG has no matching element,
 this should be a hard build error naming the slide file and the missing ID.
