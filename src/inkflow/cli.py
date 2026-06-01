@@ -91,23 +91,29 @@ def setup_git() -> None:
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    hook_changed = git_setup.ensure_hook(root / ".githooks")
-    if hook_changed:
+    hook_created = git_setup.ensure_hook(root / ".githooks")
+    if hook_created:
         click.echo("[inkflow] created .githooks/pre-commit")
+    else:
+        click.echo("[inkflow] .githooks/pre-commit already exists, left unchanged")
 
     try:
         git_setup.run_git_config("core.hooksPath", ".githooks")
-        click.echo("[inkflow] pre-commit hook → .githooks/pre-commit")
+        click.echo("[inkflow] set git config: core.hooksPath = .githooks")
         git_setup.run_git_config("diff.inkscape-svg.textconv", textconv_cmd)
-        click.echo("[inkflow] SVG diff driver → strips Inkscape metadata before diffs")
+        click.echo(
+            f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
+        )
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    result = git_setup.ensure_gitattributes(root)
-    if result != "ok":
-        click.echo(f"[inkflow] {result} .gitattributes")
+    attr_result = git_setup.ensure_gitattributes(root)
+    if attr_result == "ok":
+        click.echo("[inkflow] .gitattributes already up to date")
+    else:
+        click.echo(f"[inkflow] {attr_result} .gitattributes")
 
-    click.echo("[inkflow] done — commit .githooks/ and .gitattributes for teammates")
+    click.echo("[inkflow] git setup complete")
 
 
 @main.command("inject-layout")
