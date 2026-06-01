@@ -310,6 +310,24 @@ def parent_inject(file: Path | None, check: bool, deck_path: Path) -> None:
         sys.exit(1)
 
 
+@parent.command("list")
+@_deck_option
+def parent_list(deck_path: Path) -> None:
+    """List all slides and their inkflow:parent values."""
+    from lxml import etree as _etree
+
+    deck_obj, project_dir = _deck_context(deck_path)
+
+    for slide in deck_obj.slides:
+        if isinstance(slide, MarkdownSlide):
+            click.echo(f"{'[markdown: ' + slide.template + ']':<45} (markdown slide)")
+            continue
+        svg_path = resolve_slide_src(slide.src, project_dir)
+        root = _etree.parse(svg_path).getroot()
+        value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
+        click.echo(f"{slide.src!s:<45} {value}")
+
+
 @main.command("add")
 @click.argument("parent")
 @click.argument("output", type=click.Path(path_type=Path))
