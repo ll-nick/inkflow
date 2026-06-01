@@ -9,7 +9,7 @@ from typing import cast
 
 import click
 
-from inkflow import ns
+from inkflow import git_setup, ns
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     inject_layout_layers,
@@ -73,34 +73,31 @@ def clean(files: tuple[Path, ...], to_stdout: bool) -> None:
 
 @main.command("setup-git")
 def setup_git() -> None:
-    """Configure git hooks and SVG diff driver (run once after cloning)."""
-    steps = [
-        (
-            ["git", "config", "core.hooksPath", ".githooks"],
-            "pre-commit hook → .githooks/pre-commit",
-        ),
-        (
-            [
-                "git",
-                "config",
-                "diff.inkscape-svg.textconv",
-                "uv run inkflow clean --stdout",
-            ],
-            "SVG diff driver → strips Inkscape metadata before diffs",
-        ),
-    ]
-    for cmd, label in steps:
-        try:
-            _ = subprocess.run(cmd, check=True, capture_output=True)
-            click.echo(f"[inkflow] {label}")
-        except subprocess.CalledProcessError as exc:
-            stderr = cast(bytes | None, exc.stderr)
-            msg = stderr.decode().strip() if isinstance(stderr, bytes) else str(exc)
-            raise click.ClickException(f"setup-git failed: {msg}") from exc
-    hook = Path(".githooks/pre-commit")
-    if hook.exists():
-        hook.chmod(hook.stat().st_mode | 0o111)
-    click.echo("[inkflow] done — git is configured for this repository")
+    """Configure git hooks and SVG diff driver for any git repository."""
+
+    try:
+        root = git_setup.git_root()
+        textconv_cmd = git_setup.resolve_textconv(root)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    hook_changed = git_setup.ensure_hook(root / ".githooks")
+    if hook_changed:
+        click.echo("[inkflow] created .githooks/pre-commit")
+
+    try:
+        git_setup.run_git_config("core.hooksPath", ".githooks")
+        click.echo("[inkflow] pre-commit hook → .githooks/pre-commit")
+        git_setup.run_git_config("diff.inkscape-svg.textconv", textconv_cmd)
+        click.echo("[inkflow] SVG diff driver → strips Inkscape metadata before diffs")
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    result = git_setup.ensure_gitattributes(root)
+    if result != "ok":
+        click.echo(f"[inkflow] {result} .gitattributes")
+
+    click.echo("[inkflow] done — commit .githooks/ and .gitattributes for teammates")
 
 
 @main.command("inject-layout")
