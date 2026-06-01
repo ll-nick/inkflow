@@ -16,7 +16,7 @@ from inkflow.layout import (
     resolve_parent_path,
     with_namespaces,
 )
-from inkflow.manifest import MarkdownSlide
+from inkflow.manifest import Deck, MarkdownSlide
 from inkflow.pipeline import clean_inkscape_svg, resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
@@ -122,7 +122,7 @@ def parent() -> None:
     """Manage slide layout parents."""
 
 
-def _deck_context(deck_path: Path) -> tuple[object, Path]:
+def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
     resolved = deck_path.resolve()
     if not resolved.exists():
         raise click.ClickException(f"deck not found: {resolved}")
