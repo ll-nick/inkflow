@@ -162,6 +162,23 @@ def strip_layout_layers(root: etree._Element) -> None:  # pyright: ignore[report
         root.remove(el)
 
 
+def strip_parent(svg_path: Path) -> bool:
+    """Remove inkflow:parent and injected layout layers from svg_path in place.
+
+    Returns True if the file had an inkflow:parent attribute.
+    """
+    root = etree.parse(svg_path).getroot()
+    had_parent = INKFLOW_PARENT in root.attrib
+    if had_parent:
+        del root.attrib[INKFLOW_PARENT]
+    strip_layout_layers(root)
+    svg_path.write_text(
+        etree.tostring(root, encoding="unicode", xml_declaration=False),
+        encoding="utf-8",
+    )
+    return had_parent
+
+
 # ── inject_layout_layers ──────────────────────────────────────────────────────
 
 
