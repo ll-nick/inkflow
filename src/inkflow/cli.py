@@ -139,6 +139,19 @@ _deck_option = click.option(
 )
 
 
+@parent.command("get")
+@click.argument("file", type=click.Path(path_type=Path))
+def parent_get(file: Path) -> None:
+    """Print the inkflow:parent value of a slide SVG."""
+    from lxml import etree as _etree
+
+    svg_path = Path(file).resolve()
+    if not svg_path.exists():
+        raise click.ClickException(f"file not found: {svg_path}")
+    root = _etree.parse(svg_path).getroot()
+    value = root.get(ns.INKFLOW_PARENT)
+    click.echo(value if value is not None else "(no parent)")
+
 @main.command("inject-layout")
 @click.argument("deck", default="deck.py", type=click.Path(path_type=Path))
 @click.option(
