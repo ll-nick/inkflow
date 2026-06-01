@@ -153,8 +153,7 @@ def parent_get(file: Path) -> None:
     value = root.get(ns.INKFLOW_PARENT)
     click.echo(value if value is not None else "(no parent)")
 
-@main.command("inject-layout")
-@click.argument("deck", default="deck.py", type=click.Path(path_type=Path))
+
 @parent.command("set")
 @click.argument("file", type=click.Path(path_type=Path))
 @click.argument("parent_str", metavar="PARENT")
@@ -246,29 +245,53 @@ def parent_strip(file: Path | None, confirmed: bool, deck_path: Path) -> None:
                 else f"[no parent]   {slide.src}"
             )
 
+
+@parent.command("inject")
+@click.argument("file", required=False, type=click.Path(path_type=Path))
 @click.option(
     "--check",
     is_flag=True,
-    help="Report stale files without rewriting them. Exits 1 if any are stale.",
+    help="Report stale files without rewriting. Exits 1 if any are stale.",
 )
-def inject_layout_cmd(deck: Path, check: bool) -> None:
-    """Refresh ancestor layout layers in all slide SVGs for Inkscape preview."""
-    deck_path = Path(deck).resolve()
-    if not deck_path.exists():
-        raise click.ClickException(f"deck not found: {deck_path}")
+@_deck_option
+def parent_inject(file: Path | None, check: bool, deck_path: Path) -> None:
+    """Refresh ancestor layout layers in slide SVG(s) for editor preview.
 
-    deck_obj = load_deck(deck_path)
-    project_dir = deck_path.parent
+    If FILE is omitted, refreshes all slides in the deck.
+    """
+    deck_obj, project_dir = _deck_context(deck_path)
     stale_found = False
+
+    if file is not None:
+        svg_path = Path(file).resolve()
+        if not svg_path.exists():
+            raise click.ClickException(f"file not found: {svg_path}")
+        chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
+        if not chain:
+            click.echo(f"[no parent]   {svg_path.name}")
+            return
+        if check:
+            if is_layout_current(svg_path, chain):
+                click.echo(f"[ok]     {svg_path.name}")
+            else:
+                click.echo(f"[stale]  {svg_path.name}")
+                sys.exit(1)
+        else:
+            changed = inject_layout_layers(svg_path, chain)
+            click.echo(
+                f"[injected]    {svg_path.name}"
+                if changed
+                else f"[up to date]  {svg_path.name}"
+            )
+        return
 
     for slide in deck_obj.slides:
         if isinstance(slide, MarkdownSlide):
-            continue  # MarkdownSlide has no per-slide SVG to inject into
+            continue
         svg_path = resolve_slide_src(slide.src, project_dir)
         chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
         if not chain:
             continue
-
         if check:
             if is_layout_current(svg_path, chain):
                 click.echo(f"[ok]     {slide.src}")
@@ -277,10 +300,11 @@ def inject_layout_cmd(deck: Path, check: bool) -> None:
                 stale_found = True
         else:
             changed = inject_layout_layers(svg_path, chain)
-            if changed:
-                click.echo(f"[injected]    {slide.src}")
-            else:
-                click.echo(f"[up to date]  {slide.src}")
+            click.echo(
+                f"[injected]    {slide.src}"
+                if changed
+                else f"[up to date]  {slide.src}"
+            )
 
     if check and stale_found:
         sys.exit(1)
