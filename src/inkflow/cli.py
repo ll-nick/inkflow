@@ -24,7 +24,7 @@ from inkflow.server import serve as _serve
 
 @click.group()
 def main() -> None:
-    """Terminal-native SVG presentation tool."""
+    """Beautiful slides from SVG. Your editor, your style."""
 
 
 @main.command()
