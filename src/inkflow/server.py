@@ -40,6 +40,7 @@ class State(TypedDict):
     error: str | None
     styles_css: str
     dark_mode: bool
+    position: dict[str, int]
 
 
 _state: State = {
@@ -49,6 +50,7 @@ _state: State = {
     "error": None,
     "styles_css": "",
     "dark_mode": True,
+    "position": {"slideIndex": 0, "step": 0},
 }
 
 
@@ -92,6 +94,12 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         _state["styles_css"] = styles_css
         _state["dark_mode"] = deck.dark_mode
         _state["error"] = None
+        if slides:
+            cur = _state["position"]["slideIndex"]
+            _state["position"]["slideIndex"] = max(0, min(len(slides) - 1, cur))
+        else:
+            _state["position"]["slideIndex"] = 0
+        _state["position"]["step"] = 0
         ui.set_ok(len(slides), time.monotonic() - t0)
         await broadcast(
             json.dumps({"type": "update", "slides": slides, "transitions": transitions})
@@ -111,9 +119,11 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
 # ── WebSocket broadcast ───────────────────────────────────────────────────────
 
 
-async def broadcast(msg: str) -> None:
+async def broadcast(msg: str, sender: ServerConnection | None = None) -> None:
     dead: set[ServerConnection] = set()
     for ws in list(_state["ws_clients"]):
+        if ws is sender:
+            continue
         try:
             await ws.send(msg)
         except Exception:
@@ -129,7 +139,32 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
         _state["ws_clients"].add(websocket)
         ui.refresh()
         try:
-            await websocket.wait_closed()
+            pos = _state["position"]
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "position",
+                        "slideIndex": pos["slideIndex"],
+                        "step": pos["step"],
+                    }
+                )
+            )
+            async for raw in websocket:
+                try:
+                    parsed = cast(object, json.loads(raw))
+                except (ValueError, TypeError):
+                    continue
+                if not isinstance(parsed, dict):
+                    continue
+                msg = cast(dict[str, object], parsed)
+                if msg.get("type") == "nav":
+                    si = int(cast(int, msg.get("slideIndex", 0)))
+                    st = int(cast(int, msg.get("step", 0)))
+                    _state["position"] = {"slideIndex": si, "step": st}
+                    await broadcast(
+                        json.dumps({"type": "position", "slideIndex": si, "step": st}),
+                        sender=websocket,
+                    )
         finally:
             _state["ws_clients"].discard(websocket)
             ui.refresh()

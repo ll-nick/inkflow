@@ -32,6 +32,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
         "dark_mode": deck.dark_mode,
         "ws_clients": set(),
         "error": None,
+        "position": {"slideIndex": 0, "step": 0},
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
