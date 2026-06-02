@@ -9,3 +9,7 @@ The video is embedded as a `<video>` element inside a
 - `assets/demo.mp4` is substituted at build time
 - Autoplay, loop, and muted are all valid HTML attributes
 - Replace the asset path in `deck.py` to use your own video
+
+::notes::
+
+These are notes defined in the markdown file.
