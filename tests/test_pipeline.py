@@ -389,8 +389,15 @@ class TestResolveNotes:
     def test_none_returns_empty(self, tmp_path: Path) -> None:
         assert _resolve_notes(None, tmp_path) == ""
 
-    def test_str_returned_as_is(self, tmp_path: Path) -> None:
-        assert _resolve_notes("<p>Hello</p>", tmp_path) == "<p>Hello</p>"
+    def test_str_rendered_as_markdown(self, tmp_path: Path) -> None:
+        # Plain string with paragraph break becomes two <p> elements
+        result = _resolve_notes("First paragraph.\n\nSecond paragraph.", tmp_path)
+        assert "<p>First paragraph.</p>" in result
+        assert "<p>Second paragraph.</p>" in result
+
+    def test_str_markdown_formatting_applied(self, tmp_path: Path) -> None:
+        result = _resolve_notes("Remember **this**.", tmp_path)
+        assert "<strong>this</strong>" in result
 
     def test_md_path_rendered_as_html(self, tmp_path: Path) -> None:
         f = tmp_path / "notes.md"

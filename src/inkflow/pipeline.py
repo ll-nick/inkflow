@@ -72,7 +72,7 @@ def _resolve_notes(notes: str | Path | None, project_dir: Path) -> str:
         resolved = notes if notes.is_absolute() else project_dir / notes
         text = resolved.read_text(encoding="utf-8")
         return markdown_to_html(text) if resolved.suffix == ".md" else text
-    return notes
+    return markdown_to_html(notes)
 
 
 def resolve_slide_src(src: str, project_dir: Path) -> Path:
