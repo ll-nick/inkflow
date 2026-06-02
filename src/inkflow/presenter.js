@@ -130,7 +130,7 @@ function morphSlide(duration, then) {
   );
 
   // 2. Swap to new slide
-  stage.innerHTML = slides[slideIndex];
+  stage.innerHTML = slides[slideIndex].svg;
   _maxStepCache = null;
   const newSvg = stage.querySelector('svg');
   if (!newSvg) { updateStatus(); if (then) then(); return; }
@@ -229,7 +229,7 @@ const TRANSITIONS = {
 // when navigating backward so the outgoing slide's transition plays in reverse).
 function loadSlide(then = null, transition = null) {
   const swap = () => {
-    stage.innerHTML = slides.length ? slides[slideIndex] : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    stage.innerHTML = slides.length ? slides[slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
     _maxStepCache = null;
     updateStatus();
   };
