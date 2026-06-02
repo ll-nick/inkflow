@@ -130,15 +130,10 @@ body.is-fullscreen #sb-spacer { display: none; }
   height: 6px;
   border-radius: 50%;
   background: var(--red);
-  margin-right: 4px;
   transition: background 0.3s;
+  vertical-align: middle;
 }
 #ws-dot.connected { background: var(--green); }
-
-#hint {
-  margin-left: auto;
-  color: var(--overlay);
-}
 
 /* ── Curtain (blackout / whiteout) ── */
 #curtain {
