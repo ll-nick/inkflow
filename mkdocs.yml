@@ -59,6 +59,7 @@ nav:
     - Transitions: guides/transitions.md
     - Themes: guides/themes.md
     - Export: guides/export.md
+    - Presenter view: guides/presenter-view.md
   - Reference:
     - Manifest: reference/manifest.md
     - CLI: reference/cli.md
