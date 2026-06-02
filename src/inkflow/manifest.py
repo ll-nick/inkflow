@@ -104,7 +104,7 @@ class MarkdownSlide:
     style: str
     title: str | None
     notes: str | Path | None
-    _extra: dict[str, str | Media]
+    extra: dict[str, str | Media]
 
     def __init__(
         self,
@@ -127,7 +127,7 @@ class MarkdownSlide:
         self.style = style
         self.title = title
         self.notes = notes
-        self._extra = kwargs
+        self.extra = kwargs
 
 
 class Deck:

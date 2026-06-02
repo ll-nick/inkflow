@@ -244,7 +244,7 @@ def _resolve_markdown_slide(
         if ms.content is not None
         else None
     )
-    result = build_slide_content(content_path, ms.steps, ms._extra)  # pyright: ignore[reportPrivateUsage]
+    result = build_slide_content(content_path, ms.steps, ms.extra)
     explicit_notes = _resolve_notes(ms.notes, project_dir)
     notes_html = "\n".join(filter(None, [explicit_notes, result.notes]))
     return _ResolvedMarkdown(

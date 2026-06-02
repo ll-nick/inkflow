@@ -48,7 +48,7 @@ def _collect_video_paths(deck: Deck) -> list[str]:
             ):
                 paths.append(item.src)
         if isinstance(slide, MarkdownSlide):
-            for val in slide._extra.values():  # pyright: ignore[reportPrivateUsage]
+            for val in slide.extra.values():
                 src = val.src if isinstance(val, Media) else val
                 if Path(src).suffix.lower() in _VIDEO_SUFFIXES:
                     paths.append(src)
