@@ -88,7 +88,7 @@ def build_pdf(
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")
     data_theme = "" if deck.dark_mode else "light"
-    slides_html = "\n".join(f'<div class="slide">{s}</div>' for s in slides)
+    slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
     html = (
         template.replace("__STYLES__", styles_css)
         .replace("__DATA_THEME__", data_theme)

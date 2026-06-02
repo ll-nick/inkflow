@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import TypedDict
 
 from lxml import etree
 
@@ -23,7 +25,36 @@ from inkflow.manifest import (
     Transition,
 )
 
+# ── Slide wire format ────────────────────────────────────────────────────────
+
+
+class SlideData(TypedDict):
+    svg: str
+    title: str
+    notes: str
+
+
 # ── Path conventions ─────────────────────────────────────────────────────────
+
+
+def _infer_slide_title(src: str) -> str:
+    stem = Path(src).stem
+    stem = re.sub(r"^\d+-", "", stem)
+    return stem.replace("-", " ").replace("_", " ").title()
+
+
+def _infer_md_title(entry: MarkdownSlide, slide_num: int, project_dir: Path) -> str:
+    if entry.title:
+        return entry.title
+    if entry.content is not None:
+        from inkflow.markdown import parse_markdown_zones
+
+        content_path = _resolve_content_src(entry.content, project_dir)
+        zones = parse_markdown_zones(content_path)
+        chunks = zones.get("title", [])
+        if chunks:
+            return chunks[0].lstrip("#").strip()
+    return f"Slide {slide_num}"
 
 
 def resolve_slide_src(src: str, project_dir: Path) -> Path:
@@ -233,23 +264,24 @@ def process_slide(
     return svg_str
 
 
-def process_deck(deck: Deck, project_dir: Path) -> list[str]:
+def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     total = len(deck.slides)
-    results: list[str] = []
+    results: list[SlideData] = []
     for i, entry in enumerate(deck.slides):
         if isinstance(entry, MarkdownSlide):
+            title = _infer_md_title(entry, i + 1, project_dir)
             slide = _resolve_markdown_slide(entry, project_dir, deck.theme)
         else:
+            title = entry.title or _infer_slide_title(entry.src)
             slide = entry
-        results.append(
-            process_slide(
-                slide,
-                project_dir,
-                deck.theme,
-                i + 1,
-                total,
-                deck.style,
-                deck.font_size,
-            )
+        svg = process_slide(
+            slide,
+            project_dir,
+            deck.theme,
+            i + 1,
+            total,
+            deck.style,
+            deck.font_size,
         )
+        results.append({"svg": svg, "title": title, "notes": ""})
     return results

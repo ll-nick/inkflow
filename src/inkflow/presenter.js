@@ -10,8 +10,8 @@ let transitions = INITIAL_TRANSITIONS;
 let slideIndex = 0;
 let step = 0;
 let _maxStepCache = null;
-let gotoMode = false;
-let gotoBuffer = '';
+let _pickerMatches = [];
+let _pickerActive  = 0;
 
 // ── DOM refs ──
 const stage        = document.getElementById('stage');
@@ -22,6 +22,9 @@ const curtain      = document.getElementById('curtain');
 const help         = document.getElementById('help');
 const errorOverlay = document.getElementById('error-overlay');
 const errorMsg     = document.getElementById('error-msg');
+const picker       = document.getElementById('picker');
+const pickerInput  = document.getElementById('picker-input');
+const pickerList   = document.getElementById('picker-list');
 
 // ── Helpers ──
 function maxStep() {
@@ -73,11 +76,7 @@ function buildStepRing(current, total) {
 }
 
 function updateStatus() {
-  if (gotoMode) {
-    slideInfo.textContent = `g: ${gotoBuffer}_`;
-  } else {
-    slideInfo.innerHTML = `<span class="slide-current">${slideIndex + 1}</span> / ${slides.length}`;
-  }
+  slideInfo.innerHTML = `<span class="slide-current">${slideIndex + 1}</span> / ${slides.length}`;
   stepInfo.innerHTML = buildStepRing(step, maxStep());
   syncURL();
 }
@@ -136,7 +135,7 @@ function morphSlide(duration, then) {
   );
 
   // 2. Swap to new slide
-  stage.innerHTML = slides[slideIndex];
+  stage.innerHTML = slides[slideIndex].svg;
   _maxStepCache = null;
   const newSvg = stage.querySelector('svg');
   if (!newSvg) { updateStatus(); if (then) then(); return; }
@@ -235,7 +234,7 @@ const TRANSITIONS = {
 // when navigating backward so the outgoing slide's transition plays in reverse).
 function loadSlide(then = null, transition = null) {
   const swap = () => {
-    stage.innerHTML = slides.length ? slides[slideIndex] : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    stage.innerHTML = slides.length ? slides[slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
     _maxStepCache = null;
     updateStatus();
   };
@@ -310,18 +309,88 @@ function showError(msg) {
 }
 function hideError() { errorOverlay.classList.remove('visible'); }
 
-// ── Go-to-slide ──
-function enterGoto() { gotoMode = true; gotoBuffer = ''; updateStatus(); }
-function exitGoto()  { gotoMode = false; gotoBuffer = ''; updateStatus(); }
-function commitGoto() {
-  const n = parseInt(gotoBuffer, 10);
-  exitGoto();
-  if (!isNaN(n) && n >= 1 && n <= slides.length) {
-    slideIndex = n - 1;
-    step = 0;
-    loadSlide();
-  }
+// ── Slide picker ──
+function openPicker() {
+  picker.classList.add('visible');
+  pickerInput.value = '';
+  filterPicker('');
+  pickerInput.focus();
 }
+
+function closePicker() {
+  picker.classList.remove('visible');
+}
+
+function filterPicker(query) {
+  const q = query.trim();
+  let matches;
+  if (q === '') {
+    matches = slides.map((_, i) => i);
+  } else if (/^\d+$/.test(q)) {
+    matches = slides.reduce((acc, _, i) => {
+      if (String(i + 1).startsWith(q)) acc.push(i);
+      return acc;
+    }, []);
+  } else {
+    const lq = q.toLowerCase();
+    matches = slides.reduce((acc, s, i) => {
+      const title = (s.title || '').toLowerCase();
+      let ti = 0;
+      for (let qi = 0; qi < lq.length; qi++) {
+        ti = title.indexOf(lq[qi], ti);
+        if (ti === -1) return acc;
+        ti++;
+      }
+      acc.push(i);
+      return acc;
+    }, []);
+  }
+  _pickerMatches = matches;
+  _pickerActive = 0;
+  pickerList.innerHTML = matches.map((idx, pos) =>
+    `<li role="option" data-pos="${pos}" class="${pos === 0 ? 'active' : ''}">` +
+    `<span class="pk-num">${idx + 1}</span>` +
+    `<span class="pk-title">${slides[idx].title || ''}</span></li>`
+  ).join('');
+  const active = pickerList.querySelector('li.active');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function _pickerMoveCursor(delta) {
+  if (!_pickerMatches.length) return;
+  _pickerActive = Math.max(0, Math.min(_pickerMatches.length - 1, _pickerActive + delta));
+  pickerList.querySelectorAll('li').forEach((li, i) =>
+    li.classList.toggle('active', i === _pickerActive)
+  );
+  const active = pickerList.querySelector('li.active');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function _pickerCommit() {
+  if (!_pickerMatches.length) return;
+  slideIndex = _pickerMatches[_pickerActive];
+  step = 0;
+  loadSlide();
+  closePicker();
+}
+
+pickerInput.addEventListener('input', () => filterPicker(pickerInput.value));
+pickerInput.addEventListener('keydown', e => {
+  const down = e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey) || (e.key === 'j' && e.ctrlKey);
+  const up   = e.key === 'ArrowUp'   || (e.key === 'Tab' && e.shiftKey)  || (e.key === 'k' && e.ctrlKey);
+  if (down)              { e.preventDefault(); _pickerMoveCursor(+1); }
+  else if (up)           { e.preventDefault(); _pickerMoveCursor(-1); }
+  else if (e.key === 'Enter')  { e.preventDefault(); _pickerCommit(); }
+  else if (e.key === 'Escape') { closePicker(); }
+});
+pickerList.addEventListener('click', e => {
+  const li = e.target.closest('li');
+  if (!li) return;
+  const pos = parseInt(li.dataset.pos, 10);
+  _pickerActive = pos;
+  _pickerCommit();
+});
+picker.addEventListener('click', e => { if (e.target === picker) closePicker(); });
 
 function toggleTheme() {
   const html = document.documentElement;
@@ -400,7 +469,7 @@ const KEYBINDINGS = {
   '^':          { action: gotoFirst },
   'End':        { action: gotoLast },
   '$':          { action: gotoLast },
-  'g':          { action: enterGoto },
+  'g':          { action: openPicker,                        preventDefault: true },
   'f':          { action: toggleFullscreen },
   'b':          { action: () => toggleCurtain('black') },
   '.':          { action: () => toggleCurtain('black') },
@@ -410,19 +479,12 @@ const KEYBINDINGS = {
 };
 
 document.addEventListener('keydown', e => {
+  if (picker.classList.contains('visible')) return;
   if (help.classList.contains('visible')) {
     if (e.key === '?' || e.key === 'Escape') toggleHelp();
     return;
   }
   if (curtain.classList.contains('visible')) { hideCurtain(); return; }
-
-  if (gotoMode) {
-    if (e.key >= '0' && e.key <= '9')  { gotoBuffer += e.key; updateStatus(); }
-    else if (e.key === 'Enter')         { e.preventDefault(); commitGoto(); }
-    else if (e.key === 'Backspace')     { e.preventDefault(); gotoBuffer = gotoBuffer.slice(0, -1); updateStatus(); }
-    else if (e.key === 'Escape')        { exitGoto(); }
-    return;
-  }
 
   const binding = KEYBINDINGS[e.key];
   if (binding) {

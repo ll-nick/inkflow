@@ -27,14 +27,14 @@ from websockets.asyncio.server import serve as ws_serve
 
 from inkflow.layout import resolve_theme_dir
 from inkflow.manifest import Deck
-from inkflow.pipeline import process_deck, resolve_transitions
+from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.tui import LiveUI
 
 # ── Shared mutable state ──────────────────────────────────────────────────────
 
 
 class State(TypedDict):
-    slides: list[str]
+    slides: list[SlideData]
     transitions: list[dict[str, object]]
     ws_clients: set[ServerConnection]
     error: str | None

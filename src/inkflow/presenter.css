@@ -230,6 +230,75 @@ kbd {
   line-height: 1.6;
 }
 
+/* ── Slide picker ── */
+#picker {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(0, 0, 0, 0.55);
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+#picker.visible { display: flex; }
+
+#picker-box {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  width: 38rem;
+  max-width: 90vw;
+  overflow: hidden;
+}
+
+#picker-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--overlay);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.65rem 1rem;
+  outline: none;
+}
+
+#picker-list {
+  list-style: none;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+#picker-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+#picker-list li:hover { background: rgba(255,255,255,0.05); }
+[data-theme="light"] #picker-list li:hover { background: rgba(0,0,0,0.05); }
+#picker-list li.active { background: var(--accent); color: var(--bg); }
+
+.pk-num {
+  color: var(--subtext);
+  min-width: 2.2rem;
+  text-align: right;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+#picker-list li.active .pk-num { color: var(--bg); opacity: 0.75; }
+
+#picker-hint {
+  border-top: 1px solid var(--overlay);
+  color: var(--subtext);
+  font-size: 0.68rem;
+  padding: 0.35rem 1rem;
+  text-align: center;
+}
+
 /* ── Animation classes ── */
 
 .anim-fade-in {

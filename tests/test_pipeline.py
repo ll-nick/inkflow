@@ -280,8 +280,8 @@ class TestProcessSlideWithContent:
         ]
         results = process_deck(deck, tmp_path)
         assert len(results) == 1
-        assert "foreignObject" in results[0]
-        assert "hello" in results[0]
+        assert "foreignObject" in results[0]["svg"]
+        assert "hello" in results[0]["svg"]
 
     def test_zone_rect_id_inherited_by_foreignobject(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
@@ -290,7 +290,7 @@ class TestProcessSlideWithContent:
             Slide(src="slide.svg", content=[TextBox("#zone-content", text="hi")])
         ]
         results = process_deck(deck, tmp_path)
-        assert 'id="zone-content"' in results[0]
+        assert 'id="zone-content"' in results[0]["svg"]
 
     def test_unreferenced_zone_rects_removed(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _LAYOUT_SVG)
@@ -300,7 +300,7 @@ class TestProcessSlideWithContent:
             Slide(src="slide.svg", content=[TextBox("#zone-content", text="body")])
         ]
         results = process_deck(deck, tmp_path)
-        assert 'id="zone-title"' not in results[0]
+        assert 'id="zone-title"' not in results[0]["svg"]
 
     def test_foreignobject_content_has_inkflow_content_class(
         self, tmp_path: Path
@@ -311,7 +311,7 @@ class TestProcessSlideWithContent:
             Slide(src="slide.svg", content=[TextBox("#zone-content", text="x")])
         ]
         results = process_deck(deck, tmp_path)
-        assert "inkflow-content" in results[0]
+        assert "inkflow-content" in results[0]["svg"]
 
 
 class TestMarkdownSlideExpansion:
@@ -331,8 +331,8 @@ class TestMarkdownSlideExpansion:
         deck.slides = [MarkdownSlide("layout", content="content")]
         results = process_deck(deck, tmp_path)
         assert len(results) == 1
-        assert "foreignObject" in results[0]
-        assert "Body text" in results[0]
+        assert "foreignObject" in results[0]["svg"]
+        assert "Body text" in results[0]["svg"]
 
     def test_markdown_slide_title_extracted(self, tmp_path: Path) -> None:
         _, slides_dir = self._setup(tmp_path)
@@ -341,7 +341,7 @@ class TestMarkdownSlideExpansion:
         deck = Deck()
         deck.slides = [MarkdownSlide("layout", content="content")]
         results = process_deck(deck, tmp_path)
-        assert "My Title" in results[0]
+        assert results[0]["title"] == "My Title"
 
     def test_markdown_slide_animations_applied(self, tmp_path: Path) -> None:
         self._setup(tmp_path)
@@ -350,7 +350,7 @@ class TestMarkdownSlideExpansion:
             MarkdownSlide("layout", animations=[FadeIn("#zone-title", step=1)])
         ]
         results = process_deck(deck, tmp_path)
-        assert "anim-fade-in" in results[0]
+        assert "anim-fade-in" in results[0]["svg"]
 
 
 class TestComposeWithAncestors:

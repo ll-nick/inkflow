@@ -86,6 +86,7 @@ class Slide:
     transition: Transition | None = None
     content: list[Content] = field(default_factory=list)
     style: str = ""
+    title: str | None = None
 
     @property
     def step_count(self) -> int:
@@ -99,6 +100,7 @@ class MarkdownSlide:
     animations: list[Animation]
     transition: Transition | None
     style: str
+    title: str | None
     _extra: dict[str, str | Media]
 
     def __init__(
@@ -110,6 +112,7 @@ class MarkdownSlide:
         animations: list[Animation] | None = None,
         transition: Transition | None = None,
         style: str = "",
+        title: str | None = None,
         **kwargs: str | Media,
     ) -> None:
         self.template = template
@@ -118,6 +121,7 @@ class MarkdownSlide:
         self.animations = animations or []
         self.transition = transition
         self.style = style
+        self.title = title
         self._extra = kwargs
 
 
