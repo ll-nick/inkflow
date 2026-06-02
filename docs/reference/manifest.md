@@ -49,6 +49,7 @@ Slide(
 | `transition` | `Transition \| None` | `None` | Overrides deck-level transition |
 | `content` | `list[Content]` | `[]` | `TextBox` or `Media` injections into named zone elements |
 | `style` | `str` | `""` | CSS string injected into this slide |
+| `title` | `str \| None` | `None` | Optional slide title; auto-inferred from filename if not set |
 
 **`step_count`** (property): the highest `step` value across all animations.
 This is the number of keypresses before advancing.
@@ -79,6 +80,7 @@ MarkdownSlide(
 | `animations` | `list[Animation]` | `[]` | Additional animation declarations |
 | `transition` | `Transition \| None` | `None` | Overrides deck-level transition |
 | `style` | `str` | `""` | CSS string injected into this slide |
+| `title` | `str \| None` | `None` | Optional slide title; auto-inferred from leading `# heading` if not set |
 | `**kwargs` | `str \| Media` | — | Extra content routed to matching zones |
 
 ---
