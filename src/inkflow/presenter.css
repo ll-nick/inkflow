@@ -54,14 +54,15 @@ body {
 
 #statusbar {
   flex-shrink: 0;
-  background: var(--surface);
+  background: var(--bg);
+  border-top: 1px solid var(--overlay);
   color: var(--subtext);
-  font-size: 0.7rem;
-  padding: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+  height: 40px;
+  padding: 0 0.75rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  border-top: 1px solid var(--accent);
+  gap: 0.25rem;
 }
 
 #statusbar .sep { color: var(--overlay); }
