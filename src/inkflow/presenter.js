@@ -506,7 +506,9 @@ document.getElementById('btn-next').addEventListener('click', advance);
 document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-overview').addEventListener('click', openOverview);
-document.getElementById('btn-presenter').addEventListener('click', () => { /* TODO */ });
+document.getElementById('btn-presenter').addEventListener('click', () =>
+  window.open('/presenter', '_blank', 'noopener')
+);
 
 // ── Fullscreen: body class + hot-zone statusbar reveal ──
 const statusbar = document.getElementById('statusbar');
@@ -576,6 +578,7 @@ const KEYBINDINGS = {
   'w':          { action: () => toggleCurtain('white') },
   '?':          { action: toggleHelp },
   't':          { action: toggleTheme },
+  'p':          { action: () => window.open('/presenter', '_blank', 'noopener') },
 };
 
 document.addEventListener('keydown', e => {

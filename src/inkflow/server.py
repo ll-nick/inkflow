@@ -217,6 +217,25 @@ def build_html(state: State, ws_port: int | None) -> bytes:
     return html.encode("utf-8")
 
 
+def build_presenter_html(state: State, ws_port: int | None) -> bytes:
+    pkg = importlib.resources.files("inkflow")
+    template = pkg.joinpath("presenter-view.html").read_text(encoding="utf-8")
+    css = pkg.joinpath("presenter-view.css").read_text(encoding="utf-8")
+    js = pkg.joinpath("presenter-view.js").read_text(encoding="utf-8")
+    data_theme = "" if state["dark_mode"] else "light"
+    ws_port_js = "null" if ws_port is None else str(ws_port)
+    html = (
+        template.replace("__CSS__", css)
+        .replace("__JS__", js)
+        .replace("__STYLES__", state["styles_css"])
+        .replace("__DATA_THEME__", data_theme)
+        .replace("__SLIDES_JSON__", json.dumps(state["slides"]))
+        .replace("__WS_PORT__", ws_port_js)
+        .replace("__INITIAL_POSITION__", json.dumps(state["position"]))
+    )
+    return html.encode("utf-8")
+
+
 _SERVED_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 _MIME_TYPES = {
     ".mp4": "video/mp4",
@@ -255,7 +274,10 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
                     await writer.drain()
                     return
 
-            body = build_html(_state, ws_port)
+            if request_path == "/presenter":
+                body = build_presenter_html(_state, ws_port)
+            else:
+                body = build_html(_state, ws_port)
             header = (
                 b"HTTP/1.1 200 OK\r\n"
                 + b"Content-Type: text/html; charset=utf-8\r\n"
