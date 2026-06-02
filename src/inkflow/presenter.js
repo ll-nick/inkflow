@@ -340,6 +340,48 @@ document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-overview').addEventListener('click', () => { /* TODO */ });
 document.getElementById('btn-presenter').addEventListener('click', () => { /* TODO */ });
 
+// ── Fullscreen: body class + hot-zone statusbar reveal ──
+const statusbar = document.getElementById('statusbar');
+let _fsHideTimer = null;
+
+function _handleFullscreenChange() {
+  const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  document.body.classList.toggle('is-fullscreen', isFS);
+  if (!isFS) {
+    statusbar.classList.remove('fs-visible');
+    clearTimeout(_fsHideTimer);
+    _fsHideTimer = null;
+  }
+}
+document.addEventListener('fullscreenchange', _handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', _handleFullscreenChange);
+
+function _showFsBar() {
+  statusbar.classList.add('fs-visible');
+  clearTimeout(_fsHideTimer);
+  _fsHideTimer = null;
+}
+function _scheduleFsHide() {
+  if (_fsHideTimer) return;
+  _fsHideTimer = setTimeout(() => {
+    statusbar.classList.remove('fs-visible');
+    _fsHideTimer = null;
+  }, 600);
+}
+
+// Hot zone: bottom-left corner, 20% wide × 10% tall
+document.addEventListener('mousemove', e => {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) return;
+  const inZone = e.clientX < window.innerWidth * 0.20 && e.clientY > window.innerHeight * 0.90;
+  if (inZone) _showFsBar(); else _scheduleFsHide();
+});
+statusbar.addEventListener('mouseenter', () => {
+  if (document.fullscreenElement || document.webkitFullscreenElement) _showFsBar();
+});
+statusbar.addEventListener('mouseleave', () => {
+  if (document.fullscreenElement || document.webkitFullscreenElement) _scheduleFsHide();
+});
+
 // ── Keybindings ──
 // To make keys configurable via deck.py in the future, merge a server-injected
 // KEYBINDINGS_OVERRIDES object into this map before the listener runs.
