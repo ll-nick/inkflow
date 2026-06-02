@@ -433,15 +433,11 @@ document.addEventListener('keydown', e => {
 
 // ── WebSocket live reload ──
 function connectWS() {
-  if (!WS_PORT) {
-    wsLabel.textContent = 'offline';
-    return;
-  }
+  if (!WS_PORT) return;
   const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
 
   ws.onopen = () => {
     wsDot.className = 'connected';
-    wsLabel.textContent = 'live';
   };
 
   ws.onmessage = (ev) => {
@@ -460,7 +456,6 @@ function connectWS() {
 
   ws.onclose = () => {
     wsDot.className = '';
-    wsLabel.textContent = 'disconnected';
     setTimeout(connectWS, 2000);
   };
 
