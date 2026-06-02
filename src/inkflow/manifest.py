@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 # ── Animation ────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ class Slide:
     content: list[Content] = field(default_factory=list)
     style: str = ""
     title: str | None = None
+    notes: str | Path | None = None
 
     @property
     def step_count(self) -> int:
@@ -101,6 +103,7 @@ class MarkdownSlide:
     transition: Transition | None
     style: str
     title: str | None
+    notes: str | Path | None
     _extra: dict[str, str | Media]
 
     def __init__(
@@ -113,6 +116,7 @@ class MarkdownSlide:
         transition: Transition | None = None,
         style: str = "",
         title: str | None = None,
+        notes: str | Path | None = None,
         **kwargs: str | Media,
     ) -> None:
         self.template = template
@@ -122,6 +126,7 @@ class MarkdownSlide:
         self.transition = transition
         self.style = style
         self.title = title
+        self.notes = notes
         self._extra = kwargs
 
 
