@@ -491,7 +491,7 @@ document.getElementById('btn-prev').addEventListener('click', retreat);
 document.getElementById('btn-next').addEventListener('click', advance);
 document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
-document.getElementById('btn-overview').addEventListener('click', () => { /* TODO */ });
+document.getElementById('btn-overview').addEventListener('click', openOverview);
 document.getElementById('btn-presenter').addEventListener('click', () => { /* TODO */ });
 
 // ── Fullscreen: body class + hot-zone statusbar reveal ──
@@ -555,6 +555,7 @@ const KEYBINDINGS = {
   'End':        { action: gotoLast },
   '$':          { action: gotoLast },
   'g':          { action: openPicker,                        preventDefault: true },
+  'o':          { action: openOverview,                       preventDefault: true },
   'f':          { action: toggleFullscreen },
   'b':          { action: () => toggleCurtain('black') },
   '.':          { action: () => toggleCurtain('black') },
@@ -564,11 +565,22 @@ const KEYBINDINGS = {
 };
 
 document.addEventListener('keydown', e => {
-  if (picker.classList.contains('visible')) return;
   if (help.classList.contains('visible')) {
-    if (e.key === '?' || e.key === 'Escape') toggleHelp();
-    return;
+    if (e.key === '?' || e.key === 'Escape') { toggleHelp(); return; }
+    // Let theme toggle fall through; swallow other globals
+    if (e.key !== 't') return;
   }
+  if (overview.classList.contains('visible')) {
+    if (e.key === 'Escape')                           { closeOverview(); return; }
+    if (e.key === 'ArrowRight' || e.key === 'l')      { e.preventDefault(); _overviewSetActive(_overviewActive + 1); return; }
+    if (e.key === 'ArrowLeft'  || e.key === 'h')      { e.preventDefault(); _overviewSetActive(_overviewActive - 1); return; }
+    if (e.key === 'ArrowDown'  || e.key === 'j')      { e.preventDefault(); _overviewSetActive(_overviewActive + _overviewCols); return; }
+    if (e.key === 'ArrowUp'    || e.key === 'k')      { e.preventDefault(); _overviewSetActive(_overviewActive - _overviewCols); return; }
+    if (e.key === 'Enter')                            { e.preventDefault(); _overviewCommit(); return; }
+    // Let theme toggle and help fall through; swallow other globals
+    if (e.key !== 't' && e.key !== '?') return;
+  }
+  if (picker.classList.contains('visible')) return;
   if (curtain.classList.contains('visible')) { hideCurtain(); return; }
 
   const binding = KEYBINDINGS[e.key];
@@ -593,6 +605,7 @@ function connectWS() {
       slides = msg.slides;
       transitions = msg.transitions ?? [];
       hideError();
+      if (overview.classList.contains('visible')) closeOverview();
       slideIndex = Math.min(slideIndex, Math.max(0, slides.length - 1));
       step = 0;
       loadSlide();
