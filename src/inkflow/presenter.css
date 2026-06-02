@@ -122,6 +122,8 @@ body.is-fullscreen #statusbar.fs-visible {
 }
 body.is-fullscreen #sb-spacer { display: none; }
 
+#slide-info .slide-current { color: var(--text); font-size: 0.85rem; }
+
 #ws-dot {
   display: inline-block;
   width: 6px;
