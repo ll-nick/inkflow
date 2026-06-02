@@ -332,6 +332,14 @@ curtain.addEventListener('click', hideCurtain);
 help.addEventListener('click', e => { if (e.target === help) toggleHelp(); });
 stage.addEventListener('click', advance);
 
+// ── Status bar buttons ──
+document.getElementById('btn-prev').addEventListener('click', retreat);
+document.getElementById('btn-next').addEventListener('click', advance);
+document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+document.getElementById('btn-overview').addEventListener('click', () => { /* TODO */ });
+document.getElementById('btn-presenter').addEventListener('click', () => { /* TODO */ });
+
 // ── Keybindings ──
 // To make keys configurable via deck.py in the future, merge a server-injected
 // KEYBINDINGS_OVERRIDES object into this map before the listener runs.
