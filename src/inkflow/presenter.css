@@ -65,8 +65,35 @@ body {
   gap: 0.25rem;
 }
 
-#statusbar .sep { color: var(--overlay); }
+#statusbar .sep { color: var(--overlay); margin: 0 0.25rem; }
 
+.hud-btn {
+  background: transparent;
+  border: none;
+  color: var(--subtext);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.hud-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+[data-theme="light"] .hud-btn:hover { background: rgba(0,0,0,0.08); }
+
+.hud-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--overlay);
+  opacity: 0.4;
+  margin: 0 0.2rem;
+  flex-shrink: 0;
+}
 #ws-dot {
   display: inline-block;
   width: 6px;
