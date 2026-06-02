@@ -12,6 +12,8 @@ let step = 0;
 let _maxStepCache = null;
 let _pickerMatches = [];
 let _pickerActive  = 0;
+let _overviewActive = 0;
+let _overviewCols   = 1;
 
 // ── DOM refs ──
 const stage        = document.getElementById('stage');
@@ -25,6 +27,8 @@ const errorMsg     = document.getElementById('error-msg');
 const picker       = document.getElementById('picker');
 const pickerInput  = document.getElementById('picker-input');
 const pickerList   = document.getElementById('picker-list');
+const overview     = document.getElementById('overview');
+const overviewGrid = document.getElementById('overview-grid');
 
 // ── Helpers ──
 function maxStep() {
@@ -391,6 +395,87 @@ pickerList.addEventListener('click', e => {
   _pickerCommit();
 });
 picker.addEventListener('click', e => { if (e.target === picker) closePicker(); });
+
+// ── Slide overview ──
+function openOverview() {
+  overviewGrid.innerHTML = '';
+  slides.forEach((s, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'overview-cell';
+    cell.dataset.index = i;
+    cell.innerHTML =
+      `<div class="overview-num">${i + 1}</div>` +
+      `<div class="overview-thumb">${s.svg}</div>`;
+    overviewGrid.appendChild(cell);
+  });
+  _overviewActive = slideIndex;
+  overview.classList.add('visible');
+  // Scale + mark active after grid layout has resolved
+  requestAnimationFrame(() => {
+    overviewGrid.querySelectorAll('.overview-thumb').forEach(_scaleThumb);
+    _overviewComputeCols();
+    _overviewSetActive(_overviewActive);
+  });
+}
+
+function _scaleThumb(thumb) {
+  const svg = thumb.querySelector('svg');
+  if (!svg) return;
+  const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(parseFloat);
+  if (vb.length < 4) return;
+  const vbW = vb[2], vbH = vb[3];
+  svg.setAttribute('width', vbW);
+  svg.setAttribute('height', vbH);
+  svg.style.width  = vbW + 'px';
+  svg.style.height = vbH + 'px';
+  const w = thumb.clientWidth, h = thumb.clientHeight;
+  const scale = Math.min(w / vbW, h / vbH);
+  svg.style.transform = `scale(${scale})`;
+  // Reveal animated elements in their final state
+  svg.querySelectorAll('[data-step]').forEach(el => el.classList.add('active'));
+}
+
+function _overviewComputeCols() {
+  const cols = getComputedStyle(overviewGrid).gridTemplateColumns.split(' ').length;
+  _overviewCols = cols || 1;
+}
+
+function closeOverview() {
+  overview.classList.remove('visible');
+  overviewGrid.innerHTML = '';
+}
+
+function _overviewSetActive(i) {
+  _overviewActive = Math.max(0, Math.min(slides.length - 1, i));
+  overviewGrid.querySelectorAll('.overview-cell').forEach((el, idx) =>
+    el.classList.toggle('active', idx === _overviewActive)
+  );
+  const active = overviewGrid.children[_overviewActive];
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function _overviewCommit() {
+  slideIndex = _overviewActive;
+  step = 0;
+  closeOverview();
+  loadSlide();
+}
+
+overview.addEventListener('click', e => {
+  const cell = e.target.closest('.overview-cell');
+  if (cell) {
+    _overviewActive = +cell.dataset.index;
+    _overviewCommit();
+  } else if (e.target === overview) {
+    closeOverview();
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (!overview.classList.contains('visible')) return;
+  overviewGrid.querySelectorAll('.overview-thumb').forEach(_scaleThumb);
+  _overviewComputeCols();
+});
 
 function toggleTheme() {
   const html = document.documentElement;
