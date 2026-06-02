@@ -94,6 +94,11 @@ body {
   margin: 0 0.2rem;
   flex-shrink: 0;
 }
+
+/* ── Theme button: shows current state (moon = dark mode, sun = light mode) ── */
+#btn-theme .icon-sun  { display: none; }
+[data-theme="light"] #btn-theme .icon-moon { display: none; }
+[data-theme="light"] #btn-theme .icon-sun  { display: block; }
 #ws-dot {
   display: inline-block;
   width: 6px;
