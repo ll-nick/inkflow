@@ -83,6 +83,33 @@ Enable stepping on the slide with `steps=True`:
 MarkdownSlide("default", content="slides/02-bullets.md", steps=True)
 ```
 
+## Speaker notes
+
+Add a `::notes::` marker to route content to speaker notes instead of the slide body.
+Notes are not rendered on the slide — they are available in the presenter view.
+
+```markdown
+# My slide title
+
+The visible slide body goes here.
+
+::notes::
+
+These are my private notes. They support **markdown** and are only shown
+in the presenter view.
+```
+
+You can also set notes directly on `MarkdownSlide` or `Slide` via the `notes=` parameter:
+
+```python
+Slide("slides/01-title.svg", notes="Remember to greet the audience.")
+MarkdownSlide("default", content="slides/02-bullets.md", notes=Path("notes/02.md"))
+```
+
+`str` is used as-is (inline HTML/text). `Path` pointing to a `.md` file is rendered as Markdown; any other extension is read as-is.
+When both `notes=` and `::notes::` are present on a `MarkdownSlide`, they are concatenated
+(`notes=` first, then `::notes::`).
+
 ## Media
 
 Pass an image or video alongside the text content
