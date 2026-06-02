@@ -14,6 +14,13 @@ let _pickerMatches = [];
 let _pickerActive  = 0;
 let _overviewActive = 0;
 let _overviewCols   = 1;
+let ws = null;
+let _syncingFromServer = false;
+
+function sendNav() {
+  if (!ws || ws.readyState !== WebSocket.OPEN || _syncingFromServer) return;
+  ws.send(JSON.stringify({ type: 'nav', slideIndex, step }));
+}
 
 // ── DOM refs ──
 const stage        = document.getElementById('stage');
@@ -263,6 +270,7 @@ function advance() {
     step = 0;
     loadSlide();
   }
+  sendNav();
 }
 
 function retreat() {
@@ -273,12 +281,15 @@ function retreat() {
     const t = transitions[slideIndex];
     slideIndex--;
     step = 0;
-    loadSlide(() => { step = maxStep(); applyStep(); }, t);
+    loadSlide(() => { step = maxStep(); applyStep(); sendNav(); }, t);
+    return;
   }
+  sendNav();
 }
 
 function nextSlide() {
   if (slideIndex < slides.length - 1) { slideIndex++; step = 0; loadSlide(); }
+  sendNav();
 }
 
 function prevSlide() {
@@ -288,6 +299,7 @@ function prevSlide() {
     step = 0;
     loadSlide(null, t);
   }
+  sendNav();
 }
 
 function toggleFullscreen() {
@@ -303,8 +315,8 @@ function toggleCurtain(color) {
 
 function toggleHelp() { help.classList.toggle('visible'); }
 
-function gotoFirst() { slideIndex = 0; step = 0; loadSlide(); }
-function gotoLast()  { slideIndex = slides.length - 1; step = 0; loadSlide(); }
+function gotoFirst() { slideIndex = 0; step = 0; loadSlide(); sendNav(); }
+function gotoLast()  { slideIndex = slides.length - 1; step = 0; loadSlide(); sendNav(); }
 
 // ── Error display ──
 function showError(msg) {
@@ -376,6 +388,7 @@ function _pickerCommit() {
   step = 0;
   loadSlide();
   closePicker();
+  sendNav();
 }
 
 pickerInput.addEventListener('input', () => filterPicker(pickerInput.value));
@@ -459,6 +472,7 @@ function _overviewCommit() {
   step = 0;
   closeOverview();
   loadSlide();
+  sendNav();
 }
 
 overview.addEventListener('click', e => {
@@ -492,7 +506,9 @@ document.getElementById('btn-next').addEventListener('click', advance);
 document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-overview').addEventListener('click', openOverview);
-document.getElementById('btn-presenter').addEventListener('click', () => { /* TODO */ });
+document.getElementById('btn-presenter').addEventListener('click', () =>
+  window.open('/presenter', '_blank', 'noopener')
+);
 
 // ── Fullscreen: body class + hot-zone statusbar reveal ──
 const statusbar = document.getElementById('statusbar');
@@ -562,6 +578,7 @@ const KEYBINDINGS = {
   'w':          { action: () => toggleCurtain('white') },
   '?':          { action: toggleHelp },
   't':          { action: toggleTheme },
+  'p':          { action: () => window.open('/presenter', '_blank', 'noopener') },
 };
 
 document.addEventListener('keydown', e => {
@@ -593,10 +610,11 @@ document.addEventListener('keydown', e => {
 // ── WebSocket live reload ──
 function connectWS() {
   if (!WS_PORT) return;
-  const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+  ws = new WebSocket(`ws://localhost:${WS_PORT}`);
 
   ws.onopen = () => {
     wsDot.className = 'connected';
+    sendNav();
   };
 
   ws.onmessage = (ev) => {
@@ -611,11 +629,23 @@ function connectWS() {
       loadSlide();
     } else if (msg.type === 'error') {
       showError(msg.message);
+    } else if (msg.type === 'position') {
+      const newIndex = Math.min(Math.max(0, msg.slideIndex | 0), Math.max(0, slides.length - 1));
+      const newStep  = Math.max(0, msg.step | 0);
+      if (newIndex === slideIndex && newStep === step) return;
+      _syncingFromServer = true;
+      slideIndex = newIndex;
+      step = newStep;
+      loadSlide(() => {
+        if (step > 0) applyStep();
+        _syncingFromServer = false;
+      });
     }
   };
 
   ws.onclose = () => {
     wsDot.className = '';
+    ws = null;
     setTimeout(connectWS, 2000);
   };
 

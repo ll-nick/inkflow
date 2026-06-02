@@ -14,6 +14,7 @@ _EMPTY_STATE: State = {
     "error": None,
     "styles_css": "",
     "dark_mode": True,
+    "position": {"slideIndex": 0, "step": 0},
 }
 
 

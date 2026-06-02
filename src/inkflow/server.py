@@ -40,6 +40,7 @@ class State(TypedDict):
     error: str | None
     styles_css: str
     dark_mode: bool
+    position: dict[str, int]
 
 
 _state: State = {
@@ -49,6 +50,7 @@ _state: State = {
     "error": None,
     "styles_css": "",
     "dark_mode": True,
+    "position": {"slideIndex": 0, "step": 0},
 }
 
 
@@ -92,6 +94,12 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         _state["styles_css"] = styles_css
         _state["dark_mode"] = deck.dark_mode
         _state["error"] = None
+        if slides:
+            cur = _state["position"]["slideIndex"]
+            _state["position"]["slideIndex"] = max(0, min(len(slides) - 1, cur))
+        else:
+            _state["position"]["slideIndex"] = 0
+        _state["position"]["step"] = 0
         ui.set_ok(len(slides), time.monotonic() - t0)
         await broadcast(
             json.dumps({"type": "update", "slides": slides, "transitions": transitions})
@@ -111,9 +119,11 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
 # ── WebSocket broadcast ───────────────────────────────────────────────────────
 
 
-async def broadcast(msg: str) -> None:
+async def broadcast(msg: str, sender: ServerConnection | None = None) -> None:
     dead: set[ServerConnection] = set()
     for ws in list(_state["ws_clients"]):
+        if ws is sender:
+            continue
         try:
             await ws.send(msg)
         except Exception:
@@ -129,7 +139,32 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
         _state["ws_clients"].add(websocket)
         ui.refresh()
         try:
-            await websocket.wait_closed()
+            pos = _state["position"]
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "position",
+                        "slideIndex": pos["slideIndex"],
+                        "step": pos["step"],
+                    }
+                )
+            )
+            async for raw in websocket:
+                try:
+                    parsed = cast(object, json.loads(raw))
+                except (ValueError, TypeError):
+                    continue
+                if not isinstance(parsed, dict):
+                    continue
+                msg = cast(dict[str, object], parsed)
+                if msg.get("type") == "nav":
+                    si = int(cast(int, msg.get("slideIndex", 0)))
+                    st = int(cast(int, msg.get("step", 0)))
+                    _state["position"] = {"slideIndex": si, "step": st}
+                    await broadcast(
+                        json.dumps({"type": "position", "slideIndex": si, "step": st}),
+                        sender=websocket,
+                    )
         finally:
             _state["ws_clients"].discard(websocket)
             ui.refresh()
@@ -182,6 +217,25 @@ def build_html(state: State, ws_port: int | None) -> bytes:
     return html.encode("utf-8")
 
 
+def build_presenter_html(state: State, ws_port: int | None) -> bytes:
+    pkg = importlib.resources.files("inkflow")
+    template = pkg.joinpath("presenter-view.html").read_text(encoding="utf-8")
+    css = pkg.joinpath("presenter-view.css").read_text(encoding="utf-8")
+    js = pkg.joinpath("presenter-view.js").read_text(encoding="utf-8")
+    data_theme = "" if state["dark_mode"] else "light"
+    ws_port_js = "null" if ws_port is None else str(ws_port)
+    html = (
+        template.replace("__CSS__", css)
+        .replace("__JS__", js)
+        .replace("__STYLES__", state["styles_css"])
+        .replace("__DATA_THEME__", data_theme)
+        .replace("__SLIDES_JSON__", json.dumps(state["slides"]))
+        .replace("__WS_PORT__", ws_port_js)
+        .replace("__INITIAL_POSITION__", json.dumps(state["position"]))
+    )
+    return html.encode("utf-8")
+
+
 _SERVED_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 _MIME_TYPES = {
     ".mp4": "video/mp4",
@@ -220,7 +274,10 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
                     await writer.drain()
                     return
 
-            body = build_html(_state, ws_port)
+            if request_path == "/presenter":
+                body = build_presenter_html(_state, ws_port)
+            else:
+                body = build_html(_state, ws_port)
             header = (
                 b"HTTP/1.1 200 OK\r\n"
                 + b"Content-Type: text/html; charset=utf-8\r\n"

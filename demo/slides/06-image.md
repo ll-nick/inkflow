@@ -10,3 +10,9 @@ fills the `zone-image` rectangle declared in the layout.
 - Any aspect ratio is supported
 - Use `fit` to control how the image fills the zone
 - `x` and `y` can be used to control the position of the image within the zone
+
+::notes::
+
+Highlight that images are base64-inlined — the final SVG is one
+self-contained file you can email or check into a repo.
+
