@@ -299,6 +299,59 @@ kbd {
   text-align: center;
 }
 
+/* ── Slide overview ── */
+#overview {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+#overview.visible { display: block; }
+
+#overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.75rem;
+  padding: 2rem;
+}
+
+.overview-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.overview-num {
+  font-size: 0.72rem;
+  color: var(--subtext);
+  padding: 0 0.2rem;
+}
+.overview-cell.active .overview-num { color: var(--accent); }
+
+.overview-thumb {
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  border: 2px solid transparent;
+  border-radius: 4px;
+}
+.overview-cell:hover .overview-thumb  { border-color: var(--overlay); }
+.overview-cell.active .overview-thumb { border-color: var(--accent); }
+
+.overview-thumb svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  pointer-events: none;
+}
+
 /* ── Animation classes ── */
 
 .anim-fade-in {
