@@ -10,8 +10,6 @@ let transitions = INITIAL_TRANSITIONS;
 let slideIndex = 0;
 let step = 0;
 let _maxStepCache = null;
-let gotoMode = false;
-let gotoBuffer = '';
 
 // ── DOM refs ──
 const stage        = document.getElementById('stage');
@@ -73,11 +71,7 @@ function buildStepRing(current, total) {
 }
 
 function updateStatus() {
-  if (gotoMode) {
-    slideInfo.textContent = `g: ${gotoBuffer}_`;
-  } else {
-    slideInfo.innerHTML = `<span class="slide-current">${slideIndex + 1}</span> / ${slides.length}`;
-  }
+  slideInfo.innerHTML = `<span class="slide-current">${slideIndex + 1}</span> / ${slides.length}`;
   stepInfo.innerHTML = buildStepRing(step, maxStep());
   syncURL();
 }
@@ -310,16 +304,6 @@ function showError(msg) {
 }
 function hideError() { errorOverlay.classList.remove('visible'); }
 
-// ── Go-to-slide ──
-function enterGoto() { gotoMode = true; gotoBuffer = ''; updateStatus(); }
-function exitGoto()  { gotoMode = false; gotoBuffer = ''; updateStatus(); }
-function commitGoto() {
-  const n = parseInt(gotoBuffer, 10);
-  exitGoto();
-  if (!isNaN(n) && n >= 1 && n <= slides.length) {
-    slideIndex = n - 1;
-    step = 0;
-    loadSlide();
   }
 }
 
@@ -400,7 +384,6 @@ const KEYBINDINGS = {
   '^':          { action: gotoFirst },
   'End':        { action: gotoLast },
   '$':          { action: gotoLast },
-  'g':          { action: enterGoto },
   'f':          { action: toggleFullscreen },
   'b':          { action: () => toggleCurtain('black') },
   '.':          { action: () => toggleCurtain('black') },
@@ -415,14 +398,6 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (curtain.classList.contains('visible')) { hideCurtain(); return; }
-
-  if (gotoMode) {
-    if (e.key >= '0' && e.key <= '9')  { gotoBuffer += e.key; updateStatus(); }
-    else if (e.key === 'Enter')         { e.preventDefault(); commitGoto(); }
-    else if (e.key === 'Backspace')     { e.preventDefault(); gotoBuffer = gotoBuffer.slice(0, -1); updateStatus(); }
-    else if (e.key === 'Escape')        { exitGoto(); }
-    return;
-  }
 
   const binding = KEYBINDINGS[e.key];
   if (binding) {
