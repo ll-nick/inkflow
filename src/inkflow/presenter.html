@@ -25,7 +25,7 @@
         <tr><td>↑ k</td><td>Previous slide (skip steps)</td></tr>
         <tr><td>^ Home</td><td>First slide</td></tr>
         <tr><td>$ End</td><td>Last slide</td></tr>
-        <tr><td>g 12 ↵</td><td>Go to slide 12</td></tr>
+        <tr><td>g</td><td>Slide picker</td></tr>
         <tr><td>b .</td><td>Blackout</td></tr>
         <tr><td>w</td><td>Whiteout</td></tr>
         <tr><td>f</td><td>Toggle fullscreen</td></tr>
@@ -33,6 +33,13 @@
         <tr><td>?</td><td>This help</td></tr>
       </table>
       <p>Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
+    </div>
+  </div>
+  <div id="picker" role="dialog" aria-modal="true">
+    <div id="picker-box">
+      <input id="picker-input" type="text" placeholder="Go to slide…" autocomplete="off" spellcheck="false">
+      <ul id="picker-list" role="listbox"></ul>
+      <div id="picker-hint">↑↓ · Tab · Ctrl+j/k &nbsp;navigate &nbsp;·&nbsp; Enter &nbsp;jump &nbsp;·&nbsp; Esc &nbsp;close</div>
     </div>
   </div>
   <div id="stage"></div>
