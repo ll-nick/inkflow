@@ -18,7 +18,6 @@ const stage        = document.getElementById('stage');
 const slideInfo    = document.getElementById('slide-info');
 const stepInfo     = document.getElementById('step-info');
 const wsDot        = document.getElementById('ws-dot');
-const wsLabel      = document.getElementById('ws-label');
 const curtain      = document.getElementById('curtain');
 const help         = document.getElementById('help');
 const errorOverlay = document.getElementById('error-overlay');
