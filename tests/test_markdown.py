@@ -5,6 +5,7 @@ from pathlib import Path
 from inkflow.manifest import Media, TextBox
 from inkflow.markdown import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
+    SlideContent,
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
     build_slide_content,
     chunks_to_html,
@@ -152,17 +153,21 @@ class TestBuildSlideContent:
     def test_plain_markdown_becomes_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("Body content here.\n", encoding="utf-8")
-        content = build_slide_content(md, False, {})
+        result = build_slide_content(md, False, {})
+        assert isinstance(result, SlideContent)
         assert any(
-            isinstance(c, TextBox) and "#zone-content" in c.element for c in content
+            isinstance(c, TextBox) and "#zone-content" in c.element
+            for c in result.content
         )
 
     def test_h1_creates_title_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# My Title\n\nBody.\n", encoding="utf-8")
-        content = build_slide_content(md, False, {})
+        result = build_slide_content(md, False, {})
         titles = [
-            c for c in content if isinstance(c, TextBox) and "#zone-title" in c.element
+            c
+            for c in result.content
+            if isinstance(c, TextBox) and "#zone-title" in c.element
         ]
         assert len(titles) == 1
         assert titles[0].text is not None
@@ -170,24 +175,24 @@ class TestBuildSlideContent:
         assert "<h1>" in titles[0].text
 
     def test_image_kwarg_creates_media(self) -> None:
-        content = build_slide_content(None, False, {"image": "photo.png"})
-        media = [c for c in content if isinstance(c, Media)]
+        result = build_slide_content(None, False, {"image": "photo.png"})
+        media = [c for c in result.content if isinstance(c, Media)]
         assert len(media) == 1
         assert media[0].element == "#zone-image"
         assert media[0].src == "photo.png"
 
     def test_video_kwarg_creates_media(self) -> None:
-        content = build_slide_content(None, False, {"video": "clip.mp4"})
-        media = [c for c in content if isinstance(c, Media)]
+        result = build_slide_content(None, False, {"video": "clip.mp4"})
+        media = [c for c in result.content if isinstance(c, Media)]
         assert len(media) == 1
         assert media[0].element == "#zone-video"
         assert media[0].src == "clip.mp4"
 
     def test_media_kwarg_accepts_media_object_with_tuning(self) -> None:
-        content = build_slide_content(
+        result = build_slide_content(
             None, False, {"image": Media("photo.png", fit="cover", align="top")}
         )
-        media = [c for c in content if isinstance(c, Media)]
+        media = [c for c in result.content if isinstance(c, Media)]
         assert len(media) == 1
         assert media[0].element == "#zone-image"
         assert media[0].src == "photo.png"
@@ -197,11 +202,37 @@ class TestBuildSlideContent:
     def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("- One\n- Two\n- Three\n", encoding="utf-8")
-        content = build_slide_content(md, True, {})
-        box = next(c for c in content if isinstance(c, TextBox))
+        result = build_slide_content(md, True, {})
+        box = next(c for c in result.content if isinstance(c, TextBox))
         assert box.text is not None
         assert "data-step" in box.text
 
     def test_no_content_no_extra_returns_empty(self) -> None:
-        content = build_slide_content(None, False, {})
-        assert content == []
+        result = build_slide_content(None, False, {})
+        assert result.content == []
+        assert result.notes == ""
+
+    def test_notes_zone_returned_as_html(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text(
+            "Body text.\n\n::notes::\n\nRemember **this**.\n", encoding="utf-8"
+        )
+        result = build_slide_content(md, False, {})
+        assert "<strong>this</strong>" in result.notes
+        assert not any(
+            isinstance(c, TextBox) and "#zone-notes" in c.element
+            for c in result.content
+        )
+
+    def test_notes_zone_not_injected_into_slide(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::notes::\n\nPrivate note.\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        assert result.content == []
+        assert "Private note." in result.notes
+
+    def test_no_notes_zone_returns_empty_notes(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("# Title\n\nSome content.\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        assert result.notes == ""
