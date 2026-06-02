@@ -25,6 +25,7 @@ from inkflow.manifest import (
     Slide,
     Transition,
 )
+from inkflow.markdown import markdown_to_html
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 
@@ -69,7 +70,8 @@ def _resolve_notes(notes: str | Path | None, project_dir: Path) -> str:
         return ""
     if isinstance(notes, Path):
         resolved = notes if notes.is_absolute() else project_dir / notes
-        return resolved.read_text(encoding="utf-8")
+        text = resolved.read_text(encoding="utf-8")
+        return markdown_to_html(text) if resolved.suffix == ".md" else text
     return notes
 
 
