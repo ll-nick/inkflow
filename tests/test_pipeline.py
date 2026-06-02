@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=none
 from __future__ import annotations
 
 import textwrap
@@ -18,6 +19,7 @@ from inkflow.manifest import (
     TextBox,
 )
 from inkflow.pipeline import (
+    _resolve_notes,
     annotate_svg,
     clean_inkscape_svg,
     compose_with_ancestors,
@@ -381,3 +383,37 @@ class TestComposeWithAncestors:
         result = compose_with_ancestors(slide_with_layer, [anc])
         assert "stale/layer.svg" not in result
         assert "slide-content" in result
+
+
+class TestResolveNotes:
+    def test_none_returns_empty(self, tmp_path: Path) -> None:
+        assert _resolve_notes(None, tmp_path) == ""
+
+    def test_str_returned_as_is(self, tmp_path: Path) -> None:
+        assert _resolve_notes("<p>Hello</p>", tmp_path) == "<p>Hello</p>"
+
+    def test_md_path_rendered_as_html(self, tmp_path: Path) -> None:
+        f = tmp_path / "notes.md"
+        f.write_text("Remember **this**.\n", encoding="utf-8")
+        result = _resolve_notes(Path("notes.md"), tmp_path)
+        assert "<strong>this</strong>" in result
+
+    def test_non_md_path_read_as_is(self, tmp_path: Path) -> None:
+        f = tmp_path / "notes.html"
+        f.write_text("<p>Raw HTML</p>", encoding="utf-8")
+        result = _resolve_notes(Path("notes.html"), tmp_path)
+        assert result == "<p>Raw HTML</p>"
+
+    def test_relative_path_resolved_from_project_dir(self, tmp_path: Path) -> None:
+        sub = tmp_path / "notes"
+        sub.mkdir()
+        f = sub / "slide1.md"
+        f.write_text("A note.\n", encoding="utf-8")
+        result = _resolve_notes(Path("notes/slide1.md"), tmp_path)
+        assert "A note." in result
+
+    def test_absolute_path_used_directly(self, tmp_path: Path) -> None:
+        f = tmp_path / "abs.md"
+        f.write_text("Absolute.\n", encoding="utf-8")
+        result = _resolve_notes(f, tmp_path / "other")
+        assert "Absolute." in result

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict
 
@@ -24,6 +25,7 @@ from inkflow.manifest import (
     Slide,
     Transition,
 )
+from inkflow.markdown import markdown_to_html
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 
@@ -31,6 +33,12 @@ from inkflow.manifest import (
 class SlideData(TypedDict):
     svg: str
     title: str
+    notes: str
+
+
+@dataclass
+class _ResolvedMarkdown:
+    slide: Slide
     notes: str
 
 
@@ -55,6 +63,16 @@ def _infer_md_title(entry: MarkdownSlide, slide_num: int, project_dir: Path) -> 
         if chunks:
             return chunks[0].lstrip("#").strip()
     return f"Slide {slide_num}"
+
+
+def _resolve_notes(notes: str | Path | None, project_dir: Path) -> str:
+    if notes is None:
+        return ""
+    if isinstance(notes, Path):
+        resolved = notes if notes.is_absolute() else project_dir / notes
+        text = resolved.read_text(encoding="utf-8")
+        return markdown_to_html(text) if resolved.suffix == ".md" else text
+    return notes
 
 
 def resolve_slide_src(src: str, project_dir: Path) -> Path:
@@ -215,7 +233,7 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
 
 def _resolve_markdown_slide(
     ms: MarkdownSlide, project_dir: Path, theme: str | None
-) -> Slide:
+) -> _ResolvedMarkdown:
     from inkflow.markdown import build_slide_content
 
     # Use project_dir as the synthetic svg_path parent so multi-part relative
@@ -228,13 +246,18 @@ def _resolve_markdown_slide(
         if ms.content is not None
         else None
     )
-    content = build_slide_content(content_path, ms.steps, ms._extra)  # pyright: ignore[reportPrivateUsage]
-    return Slide(
-        src=str(template_path),
-        animations=ms.animations,
-        content=content,
-        transition=ms.transition,
-        style=ms.style,
+    result = build_slide_content(content_path, ms.steps, ms.extra)
+    explicit_notes = _resolve_notes(ms.notes, project_dir)
+    notes_html = "\n".join(filter(None, [explicit_notes, result.notes]))
+    return _ResolvedMarkdown(
+        slide=Slide(
+            src=str(template_path),
+            animations=ms.animations,
+            content=result.content,
+            transition=ms.transition,
+            style=ms.style,
+        ),
+        notes=notes_html,
     )
 
 
@@ -270,10 +293,12 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     for i, entry in enumerate(deck.slides):
         if isinstance(entry, MarkdownSlide):
             title = _infer_md_title(entry, i + 1, project_dir)
-            slide = _resolve_markdown_slide(entry, project_dir, deck.theme)
+            resolved = _resolve_markdown_slide(entry, project_dir, deck.theme)
+            slide, notes = resolved.slide, resolved.notes
         else:
             title = entry.title or _infer_slide_title(entry.src)
             slide = entry
+            notes = _resolve_notes(entry.notes, project_dir)
         svg = process_slide(
             slide,
             project_dir,
@@ -283,5 +308,5 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             deck.style,
             deck.font_size,
         )
-        results.append({"svg": svg, "title": title, "notes": ""})
+        results.append({"svg": svg, "title": title, "notes": notes})
     return results

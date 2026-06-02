@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
 from markdown_it import MarkdownIt
 
 from inkflow.manifest import Content, Media, TextBox
+
+
+@dataclass
+class SlideContent:
+    content: list[Content]
+    notes: str
+
 
 _ZONE_PATTERN = re.compile(r"^::((?!step\b)[\w-]+)::\s*$", re.MULTILINE)
 _STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
@@ -135,10 +142,15 @@ def build_slide_content(
     content_path: Path | None,
     steps: bool,
     extra: dict[str, str | Media],
-) -> list[Content]:
+) -> SlideContent:
     zones: dict[str, list[str]] = {}
     if content_path is not None:
         zones = parse_markdown_zones(content_path)
+
+    notes_chunks = zones.pop("notes", None)
+    notes_html = ""
+    if notes_chunks:
+        notes_html, _ = chunks_to_html(notes_chunks, 0)
 
     content: list[Content] = []
     base_step = 0
@@ -155,4 +167,4 @@ def build_slide_content(
         else:
             content.append(Media(val, element=f"#zone-{key}"))
 
-    return content
+    return SlideContent(content=content, notes=notes_html)

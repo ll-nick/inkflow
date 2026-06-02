@@ -163,4 +163,4 @@ def test_markdownslide_animations_stored() -> None:
 
 def test_markdownslide_kwargs_captured() -> None:
     ms = MarkdownSlide("layout.svg", image="photo.png", video="clip.mp4")
-    assert ms._extra == {"image": "photo.png", "video": "clip.mp4"}  # pyright: ignore[reportPrivateUsage]
+    assert ms.extra == {"image": "photo.png", "video": "clip.mp4"}
