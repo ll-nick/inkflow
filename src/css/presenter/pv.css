@@ -24,12 +24,12 @@ body.pv-open #pv {
     background: var(--surface);
     border: 1px solid var(--overlay);
     border-radius: 6px;
-    height: 40px;
-    padding: 0 0.75rem;
+    min-height: 40px;
+    padding: 0.5rem 0.75rem;
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: 0.72rem;
+    font-size: 1rem;
     color: var(--subtext);
     font-variant-numeric: tabular-nums;
 }
@@ -45,7 +45,6 @@ body.pv-open #pv {
 
 #pv-slide-info .slide-current {
     color: var(--text);
-    font-size: 0.85rem;
 }
 
 /* ── Next preview ── */
@@ -103,7 +102,7 @@ body.pv-open #pv {
     border: 1px solid var(--overlay);
     border-radius: 6px;
     padding: 1rem 1.25rem;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     color: var(--text);
     overflow-y: auto;
     min-height: 0;
