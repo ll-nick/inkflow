@@ -1,3 +1,4 @@
+"use strict";
 (() => {
   // src/ts/presenter/state.ts
   var state = {
@@ -18,14 +19,17 @@
   function maxStep(root) {
     let m = 0;
     root.querySelectorAll("[data-step]").forEach((el) => {
-      const s = +el.getAttribute("data-step");
+      const s = +(el.getAttribute("data-step") ?? "0");
       if (s > m) m = s;
     });
     return m;
   }
   function applyStep(root, step) {
     root.querySelectorAll("[data-step]").forEach((el) => {
-      el.classList.toggle("active", +el.getAttribute("data-step") <= step);
+      el.classList.toggle(
+        "active",
+        +(el.getAttribute("data-step") ?? "0") <= step
+      );
     });
   }
 
@@ -222,7 +226,7 @@
       for (const task of tasks) {
         if (task.type === "morph") {
           for (const [k, v] of Object.entries(task.toGeom))
-            task.el.setAttribute(k, v);
+            task.el.setAttribute(k, String(v));
           if (task.toFill) task.el.setAttribute("fill", task.toFill);
           if (task.toStroke)
             task.el.setAttribute("stroke", task.toStroke);
@@ -287,7 +291,7 @@
   var errorMsg = document.getElementById("error-msg");
   var statusBarEl = document.getElementById("statusbar");
   var _doc = document;
-  var _fsHideTimer = null;
+  var _fsHideTimer;
   function showCurtain(color) {
     curtain.style.background = color;
     curtain.classList.add("visible");
@@ -320,13 +324,13 @@
   function showFsBar() {
     statusBarEl.classList.add("fs-visible");
     clearTimeout(_fsHideTimer);
-    _fsHideTimer = null;
+    _fsHideTimer = void 0;
   }
   function scheduleFsHide() {
     if (_fsHideTimer) return;
     _fsHideTimer = setTimeout(() => {
       statusBarEl.classList.remove("fs-visible");
-      _fsHideTimer = null;
+      _fsHideTimer = void 0;
     }, 600);
   }
   function handleFullscreenChange() {
@@ -335,7 +339,7 @@
     if (!isFS) {
       statusBarEl.classList.remove("fs-visible");
       clearTimeout(_fsHideTimer);
-      _fsHideTimer = null;
+      _fsHideTimer = void 0;
     }
   }
   document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -446,7 +450,7 @@
         state.step = maxStep2();
         applyCurrentStep();
         sendNav();
-      }, t);
+      }, t ?? null);
       return;
     }
     sendNav();
@@ -464,7 +468,7 @@
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
       state.step = 0;
-      loadSlide(null, t);
+      loadSlide(null, t ?? null);
     }
     sendNav();
   }
