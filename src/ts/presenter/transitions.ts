@@ -1,7 +1,7 @@
 import { state } from "./state";
 import { updateStatus } from "./status";
 
-const stage = document.getElementById("stage");
+const stage = document.getElementById("stage")!;
 
 function geomAttrs(el: Element) {
     const g = (k: string) => parseFloat(el.getAttribute(k) ?? "0");

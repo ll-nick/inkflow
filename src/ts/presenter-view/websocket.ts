@@ -2,8 +2,8 @@ import type { WsMessage } from "../shared/types";
 import { applyCurrentStep, renderAll, renderNext, updateInfo } from "./render";
 import { state } from "./state";
 
-const dotEl = document.getElementById("pv-dot");
-const liveLabel = document.getElementById("pv-live-label");
+const dotEl = document.getElementById("pv-dot")!;
+const liveLabel = document.getElementById("pv-live-label")!;
 
 export function sendNav(): void {
     if (

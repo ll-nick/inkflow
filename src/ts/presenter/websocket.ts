@@ -4,10 +4,10 @@ import { applyCurrentStep } from "./status";
 import { loadSlide } from "./transitions";
 import { hideError, showError } from "./ui";
 
-const wsDot = document.getElementById("ws-dot");
+const wsDot = document.getElementById("ws-dot")!;
 // Direct DOM refs to avoid circular import with overview.ts
-const overviewEl = document.getElementById("overview");
-const overviewGridEl = document.getElementById("overview-grid");
+const overviewEl = document.getElementById("overview")!;
+const overviewGridEl = document.getElementById("overview-grid")!;
 
 export function sendNav(): void {
     if (

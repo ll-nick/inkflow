@@ -1,9 +1,9 @@
 import { applyStep, maxStep as computeMaxStep } from "../shared/step";
 import { state } from "./state";
 
-const stage = document.getElementById("stage");
-const slideInfo = document.getElementById("slide-info");
-const stepInfo = document.getElementById("step-info");
+const stage = document.getElementById("stage")!;
+const slideInfo = document.getElementById("slide-info")!;
+const stepInfo = document.getElementById("step-info")!;
 
 export function maxStep(): number {
     if (state._maxStepCache !== null) return state._maxStepCache;

@@ -1,8 +1,8 @@
-const curtain = document.getElementById("curtain");
-const help = document.getElementById("help");
-const errorOverlay = document.getElementById("error-overlay");
-const errorMsg = document.getElementById("error-msg");
-const statusBarEl = document.getElementById("statusbar");
+const curtain = document.getElementById("curtain")!;
+const help = document.getElementById("help")!;
+const errorOverlay = document.getElementById("error-overlay")!;
+const errorMsg = document.getElementById("error-msg")!;
+const statusBarEl = document.getElementById("statusbar")!;
 
 // biome-ignore lint/suspicious/noExplicitAny: webkit prefix not in TS DOM lib
 const _doc = document as any;

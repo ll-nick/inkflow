@@ -23,16 +23,18 @@ import {
 } from "./ui";
 
 // ── Stage click and status bar buttons ──
-document.getElementById("stage").addEventListener("click", advance);
-document.getElementById("btn-prev").addEventListener("click", retreat);
-document.getElementById("btn-next").addEventListener("click", advance);
+document.getElementById("stage")!.addEventListener("click", advance);
+document.getElementById("btn-prev")!.addEventListener("click", retreat);
+document.getElementById("btn-next")!.addEventListener("click", advance);
 document
-    .getElementById("btn-fullscreen")
+    .getElementById("btn-fullscreen")!
     .addEventListener("click", toggleFullscreen);
-document.getElementById("btn-theme").addEventListener("click", toggleTheme);
-document.getElementById("btn-overview").addEventListener("click", openOverview);
+document.getElementById("btn-theme")!.addEventListener("click", toggleTheme);
 document
-    .getElementById("btn-presenter")
+    .getElementById("btn-overview")!
+    .addEventListener("click", openOverview);
+document
+    .getElementById("btn-presenter")!
     .addEventListener("click", () =>
         window.open("/presenter", "_blank", "noopener"),
     );
@@ -67,10 +69,10 @@ const KEYBINDINGS: Record<
 };
 
 // DOM refs for visibility checks (avoid importing the modules that own them)
-const helpEl = document.getElementById("help");
-const overviewEl = document.getElementById("overview");
-const pickerEl = document.getElementById("picker");
-const curtainEl = document.getElementById("curtain");
+const helpEl = document.getElementById("help")!;
+const overviewEl = document.getElementById("overview")!;
+const pickerEl = document.getElementById("picker")!;
+const curtainEl = document.getElementById("curtain")!;
 
 document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
