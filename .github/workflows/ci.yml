@@ -11,6 +11,18 @@ jobs:
 
       - uses: jdx/mise-action@v4
 
+      - run: npm ci
+
+      - name: JS checks
+        run: |
+          npx biome check src/ts/ src/css/
+          npx tsc --noEmit
+
+      - name: Check bundles are up to date
+        run: |
+          mise run bundle
+          git diff --exit-code src/inkflow/bundles/
+
       - run: uv run ruff format --check src/ tests/
 
       - run: uv run ruff check src/ tests/
