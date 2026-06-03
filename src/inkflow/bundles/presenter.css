@@ -44,6 +44,13 @@ body {
   overflow: hidden;
   user-select: none;
 }
+#main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+  overflow: hidden;
+}
 #stage {
   flex: 1;
   display: flex;
@@ -51,6 +58,7 @@ body {
   justify-content: center;
   padding: 0.5rem;
   min-height: 0;
+  min-width: 0;
 }
 #stage > svg,
 #stage > :first-child {
@@ -386,6 +394,150 @@ kbd {
   left: 0;
   transform-origin: top left;
   pointer-events: none;
+}
+
+/* src/css/presenter/pv.css */
+#pv {
+  width: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.35s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--bg);
+  border-left: 1px solid var(--overlay);
+}
+body.pv-open #pv {
+  width: 30%;
+  padding: 0.75rem;
+}
+#pv-strip {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--overlay);
+  border-radius: 6px;
+  height: 40px;
+  padding: 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+}
+#pv-clock {
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+#pv-elapsed {
+  letter-spacing: 0.02em;
+}
+#pv-slide-info .slide-current {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+#pv-next {
+  flex: 0 1 35%;
+  background: #000;
+  border: 1px solid var(--overlay);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+.pv-label {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.55rem;
+  font-size: 0.6rem;
+  color: var(--subtext);
+  letter-spacing: 0.12em;
+  z-index: 1;
+  pointer-events: none;
+}
+#pv-next-inner {
+  position: absolute;
+  inset: 0;
+}
+#pv-next-inner svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+#pv-next-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--overlay);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+}
+#pv-notes {
+  flex: 1 1 auto;
+  background: var(--surface);
+  border: 1px solid var(--overlay);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  font-size: 0.95rem;
+  color: var(--text);
+  overflow-y: auto;
+  min-height: 0;
+  line-height: 1.5;
+}
+#pv-notes:empty::before {
+  content: "No notes";
+  color: var(--overlay);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+#pv-notes p {
+  margin-bottom: 0.6rem;
+}
+#pv-notes p:last-child {
+  margin-bottom: 0;
+}
+#pv-notes h1,
+#pv-notes h2,
+#pv-notes h3 {
+  color: var(--accent);
+  font-size: 1rem;
+  margin: 0.4rem 0;
+}
+#pv-notes ul,
+#pv-notes ol {
+  padding-left: 1.4rem;
+  margin-bottom: 0.6rem;
+}
+#pv-notes li {
+  margin-bottom: 0.2rem;
+}
+#pv-notes code {
+  background: var(--overlay);
+  color: var(--text);
+  padding: 0.05em 0.35em;
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+#pv-notes pre {
+  background: var(--bg);
+  border: 1px solid var(--overlay);
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  font-size: 0.82rem;
+}
+#pv-notes pre code {
+  background: transparent;
+  padding: 0;
+}
+#pv-notes a {
+  color: var(--blue);
 }
 
 /* src/css/shared/animations.css */
