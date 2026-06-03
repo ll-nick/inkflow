@@ -73,7 +73,7 @@ export function renderNext(): void {
         svg.querySelectorAll("[data-step]").forEach((el) => {
             el.classList.toggle(
                 "active",
-                +el.getAttribute("data-step") <= revealStep,
+                +(el.getAttribute("data-step") ?? "0") <= revealStep,
             );
         });
     }
