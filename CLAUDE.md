@@ -3,8 +3,9 @@
 ## Running
 
 ```bash
-uv sync                                   # install deps into .venv
-uv run inkflow serve demo/deck.py         # start server at localhost:7777
+uv run inkflow serve demo/deck.py   # start server at localhost:7777
+mise run check                      # lint + format + typecheck + test (Python and JS)
+mise run bundle                     # rebuild JS/CSS bundles from src/ts/ and src/css/
 ```
 
 ## Git setup (one-time, per clone)
@@ -24,28 +25,36 @@ SVG source files should be kept clean (no Inkscape metadata) in the repository. 
 ## Project layout
 
 ```
-src/inkflow/
-  __init__.py       exports: Deck, Slide, MarkdownSlide, Media, TextBox,
-                             FadeIn, FadeOut, Bounce, Cut, Crossfade, Morph,
-                             Animation, Transition
-  manifest.py       dataclasses for the deck DSL
-  pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
-  content.py        TextBox / Media injection into zone rects
-  layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
-  markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing
-  server.py         HTTP server, WebSocket server, file watcher, build pipeline
-  export.py         static HTML export (inkflow build) and PDF export (inkflow export)
-  cli.py            CLI entry point
-  ns.py             XML namespace constants
-  tui.py            terminal UI (Rich)
-  presenter.html    shell template — inlined with CSS/JS at serve time
-  presenter.css     presenter styles
-  presenter.js      presenter logic (navigation, transitions, WS)
-  pdf.html          PDF export template
-  theme/            built-in theme: main.svg, layouts/*.svg, styles.css
+src/
+  inkflow/
+    __init__.py       exports: Deck, Slide, MarkdownSlide, Media, TextBox,
+                               FadeIn, FadeOut, Bounce, Cut, Crossfade, Morph,
+                               Animation, Transition
+    manifest.py       dataclasses for the deck DSL
+    pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
+    content.py        TextBox / Media injection into zone rects
+    layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
+    markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing
+    server.py         HTTP server, WebSocket server, file watcher, build pipeline
+    export.py         static HTML export (inkflow build) and PDF export (inkflow export)
+    cli.py            CLI entry point
+    ns.py             XML namespace constants
+    tui.py            terminal UI (Rich)
+    presenter.html    shell template — inlined with CSS/JS at serve time
+    presenter.css     presenter styles
+    presenter.js      presenter logic (navigation, transitions, WS)
+    pdf.html          PDF export template
+    theme/            built-in theme: main.svg, layouts/*.svg, styles.css
+  ts/                 TypeScript source (split into modules in PR 2)
+    globals.d.ts      ambient declarations for Python-injected globals (__SLIDES_JSON__ etc.)
+  css/                CSS source (split into partials in PR 2)
 demo/
-  deck.py           7-slide demo deck (SVG slides + MarkdownSlides)
-  slides/           source SVGs and Markdown content files
+  deck.py             7-slide demo deck (SVG slides + MarkdownSlides)
+  slides/             source SVGs and Markdown content files
+mise.toml             task runner + tool versions (replaces poethepoet)
+package.json          JS devDependencies: biome, esbuild, typescript
+biome.json            Biome lint + format config (4-space indent, noUnusedVariables=error)
+tsconfig.json         TypeScript config (noEmit, verbatimModuleSyntax — tsc as type-checker only)
 ```
 
 ## Key architecture decisions
@@ -103,6 +112,18 @@ SVG files on disk are never modified by the serve/build pipeline.
 2. `annotate_svg(svg_str, animations)` — find elements by id (stripping leading `#`), set `class` and `data-step` attributes
 
 CSS class map: `FadeIn → anim-fade-in`, `FadeOut → anim-fade-out`, `Bounce → anim-bounce`
+
+## JS toolchain
+
+Three tools, each with a distinct role:
+
+- **Biome** — linter and formatter for TypeScript and CSS. Run via `mise run lint-js`. Config in `biome.json`.
+- **tsc** — type-checker only (`noEmit: true`). Never emits files; esbuild does that. Run via `mise run typecheck-js`.
+- **esbuild** — bundler. Produces committed bundles in `src/inkflow/bundles/` that the Python inlining pipeline reads at serve/build time. Run via `mise run bundle`.
+
+`pip install inkflow` ships the pre-built bundles — no Node at install time.
+
+`verbatimModuleSyntax: true` in tsconfig enforces `import type` for type-only imports, which esbuild requires since it transpiles files individually without type information.
 
 ## Dependencies
 
