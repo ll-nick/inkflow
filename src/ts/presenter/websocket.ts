@@ -50,7 +50,8 @@ export function connectWS(wsPort: number | null): void {
                 Math.max(0, state.slides.length - 1),
             );
             state.step = 0;
-            loadSlide(() => renderPv());
+            loadSlide();
+            renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);
         } else if (msg.type === "position") {
@@ -65,9 +66,9 @@ export function connectWS(wsPort: number | null): void {
             state.step = newStep;
             loadSlide(() => {
                 if (state.step > 0) applyCurrentStep();
-                renderPv();
                 state._syncingFromServer = false;
             });
+            renderPv();
         }
     };
 

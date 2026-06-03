@@ -20,8 +20,8 @@ state.transitions = INITIAL_TRANSITIONS;
 readURL();
 loadSlide(() => {
     if (state.step > 0) applyCurrentStep();
-    renderPv();
 });
+renderPv();
 updatePvClock();
 setInterval(updatePvClock, 1000);
 if (INITIAL_ERROR) showError(INITIAL_ERROR);

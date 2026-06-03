@@ -45,7 +45,8 @@ export function overviewCommit(): void {
     state.slideIndex = state._overviewActive;
     state.step = 0;
     closeOverview();
-    loadSlide(() => renderPv());
+    loadSlide();
+    renderPv();
     sendNav();
 }
 

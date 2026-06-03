@@ -1,6 +1,5 @@
 import { buildStepRing } from "../shared/ring";
 import { state } from "./state";
-import { maxStep } from "./status";
 
 // ── DOM refs ──
 const pvPanel = document.getElementById("pv")!;
@@ -30,10 +29,14 @@ export function updatePvClock(): void {
             : `${_pad2(m)}:${_pad2(s)}`;
 }
 
+function _pvMaxStep(): number {
+    return state._maxStepCache ?? 0;
+}
+
 export function updatePvInfo(): void {
     const total = state.slides.length;
     pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "–"}</span> / ${total || "–"}`;
-    pvStepRing.innerHTML = buildStepRing(state.step, maxStep());
+    pvStepRing.innerHTML = buildStepRing(state.step, _pvMaxStep());
 }
 
 function _scalePvNext(): void {
@@ -59,7 +62,7 @@ function _scalePvNext(): void {
 }
 
 export function renderPvNext(): void {
-    const curMax = maxStep();
+    const curMax = _pvMaxStep();
     let previewSvg: string | null = null;
     let revealStep = 0;
     if (state.step < curMax) {

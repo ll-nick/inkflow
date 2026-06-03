@@ -13,7 +13,8 @@ export function advance(): void {
     } else if (state.slideIndex < state.slides.length - 1) {
         state.slideIndex++;
         state.step = 0;
-        loadSlide(() => renderPv());
+        loadSlide();
+        renderPv();
     }
     sendNav();
 }
@@ -31,9 +32,9 @@ export function retreat(): void {
         loadSlide(() => {
             state.step = maxStep();
             applyCurrentStep();
-            renderPv();
             sendNav();
         }, t ?? null);
+        renderPv();
         return;
     }
     sendNav();
@@ -43,7 +44,8 @@ export function nextSlide(): void {
     if (state.slideIndex < state.slides.length - 1) {
         state.slideIndex++;
         state.step = 0;
-        loadSlide(() => renderPv());
+        loadSlide();
+        renderPv();
     }
     sendNav();
 }
@@ -53,7 +55,8 @@ export function prevSlide(): void {
         const t = state.transitions[state.slideIndex];
         state.slideIndex--;
         state.step = 0;
-        loadSlide(() => renderPv(), t ?? null);
+        loadSlide(null, t ?? null);
+        renderPv();
     }
     sendNav();
 }
@@ -61,13 +64,15 @@ export function prevSlide(): void {
 export function gotoFirst(): void {
     state.slideIndex = 0;
     state.step = 0;
-    loadSlide(() => renderPv());
+    loadSlide();
+    renderPv();
     sendNav();
 }
 
 export function gotoLast(): void {
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
-    loadSlide(() => renderPv());
+    loadSlide();
+    renderPv();
     sendNav();
 }
