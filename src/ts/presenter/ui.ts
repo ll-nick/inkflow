@@ -1,13 +1,13 @@
-const curtain = document.getElementById("curtain");
-const help = document.getElementById("help");
-const errorOverlay = document.getElementById("error-overlay");
-const errorMsg = document.getElementById("error-msg");
-const statusBarEl = document.getElementById("statusbar");
+const curtain = document.getElementById("curtain")!;
+const help = document.getElementById("help")!;
+const errorOverlay = document.getElementById("error-overlay")!;
+const errorMsg = document.getElementById("error-msg")!;
+const statusBarEl = document.getElementById("statusbar")!;
 
 // biome-ignore lint/suspicious/noExplicitAny: webkit prefix not in TS DOM lib
 const _doc = document as any;
 
-let _fsHideTimer: ReturnType<typeof setTimeout> | null = null;
+let _fsHideTimer: number | undefined;
 
 // ── Curtain ──
 export function showCurtain(color: string): void {
@@ -51,13 +51,13 @@ export function toggleFullscreen(): void {
 function showFsBar(): void {
     statusBarEl.classList.add("fs-visible");
     clearTimeout(_fsHideTimer);
-    _fsHideTimer = null;
+    _fsHideTimer = undefined;
 }
 function scheduleFsHide(): void {
     if (_fsHideTimer) return;
     _fsHideTimer = setTimeout(() => {
         statusBarEl.classList.remove("fs-visible");
-        _fsHideTimer = null;
+        _fsHideTimer = undefined;
     }, 600);
 }
 
@@ -67,7 +67,7 @@ function handleFullscreenChange(): void {
     if (!isFS) {
         statusBarEl.classList.remove("fs-visible");
         clearTimeout(_fsHideTimer);
-        _fsHideTimer = null;
+        _fsHideTimer = undefined;
     }
 }
 

@@ -1,3 +1,4 @@
+"use strict";
 (() => {
   // src/ts/presenter-view/clock.ts
   var clockEl = document.getElementById("pv-clock");
@@ -21,14 +22,17 @@
   function maxStep(root) {
     let m = 0;
     root.querySelectorAll("[data-step]").forEach((el) => {
-      const s = +el.getAttribute("data-step");
+      const s = +(el.getAttribute("data-step") ?? "0");
       if (s > m) m = s;
     });
     return m;
   }
   function applyStep(root, step) {
     root.querySelectorAll("[data-step]").forEach((el) => {
-      el.classList.toggle("active", +el.getAttribute("data-step") <= step);
+      el.classList.toggle(
+        "active",
+        +(el.getAttribute("data-step") ?? "0") <= step
+      );
     });
   }
 
@@ -106,7 +110,7 @@
       svg.querySelectorAll("[data-step]").forEach((el) => {
         el.classList.toggle(
           "active",
-          +el.getAttribute("data-step") <= revealStep
+          +(el.getAttribute("data-step") ?? "0") <= revealStep
         );
       });
     }

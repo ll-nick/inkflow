@@ -2,8 +2,8 @@ import { state } from "./state";
 import { loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
 
-const overview = document.getElementById("overview");
-const overviewGrid = document.getElementById("overview-grid");
+const overview = document.getElementById("overview")!;
+const overviewGrid = document.getElementById("overview-grid")!;
 
 function scaleThumb(thumb: Element): void {
     const svg = thumb.querySelector("svg");
@@ -76,7 +76,7 @@ export function closeOverview(): void {
 overview.addEventListener("click", (e) => {
     const cell = (e.target as Element).closest(".overview-cell");
     if (cell) {
-        state._overviewActive = +(cell as HTMLElement).dataset.index;
+        state._overviewActive = +(cell as HTMLElement).dataset.index!;
         overviewCommit();
     } else if (e.target === overview) {
         closeOverview();

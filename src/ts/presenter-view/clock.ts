@@ -1,5 +1,5 @@
-const clockEl = document.getElementById("pv-clock");
-const elapsedEl = document.getElementById("pv-elapsed");
+const clockEl = document.getElementById("pv-clock")!;
+const elapsedEl = document.getElementById("pv-elapsed")!;
 const startTime = Date.now();
 
 function pad2(n: number): string {

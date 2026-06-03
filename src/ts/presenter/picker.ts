@@ -2,9 +2,9 @@ import { state } from "./state";
 import { loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
 
-const picker = document.getElementById("picker");
+const picker = document.getElementById("picker")!;
 const pickerInput = document.getElementById("picker-input") as HTMLInputElement;
-const pickerList = document.getElementById("picker-list");
+const pickerList = document.getElementById("picker-list")!;
 
 export function openPicker(): void {
     picker.classList.add("visible");
@@ -103,7 +103,7 @@ pickerInput.addEventListener("keydown", (e) => {
 pickerList.addEventListener("click", (e) => {
     const li = (e.target as Element).closest("li");
     if (!li) return;
-    const pos = parseInt((li as HTMLElement).dataset.pos, 10);
+    const pos = parseInt((li as HTMLElement).dataset.pos!, 10);
     state._pickerActive = pos;
     pickerCommit();
 });

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
-    "strict": false,
+    "strict": true,
     "noEmit": true,
     "module": "ESNext",
     "verbatimModuleSyntax": true,

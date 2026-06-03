@@ -27,7 +27,7 @@ export function retreat(): void {
             state.step = maxStep();
             applyCurrentStep();
             sendNav();
-        }, t);
+        }, t ?? null);
         return;
     }
     sendNav();
@@ -47,7 +47,7 @@ export function prevSlide(): void {
         const t = state.transitions[state.slideIndex];
         state.slideIndex--;
         state.step = 0;
-        loadSlide(null, t);
+        loadSlide(null, t ?? null);
     }
     sendNav();
 }

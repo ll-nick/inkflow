@@ -1,11 +1,11 @@
 import { applyStep, maxStep as computeMaxStep } from "../shared/step";
 import { state } from "./state";
 
-const currentPane = document.getElementById("pv-current-inner");
-const nextPane = document.getElementById("pv-next-inner");
-const notesPane = document.getElementById("pv-notes");
-const slideEl = document.getElementById("pv-slide");
-const stepEl = document.getElementById("pv-step");
+const currentPane = document.getElementById("pv-current-inner")!;
+const nextPane = document.getElementById("pv-next-inner")!;
+const notesPane = document.getElementById("pv-notes")!;
+const slideEl = document.getElementById("pv-slide")!;
+const stepEl = document.getElementById("pv-step")!;
 
 export function maxStep(): number {
     if (state._maxStepCache !== null) return state._maxStepCache;
@@ -73,7 +73,7 @@ export function renderNext(): void {
         svg.querySelectorAll("[data-step]").forEach((el) => {
             el.classList.toggle(
                 "active",
-                +el.getAttribute("data-step") <= revealStep,
+                +(el.getAttribute("data-step") ?? "0") <= revealStep,
             );
         });
     }
