@@ -1,5 +1,29 @@
 "use strict";
 (() => {
+  // src/ts/shared/ring.ts
+  function buildStepRing(current, total) {
+    const size = 20, cx = 10, cy = 10, ro = 9, ri = 5;
+    if (total === 0) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="vertical-align:middle"><circle cx="${cx}" cy="${cy}" r="${(ro + ri) / 2}" fill="none" stroke="var(--overlay)" stroke-width="${ro - ri}" opacity="0.2"/></svg>`;
+    }
+    const gap = total > 1 ? 0.15 : 0;
+    const sweep = 2 * Math.PI / total;
+    let paths = "";
+    for (let i = 0; i < total; i++) {
+      const a1 = -Math.PI / 2 + i * sweep + gap / 2;
+      const a2 = -Math.PI / 2 + (i + 1) * sweep - gap / 2;
+      const ox1 = (cx + ro * Math.cos(a1)).toFixed(2), oy1 = (cy + ro * Math.sin(a1)).toFixed(2);
+      const ox2 = (cx + ro * Math.cos(a2)).toFixed(2), oy2 = (cy + ro * Math.sin(a2)).toFixed(2);
+      const ix1 = (cx + ri * Math.cos(a1)).toFixed(2), iy1 = (cy + ri * Math.sin(a1)).toFixed(2);
+      const ix2 = (cx + ri * Math.cos(a2)).toFixed(2), iy2 = (cy + ri * Math.sin(a2)).toFixed(2);
+      const large = a2 - a1 > Math.PI ? 1 : 0;
+      const active = i < current;
+      const d = `M${ox1},${oy1}A${ro},${ro},0,${large},1,${ox2},${oy2}L${ix2},${iy2}A${ri},${ri},0,${large},0,${ix1},${iy1}Z`;
+      paths += `<path d="${d}" fill="${active ? "var(--text)" : "var(--overlay)"}" opacity="${active ? 1 : 0.3}"/>`;
+    }
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="vertical-align:middle" aria-label="Step ${current} of ${total}">${paths}</svg>`;
+  }
+
   // src/ts/presenter/state.ts
   var state = {
     slides: [],
@@ -14,6 +38,95 @@
     ws: null,
     _syncingFromServer: false
   };
+
+  // src/ts/presenter/pv.ts
+  var pvPanel = document.getElementById("pv");
+  var pvClock = document.getElementById("pv-clock");
+  var pvElapsed = document.getElementById("pv-elapsed");
+  var pvSlideInfo = document.getElementById("pv-slide-info");
+  var pvStepRing = document.getElementById("pv-step-ring");
+  var pvNextInner = document.getElementById("pv-next-inner");
+  var pvNotes = document.getElementById("pv-notes");
+  var _startTime = Date.now();
+  function _pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+  function updatePvClock() {
+    const now = /* @__PURE__ */ new Date();
+    pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
+    const secs = Math.floor((Date.now() - _startTime) / 1e3);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor(secs % 3600 / 60);
+    const s = secs % 60;
+    pvElapsed.textContent = h > 0 ? `${_pad2(h)}:${_pad2(m)}:${_pad2(s)}` : `${_pad2(m)}:${_pad2(s)}`;
+  }
+  function _pvMaxStep() {
+    return state._maxStepCache ?? 0;
+  }
+  function updatePvInfo() {
+    const total = state.slides.length;
+    pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "\u2013"}</span> / ${total || "\u2013"}`;
+    pvStepRing.innerHTML = buildStepRing(state.step, _pvMaxStep());
+  }
+  function _scalePvNext() {
+    const svg = pvNextInner.querySelector("svg");
+    if (!svg) return;
+    const vb = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(parseFloat);
+    if (vb.length < 4) return;
+    const vbW = vb[2];
+    const vbH = vb[3];
+    svg.setAttribute("width", String(vbW));
+    svg.setAttribute("height", String(vbH));
+    svg.style.width = `${vbW}px`;
+    svg.style.height = `${vbH}px`;
+    const scale = Math.min(
+      pvNextInner.clientWidth / vbW,
+      pvNextInner.clientHeight / vbH
+    );
+    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
+    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
+    svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+  function renderPvNext() {
+    const curMax = _pvMaxStep();
+    let previewSvg = null;
+    let revealStep = 0;
+    if (state.step < curMax) {
+      previewSvg = state.slides[state.slideIndex]?.svg ?? null;
+      revealStep = state.step + 1;
+    } else if (state.slideIndex + 1 < state.slides.length) {
+      previewSvg = state.slides[state.slideIndex + 1].svg;
+    }
+    if (previewSvg === null) {
+      pvNextInner.innerHTML = '<div id="pv-next-empty">END</div>';
+      return;
+    }
+    pvNextInner.innerHTML = previewSvg;
+    const svg = pvNextInner.querySelector("svg");
+    if (svg) {
+      svg.querySelectorAll("[data-step]").forEach((el) => {
+        el.classList.toggle(
+          "active",
+          +(el.getAttribute("data-step") ?? "0") <= revealStep
+        );
+      });
+    }
+    requestAnimationFrame(_scalePvNext);
+  }
+  function renderPvNotes() {
+    pvNotes.innerHTML = state.slides[state.slideIndex]?.notes ?? "";
+    pvNotes.scrollTop = 0;
+  }
+  function renderPv() {
+    updatePvInfo();
+    renderPvNext();
+    renderPvNotes();
+  }
+  function togglePv() {
+    document.body.classList.toggle("pv-open");
+    pvPanel.addEventListener("transitionend", _scalePvNext, { once: true });
+  }
+  window.addEventListener("resize", _scalePvNext);
 
   // src/ts/shared/step.ts
   function maxStep(root) {
@@ -63,28 +176,6 @@
       10
     );
     if (!Number.isNaN(clicks) && clicks >= 0) state.step = clicks;
-  }
-  function buildStepRing(current, total) {
-    const size = 20, cx = 10, cy = 10, ro = 9, ri = 5;
-    if (total === 0) {
-      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="vertical-align:middle"><circle cx="${cx}" cy="${cy}" r="${(ro + ri) / 2}" fill="none" stroke="var(--overlay)" stroke-width="${ro - ri}" opacity="0.2"/></svg>`;
-    }
-    const gap = total > 1 ? 0.15 : 0;
-    const sweep = 2 * Math.PI / total;
-    let paths = "";
-    for (let i = 0; i < total; i++) {
-      const a1 = -Math.PI / 2 + i * sweep + gap / 2;
-      const a2 = -Math.PI / 2 + (i + 1) * sweep - gap / 2;
-      const ox1 = (cx + ro * Math.cos(a1)).toFixed(2), oy1 = (cy + ro * Math.sin(a1)).toFixed(2);
-      const ox2 = (cx + ro * Math.cos(a2)).toFixed(2), oy2 = (cy + ro * Math.sin(a2)).toFixed(2);
-      const ix1 = (cx + ri * Math.cos(a1)).toFixed(2), iy1 = (cy + ri * Math.sin(a1)).toFixed(2);
-      const ix2 = (cx + ri * Math.cos(a2)).toFixed(2), iy2 = (cy + ri * Math.sin(a2)).toFixed(2);
-      const large = a2 - a1 > Math.PI ? 1 : 0;
-      const active = i < current;
-      const d = `M${ox1},${oy1}A${ro},${ro},0,${large},1,${ox2},${oy2}L${ix2},${iy2}A${ri},${ri},0,${large},0,${ix1},${iy1}Z`;
-      paths += `<path d="${d}" fill="${active ? "var(--text)" : "var(--overlay)"}" opacity="${active ? 1 : 0.3}"/>`;
-    }
-    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="vertical-align:middle" aria-label="Step ${current} of ${total}">${paths}</svg>`;
   }
   function updateStatus() {
     slideInfo.innerHTML = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
@@ -400,6 +491,7 @@
         );
         state.step = 0;
         loadSlide();
+        renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
       } else if (msg.type === "position") {
@@ -416,6 +508,7 @@
           if (state.step > 0) applyCurrentStep();
           state._syncingFromServer = false;
         });
+        renderPv();
       }
     };
     state.ws.onclose = () => {
@@ -431,10 +524,13 @@
     if (state.step < maxStep2()) {
       state.step++;
       applyCurrentStep();
+      renderPvNext();
+      updatePvInfo();
     } else if (state.slideIndex < state.slides.length - 1) {
       state.slideIndex++;
       state.step = 0;
       loadSlide();
+      renderPv();
     }
     sendNav();
   }
@@ -442,6 +538,8 @@
     if (state.step > 0) {
       state.step--;
       applyCurrentStep();
+      renderPvNext();
+      updatePvInfo();
     } else if (state.slideIndex > 0) {
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
@@ -451,6 +549,7 @@
         applyCurrentStep();
         sendNav();
       }, t ?? null);
+      renderPv();
       return;
     }
     sendNav();
@@ -460,6 +559,7 @@
       state.slideIndex++;
       state.step = 0;
       loadSlide();
+      renderPv();
     }
     sendNav();
   }
@@ -469,6 +569,7 @@
       state.slideIndex--;
       state.step = 0;
       loadSlide(null, t ?? null);
+      renderPv();
     }
     sendNav();
   }
@@ -476,12 +577,14 @@
     state.slideIndex = 0;
     state.step = 0;
     loadSlide();
+    renderPv();
     sendNav();
   }
   function gotoLast() {
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
     loadSlide();
+    renderPv();
     sendNav();
   }
 
@@ -521,6 +624,7 @@
     state.step = 0;
     closeOverview();
     loadSlide();
+    renderPv();
     sendNav();
   }
   function openOverview() {
@@ -621,6 +725,7 @@
     state.slideIndex = state._pickerMatches[state._pickerActive];
     state.step = 0;
     loadSlide();
+    renderPv();
     closePicker();
     sendNav();
   }
@@ -659,10 +764,7 @@
   document.getElementById("btn-fullscreen").addEventListener("click", toggleFullscreen);
   document.getElementById("btn-theme").addEventListener("click", toggleTheme);
   document.getElementById("btn-overview").addEventListener("click", openOverview);
-  document.getElementById("btn-presenter").addEventListener(
-    "click",
-    () => window.open("/presenter", "_blank", "noopener")
-  );
+  document.getElementById("btn-presenter").addEventListener("click", togglePv);
   var KEYBINDINGS = {
     ArrowRight: { action: advance, preventDefault: true },
     " ": { action: advance, preventDefault: true },
@@ -686,7 +788,7 @@
     w: { action: () => toggleCurtain("white") },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
-    p: { action: () => window.open("/presenter", "_blank", "noopener") }
+    p: { action: togglePv }
   };
   var helpEl = document.getElementById("help");
   var overviewEl2 = document.getElementById("overview");
@@ -755,6 +857,9 @@
   loadSlide(() => {
     if (state.step > 0) applyCurrentStep();
   });
+  renderPv();
+  updatePvClock();
+  setInterval(updatePvClock, 1e3);
   if (INITIAL_ERROR) showError(INITIAL_ERROR);
   connectWS(WS_PORT);
 })();

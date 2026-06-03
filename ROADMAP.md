@@ -27,25 +27,13 @@ Makes each output SVG self-contained without converting text to paths.
 
 ## Presenter experience
 
-**Slide picker**
-`g` currently enters a numeric goto buffer.
-The next step is a full picker overlay: a modal where typing narrows by slide number and Enter or click jumps.
-Requires an optional `title` field on `Slide` in `deck.py`.
-
 **Hidden / draft slides**
 `Slide("...", visible=False)` keeps a slide in `deck.py` but excludes it from the presentation.
 Essential for working decks where you trim slides depending on audience or time.
 
-**Presenter view**
-A second window (or `/presenter` URL) showing the current slide, the next slide preview, step counter, and a running clock.
-The two windows stay in sync via the existing WebSocket connection.
-
 **Remote control**
 A `/remote` URL serving a minimal forward/back interface for a phone browser.
 The WebSocket architecture makes this nearly free to implement.
-
-**Speaker notes**
-A `notes` field on `Slide` that appears in the presenter view but not the main display.
 
 **Drawing and annotation mode**
 A toggle that overlays a canvas element and lets you draw with the mouse or stylus during Q&A.
@@ -113,10 +101,6 @@ Auto-discovery so `Deck(theme="catppuccin-mocha")` works after `pip install inkf
 
 ## Reliability and polish
 
-**Port conflict handling**
-If 7777 or 7778 are in use the server crashes with an OS error.
-Should auto-detect a free port or give a useful message.
-
 **CLI polish**
 `--no-browser` flag, `--host` for SSH forwarding, `--version`.
 
@@ -127,7 +111,6 @@ Should auto-detect a free port or give a useful message.
 - **More animation types** — `Scale`, `Rotate`, `Draw` (stroke-dashoffset), `Highlight` (colour pulse)
 - **Morph for paths and groups** — `<path>`, `<polygon>`, `<g>`, `<text>` currently fall back to an instant cut
 - **Auto-advance** — timed slides for kiosk or lightning-talk use
-- **Slide overview** — press Escape for a thumbnail grid, click to jump
 - **Hyperlinks** — SVG `<a>` elements open in a new tab during presentation
 - **Within-slide Morph** — element changes shape as part of a step sequence on a single slide
 - **Configurable keybindings** — a `keybindings` dict on `Deck`

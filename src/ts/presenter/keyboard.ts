@@ -13,6 +13,7 @@ import {
     overviewSetActive,
 } from "./overview";
 import { openPicker } from "./picker";
+import { togglePv } from "./pv";
 import { state } from "./state";
 import {
     hideCurtain,
@@ -33,11 +34,7 @@ document.getElementById("btn-theme")!.addEventListener("click", toggleTheme);
 document
     .getElementById("btn-overview")!
     .addEventListener("click", openOverview);
-document
-    .getElementById("btn-presenter")!
-    .addEventListener("click", () =>
-        window.open("/presenter", "_blank", "noopener"),
-    );
+document.getElementById("btn-presenter")!.addEventListener("click", togglePv);
 
 const KEYBINDINGS: Record<
     string,
@@ -65,7 +62,7 @@ const KEYBINDINGS: Record<
     w: { action: () => toggleCurtain("white") },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
-    p: { action: () => window.open("/presenter", "_blank", "noopener") },
+    p: { action: togglePv },
 };
 
 // DOM refs for visibility checks (avoid importing the modules that own them)

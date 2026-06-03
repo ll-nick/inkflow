@@ -23,9 +23,7 @@ run = "npx tsc --noEmit"
 [tasks.bundle]
 run = [
   "npx esbuild src/ts/presenter/main.ts --bundle --outfile=src/inkflow/bundles/presenter.js",
-  "npx esbuild src/ts/presenter-view/main.ts --bundle --outfile=src/inkflow/bundles/presenter-view.js",
   "npx esbuild src/css/presenter/index.css --bundle --outfile=src/inkflow/bundles/presenter.css",
-  "npx esbuild src/css/presenter-view/index.css --bundle --outfile=src/inkflow/bundles/presenter-view.css",
 ]
 
 [tasks.docs]

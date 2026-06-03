@@ -1,3 +1,4 @@
+import { renderPv } from "./pv";
 import { state } from "./state";
 import { loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
@@ -45,6 +46,7 @@ export function overviewCommit(): void {
     state.step = 0;
     closeOverview();
     loadSlide();
+    renderPv();
     sendNav();
 }
 

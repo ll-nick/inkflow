@@ -1,4 +1,5 @@
 import type { WsMessage } from "../shared/types";
+import { renderPv } from "./pv";
 import { state } from "./state";
 import { applyCurrentStep } from "./status";
 import { loadSlide } from "./transitions";
@@ -50,6 +51,7 @@ export function connectWS(wsPort: number | null): void {
             );
             state.step = 0;
             loadSlide();
+            renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);
         } else if (msg.type === "position") {
@@ -66,6 +68,7 @@ export function connectWS(wsPort: number | null): void {
                 if (state.step > 0) applyCurrentStep();
                 state._syncingFromServer = false;
             });
+            renderPv();
         }
     };
 

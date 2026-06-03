@@ -124,3 +124,6 @@ This project was built making heavy use of coding agents.
 Does that make it "slopware"?
 I'll let you be the judge of that, but every architectural decision is mine
 and every line of code has been reviewed in good old-fashioned manual labor.
+(Take the latter with a grain of salt:
+When it comes to frontend stuff,
+I really have no clue what I'm doing)

@@ -1,3 +1,4 @@
+import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { applyCurrentStep, readURL } from "./status";
 import { loadSlide } from "./transitions";
@@ -20,5 +21,8 @@ readURL();
 loadSlide(() => {
     if (state.step > 0) applyCurrentStep();
 });
+renderPv();
+updatePvClock();
+setInterval(updatePvClock, 1000);
 if (INITIAL_ERROR) showError(INITIAL_ERROR);
 connectWS(WS_PORT);

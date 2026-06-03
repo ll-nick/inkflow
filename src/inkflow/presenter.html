@@ -27,7 +27,7 @@
         <tr><td>$ End</td><td>Last slide</td></tr>
         <tr><td>g</td><td>Slide picker</td></tr>
         <tr><td>o</td><td>Slide overview</td></tr>
-        <tr><td>p</td><td>Open presenter view</td></tr>
+        <tr><td>p</td><td>Toggle presenter panel</td></tr>
         <tr><td>b .</td><td>Blackout</td></tr>
         <tr><td>w</td><td>Whiteout</td></tr>
         <tr><td>f</td><td>Toggle fullscreen</td></tr>
@@ -47,7 +47,25 @@
   <div id="overview" role="dialog" aria-modal="true">
     <div id="overview-grid"></div>
   </div>
-  <div id="stage"></div>
+  <div id="main-area">
+    <div id="stage"></div>
+    <aside id="pv">
+      <div id="pv-strip">
+        <span id="pv-clock">--:--:--</span>
+        <span class="hud-sep"></span>
+        <span id="pv-elapsed">00:00</span>
+        <span style="flex:1"></span>
+        <span id="pv-slide-info">– / –</span>
+        <span class="hud-sep"></span>
+        <span id="pv-step-ring"></span>
+      </div>
+      <section id="pv-next">
+        <div class="pv-label">NEXT</div>
+        <div id="pv-next-inner"></div>
+      </section>
+      <section id="pv-notes"></section>
+    </aside>
+  </div>
   <div id="statusbar">
     <button class="hud-btn" id="btn-theme" title="Toggle dark/light">
       <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="pointer-events:none">
