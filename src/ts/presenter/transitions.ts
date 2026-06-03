@@ -1,9 +1,31 @@
+import type { TransitionData } from "../shared/types";
 import { state } from "./state";
 import { updateStatus } from "./status";
 
 const stage = document.getElementById("stage")!;
 
-function geomAttrs(el: Element) {
+type Geom = Record<string, number>;
+
+interface FromSnap {
+    tag: string;
+    geom: Geom | null;
+    fill: string | null;
+    stroke: string | null;
+}
+
+type Task =
+    | {
+          type: "morph";
+          el: Element;
+          from: FromSnap;
+          toGeom: Geom;
+          toFill: string | null;
+          toStroke: string | null;
+      }
+    | { type: "fade"; el: Element; toOpacity: number }
+    | { type: "exit"; el: Element };
+
+function geomAttrs(el: Element): Geom | null {
     const g = (k: string) => parseFloat(el.getAttribute(k) ?? "0");
     switch (el.tagName.toLowerCase()) {
         case "rect":
@@ -58,7 +80,7 @@ function morphSlide(duration: number, then: (() => void) | null): void {
     const ms = duration * 1000;
 
     // 1. Snapshot old elements in SVG user units before swap
-    const fromMap = new Map();
+    const fromMap = new Map<string, FromSnap>();
     stage.querySelectorAll("[id]").forEach((el) => {
         fromMap.set(el.id, {
             tag: el.tagName.toLowerCase(),
@@ -80,8 +102,7 @@ function morphSlide(duration: number, then: (() => void) | null): void {
     updateStatus();
 
     // 3. Build task list; snap morph elements to old positions before first paint
-    // biome-ignore lint/suspicious/noExplicitAny: morph tasks are a heterogeneous union — typed properly in PR 3
-    const tasks: any[] = [];
+    const tasks: Task[] = [];
     const seenIds = new Set<string>();
     newSvg.querySelectorAll("[id]").forEach((el) => {
         seenIds.add(el.id);
@@ -132,8 +153,8 @@ function morphSlide(duration: number, then: (() => void) | null): void {
                     task.el.setAttribute(
                         k,
                         String(
-                            task.from.geom[k] +
-                                (task.toGeom[k] - task.from.geom[k]) * e,
+                            task.from.geom![k] +
+                                (task.toGeom[k] - task.from.geom![k]) * e,
                         ),
                     );
                 if (task.from.fill && task.toFill)
@@ -164,7 +185,7 @@ function morphSlide(duration: number, then: (() => void) | null): void {
         for (const task of tasks) {
             if (task.type === "morph") {
                 for (const [k, v] of Object.entries(task.toGeom))
-                    task.el.setAttribute(k, v);
+                    task.el.setAttribute(k, String(v));
                 if (task.toFill) task.el.setAttribute("fill", task.toFill);
                 if (task.toStroke)
                     task.el.setAttribute("stroke", task.toStroke);
@@ -179,10 +200,11 @@ function morphSlide(duration: number, then: (() => void) | null): void {
     requestAnimationFrame(frame);
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: transition handler args typed properly in PR 3
-const HANDLERS: Record<
-    string,
-    (swap: () => void, t: any, then: (() => void) | null) => void
+const HANDLERS: Partial<
+    Record<
+        TransitionData["type"],
+        (swap: () => void, t: TransitionData, then: (() => void) | null) => void
+    >
 > = {
     morph(swap, t, then) {
         if (t.duration > 0 && state.slides.length) {
@@ -217,7 +239,7 @@ const HANDLERS: Record<
 // when navigating backward so the outgoing slide's transition plays in reverse).
 export function loadSlide(
     then: (() => void) | null = null,
-    transition = null,
+    transition: TransitionData | null = null,
 ): void {
     const swap = () => {
         stage.innerHTML = state.slides.length
