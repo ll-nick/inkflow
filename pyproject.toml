@@ -46,7 +46,6 @@ exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**
 dev = [
     "basedpyright>=1.39.5",
     "lxml-stubs>=0.5",
-    "poethepoet>=0.46.0",
     "pytest>=9.0.3",
     "ruff>=0.15.13",
 ]
@@ -54,29 +53,6 @@ docs = [
     "mkdocs-material>=9.0",
 ]
 
-[tool.poe.tasks]
-lint      = "ruff check ."
-fmt       = "ruff format --check ."
-typecheck = "basedpyright"
-test      = "pytest"
-
-[tool.poe.env]
-NO_MKDOCS_2_WARNING.default = "1"
-
-[tool.poe.tasks.check]
-sequence = ["lint", "fmt", "typecheck", "test"]
-
-[tool.poe.tasks.docs]
-sequence = [
-  {cmd = "inkflow build demo/deck.py --output docs/demo/presentation"},
-  {cmd = "mkdocs serve"},
-]
-
-[tool.poe.tasks.docs-build]
-sequence = [
-  {cmd = "inkflow build demo/deck.py --output docs/demo/presentation"},
-  {cmd = "mkdocs build"},
-]
 
 [tool.pyright]
 reportUnusedCallResult = "none"
