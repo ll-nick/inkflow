@@ -1,3 +1,4 @@
+import { renderPv } from "./pv";
 import { state } from "./state";
 import { loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
@@ -72,7 +73,7 @@ function pickerCommit(): void {
     if (!state._pickerMatches.length) return;
     state.slideIndex = state._pickerMatches[state._pickerActive];
     state.step = 0;
-    loadSlide();
+    loadSlide(() => renderPv());
     closePicker();
     sendNav();
 }
