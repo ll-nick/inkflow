@@ -41,13 +41,19 @@ src/
     ns.py             XML namespace constants
     tui.py            terminal UI (Rich)
     presenter.html    shell template — inlined with CSS/JS at serve time
-    presenter.css     presenter styles
-    presenter.js      presenter logic (navigation, transitions, WS)
     pdf.html          PDF export template
+    bundles/          pre-built JS/CSS output (committed; no Node needed at install time)
+      presenter.js    navigation, transitions, WebSocket, presenter panel
+      presenter.css   all presenter styles including the sidebar panel
     theme/            built-in theme: main.svg, layouts/*.svg, styles.css
-  ts/                 TypeScript source (split into modules in PR 2)
+  ts/                 TypeScript source
     globals.d.ts      ambient declarations for Python-injected globals (__SLIDES_JSON__ etc.)
-  css/                CSS source (split into partials in PR 2)
+    shared/           types, step logic, step-ring SVG builder
+    presenter/        main presenter modules — navigation, transitions, overview, picker,
+                      websocket, status bar, keyboard, and pv.ts (presenter panel sidebar)
+  css/                CSS source
+    shared/           theme variables, animation keyframes
+    presenter/        presenter partials including pv.css (sidebar panel)
 demo/
   deck.py             7-slide demo deck (SVG slides + MarkdownSlides)
   slides/             source SVGs and Markdown content files
@@ -85,8 +91,14 @@ Exit-only elements are reconstructed as ghost nodes in the new SVG and faded out
 Backward navigation passes the outgoing slide's transition to `loadSlide()` so the morph plays in reverse.
 
 **`presenter.html`/`css`/`js` are inlined at serve time.**
-`_build_html()` in `server.py` reads all three files and substitutes `__CSS__`, `__JS__`, `__SLIDES_JSON__`, `__TRANSITIONS_JSON__`, `__WS_PORT__`, `__ERROR_JSON__` tokens.
-Edit the source files and reload the browser to see changes.
+`build_html()` in `server.py` reads the template and the two bundles, substituting `__CSS__`, `__JS__`, `__STYLES__`, `__DATA_THEME__`, `__SLIDES_JSON__`, `__TRANSITIONS_JSON__`, `__WS_PORT__`, `__ERROR_JSON__` tokens.
+Edit the source files, run `mise run bundle`, and reload the browser to see changes.
+
+**The presenter panel is a sidebar inside the single presenter page, not a separate route.**
+`<aside id="pv">` lives in `presenter.html` and is hidden (`width: 0`) by default.
+Pressing `p` toggles `body.pv-open`, which CSS-transitions the sidebar to 30% width while the stage flexes back.
+`pv.ts` owns all panel logic (clock, next-preview, notes); it reads directly from `state.slides` so no second WS connection or position sync is needed.
+For second-screen use, open the same URL in two windows and toggle the panel in one.
 
 **MarkdownSlide content injection uses `<foreignObject>`.**
 Markdown is rendered to HTML via `markdown-it-py`.
