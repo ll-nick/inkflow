@@ -1,0 +1,113 @@
+/* ── Curtain (blackout / whiteout) ── */
+#curtain {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    cursor: pointer;
+}
+#curtain.visible {
+    display: block;
+}
+
+/* ── Help overlay ── */
+#help {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+#help.visible {
+    display: flex;
+}
+
+#help-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    min-width: 26rem;
+}
+
+#help-box h2 {
+    color: var(--accent);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+}
+
+#help-box table {
+    border-collapse: collapse;
+    width: 100%;
+}
+#help-box td {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+}
+#help-box td:first-child {
+    color: var(--accent);
+    white-space: nowrap;
+    text-align: right;
+}
+#help-box td:last-child {
+    color: var(--subtext);
+    padding-left: 1rem;
+}
+
+#help-box p {
+    margin-top: 1rem;
+    font-size: 0.7rem;
+    color: var(--overlay);
+    text-align: center;
+}
+
+kbd {
+    background: var(--overlay);
+    color: var(--text);
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    font-size: 0.85em;
+}
+
+/* ── Error overlay ── */
+#error-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(30, 30, 46, 0.95);
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 2rem;
+    overflow-y: auto;
+}
+#error-overlay.visible {
+    display: flex;
+}
+
+#error-box {
+    background: var(--surface);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    max-width: 72rem;
+    width: 100%;
+}
+
+#error-box h2 {
+    color: var(--red);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+}
+
+#error-box pre {
+    color: var(--text);
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.6;
+}

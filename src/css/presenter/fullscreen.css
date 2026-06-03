@@ -1,0 +1,25 @@
+/* ── Fullscreen mode (class toggled by JS on fullscreenchange) ── */
+body.is-fullscreen #stage {
+    padding: 0;
+}
+
+body.is-fullscreen #statusbar {
+    position: fixed;
+    bottom: 2rem;
+    left: 5rem;
+    height: auto;
+    padding: 0.3rem 0.6rem;
+    border-top: none;
+    border-radius: 9999px;
+    border: 1px solid var(--overlay);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+body.is-fullscreen #statusbar.fs-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+body.is-fullscreen #sb-spacer {
+    display: none;
+}

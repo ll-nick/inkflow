@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import cast
 
 from inkflow.manifest import Deck
-from inkflow.server import State, build_html, load_styles
+from inkflow.server import State, build_html, build_presenter_html, load_styles
 
 _EMPTY_STATE: State = {
     "slides": [],
@@ -96,6 +96,31 @@ def test_build_html_null_error_when_no_error() -> None:
 def test_build_html_transitions_json_embedded() -> None:
     html = build_html(_state(transitions=[{"type": "fade"}]), ws_port=7778).decode()
     assert json.dumps([{"type": "fade"}]) in html
+
+
+# ── build_presenter_html ──────────────────────────────────────────────────────
+
+_PRESENTER_TOKENS = [
+    "__CSS__",
+    "__JS__",
+    "__STYLES__",
+    "__DATA_THEME__",
+    "__SLIDES_JSON__",
+    "__WS_PORT__",
+    "__INITIAL_POSITION__",
+]
+
+
+def test_build_presenter_html_no_tokens_remain() -> None:
+    html = build_presenter_html(_state(), ws_port=7778).decode()
+    for token in _PRESENTER_TOKENS:
+        assert token not in html, f"unreplaced token: {token}"
+
+
+def test_build_presenter_html_initial_position_embedded() -> None:
+    position = {"slideIndex": 3, "step": 2}
+    html = build_presenter_html(_state(position=position), ws_port=7778).decode()
+    assert json.dumps(position) in html
 
 
 # ── load_styles ───────────────────────────────────────────────────────────────

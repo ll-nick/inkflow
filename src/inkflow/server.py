@@ -200,8 +200,8 @@ def load_styles(deck: Deck, project_dir: Path) -> str:
 def build_html(state: State, ws_port: int | None) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
-    css = pkg.joinpath("presenter.css").read_text(encoding="utf-8")
-    js = pkg.joinpath("presenter.js").read_text(encoding="utf-8")
+    css = pkg.joinpath("bundles", "presenter.css").read_text(encoding="utf-8")
+    js = pkg.joinpath("bundles", "presenter.js").read_text(encoding="utf-8")
     data_theme = "" if state["dark_mode"] else "light"
     ws_port_js = "null" if ws_port is None else str(ws_port)
     html = (
@@ -220,8 +220,8 @@ def build_html(state: State, ws_port: int | None) -> bytes:
 def build_presenter_html(state: State, ws_port: int | None) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter-view.html").read_text(encoding="utf-8")
-    css = pkg.joinpath("presenter-view.css").read_text(encoding="utf-8")
-    js = pkg.joinpath("presenter-view.js").read_text(encoding="utf-8")
+    css = pkg.joinpath("bundles", "presenter-view.css").read_text(encoding="utf-8")
+    js = pkg.joinpath("bundles", "presenter-view.js").read_text(encoding="utf-8")
     data_theme = "" if state["dark_mode"] else "light"
     ws_port_js = "null" if ws_port is None else str(ws_port)
     html = (

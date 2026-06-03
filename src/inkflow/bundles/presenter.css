@@ -1,42 +1,49 @@
-/* Catppuccin Mocha (dark) */
+/* src/css/shared/theme-vars.css */
 :root {
-  --bg:         #1e1e2e;
-  --surface:    #313244;
-  --overlay:    #45475a;
-  --text:       #cdd6f4;
-  --subtext:    #a6adc8;
-  --accent:     #cba6f7;
-  --green:      #a6e3a1;
-  --red:        #f38ba8;
-  --blue:       #89b4fa;
+  --bg: #1e1e2e;
+  --surface: #313244;
+  --overlay: #45475a;
+  --text: #cdd6f4;
+  --subtext: #a6adc8;
+  --accent: #cba6f7;
+  --green: #a6e3a1;
+  --red: #f38ba8;
+  --blue: #89b4fa;
 }
-
-/* Catppuccin Latte (light) */
-[data-theme="light"] {
-  --bg:      #eff1f5;
+[data-theme=light] {
+  --bg: #eff1f5;
   --surface: #ccd0da;
   --overlay: #9ca0b0;
-  --text:    #4c4f69;
+  --text: #4c4f69;
   --subtext: #6c6f85;
-  --accent:  #8839ef;
-  --green:   #40a02b;
-  --red:     #d20f39;
-  --blue:    #1e66f5;
+  --accent: #8839ef;
+  --green: #40a02b;
+  --red: #d20f39;
+  --blue: #1e66f5;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+/* src/css/presenter/base.css */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 body {
   background: #000;
   color: var(--text);
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-family:
+    "JetBrains Mono",
+    "Fira Code",
+    ui-monospace,
+    monospace;
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   user-select: none;
 }
-
 #stage {
   flex: 1;
   display: flex;
@@ -45,13 +52,11 @@ body {
   padding: 0.5rem;
   min-height: 0;
 }
-
 #stage > svg,
 #stage > :first-child {
   width: 100%;
   height: 100%;
 }
-
 #statusbar {
   flex-shrink: 0;
   background: var(--bg);
@@ -64,9 +69,10 @@ body {
   align-items: center;
   gap: 0.25rem;
 }
-
-#statusbar .sep { color: var(--overlay); margin: 0 0.25rem; }
-
+#statusbar .sep {
+  color: var(--overlay);
+  margin: 0 0.25rem;
+}
 .hud-btn {
   background: transparent;
   border: none;
@@ -83,9 +89,13 @@ body {
   padding: 0;
   transition: background 0.15s, color 0.15s;
 }
-.hud-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-[data-theme="light"] .hud-btn:hover { background: rgba(0,0,0,0.08); }
-
+.hud-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+[data-theme=light] .hud-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
 .hud-sep {
   width: 1px;
   height: 16px;
@@ -94,15 +104,36 @@ body {
   margin: 0 0.2rem;
   flex-shrink: 0;
 }
+#btn-theme .icon-sun {
+  display: none;
+}
+[data-theme=light] #btn-theme .icon-moon {
+  display: none;
+}
+[data-theme=light] #btn-theme .icon-sun {
+  display: block;
+}
+#slide-info .slide-current {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+#ws-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  transition: background 0.3s;
+  vertical-align: middle;
+}
+#ws-dot.connected {
+  background: var(--green);
+}
 
-/* ── Theme button: shows current state (moon = dark mode, sun = light mode) ── */
-#btn-theme .icon-sun  { display: none; }
-[data-theme="light"] #btn-theme .icon-moon { display: none; }
-[data-theme="light"] #btn-theme .icon-sun  { display: block; }
-
-/* ── Fullscreen mode (class toggled by JS on fullscreenchange) ── */
-body.is-fullscreen #stage { padding: 0; }
-
+/* src/css/presenter/fullscreen.css */
+body.is-fullscreen #stage {
+  padding: 0;
+}
 body.is-fullscreen #statusbar {
   position: fixed;
   bottom: 2rem;
@@ -120,22 +151,11 @@ body.is-fullscreen #statusbar.fs-visible {
   opacity: 1;
   pointer-events: auto;
 }
-body.is-fullscreen #sb-spacer { display: none; }
-
-#slide-info .slide-current { color: var(--text); font-size: 0.85rem; }
-
-#ws-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  transition: background 0.3s;
-  vertical-align: middle;
+body.is-fullscreen #sb-spacer {
+  display: none;
 }
-#ws-dot.connected { background: var(--green); }
 
-/* ── Curtain (blackout / whiteout) ── */
+/* src/css/presenter/overlays.css */
 #curtain {
   display: none;
   position: fixed;
@@ -143,9 +163,9 @@ body.is-fullscreen #sb-spacer { display: none; }
   z-index: 20;
   cursor: pointer;
 }
-#curtain.visible { display: block; }
-
-/* ── Help overlay ── */
+#curtain.visible {
+  display: block;
+}
 #help {
   display: none;
   position: fixed;
@@ -155,8 +175,9 @@ body.is-fullscreen #sb-spacer { display: none; }
   align-items: center;
   justify-content: center;
 }
-#help.visible { display: flex; }
-
+#help.visible {
+  display: flex;
+}
 #help-box {
   background: var(--surface);
   border: 1px solid var(--accent);
@@ -164,26 +185,35 @@ body.is-fullscreen #sb-spacer { display: none; }
   padding: 1.5rem 2rem;
   min-width: 26rem;
 }
-
 #help-box h2 {
   color: var(--accent);
   font-size: 0.85rem;
   margin-bottom: 1rem;
   letter-spacing: 0.05em;
 }
-
-#help-box table { border-collapse: collapse; width: 100%; }
-#help-box td { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
-#help-box td:first-child { color: var(--accent); white-space: nowrap; text-align: right; }
-#help-box td:last-child  { color: var(--subtext); padding-left: 1rem; }
-
+#help-box table {
+  border-collapse: collapse;
+  width: 100%;
+}
+#help-box td {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+}
+#help-box td:first-child {
+  color: var(--accent);
+  white-space: nowrap;
+  text-align: right;
+}
+#help-box td:last-child {
+  color: var(--subtext);
+  padding-left: 1rem;
+}
 #help-box p {
   margin-top: 1rem;
   font-size: 0.7rem;
   color: var(--overlay);
   text-align: center;
 }
-
 kbd {
   background: var(--overlay);
   color: var(--text);
@@ -191,8 +221,6 @@ kbd {
   padding: 0.1em 0.35em;
   font-size: 0.85em;
 }
-
-/* ── Error overlay ── */
 #error-overlay {
   display: none;
   position: fixed;
@@ -204,8 +232,9 @@ kbd {
   padding: 3rem 2rem;
   overflow-y: auto;
 }
-#error-overlay.visible { display: flex; }
-
+#error-overlay.visible {
+  display: flex;
+}
 #error-box {
   background: var(--surface);
   border: 1px solid var(--red);
@@ -214,14 +243,12 @@ kbd {
   max-width: 72rem;
   width: 100%;
 }
-
 #error-box h2 {
   color: var(--red);
   font-size: 0.85rem;
   margin-bottom: 1rem;
   letter-spacing: 0.05em;
 }
-
 #error-box pre {
   color: var(--text);
   font-size: 0.75rem;
@@ -230,7 +257,7 @@ kbd {
   line-height: 1.6;
 }
 
-/* ── Slide picker ── */
+/* src/css/presenter/picker.css */
 #picker {
   display: none;
   position: fixed;
@@ -241,8 +268,9 @@ kbd {
   justify-content: center;
   padding-top: 12vh;
 }
-#picker.visible { display: flex; }
-
+#picker.visible {
+  display: flex;
+}
 #picker-box {
   background: var(--surface);
   border: 1px solid var(--accent);
@@ -251,7 +279,6 @@ kbd {
   max-width: 90vw;
   overflow: hidden;
 }
-
 #picker-input {
   width: 100%;
   background: transparent;
@@ -263,13 +290,11 @@ kbd {
   padding: 0.65rem 1rem;
   outline: none;
 }
-
 #picker-list {
   list-style: none;
   max-height: 18rem;
   overflow-y: auto;
 }
-
 #picker-list li {
   display: flex;
   align-items: center;
@@ -278,10 +303,16 @@ kbd {
   font-size: 0.82rem;
   cursor: pointer;
 }
-#picker-list li:hover { background: rgba(255,255,255,0.05); }
-[data-theme="light"] #picker-list li:hover { background: rgba(0,0,0,0.05); }
-#picker-list li.active { background: var(--accent); color: var(--bg); }
-
+#picker-list li:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+[data-theme=light] #picker-list li:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+#picker-list li.active {
+  background: var(--accent);
+  color: var(--bg);
+}
 .pk-num {
   color: var(--subtext);
   min-width: 2.2rem;
@@ -289,8 +320,10 @@ kbd {
   flex-shrink: 0;
   font-size: 0.75rem;
 }
-#picker-list li.active .pk-num { color: var(--bg); opacity: 0.75; }
-
+#picker-list li.active .pk-num {
+  color: var(--bg);
+  opacity: 0.75;
+}
 #picker-hint {
   border-top: 1px solid var(--overlay);
   color: var(--subtext);
@@ -299,7 +332,7 @@ kbd {
   text-align: center;
 }
 
-/* ── Slide overview ── */
+/* src/css/presenter/overview.css */
 #overview {
   display: none;
   position: fixed;
@@ -310,29 +343,29 @@ kbd {
   -webkit-backdrop-filter: blur(8px);
   overflow-y: auto;
 }
-#overview.visible { display: block; }
-
+#overview.visible {
+  display: block;
+}
 #overview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.75rem;
   padding: 2rem;
 }
-
 .overview-cell {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   cursor: pointer;
 }
-
 .overview-num {
   font-size: 0.72rem;
   color: var(--subtext);
   padding: 0 0.2rem;
 }
-.overview-cell.active .overview-num { color: var(--accent); }
-
+.overview-cell.active .overview-num {
+  color: var(--accent);
+}
 .overview-thumb {
   aspect-ratio: 16 / 9;
   position: relative;
@@ -341,9 +374,12 @@ kbd {
   border: 2px solid transparent;
   border-radius: 4px;
 }
-.overview-cell:hover .overview-thumb  { border-color: var(--overlay); }
-.overview-cell.active .overview-thumb { border-color: var(--accent); }
-
+.overview-cell:hover .overview-thumb {
+  border-color: var(--overlay);
+}
+.overview-cell.active .overview-thumb {
+  border-color: var(--accent);
+}
 .overview-thumb svg {
   position: absolute;
   top: 0;
@@ -352,8 +388,7 @@ kbd {
   pointer-events: none;
 }
 
-/* ── Animation classes ── */
-
+/* src/css/shared/animations.css */
 .anim-fade-in {
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -361,7 +396,6 @@ kbd {
 .anim-fade-in.active {
   opacity: 1;
 }
-
 .anim-fade-out {
   opacity: 1;
   transition: opacity 0.4s ease;
@@ -369,8 +403,6 @@ kbd {
 .anim-fade-out.active {
   opacity: 0;
 }
-
-/* Bounce-in from below */
 .anim-bounce {
   opacity: 0;
   transform: translateY(14px);
@@ -380,3 +412,5 @@ kbd {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* src/css/presenter/index.css */

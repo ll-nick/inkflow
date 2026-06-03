@@ -1,0 +1,25 @@
+/* Catppuccin Mocha (dark) */
+:root {
+    --bg: #1e1e2e;
+    --surface: #313244;
+    --overlay: #45475a;
+    --text: #cdd6f4;
+    --subtext: #a6adc8;
+    --accent: #cba6f7;
+    --green: #a6e3a1;
+    --red: #f38ba8;
+    --blue: #89b4fa;
+}
+
+/* Catppuccin Latte (light) */
+[data-theme="light"] {
+    --bg: #eff1f5;
+    --surface: #ccd0da;
+    --overlay: #9ca0b0;
+    --text: #4c4f69;
+    --subtext: #6c6f85;
+    --accent: #8839ef;
+    --green: #40a02b;
+    --red: #d20f39;
+    --blue: #1e66f5;
+}
