@@ -1,0 +1,72 @@
+/* ── Notes pane ── */
+#pv-notes {
+    flex: 1 1 auto;
+    background: var(--surface);
+    border: 1px solid var(--overlay);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    overflow-y: auto;
+    min-height: 0;
+    line-height: 1.5;
+}
+
+#pv-notes:empty::before {
+    content: "No notes";
+    color: var(--overlay);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+#pv-notes p {
+    margin-bottom: 0.6rem;
+}
+#pv-notes p:last-child {
+    margin-bottom: 0;
+}
+
+#pv-notes h1,
+#pv-notes h2,
+#pv-notes h3 {
+    color: var(--accent);
+    font-size: 1rem;
+    margin: 0.4rem 0 0.4rem;
+}
+
+#pv-notes ul,
+#pv-notes ol {
+    padding-left: 1.4rem;
+    margin-bottom: 0.6rem;
+}
+
+#pv-notes li {
+    margin-bottom: 0.2rem;
+}
+
+#pv-notes code {
+    background: var(--overlay);
+    color: var(--text);
+    padding: 0.05em 0.35em;
+    border-radius: 3px;
+    font-size: 0.88em;
+}
+
+#pv-notes pre {
+    background: var(--bg);
+    border: 1px solid var(--overlay);
+    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    margin: 0.5rem 0;
+    overflow-x: auto;
+    font-size: 0.82rem;
+}
+
+#pv-notes pre code {
+    background: transparent;
+    padding: 0;
+}
+
+#pv-notes a {
+    color: var(--blue);
+}

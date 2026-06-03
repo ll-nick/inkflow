@@ -1,4 +1,4 @@
-/* src/css/presenter-view/index.css */
+/* src/css/shared/theme-vars.css */
 :root {
   --bg: #1e1e2e;
   --surface: #313244;
@@ -21,6 +21,8 @@
   --red: #d20f39;
   --blue: #1e66f5;
 }
+
+/* src/css/presenter-view/base.css */
 *,
 *::before,
 *::after {
@@ -78,6 +80,8 @@ body {
   min-height: 0;
   min-width: 0;
 }
+
+/* src/css/presenter-view/next-preview.css */
 #pv-next {
   flex: 0 1 30%;
   background: #000;
@@ -118,6 +122,8 @@ body {
   font-size: 0.75rem;
   letter-spacing: 0.1em;
 }
+
+/* src/css/presenter-view/info.css */
 #pv-info {
   flex: 0 0 auto;
   background: var(--surface);
@@ -163,6 +169,8 @@ body {
 #pv-dot.connected {
   background: var(--green);
 }
+
+/* src/css/presenter-view/notes.css */
 #pv-notes {
   flex: 1 1 auto;
   background: var(--surface);
@@ -225,6 +233,8 @@ body {
 #pv-notes a {
   color: var(--blue);
 }
+
+/* src/css/shared/animations.css */
 .anim-fade-in {
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -248,3 +258,5 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* src/css/presenter-view/index.css */

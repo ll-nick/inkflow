@@ -1,0 +1,115 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #000;
+    color: var(--text);
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
+
+#stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    min-height: 0;
+}
+
+#stage > svg,
+#stage > :first-child {
+    width: 100%;
+    height: 100%;
+}
+
+#statusbar {
+    flex-shrink: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--overlay);
+    color: var(--subtext);
+    font-size: 0.72rem;
+    height: 40px;
+    padding: 0 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+#statusbar .sep {
+    color: var(--overlay);
+    margin: 0 0.25rem;
+}
+
+.hud-btn {
+    background: transparent;
+    border: none;
+    color: var(--subtext);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+.hud-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+[data-theme="light"] .hud-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.hud-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--overlay);
+    opacity: 0.4;
+    margin: 0 0.2rem;
+    flex-shrink: 0;
+}
+
+/* ── Theme button: shows current state (moon = dark mode, sun = light mode) ── */
+#btn-theme .icon-sun {
+    display: none;
+}
+[data-theme="light"] #btn-theme .icon-moon {
+    display: none;
+}
+[data-theme="light"] #btn-theme .icon-sun {
+    display: block;
+}
+
+#slide-info .slide-current {
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
+#ws-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    transition: background 0.3s;
+    vertical-align: middle;
+}
+#ws-dot.connected {
+    background: var(--green);
+}

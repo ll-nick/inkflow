@@ -1,4 +1,4 @@
-/* src/css/presenter/index.css */
+/* src/css/shared/theme-vars.css */
 :root {
   --bg: #1e1e2e;
   --surface: #313244;
@@ -21,6 +21,8 @@
   --red: #d20f39;
   --blue: #1e66f5;
 }
+
+/* src/css/presenter/base.css */
 *,
 *::before,
 *::after {
@@ -111,6 +113,24 @@ body {
 [data-theme=light] #btn-theme .icon-sun {
   display: block;
 }
+#slide-info .slide-current {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+#ws-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  transition: background 0.3s;
+  vertical-align: middle;
+}
+#ws-dot.connected {
+  background: var(--green);
+}
+
+/* src/css/presenter/fullscreen.css */
 body.is-fullscreen #stage {
   padding: 0;
 }
@@ -134,22 +154,8 @@ body.is-fullscreen #statusbar.fs-visible {
 body.is-fullscreen #sb-spacer {
   display: none;
 }
-#slide-info .slide-current {
-  color: var(--text);
-  font-size: 0.85rem;
-}
-#ws-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  transition: background 0.3s;
-  vertical-align: middle;
-}
-#ws-dot.connected {
-  background: var(--green);
-}
+
+/* src/css/presenter/overlays.css */
 #curtain {
   display: none;
   position: fixed;
@@ -250,6 +256,8 @@ kbd {
   word-break: break-all;
   line-height: 1.6;
 }
+
+/* src/css/presenter/picker.css */
 #picker {
   display: none;
   position: fixed;
@@ -323,6 +331,8 @@ kbd {
   padding: 0.35rem 1rem;
   text-align: center;
 }
+
+/* src/css/presenter/overview.css */
 #overview {
   display: none;
   position: fixed;
@@ -377,6 +387,8 @@ kbd {
   transform-origin: top left;
   pointer-events: none;
 }
+
+/* src/css/shared/animations.css */
 .anim-fade-in {
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -400,3 +412,5 @@ kbd {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* src/css/presenter/index.css */
