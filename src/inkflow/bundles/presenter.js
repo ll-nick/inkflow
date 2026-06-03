@@ -39,6 +39,95 @@
     _syncingFromServer: false
   };
 
+  // src/ts/presenter/pv.ts
+  var pvPanel = document.getElementById("pv");
+  var pvClock = document.getElementById("pv-clock");
+  var pvElapsed = document.getElementById("pv-elapsed");
+  var pvSlideInfo = document.getElementById("pv-slide-info");
+  var pvStepRing = document.getElementById("pv-step-ring");
+  var pvNextInner = document.getElementById("pv-next-inner");
+  var pvNotes = document.getElementById("pv-notes");
+  var _startTime = Date.now();
+  function _pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+  function updatePvClock() {
+    const now = /* @__PURE__ */ new Date();
+    pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
+    const secs = Math.floor((Date.now() - _startTime) / 1e3);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor(secs % 3600 / 60);
+    const s = secs % 60;
+    pvElapsed.textContent = h > 0 ? `${_pad2(h)}:${_pad2(m)}:${_pad2(s)}` : `${_pad2(m)}:${_pad2(s)}`;
+  }
+  function _pvMaxStep() {
+    return state._maxStepCache ?? 0;
+  }
+  function updatePvInfo() {
+    const total = state.slides.length;
+    pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "\u2013"}</span> / ${total || "\u2013"}`;
+    pvStepRing.innerHTML = buildStepRing(state.step, _pvMaxStep());
+  }
+  function _scalePvNext() {
+    const svg = pvNextInner.querySelector("svg");
+    if (!svg) return;
+    const vb = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(parseFloat);
+    if (vb.length < 4) return;
+    const vbW = vb[2];
+    const vbH = vb[3];
+    svg.setAttribute("width", String(vbW));
+    svg.setAttribute("height", String(vbH));
+    svg.style.width = `${vbW}px`;
+    svg.style.height = `${vbH}px`;
+    const scale = Math.min(
+      pvNextInner.clientWidth / vbW,
+      pvNextInner.clientHeight / vbH
+    );
+    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
+    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
+    svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+  function renderPvNext() {
+    const curMax = _pvMaxStep();
+    let previewSvg = null;
+    let revealStep = 0;
+    if (state.step < curMax) {
+      previewSvg = state.slides[state.slideIndex]?.svg ?? null;
+      revealStep = state.step + 1;
+    } else if (state.slideIndex + 1 < state.slides.length) {
+      previewSvg = state.slides[state.slideIndex + 1].svg;
+    }
+    if (previewSvg === null) {
+      pvNextInner.innerHTML = '<div id="pv-next-empty">END</div>';
+      return;
+    }
+    pvNextInner.innerHTML = previewSvg;
+    const svg = pvNextInner.querySelector("svg");
+    if (svg) {
+      svg.querySelectorAll("[data-step]").forEach((el) => {
+        el.classList.toggle(
+          "active",
+          +(el.getAttribute("data-step") ?? "0") <= revealStep
+        );
+      });
+    }
+    requestAnimationFrame(_scalePvNext);
+  }
+  function renderPvNotes() {
+    pvNotes.innerHTML = state.slides[state.slideIndex]?.notes ?? "";
+    pvNotes.scrollTop = 0;
+  }
+  function renderPv() {
+    updatePvInfo();
+    renderPvNext();
+    renderPvNotes();
+  }
+  function togglePv() {
+    document.body.classList.toggle("pv-open");
+    pvPanel.addEventListener("transitionend", _scalePvNext, { once: true });
+  }
+  window.addEventListener("resize", _scalePvNext);
+
   // src/ts/shared/step.ts
   function maxStep(root) {
     let m = 0;
@@ -93,92 +182,6 @@
     stepInfo.innerHTML = buildStepRing(state.step, maxStep2());
     syncURL();
   }
-
-  // src/ts/presenter/pv.ts
-  var pvPanel = document.getElementById("pv");
-  var pvClock = document.getElementById("pv-clock");
-  var pvElapsed = document.getElementById("pv-elapsed");
-  var pvSlideInfo = document.getElementById("pv-slide-info");
-  var pvStepRing = document.getElementById("pv-step-ring");
-  var pvNextInner = document.getElementById("pv-next-inner");
-  var pvNotes = document.getElementById("pv-notes");
-  var _startTime = Date.now();
-  function _pad2(n) {
-    return String(n).padStart(2, "0");
-  }
-  function updatePvClock() {
-    const now = /* @__PURE__ */ new Date();
-    pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
-    const secs = Math.floor((Date.now() - _startTime) / 1e3);
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor(secs % 3600 / 60);
-    const s = secs % 60;
-    pvElapsed.textContent = h > 0 ? `${_pad2(h)}:${_pad2(m)}:${_pad2(s)}` : `${_pad2(m)}:${_pad2(s)}`;
-  }
-  function updatePvInfo() {
-    const total = state.slides.length;
-    pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "\u2013"}</span> / ${total || "\u2013"}`;
-    pvStepRing.innerHTML = buildStepRing(state.step, maxStep2());
-  }
-  function _scalePvNext() {
-    const svg = pvNextInner.querySelector("svg");
-    if (!svg) return;
-    const vb = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(parseFloat);
-    if (vb.length < 4) return;
-    const vbW = vb[2];
-    const vbH = vb[3];
-    svg.setAttribute("width", String(vbW));
-    svg.setAttribute("height", String(vbH));
-    svg.style.width = `${vbW}px`;
-    svg.style.height = `${vbH}px`;
-    const scale = Math.min(
-      pvNextInner.clientWidth / vbW,
-      pvNextInner.clientHeight / vbH
-    );
-    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
-    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
-    svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-  }
-  function renderPvNext() {
-    const curMax = maxStep2();
-    let previewSvg = null;
-    let revealStep = 0;
-    if (state.step < curMax) {
-      previewSvg = state.slides[state.slideIndex]?.svg ?? null;
-      revealStep = state.step + 1;
-    } else if (state.slideIndex + 1 < state.slides.length) {
-      previewSvg = state.slides[state.slideIndex + 1].svg;
-    }
-    if (previewSvg === null) {
-      pvNextInner.innerHTML = '<div id="pv-next-empty">END</div>';
-      return;
-    }
-    pvNextInner.innerHTML = previewSvg;
-    const svg = pvNextInner.querySelector("svg");
-    if (svg) {
-      svg.querySelectorAll("[data-step]").forEach((el) => {
-        el.classList.toggle(
-          "active",
-          +(el.getAttribute("data-step") ?? "0") <= revealStep
-        );
-      });
-    }
-    requestAnimationFrame(_scalePvNext);
-  }
-  function renderPvNotes() {
-    pvNotes.innerHTML = state.slides[state.slideIndex]?.notes ?? "";
-    pvNotes.scrollTop = 0;
-  }
-  function renderPv() {
-    updatePvInfo();
-    renderPvNext();
-    renderPvNotes();
-  }
-  function togglePv() {
-    document.body.classList.toggle("pv-open");
-    pvPanel.addEventListener("transitionend", _scalePvNext, { once: true });
-  }
-  window.addEventListener("resize", _scalePvNext);
 
   // src/ts/presenter/transitions.ts
   var stage2 = document.getElementById("stage");
@@ -487,7 +490,8 @@
           Math.max(0, state.slides.length - 1)
         );
         state.step = 0;
-        loadSlide(() => renderPv());
+        loadSlide();
+        renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
       } else if (msg.type === "position") {
@@ -502,9 +506,9 @@
         state.step = newStep;
         loadSlide(() => {
           if (state.step > 0) applyCurrentStep();
-          renderPv();
           state._syncingFromServer = false;
         });
+        renderPv();
       }
     };
     state.ws.onclose = () => {
@@ -525,7 +529,8 @@
     } else if (state.slideIndex < state.slides.length - 1) {
       state.slideIndex++;
       state.step = 0;
-      loadSlide(() => renderPv());
+      loadSlide();
+      renderPv();
     }
     sendNav();
   }
@@ -542,9 +547,9 @@
       loadSlide(() => {
         state.step = maxStep2();
         applyCurrentStep();
-        renderPv();
         sendNav();
       }, t ?? null);
+      renderPv();
       return;
     }
     sendNav();
@@ -553,7 +558,8 @@
     if (state.slideIndex < state.slides.length - 1) {
       state.slideIndex++;
       state.step = 0;
-      loadSlide(() => renderPv());
+      loadSlide();
+      renderPv();
     }
     sendNav();
   }
@@ -562,20 +568,23 @@
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
       state.step = 0;
-      loadSlide(() => renderPv(), t ?? null);
+      loadSlide(null, t ?? null);
+      renderPv();
     }
     sendNav();
   }
   function gotoFirst() {
     state.slideIndex = 0;
     state.step = 0;
-    loadSlide(() => renderPv());
+    loadSlide();
+    renderPv();
     sendNav();
   }
   function gotoLast() {
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
-    loadSlide(() => renderPv());
+    loadSlide();
+    renderPv();
     sendNav();
   }
 
@@ -615,6 +624,7 @@
     state.step = 0;
     closeOverview();
     loadSlide();
+    renderPv();
     sendNav();
   }
   function openOverview() {
@@ -715,6 +725,7 @@
     state.slideIndex = state._pickerMatches[state._pickerActive];
     state.step = 0;
     loadSlide();
+    renderPv();
     closePicker();
     sendNav();
   }
@@ -845,8 +856,8 @@
   readURL();
   loadSlide(() => {
     if (state.step > 0) applyCurrentStep();
-    renderPv();
   });
+  renderPv();
   updatePvClock();
   setInterval(updatePvClock, 1e3);
   if (INITIAL_ERROR) showError(INITIAL_ERROR);
