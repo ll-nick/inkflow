@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -57,11 +58,27 @@ class Transition(Protocol):
 # ── Content types ─────────────────────────────────────────────────────────────
 
 
+class Align(StrEnum):
+    LEFT = "left"
+    CENTER = "center"
+    RIGHT = "right"
+    JUSTIFY = "justify"
+
+
+class VAlign(StrEnum):
+    TOP = "top"
+    MIDDLE = "middle"
+    BOTTOM = "bottom"
+
+
 @dataclass
 class TextBox:
     element: str
     text: str | None = None
     steps: bool = False
+    align: Align | None = None
+    valign: VAlign | None = None
+    padding: float | None = None  # SVG user units. Fall back to CSS if not set.
 
 
 @dataclass
