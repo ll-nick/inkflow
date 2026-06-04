@@ -249,13 +249,13 @@ class TestZoneParams:
     def test_parse_zone_multiple_params(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text(
-            "::content align=right valign=middle padding=20::\n\nBody\n",
+            "::content align=right valign=center padding=20::\n\nBody\n",
             encoding="utf-8",
         )
         parsed = _parse_markdown_zones_full(md)
         assert parsed.params["content"] == {
             "align": "right",
-            "valign": "middle",
+            "valign": "center",
             "padding": "20",
         }
 
@@ -281,10 +281,10 @@ class TestZoneParams:
 
     def test_build_slide_content_valign_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
-        md.write_text("::content valign=middle::\n\nBody text\n", encoding="utf-8")
+        md.write_text("::content valign=center::\n\nBody text\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
         tb = next(c for c in result.content if isinstance(c, TextBox))
-        assert tb.valign == VAlign.MIDDLE
+        assert tb.valign == VAlign.CENTER
 
     def test_build_slide_content_padding_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"

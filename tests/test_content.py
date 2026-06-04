@@ -199,13 +199,13 @@ class TestTextBoxAlignment:
         )
         assert "text-align:center" in result
 
-    def test_valign_middle_sets_justify_content(self, tmp_path: Path) -> None:
+    def test_valign_center_sets_justify_content(self, tmp_path: Path) -> None:
         result = substitute_content(
             _ZONE_SVG,
-            [TextBox("#zone-content", text="hi", valign=VAlign.MIDDLE)],
+            [TextBox("#zone-content", text="hi", valign=VAlign.CENTER)],
             tmp_path,
         )
-        assert "justify-content:middle" in result
+        assert "justify-content:center" in result
 
     def test_valign_top_sets_flex_start(self, tmp_path: Path) -> None:
         result = substitute_content(
@@ -234,7 +234,7 @@ class TestTextBoxAlignment:
     def test_inline_style_on_wrapper_not_content(self, tmp_path: Path) -> None:
         result = substitute_content(
             _ZONE_SVG,
-            [TextBox("#zone-content", text="hi", valign=VAlign.MIDDLE, padding=20)],
+            [TextBox("#zone-content", text="hi", valign=VAlign.CENTER, padding=20)],
             tmp_path,
         )
         root = etree.fromstring(result.encode())

@@ -67,7 +67,7 @@ class Align(StrEnum):
 
 class VAlign(StrEnum):
     TOP = "top"
-    MIDDLE = "middle"
+    CENTER = "center"
     BOTTOM = "bottom"
 
 

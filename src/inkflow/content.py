@@ -35,7 +35,7 @@ _ALIGN_MAP: dict[str, tuple[int, int]] = {
 
 _VALIGN_CSS: dict[str, str] = {
     "top": "start",
-    "middle": "middle",
+    "center": "center",
     "bottom": "end",
 }
 
