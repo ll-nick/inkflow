@@ -8,7 +8,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Content, TextBox
+from inkflow.manifest import Align, Content, TextBox, VAlign
 
 _MIME_MAP = {
     ".png": "image/png",
@@ -31,6 +31,12 @@ _ALIGN_MAP: dict[str, tuple[int, int]] = {
     "top-right": (100, 0),
     "bottom-left": (0, 100),
     "bottom-right": (100, 100),
+}
+
+_VALIGN_CSS: dict[str, str] = {
+    "top": "start",
+    "middle": "middle",
+    "bottom": "end",
 }
 
 
@@ -88,31 +94,51 @@ def _replace_with_foreignobject(
     html: str,
     zone_id: str,
     font_size: int,
+    align: Align | None = None,
+    valign: VAlign | None = None,
+    padding: float | None = None,
 ) -> None:
     rect = _rect_geometry(el)
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
     fo.set("overflow", "visible")
-    fo.set(
-        "font-size", str(font_size)
-    )  # SVG user units; cascades into HTML content via em
+    fo.set("font-size", str(font_size))  # SVG user units; cascades into HTML via em
+
+    wrapper_style_parts: list[str] = []
+    if valign is not None:
+        wrapper_style_parts.append(f"justify-content:{_VALIGN_CSS[valign]}")
+    if padding is not None:
+        wrapper_style_parts.append(f"padding:{padding:g}px")
+
+    content_style_parts: list[str] = []
+    if align is not None:
+        content_style_parts.append(f"text-align:{align}")
 
     # Use XHTML as default namespace so lxml serialises <div>, <p>, <ul>
     # without a prefix — required for the browser's HTML parser to recognise
     # them as real HTML elements inside foreignObject.
-    div = etree.Element(
+    wrapper_attrs: dict[str, str] = {"class": "inkflow-wrapper"}
+    if wrapper_style_parts:
+        wrapper_attrs["style"] = ";".join(wrapper_style_parts)
+    wrapper = etree.Element(
         f"{{{ns.XHTML}}}div",
-        {"class": "inkflow-content"},
+        wrapper_attrs,
         nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
     )
+
+    content_attrs: dict[str, str] = {"class": "inkflow-content"}
+    if content_style_parts:
+        content_attrs["style"] = ";".join(content_style_parts)
+    content_div = etree.SubElement(wrapper, f"{{{ns.XHTML}}}div", content_attrs)
+
     try:
         fragment = etree.fromstring(f"<div xmlns='{ns.XHTML}'>{html}</div>")
-        div.text = fragment.text
+        content_div.text = fragment.text
         for child in fragment:
-            div.append(child)
+            content_div.append(child)
     except etree.XMLSyntaxError:
-        div.text = html
-    fo.append(div)
+        content_div.text = html
+    fo.append(wrapper)
 
     _swap_zone(el, fo, rect, zone_id)
 
@@ -191,7 +217,15 @@ def substitute_content(
             continue
 
         if isinstance(item, TextBox):
-            _replace_with_foreignobject(el, item.text or "", zone_id, font_size)
+            _replace_with_foreignobject(
+                el,
+                item.text or "",
+                zone_id,
+                font_size,
+                align=item.align,
+                valign=item.valign,
+                padding=item.padding,
+            )
         else:
             _replace_with_media(
                 el, item.src, zone_id, item.fit, item.align, item.x, item.y, project_dir
