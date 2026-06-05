@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inkflow.manifest import Media, TextBox
+from inkflow.manifest import Align, Media, TextBox, VAlign
 from inkflow.markdown import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
     SlideContent,
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
+    _parse_markdown_zones_full,  # pyright: ignore[reportPrivateUsage]
     build_slide_content,
     chunks_to_html,
     parse_markdown_zones,
@@ -236,3 +237,74 @@ class TestBuildSlideContent:
         md.write_text("# Title\n\nSome content.\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
         assert result.notes == ""
+
+
+class TestZoneParams:
+    def test_parse_zone_params_extracted(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::title align=center::\n\n# Hello\n", encoding="utf-8")
+        parsed = _parse_markdown_zones_full(md)
+        assert parsed.params.get("title") == {"align": "center"}
+
+    def test_parse_zone_multiple_params(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text(
+            "::content align=right valign=center padding=20::\n\nBody\n",
+            encoding="utf-8",
+        )
+        parsed = _parse_markdown_zones_full(md)
+        assert parsed.params["content"] == {
+            "align": "right",
+            "valign": "center",
+            "padding": "20",
+        }
+
+    def test_zone_without_params_has_no_entry(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content::\n\nBody\n", encoding="utf-8")
+        parsed = _parse_markdown_zones_full(md)
+        assert "content" not in parsed.params
+
+    def test_parse_zones_public_api_unchanged(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::title align=center::\n\n# Hello\n", encoding="utf-8")
+        zones = parse_markdown_zones(md)
+        assert "title" in zones
+        assert isinstance(zones["title"], list)
+
+    def test_build_slide_content_align_param(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content align=center::\n\nBody text\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        tb = next(c for c in result.content if isinstance(c, TextBox))
+        assert tb.align == Align.CENTER
+
+    def test_build_slide_content_valign_param(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content valign=center::\n\nBody text\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        tb = next(c for c in result.content if isinstance(c, TextBox))
+        assert tb.valign == VAlign.CENTER
+
+    def test_build_slide_content_padding_param(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content padding=40::\n\nBody text\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        tb = next(c for c in result.content if isinstance(c, TextBox))
+        assert tb.padding == 40.0
+
+    def test_unknown_params_ignored(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content unknown=foo align=left::\n\nBody\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        tb = next(c for c in result.content if isinstance(c, TextBox))
+        assert tb.align == Align.LEFT
+
+    def test_no_params_textbox_fields_are_none(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content::\n\nBody\n", encoding="utf-8")
+        result = build_slide_content(md, False, {})
+        tb = next(c for c in result.content if isinstance(c, TextBox))
+        assert tb.align is None
+        assert tb.valign is None
+        assert tb.padding is None

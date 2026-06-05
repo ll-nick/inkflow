@@ -1,4 +1,5 @@
 from inkflow.manifest import (
+    Align,
     Animation,
     Bounce,
     Crossfade,
@@ -12,9 +13,11 @@ from inkflow.manifest import (
     Slide,
     TextBox,
     Transition,
+    VAlign,
 )
 
 __all__ = [
+    "Align",
     "Animation",
     "Bounce",
     "Crossfade",
@@ -28,4 +31,5 @@ __all__ = [
     "Slide",
     "TextBox",
     "Transition",
+    "VAlign",
 ]

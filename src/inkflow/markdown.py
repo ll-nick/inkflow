@@ -7,7 +7,7 @@ from typing import cast
 
 from markdown_it import MarkdownIt
 
-from inkflow.manifest import Content, Media, TextBox
+from inkflow.manifest import Align, Content, Media, TextBox, VAlign
 
 
 @dataclass
@@ -16,7 +16,15 @@ class SlideContent:
     notes: str
 
 
-_ZONE_PATTERN = re.compile(r"^::((?!step\b)[\w-]+)::\s*$", re.MULTILINE)
+@dataclass
+class _ParsedMarkdown:
+    zones: dict[str, list[str]]
+    params: dict[str, dict[str, str]]  # zone_name → {align, valign, padding, …}
+
+
+_ZONE_PATTERN = re.compile(
+    r"^::((?!step\b)[\w-]+)((?:\s+[\w-]+=\S+)*)::\s*$", re.MULTILINE
+)
 _STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
 _STEP = "\x00step\x00"
 
@@ -35,6 +43,15 @@ def _split_steps(text: str) -> list[str]:
             result.append(_STEP)
         result.append(part)
     return result
+
+
+def _parse_zone_params(params_str: str) -> dict[str, str]:
+    params: dict[str, str] = {}
+    for token in params_str.split():
+        if "=" in token:
+            key, _, value = token.partition("=")
+            params[key.strip()] = value.strip()
+    return params
 
 
 def _auto_extract(text: str) -> dict[str, list[str]]:
@@ -65,14 +82,15 @@ def _auto_extract(text: str) -> dict[str, list[str]]:
     return zones
 
 
-def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
+def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
     text = md_path.read_text(encoding="utf-8")
 
     markers = list(_ZONE_PATTERN.finditer(text))
     if not markers:
-        return _auto_extract(text)
+        return _ParsedMarkdown(zones=_auto_extract(text), params={})
 
     zones: dict[str, list[str]] = {}
+    params: dict[str, dict[str, str]] = {}
 
     # Content before the first marker:
     # auto-extract title/subtitle, remainder → "content"
@@ -82,13 +100,20 @@ def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
 
     for idx, m in enumerate(markers):
         zone_name = m.group(1)
+        raw_params = m.group(2)
         start = m.end()
         end = markers[idx + 1].start() if idx + 1 < len(markers) else len(text)
         section = text[start:end].strip()
         if section:
             zones[zone_name] = _split_steps(section)
+        if raw_params.strip():
+            params[zone_name] = _parse_zone_params(raw_params)
 
-    return zones
+    return _ParsedMarkdown(zones=zones, params=params)
+
+
+def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
+    return _parse_markdown_zones_full(md_path).zones
 
 
 def chunks_to_html(chunks: list[str], base_step: int) -> tuple[str, int]:
@@ -144,8 +169,11 @@ def build_slide_content(
     extra: dict[str, str | Media],
 ) -> SlideContent:
     zones: dict[str, list[str]] = {}
+    zone_params: dict[str, dict[str, str]] = {}
     if content_path is not None:
-        zones = parse_markdown_zones(content_path)
+        parsed = _parse_markdown_zones_full(content_path)
+        zones = parsed.zones
+        zone_params = parsed.params
 
     notes_chunks = zones.pop("notes", None)
     notes_html = ""
@@ -159,7 +187,16 @@ def build_slide_content(
         html, base_step = chunks_to_html(chunks, base_step)
         if steps:
             html, base_step = steps_wrap_list_items(html, base_step)
-        content.append(TextBox(f"#zone-{zone_name}", text=html))
+        p = zone_params.get(zone_name, {})
+        content.append(
+            TextBox(
+                f"#zone-{zone_name}",
+                text=html,
+                align=Align(p["align"]) if "align" in p else None,
+                valign=VAlign(p["valign"]) if "valign" in p else None,
+                padding=float(p["padding"]) if "padding" in p else None,
+            )
+        )
 
     for key, val in extra.items():
         if isinstance(val, Media):

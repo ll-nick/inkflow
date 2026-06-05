@@ -12,7 +12,7 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.manifest import Media, TextBox
+from inkflow.manifest import Align, Media, TextBox, VAlign
 
 _NUMBER_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg">
@@ -169,6 +169,82 @@ class TestSubstituteContent:
             _ZONE_SVG, [TextBox("#zone-content", text="<p>ok</p>")], tmp_path
         )
         etree.fromstring(result.encode())  # should not raise
+
+
+class TestTextBoxAlignment:
+    def test_wrapper_div_always_present(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG, [TextBox("#zone-content", text="<p>hi</p>")], tmp_path
+        )
+        assert "inkflow-wrapper" in result
+        assert "inkflow-content" in result
+
+    def test_no_inline_style_when_params_absent(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG, [TextBox("#zone-content", text="hi")], tmp_path
+        )
+        root = etree.fromstring(result.encode())
+        fo = root.find('.//*[@id="zone-content"]')
+        assert fo is not None
+        wrapper = fo[0]
+        assert wrapper.get("style") is None
+        content = wrapper[0]
+        assert content.get("style") is None
+
+    def test_align_sets_text_align_on_content(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG,
+            [TextBox("#zone-content", text="hi", align=Align.CENTER)],
+            tmp_path,
+        )
+        assert "text-align:center" in result
+
+    def test_valign_center_sets_justify_content(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG,
+            [TextBox("#zone-content", text="hi", valign=VAlign.CENTER)],
+            tmp_path,
+        )
+        assert "justify-content:center" in result
+
+    def test_valign_top_sets_flex_start(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG,
+            [TextBox("#zone-content", text="hi", valign=VAlign.TOP)],
+            tmp_path,
+        )
+        assert "justify-content:start" in result
+
+    def test_valign_bottom_sets_flex_end(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG,
+            [TextBox("#zone-content", text="hi", valign=VAlign.BOTTOM)],
+            tmp_path,
+        )
+        assert "justify-content:end" in result
+
+    def test_padding_sets_inline_style_on_wrapper(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG,
+            [TextBox("#zone-content", text="hi", padding=40)],
+            tmp_path,
+        )
+        assert "padding:40px" in result
+
+    def test_inline_style_on_wrapper_not_content(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _ZONE_SVG,
+            [TextBox("#zone-content", text="hi", valign=VAlign.CENTER, padding=20)],
+            tmp_path,
+        )
+        root = etree.fromstring(result.encode())
+        fo = root.find('.//*[@id="zone-content"]')
+        assert fo is not None
+        wrapper = fo[0]
+        assert "justify-content" in (wrapper.get("style") or "")
+        assert "padding" in (wrapper.get("style") or "")
+        content = wrapper[0]
+        assert content.get("style") is None
 
 
 class TestRemoveUnreferencedZones:

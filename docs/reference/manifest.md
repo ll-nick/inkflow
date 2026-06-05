@@ -119,14 +119,50 @@ For video files, you can pass the path string directly as a shorthand:
 Injects text into a named zone element in an SVG slide.
 
 ```python
-TextBox(element="zone-title", text="My slide title")
+from inkflow import Align, VAlign, TextBox
+
+TextBox(
+    element="#zone-content",
+    text="<p>My content</p>",
+    align=Align.CENTER,
+    valign=VAlign.CENTER,
+    padding=40,
+)
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `element` | `str` | required | ID of the target `zone-*` rect |
-| `text` | `str \| None` | `None` | Text content to inject |
+| `element` | `str` | required | CSS ID selector for the target zone element |
+| `text` | `str \| None` | `None` | HTML content to inject |
 | `steps` | `bool` | `False` | Enable step-based reveal within the text |
+| `align` | `Align \| None` | `None` | Horizontal text alignment. `None` defers to the layout CSS variable |
+| `valign` | `VAlign \| None` | `None` | Vertical alignment of the content block. `None` defers to the layout CSS variable |
+| `padding` | `float \| None` | `None` | Inner padding in SVG user units. `None` defers to the layout CSS variable |
+
+---
+
+## `Align`
+
+Horizontal text alignment for `TextBox`.
+
+| Value | Effect |
+|---|---|
+| `Align.LEFT` | Left-aligned (default when no override is set) |
+| `Align.CENTER` | Centred |
+| `Align.RIGHT` | Right-aligned |
+| `Align.JUSTIFY` | Justified |
+
+---
+
+## `VAlign`
+
+Vertical alignment of the content block inside a `TextBox` zone.
+
+| Value | Effect |
+|---|---|
+| `VAlign.TOP` | Content anchored to the top of the zone (default when no override is set) |
+| `VAlign.CENTER` | Content centred vertically |
+| `VAlign.BOTTOM` | Content anchored to the bottom of the zone |
 
 ---
 
