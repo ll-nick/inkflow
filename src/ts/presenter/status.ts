@@ -20,7 +20,10 @@ export function applyCurrentStep(): void {
 }
 
 export function syncURL(): void {
-    const search = state.step > 0 ? `?clicks=${state.step}` : "";
+    const params = new URLSearchParams(window.location.search);
+    if (state.step > 0) params.set("clicks", String(state.step));
+    else params.delete("clicks");
+    const search = params.size > 0 ? `?${params.toString()}` : "";
     try {
         history.replaceState(null, "", `/${state.slideIndex + 1}${search}`);
     } catch (_) {}
