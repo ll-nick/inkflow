@@ -7,7 +7,7 @@ const statusBarEl = document.getElementById("statusbar")!;
 // biome-ignore lint/suspicious/noExplicitAny: webkit prefix not in TS DOM lib
 const _doc = document as any;
 
-let _fsHideTimer: number | undefined;
+let _fsHideTimer: ReturnType<typeof setTimeout> | undefined;
 
 // ── Curtain ──
 export function showCurtain(color: string): void {
