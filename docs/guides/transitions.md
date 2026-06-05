@@ -71,22 +71,37 @@ Morph(duration=1.0)  # slower morph
 |---|---|---|
 | `duration` | `0.5` | Animation duration in seconds |
 
-### Supported element types
+### What morphs
 
-Morph interpolates geometry attributes directly in SVG user units:
+Each element is matched to its counterpart in the other slide by `id` and
+interpolated by its resolved on-screen pose — position, size, and rotation — so it
+animates correctly even inside translated, scaled, or rotated groups.
 
-| Element | Interpolated attributes |
+Any leaf shape can morph:
+
+| Element | Morphs |
 |---|---|
-| `<rect>` | `x`, `y`, `width`, `height`, `rx` |
-| `<circle>` | `cx`, `cy`, `r` |
-| `<ellipse>` | `cx`, `cy`, `rx`, `ry` |
+| `<rect>` | position, size, rotation, corner radius (`rx`/`ry`) |
+| `<circle>`, `<ellipse>` | position, size |
+| `<line>` | endpoints |
+| `<path>`, `<polygon>`, `<image>`, … | position, size, rotation (bounding box) |
+| `<text>` | position, rotation, and font size — glyphs never stretch or shear |
 
-Colors (CSS `fill`, `stroke`) are lerped channel-by-channel.
+Colors (`fill`, `stroke`) and opacities are interpolated too.
+Stroke width and corner radius keep their shape under a non-uniform resize
+(a stretched box keeps round corners and an even outline).
 
-`<path>`, `<polygon>`, and `<g>` fall back to an instant cut.
-For groups where you want the whole group to enter/exit together,
-place the animation ID on the `<g>` element.
-It will be cloned and faded as a unit.
+### Groups
+
+A `<g>` is never animated as a rigid block — it only decides *what to match*.
+Give the **group** an `id` and the elements inside it morph individually to their
+new positions (a `<g id="card">` of a rectangle plus a label morphs the rectangle
+and re-places the label, with the label staying crisp). Give an **individual
+element** an `id` to morph just that element.
+
+Content with no matched `id` (and that isn't identical between slides) crossfades:
+elements only in the outgoing slide fade out, elements only in the incoming slide
+fade in. Unchanged chrome (backgrounds, footers) is left untouched.
 
 ### Backward navigation
 
@@ -96,9 +111,10 @@ so the reverse morph uses the same duration.
 
 ### Tips for Morph slides
 
-- Keep element IDs stable between slides.
-  The morph links outgoing and incoming elements by matching ID.
-- Elements that should morph must be primitive shapes (`<rect>`, `<circle>`, `<ellipse>`).
-  If you're morphing a complex object, wrap it in a `<g>`
-  (it will fade rather than morph, but the motion will still be smooth).
-- For dramatic reveal effects, try a slow `Morph(duration=1.5)` combined with repositioned elements.
+- Keep element IDs stable between slides — the morph links elements by matching `id`.
+- `id` a `<text>` element to morph it (it moves, rotates, and changes size); leave it
+  un-`id`'d to crossfade it instead.
+- For a card-like object (a shape with a label), group them and put the `id` on the
+  `<g>` so they travel together while each stays crisp.
+- For dramatic reveal effects, try a slow `Morph(duration=1.5)` combined with
+  repositioned elements.
