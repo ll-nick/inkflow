@@ -160,7 +160,10 @@
     updateStatus();
   }
   function syncURL() {
-    const search = state.step > 0 ? `?clicks=${state.step}` : "";
+    const params = new URLSearchParams(window.location.search);
+    if (state.step > 0) params.set("clicks", String(state.step));
+    else params.delete("clicks");
+    const search = params.size > 0 ? `?${params.toString()}` : "";
     try {
       history.replaceState(null, "", `/${state.slideIndex + 1}${search}`);
     } catch (_) {
@@ -183,162 +186,567 @@
     syncURL();
   }
 
-  // src/ts/presenter/transitions.ts
-  var stage2 = document.getElementById("stage");
-  function geomAttrs(el) {
-    const g = (k) => parseFloat(el.getAttribute(k) ?? "0");
-    switch (el.tagName.toLowerCase()) {
-      case "rect":
-        return {
-          x: g("x"),
-          y: g("y"),
-          width: g("width"),
-          height: g("height"),
-          rx: g("rx")
-        };
-      case "circle":
-        return { cx: g("cx"), cy: g("cy"), r: g("r") };
-      case "ellipse":
-        return { cx: g("cx"), cy: g("cy"), rx: g("rx"), ry: g("ry") };
-      default:
-        return null;
-    }
-  }
-  function parseHexColor(s) {
-    const h = (s ?? "").replace("#", "");
-    if (h.length === 3) return h.split("").map((c) => parseInt(c + c, 16));
-    if (h.length === 6)
-      return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-    return null;
-  }
-  function lerpColor(a, b, t) {
-    const ca = parseHexColor(a), cb = parseHexColor(b);
-    if (!ca || !cb) return t < 0.5 ? a ?? "" : b ?? "";
-    return "#" + ca.map(
-      (c, i) => Math.round(c + (cb[i] - c) * t).toString(16).padStart(2, "0")
-    ).join("");
-  }
-  function ease(t) {
+  // src/ts/shared/morph-math.ts
+  var INTERPOLATED_ATTRIBUTES = [
+    "fill",
+    "stroke",
+    "opacity",
+    "fill-opacity",
+    "stroke-opacity"
+  ];
+  function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
   }
-  function morphSlide(duration, then) {
-    const ms = duration * 1e3;
-    const fromMap = /* @__PURE__ */ new Map();
-    stage2.querySelectorAll("[id]").forEach((el) => {
-      fromMap.set(el.id, {
-        tag: el.tagName.toLowerCase(),
-        geom: geomAttrs(el),
-        fill: el.getAttribute("fill"),
-        stroke: el.getAttribute("stroke")
+  function poseCenter(pose) {
+    const cos = Math.cos(pose.rotation);
+    const sin = Math.sin(pose.rotation);
+    const halfWidth = pose.width / 2;
+    const halfHeight = pose.height / 2;
+    return {
+      x: pose.x + halfWidth * cos - halfHeight * sin,
+      y: pose.y + halfWidth * sin + halfHeight * cos
+    };
+  }
+  function parseColorToRGB(colorString) {
+    if (colorString.startsWith("#")) {
+      const hexDigits = colorString.slice(1);
+      if (hexDigits.length === 3)
+        return hexDigits.split("").map((c) => parseInt(c + c, 16));
+      if (hexDigits.length === 6)
+        return [0, 2, 4].map(
+          (i) => parseInt(hexDigits.slice(i, i + 2), 16)
+        );
+    }
+    const rgbMatch = colorString.match(/rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\)/);
+    if (rgbMatch) return [+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]];
+    return null;
+  }
+  function interpolateColorAttribute(fromColor, toColor, progress) {
+    const fromRGB = parseColorToRGB(fromColor);
+    const toRGB = parseColorToRGB(toColor);
+    if (!fromRGB || !toRGB) return progress < 0.5 ? fromColor : toColor;
+    return "#" + fromRGB.map(
+      (channel, index) => Math.round(channel + (toRGB[index] - channel) * progress).toString(16).padStart(2, "0")
+    ).join("");
+  }
+  function interpolateNumericAttribute(fromValue, toValue, progress) {
+    return String(
+      parseFloat(fromValue) + (parseFloat(toValue) - parseFloat(fromValue)) * progress
+    );
+  }
+  var COLOR_ATTRIBUTES = /* @__PURE__ */ new Set(["fill", "stroke"]);
+  function interpolateAttribute(attribute, fromValue, toValue, progress) {
+    if (COLOR_ATTRIBUTES.has(attribute))
+      return interpolateColorAttribute(fromValue, toValue, progress);
+    return interpolateNumericAttribute(fromValue, toValue, progress);
+  }
+  function readInterpolatedAttributes(element) {
+    const result = {};
+    for (const attribute of INTERPOLATED_ATTRIBUTES) {
+      const directValue = element.getAttribute(attribute);
+      if (directValue !== null && directValue !== "none") {
+        result[attribute] = directValue;
+        continue;
+      }
+      const computedValue = getComputedStyle(element).getPropertyValue(attribute).trim();
+      if (computedValue && computedValue !== "none")
+        result[attribute] = computedValue;
+    }
+    return result;
+  }
+  function compensationScale(fromPose, toPose, easedProgress) {
+    const remainingProgress = 1 - easedProgress;
+    return {
+      x: toPose.width > 0 ? 1 + (fromPose.width / toPose.width - 1) * remainingProgress : 1,
+      y: toPose.height > 0 ? 1 + (fromPose.height / toPose.height - 1) * remainingProgress : 1
+    };
+  }
+  function buildCompensationMatrix(fromPose, toPose, parentCTM, easedProgress) {
+    if (easedProgress >= 1) return null;
+    const remainingProgress = 1 - easedProgress;
+    const parentCTMInverse = parentCTM.inverse();
+    const fromCenter = poseCenter(fromPose);
+    const toCenter = poseCenter(toPose);
+    const absoluteDeltaX = fromCenter.x - toCenter.x;
+    const absoluteDeltaY = fromCenter.y - toCenter.y;
+    const localDeltaX = (parentCTMInverse.a * absoluteDeltaX + parentCTMInverse.c * absoluteDeltaY) * remainingProgress;
+    const localDeltaY = (parentCTMInverse.b * absoluteDeltaX + parentCTMInverse.d * absoluteDeltaY) * remainingProgress;
+    const { x: compensationScaleX, y: compensationScaleY } = compensationScale(
+      fromPose,
+      toPose,
+      easedProgress
+    );
+    const rotationDeltaDegrees = (fromPose.rotation - toPose.rotation) * (180 / Math.PI) * remainingProgress;
+    const toPoseCenter = new DOMPoint(toCenter.x, toCenter.y).matrixTransform(
+      parentCTMInverse
+    );
+    const pivotX = toPoseCenter.x;
+    const pivotY = toPoseCenter.y;
+    return new DOMMatrix().translate(pivotX + localDeltaX, pivotY + localDeltaY).scale(compensationScaleX, compensationScaleY).rotate(rotationDeltaDegrees).translate(-pivotX, -pivotY);
+  }
+
+  // src/ts/presenter/morph.ts
+  var stage2 = document.getElementById("stage");
+  var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
+  var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
+  function captureAbsolutePose(element) {
+    const boundingBox = element.getBBox();
+    const currentMatrix = element.getScreenCTM();
+    const topLeft = new DOMPoint(boundingBox.x, boundingBox.y).matrixTransform(
+      currentMatrix
+    );
+    const topRight = new DOMPoint(
+      boundingBox.x + boundingBox.width,
+      boundingBox.y
+    ).matrixTransform(currentMatrix);
+    const bottomLeft = new DOMPoint(
+      boundingBox.x,
+      boundingBox.y + boundingBox.height
+    ).matrixTransform(currentMatrix);
+    return {
+      x: topLeft.x,
+      y: topLeft.y,
+      width: Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y),
+      height: Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y),
+      rotation: Math.atan2(topRight.y - topLeft.y, topRight.x - topLeft.x)
+    };
+  }
+  function readLengthAttributes(element) {
+    const lengths = {};
+    for (const name of LENGTH_ATTRIBUTES) {
+      const raw = element.getAttribute(name);
+      if (raw === null) continue;
+      const value = parseFloat(raw);
+      if (Number.isFinite(value)) lengths[name] = value;
+    }
+    return lengths;
+  }
+  function readFontSize(node) {
+    const px = parseFloat(getComputedStyle(node).fontSize);
+    return Number.isFinite(px) ? px : 0;
+  }
+  function textAnchorLocal(node) {
+    return {
+      x: node.x.baseVal.numberOfItems > 0 ? node.x.baseVal.getItem(0).value : 0,
+      y: node.y.baseVal.numberOfItems > 0 ? node.y.baseVal.getItem(0).value : 0
+    };
+  }
+  function captureTextScreenPose(node) {
+    const ctm = node.getScreenCTM() ?? new DOMMatrix();
+    const anchor = textAnchorLocal(node);
+    const screen = new DOMPoint(anchor.x, anchor.y).matrixTransform(ctm);
+    return {
+      anchorX: screen.x,
+      anchorY: screen.y,
+      rotation: Math.atan2(ctm.b, ctm.a),
+      scale: Math.hypot(ctm.a, ctm.b) || 1,
+      fontSize: readFontSize(node)
+    };
+  }
+  function captureEndpointsScreen(node) {
+    const ctm = node.getScreenCTM() ?? new DOMMatrix();
+    const p1 = new DOMPoint(
+      node.x1.baseVal.value,
+      node.y1.baseVal.value
+    ).matrixTransform(ctm);
+    const p2 = new DOMPoint(
+      node.x2.baseVal.value,
+      node.y2.baseVal.value
+    ).matrixTransform(ctm);
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+  }
+  function leafKind(element) {
+    if (element instanceof SVGLineElement) return "line";
+    if (element instanceof SVGTextElement) return "text";
+    return "box";
+  }
+  function parentScreenCTM(element) {
+    const parent = element.parentElement;
+    return parent instanceof SVGGraphicsElement ? parent.getScreenCTM() ?? new DOMMatrix() : new DOMMatrix();
+  }
+  function ancestorIdChain(element) {
+    const ids = [];
+    let current = element;
+    while (current) {
+      if (current.id) ids.push(current.id);
+      current = current.parentElement;
+    }
+    return ids;
+  }
+  function snapshotLeaf(element) {
+    const ancestorIds = ancestorIdChain(element);
+    const fromAttributes = readInterpolatedAttributes(element);
+    if (element instanceof SVGLineElement)
+      return {
+        kind: "line",
+        ancestorIds,
+        fromAttributes,
+        endpointsScreen: captureEndpointsScreen(element),
+        strokeWidth: readLengthAttributes(element)["stroke-width"]
+      };
+    if (element instanceof SVGTextElement)
+      return {
+        kind: "text",
+        ancestorIds,
+        fromAttributes,
+        textPose: captureTextScreenPose(element)
+      };
+    return {
+      kind: "box",
+      ancestorIds,
+      fromAttributes,
+      pose: captureAbsolutePose(element),
+      lengths: readLengthAttributes(element)
+    };
+  }
+  function snapshotLeaves(svg) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const el of svg.querySelectorAll("[id]")) ids.add(el.id);
+    const leaves = [];
+    for (const el of svg.querySelectorAll(LEAF_SELECTOR)) {
+      if (!el.getScreenCTM()) continue;
+      leaves.push(snapshotLeaf(el));
+    }
+    return { ids, leaves };
+  }
+  function collectIds(root) {
+    const ids = /* @__PURE__ */ new Set();
+    if (root.id) ids.add(root.id);
+    for (const element of root.querySelectorAll("[id]")) ids.add(element.id);
+    return ids;
+  }
+  function snapshotTopLevelChildren(svg) {
+    return Array.from(svg.children).map((child) => ({
+      element: child.cloneNode(true),
+      html: child.outerHTML,
+      ids: collectIds(child)
+    }));
+  }
+  function nearestMatchedId(ancestorIds, matchedIds) {
+    return ancestorIds.find((id) => matchedIds.has(id));
+  }
+  function createLeafMorph(element, snapshot) {
+    const kind = leafKind(element);
+    if (kind !== snapshot.kind) return null;
+    const fromAttributes = snapshot.fromAttributes;
+    const toAttributes = readInterpolatedAttributes(element);
+    if (kind === "line" && element instanceof SVGLineElement && snapshot.endpointsScreen) {
+      const screenInverse = (element.getScreenCTM() ?? new DOMMatrix()).inverse();
+      const s = snapshot.endpointsScreen;
+      const p1 = new DOMPoint(s.x1, s.y1).matrixTransform(screenInverse);
+      const p2 = new DOMPoint(s.x2, s.y2).matrixTransform(screenInverse);
+      return {
+        kind: "line",
+        element,
+        fromAttributes,
+        toAttributes,
+        from: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y },
+        to: {
+          x1: element.x1.baseVal.value,
+          y1: element.y1.baseVal.value,
+          x2: element.x2.baseVal.value,
+          y2: element.y2.baseVal.value
+        },
+        fromStrokeWidth: snapshot.strokeWidth,
+        toStrokeWidth: readLengthAttributes(element)["stroke-width"]
+      };
+    }
+    if (kind === "text" && element instanceof SVGTextElement && snapshot.textPose) {
+      const anchor = textAnchorLocal(element);
+      return {
+        kind: "text",
+        element,
+        fromAttributes,
+        toAttributes,
+        parentCTM: parentScreenCTM(element),
+        originalTransform: element.getAttribute("transform") ?? "",
+        anchorLocalX: anchor.x,
+        anchorLocalY: anchor.y,
+        from: snapshot.textPose,
+        to: captureTextScreenPose(element)
+      };
+    }
+    if (snapshot.pose)
+      return {
+        kind: "box",
+        element,
+        fromAttributes,
+        toAttributes,
+        parentCTM: parentScreenCTM(element),
+        originalTransform: element.getAttribute("transform") ?? "",
+        fromPose: snapshot.pose,
+        toPose: captureAbsolutePose(element),
+        fromLengths: snapshot.lengths ?? {},
+        toLengths: readLengthAttributes(element)
+      };
+    return null;
+  }
+  function buildLeafMorphTasks(svgRoot, oldLeaves, matchedIds) {
+    const oldByScope = /* @__PURE__ */ new Map();
+    for (const leaf of oldLeaves.leaves) {
+      const scope = nearestMatchedId(leaf.ancestorIds, matchedIds);
+      if (!scope) continue;
+      (oldByScope.get(scope) ?? oldByScope.set(scope, []).get(scope)).push(
+        leaf
+      );
+    }
+    const newByScope = /* @__PURE__ */ new Map();
+    for (const el of svgRoot.querySelectorAll(
+      LEAF_SELECTOR
+    )) {
+      if (!el.getScreenCTM()) continue;
+      const scope = nearestMatchedId(ancestorIdChain(el), matchedIds);
+      if (!scope) continue;
+      (newByScope.get(scope) ?? newByScope.set(scope, []).get(scope)).push(
+        el
+      );
+    }
+    const tasks = [];
+    for (const [scope, newElements] of newByScope) {
+      const oldList = oldByScope.get(scope);
+      if (!oldList) continue;
+      const count = Math.min(newElements.length, oldList.length);
+      for (let i = 0; i < count; i++) {
+        const morph = createLeafMorph(newElements[i], oldList[i]);
+        if (!morph) continue;
+        tickMorph(morph, 0);
+        tasks.push({ type: "morph", morph });
+      }
+    }
+    return tasks;
+  }
+  function containsMatchedId(ids, matchedIds) {
+    for (const id of ids) if (matchedIds.has(id)) return true;
+    return false;
+  }
+  function buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds) {
+    const oldHtml = new Set(oldChildren.map((child) => child.html));
+    const newHtml = new Set(newChildren.map((child) => child.html));
+    const tasks = [];
+    for (const child of oldChildren) {
+      if (containsMatchedId(child.ids, matchedIds)) continue;
+      if (newHtml.has(child.html)) continue;
+      const clone = child.element;
+      if (!(clone instanceof SVGGraphicsElement)) continue;
+      svgRoot.appendChild(clone);
+      tasks.push({ type: "exit", element: clone });
+    }
+    for (const child of newChildren) {
+      if (containsMatchedId(child.ids, matchedIds)) continue;
+      if (oldHtml.has(child.html)) continue;
+      const element = child.element;
+      if (!(element instanceof SVGGraphicsElement)) continue;
+      element.style.opacity = "0";
+      tasks.push({
+        type: "fadeIn",
+        element,
+        targetOpacity: parseFloat(element.getAttribute("opacity") ?? "1")
       });
-    });
-    stage2.innerHTML = state.slides[state.slideIndex].svg;
-    state._maxStepCache = null;
-    const newSvg = stage2.querySelector("svg");
-    if (!newSvg) {
-      updateStatus();
-      if (then) then();
+    }
+    return tasks;
+  }
+  function buildTasks(svgRoot, oldLeaves, oldChildren) {
+    const newIds = collectIds(svgRoot);
+    const matchedIds = /* @__PURE__ */ new Set();
+    for (const id of oldLeaves.ids) if (newIds.has(id)) matchedIds.add(id);
+    const newChildren = Array.from(svgRoot.children).map(
+      (child) => ({
+        element: child,
+        html: child.outerHTML,
+        ids: collectIds(child)
+      })
+    );
+    return [
+      ...buildLeafMorphTasks(svgRoot, oldLeaves, matchedIds),
+      ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds)
+    ];
+  }
+  function matrixToSvgTransform(m) {
+    return `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e} ${m.f})`;
+  }
+  function applyColorAttributes(morph, easedProgress) {
+    for (const attribute of INTERPOLATED_ATTRIBUTES) {
+      const fromValue = morph.fromAttributes[attribute];
+      const toValue = morph.toAttributes[attribute];
+      if (fromValue !== void 0 && toValue !== void 0)
+        morph.element.setAttribute(
+          attribute,
+          interpolateAttribute(
+            attribute,
+            fromValue,
+            toValue,
+            easedProgress
+          )
+        );
+    }
+  }
+  function applyBox(morph, easedProgress) {
+    const compensation = buildCompensationMatrix(
+      morph.fromPose,
+      morph.toPose,
+      morph.parentCTM,
+      easedProgress
+    );
+    const prefix = compensation ? `${matrixToSvgTransform(compensation)} ` : "";
+    morph.element.setAttribute(
+      "transform",
+      `${prefix}${morph.originalTransform}`.trim()
+    );
+    const { x: csx, y: csy } = compensationScale(
+      morph.fromPose,
+      morph.toPose,
+      easedProgress
+    );
+    const uniformScale = Math.sqrt(Math.max(csx * csy, 1e-6));
+    const lerp = (from, to) => from + (to - from) * easedProgress;
+    const rxFrom = morph.fromLengths.rx;
+    const rxTo = morph.toLengths.rx;
+    if (rxFrom !== void 0 && rxTo !== void 0) {
+      const ryFrom = morph.fromLengths.ry ?? rxFrom;
+      const ryTo = morph.toLengths.ry ?? rxTo;
+      morph.element.setAttribute("rx", String(lerp(rxFrom, rxTo) / csx));
+      morph.element.setAttribute("ry", String(lerp(ryFrom, ryTo) / csy));
+    }
+    const swFrom = morph.fromLengths["stroke-width"];
+    const swTo = morph.toLengths["stroke-width"];
+    if (swFrom !== void 0 && swTo !== void 0)
+      morph.element.setAttribute(
+        "stroke-width",
+        String(lerp(swFrom, swTo) / uniformScale)
+      );
+  }
+  function applyText(morph, easedProgress) {
+    const lerp = (from, to) => from + (to - from) * easedProgress;
+    const target = new DOMMatrix().translate(
+      lerp(morph.from.anchorX, morph.to.anchorX),
+      lerp(morph.from.anchorY, morph.to.anchorY)
+    ).rotate(lerp(morph.from.rotation, morph.to.rotation) * 180 / Math.PI).scale(lerp(morph.from.scale, morph.to.scale)).translate(-morph.anchorLocalX, -morph.anchorLocalY);
+    const local = morph.parentCTM.inverse().multiply(target);
+    morph.element.setAttribute("transform", matrixToSvgTransform(local));
+    morph.element.style.fontSize = `${lerp(morph.from.fontSize, morph.to.fontSize)}px`;
+  }
+  function applyLine(morph, easedProgress) {
+    const lerp = (from, to) => from + (to - from) * easedProgress;
+    const element = morph.element;
+    element.setAttribute("x1", String(lerp(morph.from.x1, morph.to.x1)));
+    element.setAttribute("y1", String(lerp(morph.from.y1, morph.to.y1)));
+    element.setAttribute("x2", String(lerp(morph.from.x2, morph.to.x2)));
+    element.setAttribute("y2", String(lerp(morph.from.y2, morph.to.y2)));
+    if (morph.fromStrokeWidth !== void 0 && morph.toStrokeWidth !== void 0)
+      element.setAttribute(
+        "stroke-width",
+        String(lerp(morph.fromStrokeWidth, morph.toStrokeWidth))
+      );
+  }
+  function tickMorph(morph, easedProgress) {
+    if (morph.kind === "box") applyBox(morph, easedProgress);
+    else if (morph.kind === "text") applyText(morph, easedProgress);
+    else applyLine(morph, easedProgress);
+    applyColorAttributes(morph, easedProgress);
+  }
+  function tickTasks(tasks, rawProgress) {
+    const easedProgress = easeInOut(rawProgress);
+    for (const task of tasks) {
+      if (task.type === "morph") {
+        tickMorph(task.morph, easedProgress);
+      } else if (task.type === "fadeIn") {
+        const fadeProgress = easeInOut(
+          Math.max(0, Math.min((rawProgress - 0.3) / 0.7, 1))
+        );
+        task.element.style.opacity = String(
+          fadeProgress * task.targetOpacity
+        );
+      } else {
+        const exitProgress = easeInOut(Math.min(rawProgress / 0.7, 1));
+        task.element.style.opacity = String(1 - exitProgress);
+      }
+    }
+  }
+  function finalizeMorph(morph) {
+    for (const attribute of INTERPOLATED_ATTRIBUTES) {
+      const toValue = morph.toAttributes[attribute];
+      if (toValue !== void 0)
+        morph.element.setAttribute(attribute, toValue);
+    }
+    if (morph.kind === "line") {
+      morph.element.setAttribute("x1", String(morph.to.x1));
+      morph.element.setAttribute("y1", String(morph.to.y1));
+      morph.element.setAttribute("x2", String(morph.to.x2));
+      morph.element.setAttribute("y2", String(morph.to.y2));
+      if (morph.toStrokeWidth !== void 0)
+        morph.element.setAttribute(
+          "stroke-width",
+          String(morph.toStrokeWidth)
+        );
       return;
     }
-    updateStatus();
-    const tasks = [];
-    const seenIds = /* @__PURE__ */ new Set();
-    newSvg.querySelectorAll("[id]").forEach((el) => {
-      seenIds.add(el.id);
-      const from = fromMap.get(el.id);
-      const toGeom = geomAttrs(el);
-      if (from?.geom && toGeom && from.tag === el.tagName.toLowerCase()) {
-        const toFill = el.getAttribute("fill");
-        const toStroke = el.getAttribute("stroke");
-        for (const [k, v] of Object.entries(from.geom))
-          el.setAttribute(k, String(v));
-        if (from.fill) el.setAttribute("fill", from.fill);
-        if (from.stroke) el.setAttribute("stroke", from.stroke);
-        tasks.push({ type: "morph", el, from, toGeom, toFill, toStroke });
-      } else if (!from) {
-        el.style.opacity = "0";
-        tasks.push({
-          type: "fade",
-          el,
-          toOpacity: parseFloat(el.getAttribute("opacity") ?? "1")
-        });
-      }
-    });
-    for (const [id, from] of fromMap) {
-      if (seenIds.has(id) || !from.geom) continue;
-      const ghost = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        from.tag
-      );
-      for (const [k, v] of Object.entries(from.geom))
-        ghost.setAttribute(k, String(v));
-      if (from.fill) ghost.setAttribute("fill", from.fill);
-      if (from.stroke) ghost.setAttribute("stroke", from.stroke);
-      newSvg.appendChild(ghost);
-      tasks.push({ type: "exit", el: ghost });
+    if (morph.kind === "text") {
+      if (morph.originalTransform)
+        morph.element.setAttribute("transform", morph.originalTransform);
+      else morph.element.removeAttribute("transform");
+      morph.element.style.fontSize = "";
+      return;
     }
+    if (morph.originalTransform)
+      morph.element.setAttribute("transform", morph.originalTransform);
+    else morph.element.removeAttribute("transform");
+    if (morph.toLengths.rx !== void 0)
+      morph.element.setAttribute("rx", String(morph.toLengths.rx));
+    if (morph.toLengths.ry !== void 0)
+      morph.element.setAttribute("ry", String(morph.toLengths.ry));
+    else if (morph.fromLengths.rx !== void 0)
+      morph.element.removeAttribute("ry");
+    if (morph.toLengths["stroke-width"] !== void 0)
+      morph.element.setAttribute(
+        "stroke-width",
+        String(morph.toLengths["stroke-width"])
+      );
+  }
+  function finalizeTasks(tasks) {
+    for (const task of tasks) {
+      if (task.type === "morph") finalizeMorph(task.morph);
+      else if (task.type === "exit") task.element.remove();
+      else task.element.style.opacity = "";
+    }
+  }
+  function runMorphLoop(tasks, durationMs, then) {
     const t0 = performance.now();
     function frame(now) {
-      const raw = Math.min((now - t0) / ms, 1);
-      const e = ease(raw);
-      for (const task of tasks) {
-        if (task.type === "morph") {
-          for (const k of Object.keys(task.toGeom))
-            task.el.setAttribute(
-              k,
-              String(
-                task.from.geom[k] + (task.toGeom[k] - task.from.geom[k]) * e
-              )
-            );
-          if (task.from.fill && task.toFill)
-            task.el.setAttribute(
-              "fill",
-              lerpColor(task.from.fill, task.toFill, e)
-            );
-          if (task.from.stroke && task.toStroke)
-            task.el.setAttribute(
-              "stroke",
-              lerpColor(task.from.stroke, task.toStroke, e)
-            );
-        } else if (task.type === "exit") {
-          task.el.style.opacity = String(
-            1 - ease(Math.min(raw / 0.7, 1))
-          );
-        } else {
-          task.el.style.opacity = String(
-            ease(Math.max(0, Math.min((raw - 0.3) / 0.5, 1))) * task.toOpacity
-          );
-        }
-      }
-      if (raw < 1) {
+      const rawProgress = Math.min((now - t0) / durationMs, 1);
+      tickTasks(tasks, rawProgress);
+      if (rawProgress < 1) {
         requestAnimationFrame(frame);
         return;
       }
-      for (const task of tasks) {
-        if (task.type === "morph") {
-          for (const [k, v] of Object.entries(task.toGeom))
-            task.el.setAttribute(k, String(v));
-          if (task.toFill) task.el.setAttribute("fill", task.toFill);
-          if (task.toStroke)
-            task.el.setAttribute("stroke", task.toStroke);
-        } else if (task.type === "exit") {
-          task.el.remove();
-        } else {
-          task.el.style.opacity = "";
-        }
-      }
+      finalizeTasks(tasks);
       if (then) then();
     }
     requestAnimationFrame(frame);
   }
+  function morphToNextSlide(swap, transition, then) {
+    const beforeSvg = stage2.querySelector("svg");
+    const oldLeaves = beforeSvg ? snapshotLeaves(beforeSvg) : { ids: /* @__PURE__ */ new Set(), leaves: [] };
+    const oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
+    swap();
+    const svgRoot = stage2.querySelector("svg");
+    if (!svgRoot) {
+      if (then) then();
+      return;
+    }
+    const tasks = buildTasks(svgRoot, oldLeaves, oldChildren);
+    runMorphLoop(tasks, transition.duration * 1e3, then);
+  }
+
+  // src/ts/presenter/transitions.ts
+  var stage3 = document.getElementById("stage");
   var HANDLERS = {
-    morph(swap, t, then) {
-      if (t.duration > 0 && state.slides.length) {
-        morphSlide(t.duration, then);
+    morph(swap, transition, then) {
+      if (transition.duration <= 0 || !state.slides.length) {
+        swap();
+        if (then) then();
         return;
       }
-      swap();
-      if (then) then();
+      morphToNextSlide(swap, transition, then);
     },
     crossfade(swap, t, then) {
       if (t.duration <= 0) {
@@ -346,12 +754,12 @@
         if (then) then();
         return;
       }
-      stage2.style.transition = `opacity ${t.duration}s ease`;
-      stage2.style.opacity = "0";
+      stage3.style.transition = `opacity ${t.duration}s ease`;
+      stage3.style.opacity = "0";
       setTimeout(() => {
         swap();
         requestAnimationFrame(() => {
-          stage2.style.opacity = "1";
+          stage3.style.opacity = "1";
           if (then) then();
         });
       }, t.duration * 1e3);
@@ -359,7 +767,7 @@
   };
   function loadSlide(then = null, transition = null) {
     const swap = () => {
-      stage2.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+      stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
       state._maxStepCache = null;
       updateStatus();
     };
@@ -369,8 +777,8 @@
       handler(swap, t, then);
       return;
     }
-    stage2.style.transition = "none";
-    stage2.style.opacity = "1";
+    stage3.style.transition = "none";
+    stage3.style.opacity = "1";
     swap();
     if (then) then();
   }
