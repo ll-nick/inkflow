@@ -51,7 +51,7 @@ deck.slides = [
     ),
     Slide(
         "slides/04-morph.svg",
-        transition=Morph(duration=2.0),
+        transition=Morph(duration=1.8),
         notes=Path("slides/04-notes.md"),
     ),
     MarkdownSlide(
