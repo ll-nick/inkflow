@@ -57,6 +57,38 @@ Content for the right side.
 
 Explicit markers always override auto-extraction.
 
+## Zone alignment parameters
+
+Zone markers accept optional `key=value` parameters that control how content is
+positioned inside the zone.
+
+```markdown
+::content align=center valign=center padding=60::
+
+This text is horizontally and vertically centered, with 60 SVG units of padding.
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `align` | `left`, `center`, `right`, `justify` | Horizontal text alignment |
+| `valign` | `top`, `center`, `bottom` | Vertical alignment of the content block within the zone |
+| `padding` | number (SVG user units) | Inner spacing on all sides |
+
+All three are optional and can be combined freely.
+Parameters on the marker override CSS variables set in the layout SVG,
+which in turn override the built-in defaults (`align: left`, `valign: top`, `padding: 0`).
+
+For persistent defaults that apply to every slide using a layout,
+set CSS variables directly in the layout SVG's `<defs><style>`:
+
+```css
+#zone-title   { --inkflow-valign: center; }
+#zone-content { --inkflow-padding: 40px; }
+```
+
+For programmatic control from `deck.py`, pass `align`, `valign`, and `padding` directly to `TextBox`.
+See the [manifest reference](../reference/manifest.md#textbox).
+
 ## Step markers
 
 `::step::` inserts an animation step boundary within a zone.
