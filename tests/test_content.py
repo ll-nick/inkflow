@@ -246,6 +246,7 @@ class TestTextBoxAlignment:
         content = wrapper[0]
         assert content.get("style") is None
 
+
 class TestRemoveUnreferencedZones:
     def test_zone_rects_removed(self) -> None:
         result = remove_unreferenced_zones(_ZONE_SVG)
