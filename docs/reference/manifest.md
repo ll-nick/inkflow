@@ -227,8 +227,9 @@ Crossfade(duration=0.4)
 ### `Morph`
 
 Interpolates matching elements by ID between slides.
-Supports `<rect>`, `<circle>`, `<ellipse>`.
-Other elements fall back to fade.
+Any leaf shape morphs (`<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<path>`,
+`<text>`, `<image>`, …); a `<g>` whose ID matches morphs the elements inside it.
+Unmatched content crossfades.
 
 ```python
 Morph(duration=0.5)

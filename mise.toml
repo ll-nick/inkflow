@@ -34,5 +34,8 @@ run = ["uv run inkflow build demo/deck.py --output docs/demo/presentation", "uv 
 env = { NO_MKDOCS_2_WARNING = "1" }
 run = ["uv run inkflow build demo/deck.py --output docs/demo/presentation", "uv run mkdocs build"]
 
+[tasks.test-js]
+run = "npx vitest run"
+
 [tasks.check]
-depends = ["lint-py", "fmt-py", "typecheck-py", "test", "lint-js", "typecheck-js"]
+depends = ["lint-py", "fmt-py", "typecheck-py", "test", "lint-js", "typecheck-js", "test-js"]

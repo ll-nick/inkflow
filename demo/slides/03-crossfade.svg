@@ -8,10 +8,22 @@
   <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">99</text>
   <text x="1852" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086">/</text>
   <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="start">99</text>
-</g><rect id="box-a" x="120" y="260" width="520" height="560" rx="20" fill="#89b4fa"/>
-  <rect id="box-b" x="700" y="380" width="520" height="320" rx="20" fill="#cba6f7"/>
-  <rect id="box-c" x="1380" y="560" width="420" height="180" rx="14" fill="#a6e3a1"/>
-  <circle id="dot" cx="1740" cy="220" r="120" fill="#f38ba8"/>
-  <rect id="exit-only" x="120" y="900" width="280" height="72" rx="10" fill="#fab387"/>
-  <text x="260" y="944" text-anchor="middle" font-family="monospace" font-size="26" fill="#1e1e2e">exits on morph</text>
+</g><text x="960" y="96" text-anchor="middle" font-family="sans-serif" font-size="44" fill="#cdd6f4">One morph, every transform</text>
+  <!-- hero box: moves, resizes non-uniformly, recolours — corners stay round -->
+  <rect id="box" x="140" y="220" width="380" height="430" rx="28" fill="#89b4fa"/>
+  <!-- group with two text lines: nested transform, text stays crisp -->
+  <g id="grp" transform="translate(720, 240)">
+    <rect width="440" height="250" rx="18" fill="#cba6f7"/>
+    <text x="220" y="120" text-anchor="middle" font-family="monospace" font-size="24" fill="#1e1e2e">grouped</text>
+    <text x="220" y="152" text-anchor="middle" font-family="monospace" font-size="18" fill="#1e1e2e">font grows</text>
+  </g>
+  <!-- free circle: uniform scale, move, recolour -->
+  <circle id="dot" cx="1700" cy="300" r="110" fill="#a6e3a1"/>
+  <!-- rotation -->
+  <rect id="bar" x="1320" y="560" width="320" height="120" rx="14" fill="#fab387" transform="rotate(-18, 1480, 620)"/>
+  <!-- line: endpoints slide, stroke stays even -->
+  <line id="line" x1="180" y1="760" x2="780" y2="760" stroke="#f38ba8" stroke-width="10"/>
+  <!-- unmatched content fades out -->
+  <rect id="exit-only" x="840" y="800" width="300" height="92" rx="12" fill="#f5c2e7"/>
+  <text x="990" y="856" text-anchor="middle" font-family="monospace" font-size="26" fill="#1e1e2e">exits</text>
 </svg>
