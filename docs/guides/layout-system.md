@@ -6,15 +6,32 @@ while leaving named rectangular **zones** for content to be injected at build ti
 
 ## Zones
 
-A zone is a `<rect>` element in an SVG with an `id` that starts with `zone-`:
+A zone is any SVG shape with an `id` that starts with `zone-`.
+`<rect>` is the most common:
 
 ```xml
 <rect id="zone-content" x="120" y="200" width="1680" height="760"/>
 ```
 
-At build time the pipeline replaces each zone rect with a `<foreignObject>` of the same geometry,
-containing the rendered HTML.
-Zone rects that aren't filled by the slide are silently removed.
+At build time the pipeline replaces each zone element with a `<foreignObject>`
+sized to the shape's bounding box, containing the rendered HTML.
+Zone elements that aren't filled by the slide are silently removed.
+
+### Non-rectangular zones
+
+`<polygon>`, `<ellipse>`, `<circle>`, and `<path>` are also valid zone shapes.
+For **Media zones**, the pipeline auto-generates a `<clipPath>` from the exact shape
+and applies it to the `<foreignObject>`, so images and videos are cropped to the
+zone boundary.
+
+For **TextBox zones**, only the bounding box is used.
+Text reflows in a rectangle regardless of zone shape, and no clip is applied.
+
+Alignment CSS variables set on a non-rect zone id work the same as on a rect:
+
+```css
+#zone-media { --inkflow-valign: center; }
+```
 
 ### Reserved zone names
 
@@ -152,7 +169,7 @@ Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediat
 
 1. Create `layouts/my-layout.svg` in your project directory.
 2. Set `inkflow:parent` to point at your base theme or another layout.
-3. Add `<rect id="zone-*">` elements where you want content.
+3. Add `<rect id="zone-*">` elements where you want content (or any supported shape — see [Non-rectangular zones](#non-rectangular-zones)).
 4. Reference it in `deck.py`:
 
 ```python

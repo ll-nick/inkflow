@@ -29,12 +29,12 @@ src/
   inkflow/
     __init__.py       exports: Deck, Slide, MarkdownSlide, Media, TextBox,
                                FadeIn, FadeOut, Bounce, Cut, Crossfade, Morph,
-                               Animation, Transition
+                               Animation, Transition, Align, VAlign
     manifest.py       dataclasses for the deck DSL
     pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
-    content.py        TextBox / Media injection into zone rects
+    content.py        TextBox / Media injection into zone rects, with alignment support
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
-    markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing
+    markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing, zone param extraction
     server.py         HTTP server, WebSocket server, file watcher, build pipeline
     export.py         static HTML export (inkflow build) and PDF export (inkflow export)
     cli.py            CLI entry point
@@ -104,6 +104,41 @@ For second-screen use, open the same URL in two windows and toggle the panel in 
 Markdown is rendered to HTML via `markdown-it-py`.
 Zone `<rect>` elements in the layout SVG are replaced with `<foreignObject>` of the same geometry containing the rendered HTML.
 Typography and color come from the CSS cascade (`theme/styles.css` + per-deck/per-slide `style=`) injected into the `<foreignObject>` HTML head.
+
+**Text zone alignment — three layers, increasing specificity.**
+
+*1. Layout SVG CSS variables* — set once, applies to every slide that uses the layout:
+```css
+/* inside the layout SVG's <defs><style> */
+#zone-title   { --inkflow-valign: center; }
+#zone-content { --inkflow-padding: 40px; }
+```
+`--inkflow-align` (`left`/`center`/`right`/`justify`), `--inkflow-valign` (`start`/`center`/`end`), and `--inkflow-padding` (any CSS length) are consumed by `.inkflow-wrapper` and `.inkflow-content` in `theme/styles.css` via `var()`. No pipeline extraction; pure browser cascade.
+
+*2. Markdown zone marker parameters* — per-zone, per-slide, directly in the `.md` file:
+```
+::content align=center valign=center padding=60::
+```
+`align`, `valign`, and `padding` are the supported keys. `valign` accepts `top`/`center`/`bottom` (mapped to flexbox `start`/`center`/`end`). `padding` is in SVG user units. These translate to inline `style` attributes on the generated `<foreignObject>` wrapper and content divs, overriding CSS variables.
+
+*3. Python `TextBox` explicit params* — in `deck.py`:
+```python
+from inkflow import Align, VAlign, TextBox
+TextBox("#zone-content", text="...", align=Align.CENTER, valign=VAlign.TOP, padding=40)
+```
+`Align` and `VAlign` are `StrEnum`s exported from the top-level package. `None` (the default) means "defer to CSS variable".
+
+**foreignObject DOM structure after injection:**
+```
+<foreignObject>
+  <div class="inkflow-wrapper" [style="justify-content:…;padding:…;"]>
+    <div class="inkflow-content" [style="text-align:…;"]>
+      {rendered HTML}
+    </div>
+  </div>
+</foreignObject>
+```
+Inline styles are only emitted when the corresponding param is non-`None`; CSS variables handle layout-level defaults without touching the element's `style`.
 
 **Layout chain resolution at build time, not on disk.**
 `inject-layout` writes locked Inkscape preview layers into SVGs for authoring reference,
