@@ -75,9 +75,14 @@ def ensure_hook(hooks_dir: Path) -> bool:
     return created
 
 
-def run_git_config(key: str, value: str) -> None:
+def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> None:
     try:
-        subprocess.run(["git", "config", key, value], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", key, value],
+            check=True,
+            capture_output=True,
+            cwd=cwd,
+        )
     except subprocess.CalledProcessError as exc:
         raw = cast(bytes | None, exc.stderr)
         msg = raw.decode().strip() if isinstance(raw, bytes) else str(exc)
