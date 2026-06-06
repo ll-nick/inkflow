@@ -1,0 +1,25 @@
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="local:main.svg" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg4">
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:main__" sodipodi:insensitive="true" inkflow:layout-src="local:main.svg" inkflow:layout-hash="92687e1c" id="g3">
+    <!-- Catppuccin Mocha background -->
+    <rect width="1920" height="1080" fill="#1e1e2e" id="rect1"/>
+    <!-- Footer bar -->
+    <rect y="1040" width="1920" height="40" fill="#313244" id="rect2"/>
+    <!-- Accent line above footer -->
+    <rect y="1036" width="1920" height="4" fill="#cba6f7" id="rect3"/>
+    <!-- Slide number -->
+    <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">99</text>
+    <text x="1852" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" id="text3">/</text>
+    <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="start">99</text>
+  </g>
+  <defs id="defs4"/>
+  <text x="960" y="110" text-anchor="middle" font-family="sans-serif" font-size="56" font-weight="bold" fill="#cdd6f4" id="text1">Non-rectangular Clip Zones</text>
+  <!-- portrait ellipse -->
+  <ellipse id="zone-left" cx="320" cy="570" rx="210" ry="300"/>
+  <!-- pointy-top regular hexagon, r=280 -->
+  <polygon id="zone-center" points="960,290 1202,430 1202,710 960,850 718,710 718,430"/>
+  <!-- irregular convex quad (as a path, the way Inkscape emits polygons) -->
+  <text x="320" y="940" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#6c7086" id="text2">&lt;ellipse&gt;</text>
+  <text x="960" y="940" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#6c7086" id="text4">&lt;polygon&gt;</text>
+  <text x="1600" y="940" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#6c7086" id="text5">&lt;path&gt;</text>
+  <path style="fill:#000000;fill-opacity:1;stroke-width:7.30362;stroke-linecap:round" d="m 1725.3119,366.56018 c 0,0 -125.9605,-112.5298 -197.6077,-91.98088 -71.6473,20.54892 -87.8257,45.99043 -107.4709,68.4964 -19.6452,22.50596 24.2676,82.19567 56.6244,109.59423 32.3568,27.39856 42.7572,53.8186 17.334,91.00237 -25.4232,37.18376 -72.8028,88.06679 -65.8692,142.86391 6.9336,54.79712 5.778,90.02384 54.3132,123.29352 48.5353,33.26968 85.5145,40.11932 147.9169,44.03341 62.4025,3.91407 116.7157,12.72076 144.4501,-4.89261 27.7344,-17.61336 67.0248,-55.77564 68.1804,-84.15272 1.1556,-28.37708 -8.8122,-104.86458 -30.0456,-160.47728 -22.5757,-59.12841 -41.6016,-39.1408 -63.558,-98.83051 -23.6724,-64.35484 -24.2676,-138.94984 -24.2676,-138.94984 z" id="zone-right"/>
+</svg>
