@@ -323,51 +323,22 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
     or a relative path. OUTPUT is the path for the new SVG file.
     """
-    from lxml import etree as _etree
-
-    resolved_deck = Path(deck_path).resolve()
+    resolved_deck = deck_path.resolve()
     if not resolved_deck.exists():
         raise click.ClickException(f"deck not found: {resolved_deck}")
 
     deck_obj = load_deck(resolved_deck)
     project_dir = resolved_deck.parent
-    output_path = Path(output).resolve()
+    output_path = output.resolve()
 
     if output_path.exists():
         raise click.ClickException(f"file already exists: {output_path}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Resolve parent to get viewBox from the parent SVG if available.
     try:
-        parent_abs = resolve_parent_path(
-            parent, output_path, project_dir, deck_obj.theme
-        )
+        create_slide(parent, output_path, project_dir, deck_obj.theme)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
-
-    view_box = "0 0 1920 1080"
-    width = "1920"
-    height = "1080"
-    if parent_abs.exists():
-        anc_root = _etree.parse(parent_abs).getroot()
-        if anc_root.get("viewBox"):
-            view_box = anc_root.get("viewBox", view_box)
-            width = anc_root.get("width", width)
-            height = anc_root.get("height", height)
-
-    svg_content = (
-        f'<svg xmlns="{ns.SVG}"\n'
-        f'     xmlns:inkflow="{ns.INKFLOW}"\n'
-        f'     inkflow:parent="{parent}"\n'
-        f'     viewBox="{view_box}" width="{width}" height="{height}">\n'
-        f"</svg>\n"
-    )
-    output_path.write_text(svg_content, encoding="utf-8")
-
-    chain = resolve_chain(output_path, project_dir, deck_obj.theme)
-    if chain:
-        inject_layout_layers(output_path, chain)
 
     output_rel = output_path.relative_to(project_dir)
     click.echo(f"[inkflow] created {output_rel}")
