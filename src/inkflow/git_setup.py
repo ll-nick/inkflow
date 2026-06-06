@@ -45,6 +45,20 @@ def git_root() -> Path:
         raise RuntimeError("not inside a git repository") from exc
 
 
+def detect_git_root(directory: Path) -> Path | None:
+    """Return the git root for the given directory, or None if not in a repo."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return Path(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        return None
+
+
 def resolve_textconv(root: Path) -> str:
     """Return the textconv command for the local git config.
 
