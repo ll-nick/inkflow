@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
@@ -45,6 +46,20 @@ def git_root() -> Path:
         raise RuntimeError("not inside a git repository") from exc
 
 
+def detect_git_root(directory: Path) -> Path | None:
+    """Return the git root for the given directory, or None if not in a repo."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return Path(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        return None
+
+
 def resolve_textconv(root: Path) -> str:
     """Return the textconv command for the local git config.
 
@@ -75,9 +90,14 @@ def ensure_hook(hooks_dir: Path) -> bool:
     return created
 
 
-def run_git_config(key: str, value: str) -> None:
+def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> None:
     try:
-        subprocess.run(["git", "config", key, value], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", key, value],
+            check=True,
+            capture_output=True,
+            cwd=cwd,
+        )
     except subprocess.CalledProcessError as exc:
         raw = cast(bytes | None, exc.stderr)
         msg = raw.decode().strip() if isinstance(raw, bytes) else str(exc)
@@ -97,3 +117,52 @@ def ensure_gitattributes(root: Path) -> str:
     sep = "" if content.endswith("\n") else "\n"
     gitattributes.write_text(content + sep + attr_line, encoding="utf-8")
     return "updated"
+
+
+def run_git_setup(
+    root: Path,
+    *,
+    verbose: bool,
+    log: Callable[[str], None] = lambda _: None,
+) -> None:
+    """Configure git hooks and SVG diff driver.
+
+    When verbose=True, raises RuntimeError on failure and logs every step.
+    When verbose=False, silently returns on failure and logs minimally.
+    """
+    try:
+        textconv_cmd = resolve_textconv(root)
+    except RuntimeError:
+        if verbose:
+            raise
+        return
+
+    hook_created = ensure_hook(root / ".githooks")
+    if hook_created:
+        log("[inkflow] created .githooks/pre-commit")
+    elif verbose:
+        log("[inkflow] .githooks/pre-commit already exists, left unchanged")
+
+    try:
+        run_git_config("core.hooksPath", ".githooks", cwd=root)
+        if verbose:
+            log("[inkflow] set git config: core.hooksPath = .githooks")
+        run_git_config("diff.inkscape-svg.textconv", textconv_cmd, cwd=root)
+        if verbose:
+            log(
+                f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
+            )
+    except RuntimeError as exc:
+        if verbose:
+            raise
+        log(f"[inkflow] warning: git config failed: {exc}")
+        return
+
+    attr_result = ensure_gitattributes(root)
+    if verbose:
+        if attr_result == "ok":
+            log("[inkflow] .gitattributes already up to date")
+        else:
+            log(f"[inkflow] {attr_result} .gitattributes")
+
+    log("[inkflow] git setup complete")

@@ -7,9 +7,10 @@ from pathlib import Path
 
 import click
 
-from inkflow import git_setup, ns
+from inkflow import git_setup, init, ns
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
+    create_slide,
     inject_layout_layers,
     is_layout_current,
     resolve_chain,
@@ -26,6 +27,65 @@ from inkflow.server import serve as _serve
 @click.group()
 def main() -> None:
     """Beautiful slides from SVG. Your editor, your style."""
+
+
+def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
+    resolved = deck_path.resolve()
+    if not resolved.exists():
+        raise click.ClickException(f"deck not found: {resolved}")
+    deck_obj = load_deck(resolved)
+    return deck_obj, resolved.parent
+
+
+_deck_option = click.option(
+    "--deck",
+    "deck_path",
+    default="deck.py",
+    type=click.Path(path_type=Path),
+    help="Path to deck.py (default: deck.py in cwd)",
+)
+
+_no_deck_option = click.option(
+    "--no-deck",
+    "no_deck",
+    is_flag=True,
+    help=(
+        "Operate without a deck.py (for theme authoring). "
+        "Only builtin: and relative-path parents are allowed."
+    ),
+)
+
+
+@main.command("init")
+@click.argument("directory", default=".", type=click.Path(path_type=Path))
+@click.option(
+    "--theme", "theme_path", default=None, help="Path to a custom theme directory."
+)
+@click.option(
+    "--no-git",
+    "no_git",
+    is_flag=True,
+    help="Skip git hook setup even when inside a git repository.",
+)
+def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
+    """Scaffold a new presentation project."""
+    target = directory.resolve()
+    if (target / "deck.py").exists():
+        raise click.ClickException(f"deck.py already exists: {target / 'deck.py'}")
+    try:
+        init.scaffold(target, theme_path)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo("[inkflow] created slides/01-title.svg")
+    click.echo("[inkflow] created slides/02-content.md")
+    click.echo("[inkflow] created deck.py")
+    if not no_git:
+        git_root_path = git_setup.detect_git_root(target)
+        if git_root_path:
+            git_setup.run_git_setup(git_root_path, verbose=False, log=click.echo)
+    rel = str(directory) if str(directory) not in (".", "./") else None
+    suffix = f"cd {rel} && inkflow serve" if rel else "inkflow serve"
+    click.echo(f"\n[inkflow] run:  {suffix}")
 
 
 @main.command()
@@ -86,58 +146,16 @@ def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
 @main.command("setup-git")
 def setup_git() -> None:
     """Configure git hooks and SVG diff driver for any git repository."""
-
     try:
         root = git_setup.git_root()
-        textconv_cmd = git_setup.resolve_textconv(root)
+        git_setup.run_git_setup(root, verbose=True, log=click.echo)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
-
-    hook_created = git_setup.ensure_hook(root / ".githooks")
-    if hook_created:
-        click.echo("[inkflow] created .githooks/pre-commit")
-    else:
-        click.echo("[inkflow] .githooks/pre-commit already exists, left unchanged")
-
-    try:
-        git_setup.run_git_config("core.hooksPath", ".githooks")
-        click.echo("[inkflow] set git config: core.hooksPath = .githooks")
-        git_setup.run_git_config("diff.inkscape-svg.textconv", textconv_cmd)
-        click.echo(
-            f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
-        )
-    except RuntimeError as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    attr_result = git_setup.ensure_gitattributes(root)
-    if attr_result == "ok":
-        click.echo("[inkflow] .gitattributes already up to date")
-    else:
-        click.echo(f"[inkflow] {attr_result} .gitattributes")
-
-    click.echo("[inkflow] git setup complete")
 
 
 @main.group()
 def parent() -> None:
     """Manage slide layout parents."""
-
-
-def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
-    resolved = deck_path.resolve()
-    if not resolved.exists():
-        raise click.ClickException(f"deck not found: {resolved}")
-    deck_obj = load_deck(resolved)
-    return deck_obj, resolved.parent
-
-
-_deck_option = click.option(
-    "--deck",
-    "deck_path",
-    default="deck.py",
-    type=click.Path(path_type=Path),
-    help="Path to deck.py (default: deck.py in cwd)",
-)
 
 
 @parent.command("get")
@@ -236,17 +254,6 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
     for svg_path, label in targets:
         had_parent = strip_parent(svg_path)
         click.echo(f"[stripped]    {label}" if had_parent else f"[no parent]   {label}")
-
-
-_no_deck_option = click.option(
-    "--no-deck",
-    "no_deck",
-    is_flag=True,
-    help=(
-        "Operate without a deck.py (for theme authoring). "
-        "Only builtin: and relative-path parents are allowed."
-    ),
-)
 
 
 @parent.command("inject")
@@ -351,51 +358,22 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
     bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
     or a relative path. OUTPUT is the path for the new SVG file.
     """
-    from lxml import etree as _etree
-
-    resolved_deck = Path(deck_path).resolve()
+    resolved_deck = deck_path.resolve()
     if not resolved_deck.exists():
         raise click.ClickException(f"deck not found: {resolved_deck}")
 
     deck_obj = load_deck(resolved_deck)
     project_dir = resolved_deck.parent
-    output_path = Path(output).resolve()
+    output_path = output.resolve()
 
     if output_path.exists():
         raise click.ClickException(f"file already exists: {output_path}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Resolve parent to get viewBox from the parent SVG if available.
     try:
-        parent_abs = resolve_parent_path(
-            parent, output_path, project_dir, deck_obj.theme
-        )
+        create_slide(parent, output_path, project_dir, deck_obj.theme)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
-
-    view_box = "0 0 1920 1080"
-    width = "1920"
-    height = "1080"
-    if parent_abs.exists():
-        anc_root = _etree.parse(parent_abs).getroot()
-        if anc_root.get("viewBox"):
-            view_box = anc_root.get("viewBox", view_box)
-            width = anc_root.get("width", width)
-            height = anc_root.get("height", height)
-
-    svg_content = (
-        f'<svg xmlns="{ns.SVG}"\n'
-        f'     xmlns:inkflow="{ns.INKFLOW}"\n'
-        f'     inkflow:parent="{parent}"\n'
-        f'     viewBox="{view_box}" width="{width}" height="{height}">\n'
-        f"</svg>\n"
-    )
-    output_path.write_text(svg_content, encoding="utf-8")
-
-    chain = resolve_chain(output_path, project_dir, deck_obj.theme)
-    if chain:
-        inject_layout_layers(output_path, chain)
 
     output_rel = output_path.relative_to(project_dir)
     click.echo(f"[inkflow] created {output_rel}")

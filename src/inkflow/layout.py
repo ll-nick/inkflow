@@ -289,6 +289,36 @@ def with_namespaces(
     return new_root
 
 
+def create_slide(
+    parent_str: str, output_path: Path, project_dir: Path, theme: str | None
+) -> None:
+    """Create a minimal slide SVG wired to a layout parent and inject layout layers.
+
+    Raises ValueError if the parent string cannot be resolved.
+    """
+    parent_abs = resolve_parent_path(parent_str, output_path, project_dir, theme)
+
+    view_box, width, height = "0 0 1920 1080", "1920", "1080"
+    if parent_abs.exists():
+        root = etree.parse(parent_abs).getroot()
+        view_box = root.get("viewBox", view_box)
+        width = root.get("width", width)
+        height = root.get("height", height)
+
+    svg_content = (
+        f'<svg xmlns="{ns.SVG}"\n'
+        f'     xmlns:inkflow="{ns.INKFLOW}"\n'
+        f'     inkflow:parent="{parent_str}"\n'
+        f'     viewBox="{view_box}" width="{width}" height="{height}">\n'
+        f"</svg>\n"
+    )
+    output_path.write_text(svg_content, encoding="utf-8")
+
+    chain = resolve_chain(output_path, project_dir, theme)
+    if chain:
+        inject_layout_layers(output_path, chain)
+
+
 def inject_layout_layers(svg_path: Path, chain: list[Path]) -> bool:
     """Inject ancestor SVGs as locked Inkscape layers into svg_path in place.
 
