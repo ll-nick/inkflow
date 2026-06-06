@@ -28,6 +28,31 @@ def main() -> None:
     """Beautiful slides from SVG. Your editor, your style."""
 
 
+def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
+    resolved = deck_path.resolve()
+    if not resolved.exists():
+        raise click.ClickException(f"deck not found: {resolved}")
+    deck_obj = load_deck(resolved)
+    return deck_obj, resolved.parent
+
+_deck_option = click.option(
+    "--deck",
+    "deck_path",
+    default="deck.py",
+    type=click.Path(path_type=Path),
+    help="Path to deck.py (default: deck.py in cwd)",
+)
+
+_no_deck_option = click.option(
+    "--no-deck",
+    "no_deck",
+    is_flag=True,
+    help=(
+        "Operate without a deck.py (for theme authoring). "
+        "Only builtin: and relative-path parents are allowed."
+    ),
+)
+
 @main.command()
 @click.argument("deck", default="deck.py")
 @click.option("--port", default=7777, show_default=True, help="HTTP port")
@@ -121,23 +146,6 @@ def setup_git() -> None:
 @main.group()
 def parent() -> None:
     """Manage slide layout parents."""
-
-
-def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
-    resolved = deck_path.resolve()
-    if not resolved.exists():
-        raise click.ClickException(f"deck not found: {resolved}")
-    deck_obj = load_deck(resolved)
-    return deck_obj, resolved.parent
-
-
-_deck_option = click.option(
-    "--deck",
-    "deck_path",
-    default="deck.py",
-    type=click.Path(path_type=Path),
-    help="Path to deck.py (default: deck.py in cwd)",
-)
 
 
 @parent.command("get")
@@ -236,17 +244,6 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
     for svg_path, label in targets:
         had_parent = strip_parent(svg_path)
         click.echo(f"[stripped]    {label}" if had_parent else f"[no parent]   {label}")
-
-
-_no_deck_option = click.option(
-    "--no-deck",
-    "no_deck",
-    is_flag=True,
-    help=(
-        "Operate without a deck.py (for theme authoring). "
-        "Only builtin: and relative-path parents are allowed."
-    ),
-)
 
 
 @parent.command("inject")
