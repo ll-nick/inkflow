@@ -7,9 +7,10 @@ from pathlib import Path
 
 import click
 
-from inkflow import git_setup, ns
+from inkflow import git_setup, init, ns
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
+    create_slide,
     inject_layout_layers,
     is_layout_current,
     resolve_chain,
@@ -35,6 +36,7 @@ def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
     deck_obj = load_deck(resolved)
     return deck_obj, resolved.parent
 
+
 _deck_option = click.option(
     "--deck",
     "deck_path",
@@ -52,6 +54,39 @@ _no_deck_option = click.option(
         "Only builtin: and relative-path parents are allowed."
     ),
 )
+
+
+@main.command("init")
+@click.argument("directory", default=".", type=click.Path(path_type=Path))
+@click.option(
+    "--theme", "theme_path", default=None, help="Path to a custom theme directory."
+)
+@click.option(
+    "--no-git",
+    "no_git",
+    is_flag=True,
+    help="Skip git hook setup even when inside a git repository.",
+)
+def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
+    """Scaffold a new presentation project."""
+    target = directory.resolve()
+    if (target / "deck.py").exists():
+        raise click.ClickException(f"deck.py already exists: {target / 'deck.py'}")
+    try:
+        init.scaffold(target, theme_path)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo("[inkflow] created slides/01-title.svg")
+    click.echo("[inkflow] created slides/02-content.md")
+    click.echo("[inkflow] created deck.py")
+    if not no_git:
+        git_root_path = git_setup.detect_git_root(target)
+        if git_root_path:
+            git_setup.run_git_setup(git_root_path, verbose=False, log=click.echo)
+    rel = str(directory) if str(directory) not in (".", "./") else None
+    suffix = f"cd {rel} && inkflow serve" if rel else "inkflow serve"
+    click.echo(f"\n[inkflow] run:  {suffix}")
+
 
 @main.command()
 @click.argument("deck", default="deck.py")
