@@ -111,36 +111,11 @@ def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
 @main.command("setup-git")
 def setup_git() -> None:
     """Configure git hooks and SVG diff driver for any git repository."""
-
     try:
         root = git_setup.git_root()
-        textconv_cmd = git_setup.resolve_textconv(root)
+        git_setup.run_git_setup(root, verbose=True, log=click.echo)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
-
-    hook_created = git_setup.ensure_hook(root / ".githooks")
-    if hook_created:
-        click.echo("[inkflow] created .githooks/pre-commit")
-    else:
-        click.echo("[inkflow] .githooks/pre-commit already exists, left unchanged")
-
-    try:
-        git_setup.run_git_config("core.hooksPath", ".githooks")
-        click.echo("[inkflow] set git config: core.hooksPath = .githooks")
-        git_setup.run_git_config("diff.inkscape-svg.textconv", textconv_cmd)
-        click.echo(
-            f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
-        )
-    except RuntimeError as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    attr_result = git_setup.ensure_gitattributes(root)
-    if attr_result == "ok":
-        click.echo("[inkflow] .gitattributes already up to date")
-    else:
-        click.echo(f"[inkflow] {attr_result} .gitattributes")
-
-    click.echo("[inkflow] git setup complete")
 
 
 @main.group()

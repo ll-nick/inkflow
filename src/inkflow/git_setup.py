@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
@@ -116,3 +117,52 @@ def ensure_gitattributes(root: Path) -> str:
     sep = "" if content.endswith("\n") else "\n"
     gitattributes.write_text(content + sep + attr_line, encoding="utf-8")
     return "updated"
+
+
+def run_git_setup(
+    root: Path,
+    *,
+    verbose: bool,
+    log: Callable[[str], None] = lambda _: None,
+) -> None:
+    """Configure git hooks and SVG diff driver.
+
+    When verbose=True, raises RuntimeError on failure and logs every step.
+    When verbose=False, silently returns on failure and logs minimally.
+    """
+    try:
+        textconv_cmd = resolve_textconv(root)
+    except RuntimeError:
+        if verbose:
+            raise
+        return
+
+    hook_created = ensure_hook(root / ".githooks")
+    if hook_created:
+        log("[inkflow] created .githooks/pre-commit")
+    elif verbose:
+        log("[inkflow] .githooks/pre-commit already exists, left unchanged")
+
+    try:
+        run_git_config("core.hooksPath", ".githooks", cwd=root)
+        if verbose:
+            log("[inkflow] set git config: core.hooksPath = .githooks")
+        run_git_config("diff.inkscape-svg.textconv", textconv_cmd, cwd=root)
+        if verbose:
+            log(
+                f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
+            )
+    except RuntimeError as exc:
+        if verbose:
+            raise
+        log(f"[inkflow] warning: git config failed: {exc}")
+        return
+
+    attr_result = ensure_gitattributes(root)
+    if verbose:
+        if attr_result == "ok":
+            log("[inkflow] .gitattributes already up to date")
+        else:
+            log(f"[inkflow] {attr_result} .gitattributes")
+
+    log("[inkflow] git setup complete")
