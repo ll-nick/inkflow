@@ -69,4 +69,12 @@ deck.slides = [
         media="assets/demo.mp4",
         notes="Notes can also be added both in markdown and in `deck.py`.",
     ),
+    Slide(
+        "slides/10-clips.svg",
+        content=[
+            Media("assets/demo.jpg", element="#zone-left", fit="cover"),
+            Media("assets/demo.jpg", element="#zone-center", fit="cover"),
+            Media("assets/demo.mp4", element="#zone-right", fit="cover"),
+        ],
+    ),
 ]

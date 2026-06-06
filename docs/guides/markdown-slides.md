@@ -79,7 +79,7 @@ Parameters on the marker override CSS variables set in the layout SVG,
 which in turn override the built-in defaults (`align: left`, `valign: top`, `padding: 0`).
 
 For persistent defaults that apply to every slide using a layout,
-set CSS variables directly in the layout SVG's `<defs><style>`:
+set CSS variables directly in the layout SVG's `<defs><style>` (see [Layout system](layout-system.md)):
 
 ```css
 #zone-title   { --inkflow-valign: center; }

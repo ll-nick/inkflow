@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import copy
 import mimetypes
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,6 +50,12 @@ class _ZoneRect:
     height: str
 
 
+@dataclass
+class _ZoneGeometry:
+    rect: _ZoneRect
+    clip_shape: etree._Element | None = None  # pyright: ignore[reportPrivateUsage]
+
+
 def substitute_zone_numbers(svg_str: str, slide_number: int, total: int) -> str:
     root = etree.fromstring(svg_str.encode())
     for el in root.iter(f"{{{ns.SVG}}}text"):
@@ -67,6 +75,174 @@ def _rect_geometry(el: etree._Element) -> _ZoneRect:  # pyright: ignore[reportPr
     if w is None or h is None:
         raise ValueError(f"Zone rect missing width/height: {el.get('id')}")
     return _ZoneRect(x=x, y=y, width=w, height=h)
+
+
+def _polygon_bbox(points_str: str) -> _ZoneRect:
+    nums = [float(v) for v in re.split(r"[,\s]+", points_str.strip()) if v]
+    xs = nums[0::2]
+    ys = nums[1::2]
+    x0, y0 = min(xs), min(ys)
+    return _ZoneRect(
+        x=str(x0), y=str(y0), width=str(max(xs) - x0), height=str(max(ys) - y0)
+    )
+
+
+_PATH_CMD_RE = re.compile(r"([MmZzLlHhVvCcSsQqTtAa])")
+_PATH_NUM_RE = re.compile(r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
+
+_PATH_CLOSEPATH = frozenset("Zz")
+_PATH_LINE = frozenset("MmLl")  # moveto and lineto share coordinate layout
+_PATH_HORIZ = frozenset("Hh")
+_PATH_VERT = frozenset("Vv")
+_PATH_CURVE = frozenset("CcSsQqTt")
+_PATH_ARC = frozenset("Aa")
+
+_CURVE_COORDS_PER_SEGMENT: dict[str, int] = {
+    "C": 6,
+    "c": 6,  # cubic bézier: x1,y1  x2,y2  x,y
+    "S": 4,
+    "s": 4,  # smooth cubic: x2,y2  x,y
+    "Q": 4,
+    "q": 4,  # quadratic bézier: x1,y1  x,y
+    "T": 2,
+    "t": 2,  # smooth quadratic: x,y
+}
+_ARC_PARAMS = 7  # rx ry x-rotation large-arc-flag sweep-flag x y
+
+
+def _to_abs(value: float, origin: float, is_relative: bool) -> float:
+    return origin + value if is_relative else value
+
+
+def _path_bbox(d: str) -> _ZoneRect:
+    """Bounding box from an SVG path d attribute.
+
+    Straight-line commands are exact. Bézier control points are treated as
+    bbox contributors (conservative: the curve always lies within its control
+    point convex hull). Arc endpoints contribute but arc curvature does not
+    (acceptable approximation; clip path uses the exact shape anyway).
+    """
+    parts = _PATH_CMD_RE.split(d)
+    segments = [(parts[i], parts[i + 1]) for i in range(1, len(parts) - 1, 2)]
+
+    xs: list[float] = []
+    ys: list[float] = []
+    cur_x, cur_y = 0.0, 0.0
+
+    for cmd, args_str in segments:
+        raw: list[str] = _PATH_NUM_RE.findall(args_str)
+        args = [float(v) for v in raw]
+        is_relative = cmd.islower()
+
+        if cmd in _PATH_CLOSEPATH:
+            pass
+
+        elif cmd in _PATH_LINE:
+            for j in range(0, len(args) - 1, 2):
+                cur_x = _to_abs(args[j], cur_x, is_relative)
+                cur_y = _to_abs(args[j + 1], cur_y, is_relative)
+                xs.append(cur_x)
+                ys.append(cur_y)
+
+        elif cmd in _PATH_HORIZ:
+            for a in args:
+                cur_x = _to_abs(a, cur_x, is_relative)
+                xs.append(cur_x)
+                ys.append(cur_y)
+
+        elif cmd in _PATH_VERT:
+            for a in args:
+                cur_y = _to_abs(a, cur_y, is_relative)
+                xs.append(cur_x)
+                ys.append(cur_y)
+
+        elif cmd in _PATH_CURVE:
+            step = _CURVE_COORDS_PER_SEGMENT[cmd]
+            for seg_start in range(0, len(args) - 1, step):
+                seg = args[seg_start : seg_start + step]
+                for j in range(0, len(seg) - 1, 2):
+                    xs.append(_to_abs(seg[j], cur_x, is_relative))
+                    ys.append(_to_abs(seg[j + 1], cur_y, is_relative))
+                if len(seg) >= 2:
+                    cur_x = _to_abs(seg[-2], cur_x, is_relative)
+                    cur_y = _to_abs(seg[-1], cur_y, is_relative)
+
+        elif cmd in _PATH_ARC:
+            for seg_start in range(0, len(args), _ARC_PARAMS):
+                seg = args[seg_start : seg_start + _ARC_PARAMS]
+                if len(seg) == _ARC_PARAMS:
+                    *_, endpoint_x, endpoint_y = seg
+                    cur_x = _to_abs(endpoint_x, cur_x, is_relative)
+                    cur_y = _to_abs(endpoint_y, cur_y, is_relative)
+                    xs.append(cur_x)
+                    ys.append(cur_y)
+
+    if not xs:
+        raise ValueError(f"Zone path has no parseable coordinates: {d!r}")
+    x0, y0 = min(xs), min(ys)
+    return _ZoneRect(
+        x=str(x0), y=str(y0), width=str(max(xs) - x0), height=str(max(ys) - y0)
+    )
+
+
+def _zone_geometry(
+    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+) -> _ZoneGeometry:
+    tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+
+    if tag == "rect":
+        return _ZoneGeometry(rect=_rect_geometry(el))
+
+    shape_copy = copy.deepcopy(el)
+    if "id" in shape_copy.attrib:
+        del shape_copy.attrib["id"]
+
+    if tag in ("polygon", "polyline"):
+        rect = _polygon_bbox(el.get("points", ""))
+    elif tag == "path":
+        rect = _path_bbox(el.get("d", ""))
+    elif tag == "ellipse":
+        cx = float(el.get("cx", 0))
+        cy = float(el.get("cy", 0))
+        rx = float(el.get("rx", 0))
+        ry = float(el.get("ry", 0))
+        rect = _ZoneRect(
+            x=str(cx - rx), y=str(cy - ry), width=str(2 * rx), height=str(2 * ry)
+        )
+    elif tag == "circle":
+        cx = float(el.get("cx", 0))
+        cy = float(el.get("cy", 0))
+        r = float(el.get("r", 0))
+        rect = _ZoneRect(
+            x=str(cx - r), y=str(cy - r), width=str(2 * r), height=str(2 * r)
+        )
+    else:
+        return _ZoneGeometry(rect=_rect_geometry(el))
+
+    return _ZoneGeometry(rect=rect, clip_shape=shape_copy)
+
+
+def _ensure_defs(
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+    defs = root.find(f"{{{ns.SVG}}}defs")
+    if defs is None:
+        defs = etree.Element(f"{{{ns.SVG}}}defs")
+        root.insert(0, defs)
+    return defs
+
+
+def _add_clip_path(
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    zone_id: str,
+    shape_el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+) -> str:
+    clip_id = f"inkflow-clip-{zone_id}"
+    defs = _ensure_defs(root)
+    clip = etree.SubElement(defs, f"{{{ns.SVG}}}clipPath")
+    clip.set("id", clip_id)
+    clip.append(shape_el)
+    return f"url(#{clip_id})"
 
 
 def _swap_zone(
@@ -98,7 +274,7 @@ def _replace_with_foreignobject(
     valign: VAlign | None = None,
     padding: float | None = None,
 ) -> None:
-    rect = _rect_geometry(el)
+    rect = _zone_geometry(el).rect
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
     fo.set("overflow", "visible")
@@ -152,6 +328,7 @@ def _fmt_pos(base: int, offset_pct: float) -> str:
 
 def _replace_with_media(
     el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
     src: str,
     zone_id: str,
     fit: str,
@@ -160,7 +337,8 @@ def _replace_with_media(
     y: float,
     project_dir: Path,
 ) -> None:
-    rect = _rect_geometry(el)
+    geom = _zone_geometry(el)
+    rect = geom.rect
 
     base_x, base_y = _ALIGN_MAP.get(align, (50, 50))
     x_pct = x / float(rect.width) * 100
@@ -174,6 +352,8 @@ def _replace_with_media(
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
     fo.set("overflow", "visible")
+    if geom.clip_shape is not None:
+        fo.set("clip-path", _add_clip_path(root, zone_id, geom.clip_shape))
 
     suffix = Path(src).suffix.lower()
     if suffix in _VIDEO_SUFFIXES:
@@ -228,17 +408,37 @@ def substitute_content(
             )
         else:
             _replace_with_media(
-                el, item.src, zone_id, item.fit, item.align, item.x, item.y, project_dir
+                el,
+                root,
+                item.src,
+                zone_id,
+                item.fit,
+                item.align,
+                item.x,
+                item.y,
+                project_dir,
             )
 
     return etree.tostring(root, encoding="unicode")
+
+
+_ZONE_SHAPE_TAGS = frozenset(
+    {
+        f"{{{ns.SVG}}}rect",
+        f"{{{ns.SVG}}}polygon",
+        f"{{{ns.SVG}}}polyline",
+        f"{{{ns.SVG}}}ellipse",
+        f"{{{ns.SVG}}}circle",
+        f"{{{ns.SVG}}}path",
+    }
+)
 
 
 def remove_unreferenced_zones(svg_str: str) -> str:
     root = etree.fromstring(svg_str.encode())
     to_remove = [
         el
-        for el in root.iter(f"{{{ns.SVG}}}rect")
+        for el in root.iter(*_ZONE_SHAPE_TAGS)
         if (el.get("id") or "").startswith("zone-") and not el.get("class")
     ]
     for el in to_remove:

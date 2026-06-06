@@ -31,6 +31,19 @@ _ZONE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+_POLYGON_ZONE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg">
+      <polygon id="zone-image" points="100,0 500,0 400,300 0,300"/>
+    </svg>
+""")
+
+# Same shape as _POLYGON_ZONE_SVG but as a <path>
+_PATH_ZONE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg">
+      <path id="zone-image" d="M 100,0 L 500,0 400,300 0,300 Z"/>
+    </svg>
+""")
+
 
 class TestSubstituteZoneNumbers:
     def test_replaces_slide_number(self) -> None:
@@ -245,6 +258,113 @@ class TestTextBoxAlignment:
         assert "padding" in (wrapper.get("style") or "")
         content = wrapper[0]
         assert content.get("style") is None
+
+
+class TestNonRectZones:
+    def test_polygon_zone_bounding_box(self, tmp_path: Path) -> None:
+        # polygon points="100,0 500,0 400,300 0,300" → bbox x=0,y=0,w=500,h=300
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        assert 'width="500"' in result or 'width="500.0"' in result
+        assert 'height="300"' in result or 'height="300.0"' in result
+
+    def test_polygon_media_zone_gets_clip_path(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        assert "clipPath" in result
+        assert "inkflow-clip-zone-image" in result
+        assert 'clip-path="url(#inkflow-clip-zone-image)"' in result
+
+    def test_polygon_textbox_zone_no_clip(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _POLYGON_ZONE_SVG,
+            [TextBox("#zone-image", text="<p>hello</p>")],
+            tmp_path,
+        )
+        assert "clipPath" not in result
+        assert "clip-path" not in result
+
+    def test_polygon_media_clip_shape_in_defs(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        root = etree.fromstring(result.encode())
+        defs = root.find("{http://www.w3.org/2000/svg}defs")
+        assert defs is not None
+        clip = defs.find("{http://www.w3.org/2000/svg}clipPath")
+        assert clip is not None
+        polygon = clip.find("{http://www.w3.org/2000/svg}polygon")
+        assert polygon is not None
+        assert polygon.get("id") is None  # id stripped from copy
+
+
+class TestPathZones:
+    def test_path_zone_bounding_box(self, tmp_path: Path) -> None:
+        # M 100,0 L 500,0 400,300 0,300 Z → bbox x=0,y=0,w=500,h=300
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        assert 'width="500"' in result or 'width="500.0"' in result
+        assert 'height="300"' in result or 'height="300.0"' in result
+
+    def test_path_media_zone_gets_clip_path(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        assert "clipPath" in result
+        assert "inkflow-clip-zone-image" in result
+        assert 'clip-path="url(#inkflow-clip-zone-image)"' in result
+
+    def test_path_textbox_zone_no_clip(self, tmp_path: Path) -> None:
+        result = substitute_content(
+            _PATH_ZONE_SVG,
+            [TextBox("#zone-image", text="<p>hello</p>")],
+            tmp_path,
+        )
+        assert "clipPath" not in result
+        assert "clip-path" not in result
+
+    def test_path_clip_shape_is_path_element(self, tmp_path: Path) -> None:
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        root = etree.fromstring(result.encode())
+        defs = root.find("{http://www.w3.org/2000/svg}defs")
+        assert defs is not None
+        clip = defs.find("{http://www.w3.org/2000/svg}clipPath")
+        assert clip is not None
+        path_el = clip.find("{http://www.w3.org/2000/svg}path")
+        assert path_el is not None
+        assert path_el.get("id") is None  # id stripped from copy
+
+    def test_relative_path_bbox(self, tmp_path: Path) -> None:
+        # Relative commands: m/l — same shape as absolute version
+        svg = textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg">
+              <path id="zone-image" d="m 100,0 l 400,0 -100,300 -400,0 z"/>
+            </svg>
+        """)
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+        result = substitute_content(
+            svg, [Media("photo.png", element="#zone-image")], tmp_path
+        )
+        assert 'width="500"' in result or 'width="500.0"' in result
+        assert 'height="300"' in result or 'height="300.0"' in result
 
 
 class TestRemoveUnreferencedZones:
