@@ -213,7 +213,7 @@ MarkdownSlide(
     content="slides/06-mixed.md",
     steps=True,
     animations=[
-        FadeIn("#extra-element", step=1),
+        animations.FadeIn("#extra-element", step=1),
     ],
 )
 ```

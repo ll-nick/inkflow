@@ -1,6 +1,8 @@
 # Manifest reference
 
-All classes exported from `inkflow` and usable in `deck.py`.
+Classes exported from `inkflow` and usable in `deck.py`. Animation types live in the
+`inkflow.animations` namespace (`from inkflow import animations`, then
+`animations.FadeIn(...)`); everything else is imported directly from `inkflow`.
 
 ## `Deck`
 
@@ -35,7 +37,7 @@ An SVG-backed slide.
 ```python
 Slide(
     "slides/01-title.svg",
-    animations=[FadeIn("#headline", step=1)],
+    animations=[animations.FadeIn("#headline", step=1)],
     transition=Crossfade(),
     content=[TextBox(element="zone-title", text="My title")],
     style="",
@@ -168,37 +170,69 @@ Vertical alignment of the content block inside a `TextBox` zone.
 
 ## Animations
 
-All animation classes take `element` (a CSS ID selector like `"#headline"`)
-and `step` (an integer ≥ 1).
-
-### `FadeIn`
-
-Element starts hidden. Fades in with a subtle upward drift on its step.
+Animation types live in the `inkflow.animations` namespace:
 
 ```python
-FadeIn("#headline", step=1)
+from inkflow import animations
+
+Slide("slides/01.svg", animations=[
+    animations.FadeIn("#headline", step=1),
+    animations.SlideIn("#box", step=2, direction="left", duration=0.6),
+])
 ```
 
-### `FadeOut`
+### Shared parameters
 
-Element starts visible. Fades out on its step.
+Every animation type takes these:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `element` | `str` | required | CSS ID selector, e.g. `"#headline"` |
+| `step` | `int` | `1` | The keypress on which it plays |
+| `duration` | `float \| None` | `None` | Seconds. `None` keeps the CSS default |
+| `easing` | `str \| None` | `None` | Any CSS easing (`"ease"`, `"ease-in-out"`, `"cubic-bezier(...)"`, `"linear"`) |
+| `delay` | `float \| None` | `None` | Seconds before it starts |
+
+`duration`, `easing`, and `delay` are keyword-only. A value of `None` means the
+animation's built-in CSS default is used, so you only set what you want to override.
+
+### Types
+
+| Type | Extra parameters | Effect |
+|---|---|---|
+| `FadeIn` | — | Element starts hidden, fades in on its step |
+| `FadeOut` | — | Element starts visible, fades out on its step |
+| `Bounce` | — | Appears with a scale-pulse bounce |
+| `SlideIn` | `direction` (`"left"`/`"right"`/`"up"`/`"down"`), `distance` (user units) | Slides in from an edge while fading |
+| `SlideOut` | `direction`, `distance` | Slides out toward an edge while fading |
+| `ZoomIn` | `scale` (starting scale, e.g. `0.6`) | Scales up into place |
+| `ZoomOut` | `scale` (ending scale) | Scales down out of place |
+| `Highlight` | `color` (CSS color), `passes` (pulse count) | Pulses a glow without hiding the element |
 
 ```python
-FadeOut("#old-label", step=2)
+animations.ZoomIn("#box-pipeline", step=3, scale=0.6)
+animations.Highlight("#headline", step=1, color="#cba6f7", passes=2)
 ```
 
-### `Bounce`
+### `Animation` (base class)
 
-Element starts hidden. Appears with a scale-pulse bounce on its step.
+`inkflow.manifest.Animation` is the data-only base class every type above subclasses.
+Define a custom animation by subclassing it and writing a matching CSS rule. The CSS class
+is derived from the type name (`MyGlow` → `anim-my-glow`), and any extra fields you add are
+emitted as `--anim-<field>` custom properties for your CSS to read:
 
 ```python
-Bounce("#box-pipeline", step=3)
+from dataclasses import dataclass
+from inkflow.manifest import Animation
+
+@dataclass
+class MyGlow(Animation):
+    intensity: float | None = None   # becomes --anim-intensity
 ```
 
-### `Animation` (protocol)
-
-A structural protocol: any object with `element: str` and `step: int` is a valid animation.
-You can define custom animation types that satisfy this protocol.
+Authoring `class="anim-my-glow" data-step="1"` directly in the SVG works too — the
+presenter reads `data-step` from the DOM regardless of whether the element is listed in
+`deck.py`.
 
 ---
 

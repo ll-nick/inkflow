@@ -37,17 +37,17 @@ Keep everything in plain text.
 ## Quick example
 
 ```python
-from inkflow import Bounce, Crossfade, Deck, FadeIn, Morph, Slide
+from inkflow import Crossfade, Deck, Morph, Slide, animations
 
 deck = Deck()
 deck.slides = [
     Slide("slides/01-title.svg", animations=[
-        FadeIn("#headline", step=1),
-        FadeIn("#subtitle", step=2),
+        animations.FadeIn("#headline", step=1),
+        animations.FadeIn("#subtitle", step=2),
     ]),
     Slide("slides/02-diagram.svg", animations=[
-        Bounce("#box-a", step=1),
-        Bounce("#box-b", step=2),
+        animations.Bounce("#box-a", step=1),
+        animations.Bounce("#box-b", step=2),
     ], transition=Crossfade()),
     Slide("slides/03-summary.svg", transition=Morph(duration=0.7)),
 ]
