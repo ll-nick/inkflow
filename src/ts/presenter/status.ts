@@ -21,24 +21,29 @@ export function applyCurrentStep(): void {
 
 export function syncURL(): void {
     const params = new URLSearchParams(window.location.search);
-    if (state.step > 0) params.set("clicks", String(state.step));
-    else params.delete("clicks");
+    if (state.step > 0) params.set("steps", String(state.step));
+    else params.delete("steps");
     const search = params.size > 0 ? `?${params.toString()}` : "";
+    const base = window.location.pathname.replace(/\/[^/]*$/, "");
     try {
-        history.replaceState(null, "", `/${state.slideIndex + 1}${search}`);
+        history.replaceState(
+            null,
+            "",
+            `${base}/${state.slideIndex + 1}${search}`,
+        );
     } catch (_) {}
 }
 
 export function readURL(): void {
-    const seg = window.location.pathname.replace(/^\//, "");
+    const seg = window.location.pathname.replace(/^.*\//, "");
     const n = parseInt(seg, 10);
     if (!Number.isNaN(n) && n >= 1 && n <= state.slides.length)
         state.slideIndex = n - 1;
-    const clicks = parseInt(
-        new URLSearchParams(window.location.search).get("clicks") ?? "0",
+    const steps = parseInt(
+        new URLSearchParams(window.location.search).get("steps") ?? "0",
         10,
     );
-    if (!Number.isNaN(clicks) && clicks >= 0) state.step = clicks;
+    if (!Number.isNaN(steps) && steps >= 0) state.step = steps;
 }
 
 export function updateStatus(): void {
