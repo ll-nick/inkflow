@@ -6,13 +6,18 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.manifest import (
+from inkflow.animations import (
     Bounce,
+    FadeIn,
+    FadeOut,
+    Highlight,
+    SlideIn,
+    ZoomIn,
+)
+from inkflow.manifest import (
     Crossfade,
     Cut,
     Deck,
-    FadeIn,
-    FadeOut,
     MarkdownSlide,
     Morph,
     Slide,
@@ -104,6 +109,43 @@ class TestAnnotateSvg:
         result = annotate_svg(_PLAIN_SVG, [])
         assert "anim-" not in result
         assert 'id="box"' in result
+
+    def test_class_derived_from_type_name(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [ZoomIn("#box")])
+        assert "anim-zoom-in" in result
+
+    def test_direction_becomes_modifier_class_not_prop(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [SlideIn("#box", direction="right")])
+        assert "anim-slide-in" in result
+        assert "anim-from-right" in result
+        assert "--anim-direction" not in result
+
+    def test_params_emit_custom_props(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [FadeIn("#box", duration=0.8, delay=0.2)])
+        assert "--anim-duration: 0.8s" in result
+        assert "--anim-delay: 0.2s" in result
+
+    def test_none_params_emit_no_style(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [FadeIn("#box")])
+        assert "--anim-" not in result
+
+    def test_distance_uses_px_unit(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [SlideIn("#box", distance=120)])
+        assert "--anim-distance: 120px" in result
+
+    def test_scale_and_color_emitted_raw(self) -> None:
+        result = annotate_svg(
+            _PLAIN_SVG,
+            [Highlight("#box", color="#ff0000", passes=3)],
+        )
+        assert "--anim-color: #ff0000" in result
+        assert "--anim-passes: 3" in result
+
+    def test_preserves_existing_style(self) -> None:
+        svg = _PLAIN_SVG.replace('<rect id="box"', '<rect id="box" style="fill:red"')
+        result = annotate_svg(svg, [FadeIn("#box", duration=0.8)])
+        assert "fill:red" in result
+        assert "--anim-duration: 0.8s" in result
 
 
 class TestCleanInkscapeSvg:

@@ -17,10 +17,7 @@ from inkflow.content import (
 from inkflow.layout import resolve_chain, resolve_parent_path, strip_layout_layers
 from inkflow.manifest import (
     Animation,
-    Bounce,
     Deck,
-    FadeIn,
-    FadeOut,
     MarkdownSlide,
     Slide,
     Transition,
@@ -110,11 +107,46 @@ def _resolve_content_src(src: str, project_dir: Path) -> Path:
 
 # ── Animation classes ─────────────────────────────────────────────────────────
 
-_ANIM_CLASS: dict[type, str] = {
-    FadeIn: "anim-fade-in",
-    FadeOut: "anim-fade-out",
-    Bounce: "anim-bounce",
-}
+# Fields that map to a modifier class instead of a CSS custom property, because
+# CSS cannot branch on a custom-property *value* (e.g. pick a slide axis).
+_ANIM_MODIFIER_FIELDS: frozenset[str] = frozenset({"direction"})
+
+# Per-field unit suffix for the emitted `--anim-<field>` custom properties. The
+# single place value formatting lives: times are seconds, distances are user
+# units (px == SVG user units here), everything else is emitted raw.
+_ANIM_UNIT: dict[str, str] = {"duration": "s", "delay": "s", "distance": "px"}
+
+
+def _camel_to_kebab(name: str) -> str:
+    """`FadeIn` -> `fade-in`, `SlideIn` -> `slide-in`, `Highlight` -> `highlight`."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
+
+
+def _anim_classes(anim: Animation) -> list[str]:
+    """CSS classes for an animation: a name-derived base plus modifier classes."""
+    classes = [f"anim-{_camel_to_kebab(type(anim).__name__)}"]
+    direction = getattr(anim, "direction", None)
+    if direction is not None:
+        classes.append(f"anim-from-{direction}")
+    return classes
+
+
+def _anim_style(anim: Animation) -> str:
+    """Inline `--anim-<field>` custom properties for an animation's set params.
+
+    Generic over fields: anything beyond `element`/`step`/modifier fields that is
+    not `None` becomes a custom property. `None` means "let the CSS default win".
+    """
+    fields: dict[str, object] = vars(anim)
+    decls: list[str] = []
+    for name, value in fields.items():
+        if name in ("element", "step") or name in _ANIM_MODIFIER_FIELDS:
+            continue
+        if value is None:
+            continue
+        decls.append(f"--anim-{name}: {value}{_ANIM_UNIT.get(name, '')}")
+    return "; ".join(decls)
+
 
 _INKSCAPE_NAMESPACES: frozenset[str] = frozenset({ns.INKSCAPE, ns.SODIPODI})
 
@@ -158,19 +190,21 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
     root = etree.fromstring(svg_str.encode())
 
     for anim in animations:
-        css_class = _ANIM_CLASS.get(type(anim))
-        if css_class is None:
-            continue
-
         eid = anim.element.lstrip("#")
         el = root.find(f'.//*[@id="{eid}"]')
         if el is None:
             print(f"[inkflow] warning: element #{eid} not found in SVG")
             continue
 
-        existing = el.get("class", "")
-        el.set("class", f"{existing} {css_class}".strip())
+        existing_class = el.get("class", "")
+        classes = [c for c in [existing_class, *_anim_classes(anim)] if c]
+        el.set("class", " ".join(classes))
         el.set("data-step", str(anim.step))
+
+        style = _anim_style(anim)
+        if style:
+            existing_style = el.get("style", "").strip().rstrip(";")
+            el.set("style", f"{existing_style}; {style}" if existing_style else style)
 
     return etree.tostring(root, encoding="unicode")
 
