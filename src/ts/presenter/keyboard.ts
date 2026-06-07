@@ -24,7 +24,8 @@ import {
 } from "./ui";
 
 // ── Stage click and status bar buttons ──
-document.getElementById("stage")!.addEventListener("click", advance);
+const stageEl = document.getElementById("stage")!;
+stageEl.addEventListener("click", advance);
 document.getElementById("btn-prev")!.addEventListener("click", retreat);
 document.getElementById("btn-next")!.addEventListener("click", advance);
 document
@@ -35,6 +36,46 @@ document
     .getElementById("btn-overview")!
     .addEventListener("click", openOverview);
 document.getElementById("btn-presenter")!.addEventListener("click", togglePv);
+
+// ── Touch / swipe navigation ──
+{
+    const SWIPE_MIN_PX = 50;
+    let startX = 0;
+    let startY = 0;
+
+    stageEl.addEventListener(
+        "touchstart",
+        (e) => {
+            if (e.touches.length !== 1) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        },
+        { passive: true },
+    );
+
+    // Prevent page scroll when the finger is moving horizontally across the stage.
+    stageEl.addEventListener(
+        "touchmove",
+        (e) => {
+            if (e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+            if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
+        },
+        { passive: false },
+    );
+
+    stageEl.addEventListener("touchend", (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy)) {
+            e.preventDefault(); // block the synthetic click that would follow
+            if (dx < 0) advance();
+            else retreat();
+        }
+    });
+}
 
 const KEYBINDINGS: Record<
     string,
