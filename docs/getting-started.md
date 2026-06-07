@@ -77,12 +77,12 @@ In Inkscape, open Object Properties via the Object menu (or <kbd>Ctrl+Shift+O</k
 **3. Create `deck.py`:**
 
 ```python
-from inkflow import Deck, FadeIn, Slide
+from inkflow import Deck, Slide, animations
 
 deck = Deck()
 deck.slides = [
     Slide("slides/01-title.svg", animations=[
-        FadeIn("#headline", step=1),
+        animations.FadeIn("#headline", step=1),
     ]),
 ]
 ```

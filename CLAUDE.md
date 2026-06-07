@@ -28,9 +28,11 @@ SVG source files should be kept clean (no Inkscape metadata) in the repository. 
 src/
   inkflow/
     __init__.py       exports: Deck, Slide, MarkdownSlide, Media, TextBox,
-                               FadeIn, FadeOut, Bounce, Cut, Crossfade, Morph,
-                               Animation, Transition, Align, VAlign
-    manifest.py       dataclasses for the deck DSL
+                               Cut, Crossfade, Morph, Animation, Transition,, Align, VAlign
+                               and the `animations` namespace
+    manifest.py       dataclasses for the deck DSL; Animation/Transition base + protocol
+    animations.py     concrete animation types (FadeIn, FadeOut, Bounce, SlideIn/Out,
+                               ZoomIn/Out, Highlight) subclassing manifest.Animation
     pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
     content.py        TextBox / Media injection into zone rects, with alignment support
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
@@ -156,9 +158,9 @@ SVG files on disk are never modified by the serve/build pipeline.
 
 `pipeline.py`:
 1. `clean_inkscape_svg(src)` — parse with lxml, remove elements/attrs in `http://www.inkscape.org/namespaces/inkscape` and `http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd`, call `etree.cleanup_namespaces()`, serialize to string
-2. `annotate_svg(svg_str, animations)` — find elements by id (stripping leading `#`), set `class` and `data-step` attributes
+2. `annotate_svg(svg_str, animations)` — find elements by id (stripping leading `#`), set `class`, `data-step`, and merge `--anim-*` custom properties into `style`
 
-CSS class map: `FadeIn → anim-fade-in`, `FadeOut → anim-fade-out`, `Bounce → anim-bounce`
+The CSS class is derived from the type name (`_camel_to_kebab`): `FadeIn → anim-fade-in`, `SlideIn → anim-slide-in`, `Highlight → anim-highlight`. There is no per-type registry. `_anim_style` emits one `--anim-<field>` custom property per non-`None` parameter (iterating `vars(anim)`, with a unit table for `duration`/`delay`/`distance`); the `direction` field instead becomes an `anim-from-<value>` modifier class (`_anim_classes`). CSS in `src/css/shared/animations.css` consumes the custom props via `var(--anim-…, default)`.
 
 ## JS toolchain
 

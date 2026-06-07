@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from inkflow import (
-    Bounce,
     Crossfade,
     Cut,
     Deck,
@@ -9,6 +8,7 @@ from inkflow import (
     Media,
     Morph,
     Slide,
+    animations,
 )
 
 deck = Deck()
@@ -16,6 +16,10 @@ deck = Deck()
 deck.slides = [
     Slide(
         "slides/01-title.svg",
+        animations=[
+            # Highlight pulses an already-visible element to draw the eye.
+            animations.Highlight("#headline", step=1),
+        ],
         notes=(
             "Welcome the audience. Mention that every slide in this deck is a "
             "plain SVG file edited in Inkscape — no proprietary format, no "
@@ -26,11 +30,14 @@ deck.slides = [
         "slides/02-diagram.svg",
         transition=Cut(),
         animations=[
-            Bounce("#box-deck", step=1),
-            Bounce("#arrow-1", step=2),
-            Bounce("#box-pipeline", step=3),
-            Bounce("#arrow-2", step=4),
-            Bounce("#box-browser", step=5),
+            # A mix of the new parameterised animation types.
+            animations.SlideIn(
+                "#box-deck", step=1, direction="left", distance=600, duration=0.6
+            ),
+            animations.FadeIn("#arrow-1", step=2, delay=0.1),
+            animations.ZoomIn("#box-pipeline", step=3, scale=0.6),
+            animations.FadeIn("#arrow-2", step=4, delay=0.1),
+            animations.SlideIn("#box-browser", step=5, direction="right", duration=0.6),
         ],
         notes=(
             "Walk through the pipeline left-to-right, one click per box:\n\n"

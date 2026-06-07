@@ -27,13 +27,13 @@ Inkflow loads it with `importlib` at serve time.
 This means you get full Python: loops, conditionals, variables, imports.
 
 ```python
-from inkflow import Deck, FadeIn, Slide
+from inkflow import Deck, Slide, animations
 
 deck = Deck()
 deck.slides = [
     Slide("slides/01-title.svg", animations=[
-        FadeIn("#headline", step=1),
-        FadeIn("#subtitle", step=2),
+        animations.FadeIn("#headline", step=1),
+        animations.FadeIn("#subtitle", step=2),
     ]),
 ]
 ```

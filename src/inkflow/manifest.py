@@ -9,27 +9,24 @@ from typing import Protocol, runtime_checkable
 
 
 @dataclass
-class FadeIn:
+class Animation:
+    """Data-only base for every animation type.
+
+    Concrete types live in ``inkflow.animations`` and subclass this, adding only
+    their own fields. The shared timing params are ``kw_only`` so they stay out of
+    the positional argument order, leaving the natural positional slots to each
+    subclass's own fields (e.g. ``SlideIn("#box", "right")`` sets ``direction``).
+
+    A value of ``None`` means "emit no CSS custom property" so the stylesheet's
+    ``var(--anim-…, default)`` fallback wins. The CSS is the single source of
+    default values.
+    """
+
     element: str
     step: int = 1
-
-
-@dataclass
-class FadeOut:
-    element: str
-    step: int = 1
-
-
-@dataclass
-class Bounce:
-    element: str
-    step: int = 1
-
-
-@runtime_checkable
-class Animation(Protocol):
-    element: str
-    step: int
+    duration: float | None = field(default=None, kw_only=True)
+    easing: str | None = field(default=None, kw_only=True)
+    delay: float | None = field(default=None, kw_only=True)
 
 
 # ── Transition ────────────────────────────────────────────────────────────────

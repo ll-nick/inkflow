@@ -37,25 +37,39 @@ Animations reveal (or hide) elements on successive keypresses.
 Each animation targets a single element by CSS selector (the `#id` form):
 
 ```python
-from inkflow import Bounce, FadeIn, FadeOut, Slide
+from inkflow import Slide, animations
 
 Slide("slides/01-title.svg", animations=[
-    FadeIn("#headline", step=1),
-    FadeIn("#subtitle", step=2),
-    FadeIn("#byline", step=3),
+    animations.FadeIn("#headline", step=1),
+    animations.FadeIn("#subtitle", step=2),
+    animations.FadeIn("#byline", step=3),
 ])
 ```
 
 Elements with no animation declaration start **visible**.
-Elements targeted by `FadeIn` or `Bounce` start **invisible** and appear when their step is reached.
+Elements targeted by an entrance animation (`FadeIn`, `Bounce`, `SlideIn`, `ZoomIn`) start
+**invisible** and appear when their step is reached.
 
 ### Animation types
+
+Every type accepts `duration`, `easing`, and `delay` (keyword-only); some add their own
+parameters. See the [manifest reference](../reference/manifest.md#animations) for the full
+table.
 
 | Class | Effect | Starting state |
 |---|---|---|
 | `FadeIn` | Opacity 0 → 1, subtle upward drift | Hidden |
 | `FadeOut` | Opacity 1 → 0 | Visible |
 | `Bounce` | Scale pulse on entry | Hidden |
+| `SlideIn` / `SlideOut` | Slide from/to an edge (`direction`, `distance`) | Hidden / Visible |
+| `ZoomIn` / `ZoomOut` | Scale into/out of place (`scale`) | Hidden / Visible |
+| `Highlight` | Pulse a glow (`color`, `passes`), without hiding | Visible |
+
+```python
+animations.SlideIn("#box", step=1, direction="left", duration=0.6)
+animations.ZoomIn("#logo", step=2, scale=0.6)
+animations.Highlight("#total", step=3, color="#cba6f7", passes=2)
+```
 
 ### The step model
 
@@ -64,9 +78,9 @@ Multiple elements can share the same step and animate simultaneously:
 
 ```python
 animations=[
-    FadeIn("#left-panel", step=1),
-    FadeIn("#right-panel", step=1),  # same step → animate together
-    FadeIn("#caption", step=2),
+    animations.FadeIn("#left-panel", step=1),
+    animations.FadeIn("#right-panel", step=1),  # same step → animate together
+    animations.FadeIn("#caption", step=2),
 ]
 ```
 
