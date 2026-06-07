@@ -1,12 +1,10 @@
 from __future__ import annotations
 
+from inkflow.animations import Bounce, FadeIn, FadeOut
 from inkflow.manifest import (
-    Bounce,
     Crossfade,
     Cut,
     Deck,
-    FadeIn,
-    FadeOut,
     MarkdownSlide,
     Media,
     Morph,
