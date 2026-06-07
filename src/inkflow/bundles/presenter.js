@@ -166,7 +166,11 @@
     const search = params.size > 0 ? `?${params.toString()}` : "";
     const base = window.location.pathname.replace(/\/[^/]*$/, "");
     try {
-      history.replaceState(null, "", `${base}/${state.slideIndex + 1}${search}`);
+      history.replaceState(
+        null,
+        "",
+        `${base}/${state.slideIndex + 1}${search}`
+      );
     } catch (_) {
     }
   }
