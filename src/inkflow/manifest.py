@@ -103,6 +103,7 @@ class Slide:
     style: str = ""
     title: str | None = None
     notes: str | Path | None = None
+    visible: bool = True
 
     @property
     def step_count(self) -> int:
@@ -118,6 +119,7 @@ class MarkdownSlide:
     style: str
     title: str | None
     notes: str | Path | None
+    visible: bool
     extra: dict[str, str | Media]
 
     def __init__(
@@ -131,6 +133,7 @@ class MarkdownSlide:
         style: str = "",
         title: str | None = None,
         notes: str | Path | None = None,
+        visible: bool = True,
         **kwargs: str | Media,
     ) -> None:
         self.template = template
@@ -141,6 +144,7 @@ class MarkdownSlide:
         self.style = style
         self.title = title
         self.notes = notes
+        self.visible = visible
         self.extra = kwargs
 
 
