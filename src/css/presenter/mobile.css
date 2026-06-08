@@ -28,8 +28,12 @@
         transition: opacity 0.3s;
         z-index: 10;
     }
-    #mobile-prev { left: 0; }
-    #mobile-next { right: 0; }
+    #mobile-prev {
+        left: 0;
+    }
+    #mobile-next {
+        right: 0;
+    }
 
     body.mobile-hud-visible #mobile-prev,
     body.mobile-hud-visible #mobile-next {
@@ -63,9 +67,15 @@
     }
 
     /* Theme button: show moon in dark mode, sun in light mode */
-    #mhud-theme .icon-sun { display: none; }
-    [data-theme="light"] #mhud-theme .icon-moon { display: none; }
-    [data-theme="light"] #mhud-theme .icon-sun { display: block; }
+    #mhud-theme .icon-sun {
+        display: none;
+    }
+    [data-theme="light"] #mhud-theme .icon-moon {
+        display: none;
+    }
+    [data-theme="light"] #mhud-theme .icon-sun {
+        display: block;
+    }
 
     #mhud-slide-info .slide-current {
         color: var(--text);

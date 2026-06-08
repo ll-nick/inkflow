@@ -114,11 +114,9 @@ export function toggleMobileHud(): void {
 }
 
 // Reset the auto-hide timer when the user interacts with the HUD itself
-document.getElementById("mobile-hud")!.addEventListener(
-    "pointerdown",
-    showMobileHud,
-    { passive: true },
-);
+document
+    .getElementById("mobile-hud")!
+    .addEventListener("pointerdown", showMobileHud, { passive: true });
 
 // ── Internal self-interaction listeners ──
 curtain.addEventListener("click", hideCurtain);
