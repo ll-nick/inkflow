@@ -1,0 +1,89 @@
+/* Mobile-only styles — active when the primary pointer is coarse (touch screen) */
+
+/* Hidden on fine-pointer (desktop) by default */
+#mobile-prev,
+#mobile-next,
+#mobile-hud {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    #statusbar {
+        display: none;
+    }
+
+    /* Full-height edge strips — pointer-events off, purely visual */
+    #mobile-prev,
+    #mobile-next {
+        display: flex;
+        position: fixed;
+        top: 0;
+        width: 20%;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        color: var(--text);
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 10;
+    }
+    #mobile-prev {
+        left: 0;
+    }
+    #mobile-next {
+        right: 0;
+    }
+
+    body.mobile-hud-visible #mobile-prev,
+    body.mobile-hud-visible #mobile-next {
+        opacity: 0.55;
+    }
+
+    /* Floating pill HUD — bottom-center */
+    #mobile-hud {
+        display: flex;
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        align-items: center;
+        gap: 0.25rem;
+        background: var(--bg);
+        border: 1px solid var(--overlay);
+        border-radius: 9999px;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.72rem;
+        color: var(--subtext);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s;
+        z-index: 15;
+        white-space: nowrap;
+    }
+    body.mobile-hud-visible #mobile-hud {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Theme button: show moon in dark mode, sun in light mode */
+    #mhud-theme .icon-sun {
+        display: none;
+    }
+    [data-theme="light"] #mhud-theme .icon-moon {
+        display: none;
+    }
+    [data-theme="light"] #mhud-theme .icon-sun {
+        display: block;
+    }
+
+    #mhud-slide-info .slide-current {
+        color: var(--text);
+        font-size: 0.85rem;
+    }
+
+    #mobile-hud .sep {
+        color: var(--overlay);
+        margin: 0 0.25rem;
+    }
+}

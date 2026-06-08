@@ -91,6 +91,33 @@ statusBarEl.addEventListener("mouseleave", () => {
         scheduleFsHide();
 });
 
+// ── Mobile HUD ──
+let _mhudTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function showMobileHud(): void {
+    document.body.classList.add("mobile-hud-visible");
+    clearTimeout(_mhudTimer);
+    _mhudTimer = setTimeout(() => {
+        document.body.classList.remove("mobile-hud-visible");
+        _mhudTimer = undefined;
+    }, 3000);
+}
+
+export function toggleMobileHud(): void {
+    if (document.body.classList.contains("mobile-hud-visible")) {
+        document.body.classList.remove("mobile-hud-visible");
+        clearTimeout(_mhudTimer);
+        _mhudTimer = undefined;
+    } else {
+        showMobileHud();
+    }
+}
+
+// Reset the auto-hide timer when the user interacts with the HUD itself
+document
+    .getElementById("mobile-hud")!
+    .addEventListener("pointerdown", showMobileHud, { passive: true });
+
 // ── Internal self-interaction listeners ──
 curtain.addEventListener("click", hideCurtain);
 help.addEventListener("click", (e) => {
