@@ -47,6 +47,42 @@
   <div id="overview" role="dialog" aria-modal="true">
     <div id="overview-grid"></div>
   </div>
+  <!-- Mobile: left/right edge tap indicators (pointer-events:none, visual only) -->
+  <div id="mobile-prev" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </div>
+  <div id="mobile-next" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+      <path d="M9 18l6-6-6-6"/>
+    </svg>
+  </div>
+  <!-- Mobile: floating HUD (theme, slide info, step ring, fullscreen) -->
+  <div id="mobile-hud">
+    <button class="hud-btn" id="mhud-theme" title="Toggle dark/light">
+      <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="pointer-events:none">
+        <circle cx="8" cy="8" r="3"/>
+        <line x1="8" y1="1" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15"/>
+        <line x1="1" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15" y2="8"/>
+        <line x1="3.4" y1="3.4" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.6" y2="12.6"/>
+        <line x1="12.6" y1="3.4" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3.4" y2="12.6"/>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 16 16" width="17" height="17" fill="currentColor" style="pointer-events:none">
+        <path d="M14 8.5A6 6 0 1 1 7.5 2 4.7 4.7 0 0 0 14 8.5z"/>
+      </svg>
+    </button>
+    <span class="hud-sep"></span>
+    <span id="mhud-slide-info">– / –</span>
+    <span class="sep">|</span>
+    <span id="mhud-step-ring"></span>
+    <span class="hud-sep"></span>
+    <button class="hud-btn" id="mhud-fullscreen" title="Fullscreen">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+        <path d="M1 5V2h3M12 2h3v3M15 11v3h-3M4 14H1v-3"/>
+      </svg>
+    </button>
+  </div>
   <div id="main-area">
     <div id="stage"></div>
     <aside id="pv">
