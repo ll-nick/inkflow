@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 from inkflow import (
+    Animation,
     Crossfade,
     Cut,
     Deck,
@@ -11,6 +13,14 @@ from inkflow import (
     animations,
 )
 
+
+# Custom animation: subclass Animation, write matching CSS in styles.css.
+# The CSS class is derived from the type name: Flicker → anim-flicker.
+@dataclass
+class Flicker(Animation):
+    """Neon-light flicker-on effect defined in this deck, not in inkflow itself."""
+
+
 deck = Deck()
 
 deck.slides = [
@@ -19,6 +29,8 @@ deck.slides = [
         animations=[
             # Highlight pulses an already-visible element to draw the eye.
             animations.Highlight("#headline", step=1),
+            # Flicker is a custom type defined above. Its CSS lives in styles.css.
+            Flicker("#byline", step=2, delay=0.1),
         ],
         notes=(
             "Welcome the audience. Mention that every slide in this deck is a "
