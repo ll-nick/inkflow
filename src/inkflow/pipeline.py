@@ -221,6 +221,7 @@ def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
             slide.transition if slide.transition is not None else deck.transition
         )
         for slide in deck.slides
+        if slide.visible
     ]
 
 
@@ -322,9 +323,10 @@ def process_slide(
 
 
 def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
-    total = len(deck.slides)
+    visible_slides = [s for s in deck.slides if s.visible]
+    total = len(visible_slides)
     results: list[SlideData] = []
-    for i, entry in enumerate(deck.slides):
+    for i, entry in enumerate(visible_slides):
         if isinstance(entry, MarkdownSlide):
             title = _infer_md_title(entry, i + 1, project_dir)
             resolved = _resolve_markdown_slide(entry, project_dir, deck.theme)
