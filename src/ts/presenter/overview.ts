@@ -30,6 +30,27 @@ function computeCols(): void {
     state._overviewCols = cols || 1;
 }
 
+function applyOptimalCols(): void {
+    const n = state.slides.length;
+    const gap = parseFloat(getComputedStyle(overviewGrid).gap) || 28;
+    const availW = overviewGrid.clientWidth;
+    const availH =
+        overview.clientHeight -
+        parseFloat(getComputedStyle(overview).paddingTop) -
+        parseFloat(getComputedStyle(overview).paddingBottom);
+
+    let cols = n;
+    for (let c = 1; c <= n; c++) {
+        const thumbW = (availW - (c - 1) * gap) / c;
+        const rows = Math.ceil(n / c);
+        if (rows * (thumbW * (9 / 16) + gap) - gap <= availH) {
+            cols = Math.max(2, c);
+            break;
+        }
+    }
+    overviewGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+}
+
 export function overviewSetActive(i: number): void {
     state._overviewActive = Math.max(0, Math.min(state.slides.length - 1, i));
     overviewGrid.querySelectorAll(".overview-cell").forEach((el, idx) => {
@@ -69,9 +90,12 @@ export function openOverview(): void {
         applyStepInstant(thumb, computeMaxStep(thumb));
     });
     requestAnimationFrame(() => {
-        overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-        computeCols();
-        overviewSetActive(state._overviewActive);
+        applyOptimalCols();
+        requestAnimationFrame(() => {
+            overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+            computeCols();
+            overviewSetActive(state._overviewActive);
+        });
     });
 }
 
@@ -92,6 +116,9 @@ overview.addEventListener("click", (e) => {
 
 window.addEventListener("resize", () => {
     if (!overview.classList.contains("visible")) return;
-    overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-    computeCols();
+    applyOptimalCols();
+    requestAnimationFrame(() => {
+        overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+        computeCols();
+    });
 });
