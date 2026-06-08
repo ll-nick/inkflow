@@ -1253,9 +1253,11 @@
   var KEYBINDINGS = {
     ArrowRight: { action: advance, preventDefault: true },
     " ": { action: advance, preventDefault: true },
+    PageDown: { action: advance, preventDefault: true },
     l: { action: advance, preventDefault: true },
     ArrowLeft: { action: retreat, preventDefault: true },
     Backspace: { action: retreat, preventDefault: true },
+    PageUp: { action: retreat, preventDefault: true },
     h: { action: retreat, preventDefault: true },
     ArrowDown: { action: nextSlide, preventDefault: true },
     j: { action: nextSlide, preventDefault: true },
