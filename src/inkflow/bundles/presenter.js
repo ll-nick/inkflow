@@ -150,6 +150,8 @@
   var stage = document.getElementById("stage");
   var slideInfo = document.getElementById("slide-info");
   var stepInfo = document.getElementById("step-info");
+  var mhudSlideInfo = document.getElementById("mhud-slide-info");
+  var mhudStepRing = document.getElementById("mhud-step-ring");
   function maxStep2() {
     if (state._maxStepCache !== null) return state._maxStepCache;
     state._maxStepCache = maxStep(stage);
@@ -186,8 +188,12 @@
     if (!Number.isNaN(steps) && steps >= 0) state.step = steps;
   }
   function updateStatus() {
-    slideInfo.innerHTML = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
-    stepInfo.innerHTML = buildStepRing(state.step, maxStep2());
+    const infoHtml = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
+    const ringHtml = buildStepRing(state.step, maxStep2());
+    slideInfo.innerHTML = infoHtml;
+    stepInfo.innerHTML = ringHtml;
+    mhudSlideInfo.innerHTML = infoHtml;
+    mhudStepRing.innerHTML = ringHtml;
     syncURL();
   }
 
@@ -861,6 +867,25 @@
     if (document.fullscreenElement || _doc.webkitFullscreenElement)
       scheduleFsHide();
   });
+  var _mhudTimer;
+  function showMobileHud() {
+    document.body.classList.add("mobile-hud-visible");
+    clearTimeout(_mhudTimer);
+    _mhudTimer = setTimeout(() => {
+      document.body.classList.remove("mobile-hud-visible");
+      _mhudTimer = void 0;
+    }, 3e3);
+  }
+  function toggleMobileHud() {
+    if (document.body.classList.contains("mobile-hud-visible")) {
+      document.body.classList.remove("mobile-hud-visible");
+      clearTimeout(_mhudTimer);
+      _mhudTimer = void 0;
+    } else {
+      showMobileHud();
+    }
+  }
+  document.getElementById("mobile-hud").addEventListener("pointerdown", showMobileHud, { passive: true });
   curtain.addEventListener("click", hideCurtain);
   help.addEventListener("click", (e) => {
     if (e.target === help) toggleHelp();
@@ -1172,13 +1197,25 @@
 
   // src/ts/presenter/keyboard.ts
   var stageEl = document.getElementById("stage");
-  stageEl.addEventListener("click", advance);
+  var isCoarse = () => window.matchMedia("(pointer: coarse)").matches;
+  stageEl.addEventListener("click", (e) => {
+    if (isCoarse()) {
+      const ratio = e.clientX / window.innerWidth;
+      if (ratio < 0.2) retreat();
+      else if (ratio > 0.8) advance();
+      else toggleMobileHud();
+    } else {
+      advance();
+    }
+  });
   document.getElementById("btn-prev").addEventListener("click", retreat);
   document.getElementById("btn-next").addEventListener("click", advance);
   document.getElementById("btn-fullscreen").addEventListener("click", toggleFullscreen);
   document.getElementById("btn-theme").addEventListener("click", toggleTheme);
   document.getElementById("btn-overview").addEventListener("click", openOverview);
   document.getElementById("btn-presenter").addEventListener("click", togglePv);
+  document.getElementById("mhud-theme").addEventListener("click", toggleTheme);
+  document.getElementById("mhud-fullscreen").addEventListener("click", toggleFullscreen);
   {
     const SWIPE_MIN_PX = 50;
     let startX = 0;
@@ -1208,8 +1245,8 @@
       const dy = e.changedTouches[0].clientY - startY;
       if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy)) {
         e.preventDefault();
-        if (dx < 0) advance();
-        else retreat();
+        if (dx < 0) nextSlide();
+        else prevSlide();
       }
     });
   }

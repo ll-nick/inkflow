@@ -634,4 +634,82 @@ body.pv-open #pv {
   animation: anim-highlight-pulse var(--anim-duration, 0.6s) var(--anim-easing, ease) var(--anim-delay, 0s) var(--anim-passes, 1);
 }
 
+/* src/css/presenter/mobile.css */
+#mobile-prev,
+#mobile-next,
+#mobile-hud {
+  display: none;
+}
+@media (pointer: coarse) {
+  #statusbar {
+    display: none;
+  }
+  #mobile-prev,
+  #mobile-next {
+    display: flex;
+    position: fixed;
+    top: 0;
+    width: 20%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 10;
+  }
+  #mobile-prev {
+    left: 0;
+  }
+  #mobile-next {
+    right: 0;
+  }
+  body.mobile-hud-visible #mobile-prev,
+  body.mobile-hud-visible #mobile-next {
+    opacity: 0.55;
+  }
+  #mobile-hud {
+    display: flex;
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--bg);
+    border: 1px solid var(--overlay);
+    border-radius: 9999px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+    color: var(--subtext);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 15;
+    white-space: nowrap;
+  }
+  body.mobile-hud-visible #mobile-hud {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #mhud-theme .icon-sun {
+    display: none;
+  }
+  [data-theme=light] #mhud-theme .icon-moon {
+    display: none;
+  }
+  [data-theme=light] #mhud-theme .icon-sun {
+    display: block;
+  }
+  #mhud-slide-info .slide-current {
+    color: var(--text);
+    font-size: 0.85rem;
+  }
+  #mobile-hud .sep {
+    color: var(--overlay);
+    margin: 0 0.25rem;
+  }
+}
+
 /* src/css/presenter/index.css */
