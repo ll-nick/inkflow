@@ -53,6 +53,7 @@ Slide(
 | `style` | `str` | `""` | CSS string injected into this slide |
 | `title` | `str \| None` | `None` | Optional slide title; auto-inferred from filename if not set |
 | `notes` | `str \| Path \| None` | `None` | Speaker notes. A string is rendered as Markdown. A `Path` to a `.md` file is rendered as Markdown; other suffixes are read as raw HTML |
+| `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely. Useful for draft slides or audience-specific content |
 
 **`step_count`** (property): the highest `step` value across all animations.
 This is the number of keypresses before advancing.
@@ -85,6 +86,7 @@ MarkdownSlide(
 | `style` | `str` | `""` | CSS string injected into this slide |
 | `title` | `str \| None` | `None` | Optional slide title. Auto-inferred from leading `# heading` if not set |
 | `notes` | `str \| Path \| None` | `None` | Speaker notes. Concatenated with any `::notes::` zone in the Markdown file |
+| `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely |
 | `**kwargs` | `str \| Media` | — | Extra content routed to matching zones |
 
 ---
