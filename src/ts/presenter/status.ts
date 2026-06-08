@@ -5,6 +5,8 @@ import { state } from "./state";
 const stage = document.getElementById("stage")!;
 const slideInfo = document.getElementById("slide-info")!;
 const stepInfo = document.getElementById("step-info")!;
+const mhudSlideInfo = document.getElementById("mhud-slide-info")!;
+const mhudStepRing = document.getElementById("mhud-step-ring")!;
 
 export function maxStep(): number {
     if (state._maxStepCache !== null) return state._maxStepCache;
@@ -47,7 +49,11 @@ export function readURL(): void {
 }
 
 export function updateStatus(): void {
-    slideInfo.innerHTML = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
-    stepInfo.innerHTML = buildStepRing(state.step, maxStep());
+    const infoHtml = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
+    const ringHtml = buildStepRing(state.step, maxStep());
+    slideInfo.innerHTML = infoHtml;
+    stepInfo.innerHTML = ringHtml;
+    mhudSlideInfo.innerHTML = infoHtml;
+    mhudStepRing.innerHTML = ringHtml;
     syncURL();
 }
