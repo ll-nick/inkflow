@@ -63,16 +63,21 @@ deck.slides = [
     ),
     MarkdownSlide(
         "layouts/content.svg",
-        content="slides/05-markdown.md",
+        content="slides/05-invisible.md",
+        visible=False,
+    ),
+    MarkdownSlide(
+        "layouts/content.svg",
+        content="slides/06-markdown.md",
     ),
     MarkdownSlide(
         "layouts/media-right.svg",
-        content="slides/06-image.md",
+        content="slides/07-image.md",
         media=Media("assets/demo.jpg", fit="cover"),
     ),
     MarkdownSlide(
         "layouts/media-right.svg",
-        content="slides/07-video.md",
+        content="slides/08-video.md",
         media="assets/demo.mp4",
         notes="Notes can also be added both in markdown and in `deck.py`.",
     ),
