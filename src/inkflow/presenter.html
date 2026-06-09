@@ -44,9 +44,6 @@
       <div id="picker-hint">↑↓ · Tab · Ctrl+j/k &nbsp;navigate &nbsp;·&nbsp; Enter &nbsp;jump &nbsp;·&nbsp; Esc &nbsp;close</div>
     </div>
   </div>
-  <div id="overview" role="dialog" aria-modal="true">
-    <div id="overview-grid"></div>
-  </div>
   <!-- Mobile: left/right edge tap indicators (pointer-events:none, visual only) -->
   <div id="mobile-prev" aria-hidden="true">
     <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
@@ -84,7 +81,12 @@
     </button>
   </div>
   <div id="main-area">
-    <div id="stage"></div>
+    <div id="stage-wrap">
+      <div id="stage"></div>
+      <div id="overview" role="dialog" aria-modal="true">
+        <div id="overview-grid"></div>
+      </div>
+    </div>
     <aside id="pv">
       <div id="pv-strip">
         <span id="pv-clock">--:--:--</span>
