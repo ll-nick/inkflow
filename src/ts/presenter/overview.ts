@@ -1,3 +1,4 @@
+import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { loadSlide } from "./transitions";
@@ -21,9 +22,6 @@ function scaleThumb(thumb: Element): void {
     svg.style.height = `${vbH}px`;
     const scale = Math.min(thumb.clientWidth / vbW, thumb.clientHeight / vbH);
     svg.style.transform = `scale(${scale})`;
-    svg.querySelectorAll("[data-step]").forEach((el) => {
-        el.classList.add("active");
-    });
 }
 
 function computeCols(): void {
@@ -62,7 +60,14 @@ export function openOverview(): void {
         overviewGrid.appendChild(cell);
     });
     state._overviewActive = state.slideIndex;
+    // Reveal the grid first so the thumbnails are laid out and their animations
+    // are live, then land each one on its final step with no playback. Doing this
+    // synchronously (before the next paint) means thumbnails never flash their
+    // step-0 state or replay build animations.
     overview.classList.add("visible");
+    overviewGrid.querySelectorAll(".overview-thumb").forEach((thumb) => {
+        applyStepInstant(thumb, computeMaxStep(thumb));
+    });
     requestAnimationFrame(() => {
         overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
         computeCols();
