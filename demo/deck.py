@@ -7,6 +7,7 @@ from inkflow import (
     MarkdownSlide,
     Media,
     Slide,
+    Transition,
     animations,
     transitions,
 )
@@ -17,6 +18,16 @@ from inkflow import (
 @dataclass
 class Flicker(Animation):
     """Neon-light flicker-on effect defined in this deck, not in inkflow itself."""
+
+
+# Custom transition: subclass Transition, register matching JS handler in scripts.js.
+# The type name becomes the handler key: Flip → "flip".
+# Extra fields are serialized into TransitionData and available as t.axis in JS.
+@dataclass
+class Flip(Transition):
+    """3D card-flip effect defined in this deck, not in inkflow itself."""
+
+    axis: str = "horizontal"  # "horizontal" (rotateY) or "vertical" (rotateX)
 
 
 deck = Deck()
@@ -93,6 +104,7 @@ deck.slides = [
     ),
     Slide(
         "slides/10-clips.svg",
+        transition=Flip(duration=0.8),
         content=[
             Media("assets/demo.jpg", element="#zone-left", fit="cover"),
             Media("assets/demo.jpg", element="#zone-center", fit="cover"),
