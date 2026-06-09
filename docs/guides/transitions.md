@@ -1,7 +1,6 @@
 # Transitions
 
 A transition controls how a slide enters from the previous one.
-Inkflow has three built-in transition types.
 
 ## Setting transitions
 
@@ -9,27 +8,32 @@ Set a default transition for the whole deck on the `Deck` object,
 and override per slide as needed:
 
 ```python
-from inkflow import Crossfade, Cut, Deck, Morph, Slide
+from inkflow import Deck, Slide, transitions
 
-deck = Deck(transition=Crossfade())  # default
+deck = Deck(transition=transitions.Crossfade())  # default
 
 deck.slides = [
-    Slide("slides/01-title.svg"),                         # Crossfade (default)
-    Slide("slides/02-diagram.svg", transition=Cut()),      # override: instant cut
-    Slide("slides/03-morph.svg", transition=Morph(1.0)),   # override: morph
+    Slide("slides/01-title.svg"),                                    # Crossfade (default)
+    Slide("slides/02-diagram.svg", transition=transitions.Cut()),    # override: instant cut
+    Slide("slides/03-morph.svg", transition=transitions.Morph(1.0)), # override: morph
 ]
 ```
 
-If no transition is set on the deck and none on the slide, the default is `Cut()`.
+If no transition is set on the deck and none on the slide, the default is `Cut` (instant).
+
+All transition types share two parameters:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `duration` | `0.5` | Duration in seconds (`Cut` defaults to `0.0`) |
+| `easing` | `None` | Any CSS easing string. `None` keeps the handler's built-in default |
 
 ## Cut
 
 An instant, no-animation switch between slides.
 
 ```python
-from inkflow import Cut
-
-Cut()
+transitions.Cut()
 ```
 
 Use `Cut` when the visual change between slides is so significant that a transition would be distracting,
@@ -40,18 +44,78 @@ or when you want a deliberate hard-cut feel.
 Dissolves the outgoing slide out while fading the incoming slide in.
 
 ```python
-from inkflow import Crossfade
+transitions.Crossfade()              # default 0.5s
+transitions.Crossfade(duration=0.6)  # slower fade
+```
 
-Crossfade()              # default 0.4s
-Crossfade(duration=0.6)  # slower fade
+Crossfade works well between slides that share a similar visual structure.
+It reads as "same context, new content."
+
+## Push
+
+Both slides move together — the outgoing slide exits in one direction while the incoming slide
+enters from the opposite edge.
+
+```python
+transitions.Push()                    # default: left, 0.5s
+transitions.Push(direction="right")   # slides move right
+transitions.Push(direction="up", duration=0.4)
 ```
 
 | Parameter | Default | Description |
 |---|---|---|
-| `duration` | `0.4` | Fade duration in seconds |
+| `direction` | `"left"` | Direction the slides travel: `"left"`, `"right"`, `"up"`, `"down"` |
 
-Crossfade works well between slides that share a similar visual structure.
-It reads as "same context, new content."
+## Slide
+
+The incoming slide covers the outgoing one, which stays fixed in place.
+
+```python
+transitions.Slide()                    # default: left, 0.5s
+transitions.Slide(direction="up")
+```
+
+| Parameter | Default | Description |
+|---|---|---|
+| `direction` | `"left"` | Direction the incoming slide enters from |
+
+## Zoom
+
+The outgoing slide scales out to nothing while the incoming slide scales in from nothing.
+
+```python
+transitions.Zoom()
+transitions.Zoom(duration=0.6, easing="ease-in-out")
+```
+
+## Fade
+
+The outgoing slide fades to a solid colour, then the incoming slide fades in from it.
+Useful for dramatic scene changes.
+
+```python
+transitions.Fade()                          # fades through black
+transitions.Fade(color="#1a1a2e")           # fades through a custom colour
+transitions.Fade(color="#ffffff", duration=0.8)
+```
+
+| Parameter | Default | Description |
+|---|---|---|
+| `color` | `"#000000"` | The intermediate colour |
+
+## Wipe
+
+The incoming slide is progressively revealed from one edge, sliding over the outgoing slide.
+
+```python
+transitions.Wipe()                    # default: left-to-right reveal, 0.5s
+transitions.Wipe(direction="right")   # reveal from right
+transitions.Wipe(direction="up", duration=0.7)
+```
+
+| Parameter | Default | Description |
+|---|---|---|
+| `direction` | `"left"` | Edge the incoming slide enters from |
 
 ## Morph
 
@@ -61,15 +125,9 @@ Elements that exist only in the outgoing slide fade out.
 Elements only in the incoming slide fade in.
 
 ```python
-from inkflow import Morph
-
-Morph()              # default 0.5s
-Morph(duration=1.0)  # slower morph
+transitions.Morph()              # default 0.5s
+transitions.Morph(duration=1.0)  # slower morph
 ```
-
-| Parameter | Default | Description |
-|---|---|---|
-| `duration` | `0.5` | Animation duration in seconds |
 
 ### What morphs
 
@@ -88,26 +146,19 @@ Any leaf shape can morph:
 | `<text>` | position, rotation, and font size — glyphs never stretch or shear |
 
 Colors (`fill`, `stroke`) and opacities are interpolated too.
-Stroke width and corner radius keep their shape under a non-uniform resize
-(a stretched box keeps round corners and an even outline).
 
 ### Groups
 
 A `<g>` is never animated as a rigid block — it only decides *what to match*.
 Give the **group** an `id` and the elements inside it morph individually to their
-new positions (a `<g id="card">` of a rectangle plus a label morphs the rectangle
-and re-places the label, with the label staying crisp). Give an **individual
-element** an `id` to morph just that element.
+new positions. Give an **individual element** an `id` to morph just that element.
 
-Content with no matched `id` (and that isn't identical between slides) crossfades:
-elements only in the outgoing slide fade out, elements only in the incoming slide
-fade in. Unchanged chrome (backgrounds, footers) is left untouched.
+Content with no matched `id` crossfades: elements only in the outgoing slide fade out,
+elements only in the incoming slide fade in. Unchanged chrome (backgrounds, footers) is left untouched.
 
 ### Backward navigation
 
 When navigating backward (pressing `←`), Morph plays in reverse automatically.
-The outgoing slide's transition is passed to `loadSlide()`
-so the reverse morph uses the same duration.
 
 ### Tips for Morph slides
 
@@ -116,5 +167,5 @@ so the reverse morph uses the same duration.
   un-`id`'d to crossfade it instead.
 - For a card-like object (a shape with a label), group them and put the `id` on the
   `<g>` so they travel together while each stays crisp.
-- For dramatic reveal effects, try a slow `Morph(duration=1.5)` combined with
+- For dramatic reveal effects, try a slow `transitions.Morph(duration=1.5)` combined with
   repositioned elements.

@@ -15,11 +15,8 @@ from inkflow.animations import (
     ZoomIn,
 )
 from inkflow.manifest import (
-    Crossfade,
-    Cut,
     Deck,
     MarkdownSlide,
-    Morph,
     Slide,
     TextBox,
 )
@@ -31,6 +28,7 @@ from inkflow.pipeline import (
     process_deck,
     resolve_transitions,
 )
+from inkflow.transitions import Crossfade, Cut, Morph
 
 _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -272,7 +270,7 @@ class TestResolveTransitions:
         d = self._deck(deck_t=Crossfade(), slide_ts=[Cut(), None])
         result = resolve_transitions(d)
         assert result[0] == {"type": "cut", "duration": 0.0}
-        assert result[1] == {"type": "crossfade", "duration": 0.4}
+        assert result[1] == {"type": "crossfade", "duration": 0.5}
 
     def test_morph_serialized(self) -> None:
         d = self._deck(slide_ts=[Morph(0.8)])

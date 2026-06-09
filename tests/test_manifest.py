@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from inkflow.animations import Bounce, FadeIn, FadeOut
 from inkflow.manifest import (
-    Crossfade,
-    Cut,
     Deck,
     MarkdownSlide,
     Media,
-    Morph,
     Slide,
     TextBox,
 )
+from inkflow.transitions import Crossfade, Cut, Morph
 
 
 def test_slide_step_count_no_animations() -> None:
@@ -55,9 +53,17 @@ def test_animation_fields_stored() -> None:
 
 
 def test_transition_defaults() -> None:
+    # Cut is the instant special case; every other type inherits the 0.5 base.
     assert Cut().duration == 0.0
-    assert Crossfade().duration == 0.4
+    assert Crossfade().duration == 0.5
     assert Morph().duration == 0.5
+
+
+def test_transition_base_default_duration() -> None:
+    # A bare custom subclass animates without overriding duration.
+    from inkflow.manifest import Transition
+
+    assert Transition().duration == 0.5
 
 
 def test_transition_custom_duration() -> None:

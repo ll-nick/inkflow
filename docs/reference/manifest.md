@@ -1,8 +1,9 @@
 # Manifest reference
 
 Classes exported from `inkflow` and usable in `deck.py`. Animation types live in the
-`inkflow.animations` namespace (`from inkflow import animations`, then
-`animations.FadeIn(...)`); everything else is imported directly from `inkflow`.
+`inkflow.animations` namespace (`from inkflow import animations`); transition types live in
+the `inkflow.transitions` namespace (`from inkflow import transitions`); everything else is
+imported directly from `inkflow`.
 
 ## `Deck`
 
@@ -11,11 +12,11 @@ Assign a `Deck` instance to the module-level `deck` variable in `deck.py`.
 
 ```python
 deck = Deck(
-    transition=Crossfade(),   # default transition for all slides
-    theme="./my-theme",       # path to theme directory
-    dark_mode=True,           # data-theme="dark" on <html>
-    style="",                 # CSS injected into every slide
-    font_size=36,             # base font size for MarkdownSlide content (px)
+    transition=transitions.Crossfade(),   # default transition for all slides
+    theme="./my-theme",                   # path to theme directory
+    dark_mode=True,                       # data-theme="dark" on <html>
+    style="",                             # CSS injected into every slide
+    font_size=36,                         # base font size for MarkdownSlide content (px)
 )
 deck.slides = [...]
 ```
@@ -38,7 +39,7 @@ An SVG-backed slide.
 Slide(
     "slides/01-title.svg",
     animations=[animations.FadeIn("#headline", step=1)],
-    transition=Crossfade(),
+    transition=transitions.Crossfade(),
     content=[TextBox(element="zone-title", text="My title")],
     style="",
 )
@@ -219,17 +220,42 @@ animations.Highlight("#headline", step=1, color="#cba6f7", passes=2)
 ### `Animation` (base class)
 
 `inkflow.manifest.Animation` is the data-only base class every type above subclasses.
-Define a custom animation by subclassing it and writing a matching CSS rule. The CSS class
-is derived from the type name (`MyGlow` → `anim-my-glow`), and any extra fields you add are
-emitted as `--anim-<field>` custom properties for your CSS to read:
+Define a custom animation by subclassing it directly in `deck.py` — no changes to inkflow
+are needed.
+
+**How it works:**
+
+- The CSS class is derived from the type name: `MyGlow` → `anim-my-glow`.
+- Any extra fields you add become `--anim-<field>` CSS custom properties on the element.
+- The base timing params (`duration`, `easing`, `delay`) are always emitted when set.
+- Put the matching CSS rules in a `styles.css` file next to your `deck.py` — the server loads it automatically.
 
 ```python
+# deck.py
 from dataclasses import dataclass
-from inkflow.manifest import Animation
+from inkflow import Animation
 
 @dataclass
 class MyGlow(Animation):
-    intensity: float | None = None   # becomes --anim-intensity
+    intensity: float | None = None   # → --anim-intensity on the element
+```
+
+```css
+/* styles.css — next to deck.py */
+@keyframes my-glow-pulse {
+    50% { filter: drop-shadow(0 0 calc(var(--anim-intensity, 8) * 1px) gold); }
+}
+.anim-my-glow { }
+.anim-my-glow.active {
+    animation: my-glow-pulse var(--anim-duration, 0.6s) var(--anim-easing, ease)
+        var(--anim-delay, 0s) forwards;
+}
+```
+
+```python
+Slide("slides/01.svg", animations=[
+    MyGlow("#headline", step=1, intensity=12, duration=0.8),
+])
 ```
 
 Authoring `class="anim-my-glow" data-step="1"` directly in the SVG works too — the
@@ -240,41 +266,74 @@ presenter reads `data-step` from the DOM regardless of whether the element is li
 
 ## Transitions
 
-### `Cut`
-
-Instant slide switch, no animation.
+Transition types live in the `inkflow.transitions` namespace:
 
 ```python
-Cut()
+from inkflow import transitions
+
+Slide("slides/01.svg", transition=transitions.Push(direction="right"))
 ```
 
-### `Crossfade`
+### Shared parameters
 
-Dissolve between slides.
+Every transition type takes these:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `duration` | `float` | `0.5` (`Cut` is `0.0`) | Seconds |
+| `easing` | `str \| None` | `None` | Any CSS easing string. `None` keeps the handler's built-in default |
+
+`easing` is keyword-only. A value of `None` means the handler's own default is used.
+
+### Types
+
+| Type | Extra parameters | Effect |
+|---|---|---|
+| `Cut` | — | Instant switch, no animation |
+| `Crossfade` | — | Outgoing dissolves into incoming |
+| `Push` | `direction` | Both slides move — outgoing exits, incoming enters from the opposite edge |
+| `Slide` | `direction` | Incoming covers the outgoing slide, which stays put |
+| `Zoom` | — | Outgoing scales out, incoming scales in |
+| `Fade` | `color` | Outgoing fades to a solid colour, then incoming fades in from it |
+| `Wipe` | `direction` | Incoming is progressively revealed from one edge over the outgoing slide |
+| `Morph` | — | Matching SVG elements interpolate by ID; unmatched content crossfades |
+
+`direction` accepts `"left"`, `"right"`, `"up"`, or `"down"`. Default is `"left"` for all directional types.
 
 ```python
-Crossfade(duration=0.4)
+transitions.Push(direction="right", easing="ease-in-out")
+transitions.Slide(duration=0.6, direction="up")
+transitions.Fade(color="#1a1a2e")
+transitions.Wipe(direction="right", duration=0.7)
+transitions.Morph(duration=1.2)
 ```
 
-| Parameter | Default |
-|---|---|
-| `duration` | `0.4` |
+Every type defaults to `0.5 s`, except `Cut` which is `0.0 s` (instant).
 
-### `Morph`
+### `Transition` (base class)
 
-Interpolates matching elements by ID between slides.
-Any leaf shape morphs (`<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<path>`,
-`<text>`, `<image>`, …); a `<g>` whose ID matches morphs the elements inside it.
-Unmatched content crossfades.
+`inkflow.manifest.Transition` is the data-only base class every type above subclasses.
+Define a custom transition by subclassing it in `deck.py` — the type name becomes the JS
+handler key automatically (`MyWarp` → `"my-warp"`). It inherits the animating `0.5 s`
+`duration` default, so it works without overriding anything. Register the matching JS
+handler via `window.inkflow.registerTransition(name, handler)` (e.g. from a `<script>` tag
+or custom JS file):
 
 ```python
-Morph(duration=0.5)
+# deck.py
+from dataclasses import dataclass
+from inkflow.manifest import Transition
+
+@dataclass
+class MyWarp(Transition):
+    intensity: float = 1.0   # serialized as {"intensity": 1.0} in TransitionData
 ```
 
-| Parameter | Default |
-|---|---|
-| `duration` | `0.5` |
-
-### `Transition` (protocol)
-
-Any object with `duration: float` is a valid transition.
+```js
+// custom.js loaded after the presenter bundle
+window.inkflow.registerTransition("my-warp", (swap, t, then) => {
+    // t.duration, t.intensity, t.easing available here
+    swap();
+    then?.();
+});
+```

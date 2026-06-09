@@ -1,6 +1,6 @@
-from inkflow import Crossfade, Deck, MarkdownSlide
+from inkflow import Deck, MarkdownSlide, transitions
 
-deck = Deck(transition=Crossfade())
+deck = Deck(transition=transitions.Crossfade())
 
 deck.slides = [
     MarkdownSlide("cover", content="01-cover"),

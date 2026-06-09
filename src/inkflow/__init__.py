@@ -1,13 +1,10 @@
-from inkflow import animations
+from inkflow import animations, transitions
 from inkflow.manifest import (
     Align,
     Animation,
-    Crossfade,
-    Cut,
     Deck,
     MarkdownSlide,
     Media,
-    Morph,
     Slide,
     TextBox,
     Transition,
@@ -17,15 +14,13 @@ from inkflow.manifest import (
 __all__ = [
     "Align",
     "Animation",
-    "Crossfade",
-    "Cut",
     "Deck",
     "MarkdownSlide",
     "Media",
-    "Morph",
     "Slide",
     "TextBox",
     "Transition",
     "VAlign",
     "animations",
+    "transitions",
 ]

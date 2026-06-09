@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 
 # ── Animation ────────────────────────────────────────────────────────────────
 
@@ -33,23 +32,15 @@ class Animation:
 
 
 @dataclass
-class Cut:
-    duration: float = 0.0
+class Transition:
+    """Data-only base for every transition type.
 
+    Concrete types live in ``inkflow.transitions`` and subclass this.
+    A value of ``None`` for ``easing`` means the JS handler's built-in default wins.
+    """
 
-@dataclass
-class Crossfade:
-    duration: float = 0.4
-
-
-@dataclass
-class Morph:
     duration: float = 0.5
-
-
-@runtime_checkable
-class Transition(Protocol):
-    duration: float
+    easing: str | None = field(default=None, kw_only=True)
 
 
 # ── Content types ─────────────────────────────────────────────────────────────

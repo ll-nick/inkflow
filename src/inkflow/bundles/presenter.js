@@ -145,6 +145,16 @@
       );
     });
   }
+  function applyStepInstant(root, step) {
+    applyStep(root, step);
+    if (typeof root.getAnimations !== "function") return;
+    for (const anim of root.getAnimations({ subtree: true })) {
+      try {
+        anim.finish();
+      } catch {
+      }
+    }
+  }
 
   // src/ts/presenter/status.ts
   var stage = document.getElementById("stage");
@@ -159,6 +169,10 @@
   }
   function applyCurrentStep() {
     applyStep(stage, state.step);
+    updateStatus();
+  }
+  function applyCurrentStepInstant() {
+    applyStepInstant(stage, state.step);
     updateStatus();
   }
   function syncURL() {
@@ -750,48 +764,206 @@
 
   // src/ts/presenter/transitions.ts
   var stage3 = document.getElementById("stage");
-  var HANDLERS = {
-    morph(swap, transition, then) {
-      if (transition.duration <= 0 || !state.slides.length) {
-        swap();
-        if (then) then();
-        return;
-      }
-      morphToNextSlide(swap, transition, then);
-    },
-    crossfade(swap, t, then) {
+  var registry = /* @__PURE__ */ new Map();
+  function registerTransition(name, handler) {
+    registry.set(name, handler);
+  }
+  function makeLayer() {
+    const layer = document.createElement("div");
+    layer.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
+    layer.style.padding = getComputedStyle(stage3).padding;
+    return layer;
+  }
+  function sizeLayerChild(layer) {
+    const child = layer.firstElementChild;
+    if (child) {
+      child.style.width = "100%";
+      child.style.height = "100%";
+    }
+  }
+  function cssTransition(animate) {
+    return (swap, t, then) => {
       if (t.duration <= 0) {
         swap();
-        if (then) then();
+        then?.();
         return;
       }
-      stage3.style.transition = `opacity ${t.duration}s ease`;
-      stage3.style.opacity = "0";
-      setTimeout(() => {
-        swap();
-        requestAnimationFrame(() => {
-          stage3.style.opacity = "1";
-          if (then) then();
-        });
-      }, t.duration * 1e3);
+      const oldHTML = stage3.innerHTML;
+      swap();
+      const newLayer = makeLayer();
+      while (stage3.firstChild) newLayer.appendChild(stage3.firstChild);
+      sizeLayerChild(newLayer);
+      stage3.appendChild(newLayer);
+      const oldLayer = makeLayer();
+      oldLayer.innerHTML = oldHTML;
+      sizeLayerChild(oldLayer);
+      stage3.appendChild(oldLayer);
+      animate(oldLayer, newLayer, t, () => {
+        while (newLayer.firstChild)
+          stage3.insertBefore(newLayer.firstChild, newLayer);
+        newLayer.remove();
+        oldLayer.remove();
+        then?.();
+      });
+    };
+  }
+  function dirAxis(dir) {
+    return dir === "up" || dir === "down" ? "Y" : "X";
+  }
+  function incomingSign(dir) {
+    return dir === "left" || dir === "up" ? 1 : -1;
+  }
+  function flipDir(dir) {
+    return { left: "right", right: "left", up: "down", down: "up" }[dir] ?? dir;
+  }
+  function reflow() {
+    void stage3.offsetHeight;
+  }
+  registerTransition("cut", (swap, _t, then) => {
+    swap();
+    then?.();
+  });
+  registerTransition(
+    "crossfade",
+    cssTransition((oldLayer, _newLayer, t, done) => {
+      const easing = t.easing ?? "ease";
+      oldLayer.style.transition = `opacity ${t.duration}s ${easing}`;
+      reflow();
+      requestAnimationFrame(() => {
+        oldLayer.style.opacity = "0";
+        setTimeout(done, t.duration * 1e3);
+      });
+    })
+  );
+  registerTransition(
+    "push",
+    cssTransition((oldLayer, newLayer, t, done) => {
+      const dir = t.reverse ? flipDir(t.direction ?? "left") : t.direction ?? "left";
+      const axis = dirAxis(dir);
+      const sign = incomingSign(dir);
+      const easing = t.easing ?? "ease-in-out";
+      const ms = t.duration * 1e3;
+      oldLayer.style.transition = `transform ${t.duration}s ${easing}`;
+      newLayer.style.transform = `translate${axis}(${sign * 100}%)`;
+      newLayer.style.transition = `transform ${t.duration}s ${easing}`;
+      reflow();
+      requestAnimationFrame(() => {
+        oldLayer.style.transform = `translate${axis}(${-sign * 100}%)`;
+        newLayer.style.transform = `translate${axis}(0)`;
+        setTimeout(done, ms);
+      });
+    })
+  );
+  registerTransition(
+    "slide",
+    cssTransition((oldLayer, _newLayer, t, done) => {
+      const dir = t.direction ?? "left";
+      const axis = dirAxis(dir);
+      const sign = incomingSign(dir);
+      const easing = t.easing ?? "ease-in-out";
+      const ms = t.duration * 1e3;
+      const exitPct = t.reverse ? sign * 100 : -sign * 100;
+      oldLayer.style.transition = `transform ${t.duration}s ${easing}`;
+      reflow();
+      requestAnimationFrame(() => {
+        oldLayer.style.transform = `translate${axis}(${exitPct}%)`;
+        setTimeout(done, ms);
+      });
+    })
+  );
+  registerTransition(
+    "zoom",
+    cssTransition((oldLayer, newLayer, t, done) => {
+      const easing = t.easing ?? "ease-in-out";
+      const ms = t.duration * 1e3;
+      oldLayer.style.transformOrigin = "center";
+      oldLayer.style.transition = `opacity ${t.duration}s ${easing}, transform ${t.duration}s ${easing}`;
+      newLayer.style.opacity = "0";
+      newLayer.style.transform = "scale(0.95)";
+      newLayer.style.transformOrigin = "center";
+      newLayer.style.transition = `opacity ${t.duration}s ${easing}, transform ${t.duration}s ${easing}`;
+      reflow();
+      requestAnimationFrame(() => {
+        oldLayer.style.opacity = "0";
+        oldLayer.style.transform = "scale(1.05)";
+        newLayer.style.opacity = "1";
+        newLayer.style.transform = "scale(1)";
+        setTimeout(done, ms);
+      });
+    })
+  );
+  registerTransition(
+    "fade",
+    cssTransition((oldLayer, newLayer, t, done) => {
+      const color = t.color ?? "#000000";
+      const easing = t.easing ?? "ease";
+      const half = t.duration / 2;
+      const halfMs = half * 1e3;
+      stage3.style.backgroundColor = color;
+      oldLayer.style.transition = `opacity ${half}s ${easing}`;
+      newLayer.style.opacity = "0";
+      reflow();
+      requestAnimationFrame(() => {
+        oldLayer.style.opacity = "0";
+        setTimeout(() => {
+          newLayer.style.transition = `opacity ${half}s ${easing}`;
+          reflow();
+          requestAnimationFrame(() => {
+            newLayer.style.opacity = "1";
+            setTimeout(() => {
+              stage3.style.backgroundColor = "";
+              done();
+            }, halfMs);
+          });
+        }, halfMs);
+      });
+    })
+  );
+  registerTransition(
+    "wipe",
+    cssTransition((oldLayer, _newLayer, t, done) => {
+      const dir = t.direction ?? "left";
+      const easing = t.easing ?? "ease-in-out";
+      const ms = t.duration * 1e3;
+      const effectiveDir = t.reverse ? flipDir(dir) : dir;
+      const exitClip = {
+        left: "inset(0 0 0 100%)",
+        right: "inset(0 100% 0 0)",
+        up: "inset(0 0 100% 0)",
+        down: "inset(100% 0 0 0)"
+      }[effectiveDir] ?? "inset(0 0 0 100%)";
+      oldLayer.style.clipPath = "inset(0)";
+      oldLayer.style.transition = `clip-path ${t.duration}s ${easing}`;
+      reflow();
+      requestAnimationFrame(() => {
+        oldLayer.style.clipPath = exitClip;
+        setTimeout(done, ms);
+      });
+    })
+  );
+  registerTransition("morph", (swap, transition, then) => {
+    if (transition.duration <= 0 || !state.slides.length) {
+      swap();
+      then?.();
+      return;
     }
-  };
-  function loadSlide(then = null, transition = null) {
+    morphToNextSlide(swap, transition, then);
+  });
+  function loadSlide(then = null, transition = null, onSwap = null) {
     const swap = () => {
       stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
       state._maxStepCache = null;
+      onSwap?.();
       updateStatus();
     };
     const t = transition ?? state.transitions[state.slideIndex] ?? { type: "cut", duration: 0 };
-    const handler = HANDLERS[t.type];
+    const handler = registry.get(t.type);
     if (handler) {
       handler(swap, t, then);
       return;
     }
-    stage3.style.transition = "none";
-    stage3.style.opacity = "1";
     swap();
-    if (then) then();
+    then?.();
   }
 
   // src/ts/presenter/ui.ts
@@ -981,12 +1153,11 @@
     } else if (state.slideIndex > 0) {
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
-      state.step = 0;
-      loadSlide(() => {
+      loadSlide(null, t ? { ...t, reverse: true } : null, () => {
         state.step = maxStep2();
-        applyCurrentStep();
+        applyCurrentStepInstant();
         sendNav();
-      }, t ?? null);
+      });
       renderPv();
       return;
     }
@@ -1005,8 +1176,10 @@
     if (state.slideIndex > 0) {
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
-      state.step = 0;
-      loadSlide(null, t ?? null);
+      loadSlide(null, t ? { ...t, reverse: true } : null, () => {
+        state.step = maxStep2();
+        applyCurrentStepInstant();
+      });
       renderPv();
     }
     sendNav();
@@ -1041,9 +1214,6 @@
     svg.style.height = `${vbH}px`;
     const scale = Math.min(thumb.clientWidth / vbW, thumb.clientHeight / vbH);
     svg.style.transform = `scale(${scale})`;
-    svg.querySelectorAll("[data-step]").forEach((el) => {
-      el.classList.add("active");
-    });
   }
   function computeCols() {
     const cols = getComputedStyle(overviewGrid).gridTemplateColumns.split(" ").length;
@@ -1076,6 +1246,9 @@
     });
     state._overviewActive = state.slideIndex;
     overview.classList.add("visible");
+    overviewGrid.querySelectorAll(".overview-thumb").forEach((thumb) => {
+      applyStepInstant(thumb, maxStep(thumb));
+    });
     requestAnimationFrame(() => {
       overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
       computeCols();
@@ -1340,9 +1513,10 @@
   var INITIAL_ERROR = __ERROR_JSON__;
   state.slides = INITIAL_SLIDES;
   state.transitions = INITIAL_TRANSITIONS;
+  window.inkflow = { registerTransition };
   readURL();
   loadSlide(() => {
-    if (state.step > 0) applyCurrentStep();
+    if (state.step > 0) applyCurrentStepInstant();
   });
   renderPv();
   updatePvClock();
