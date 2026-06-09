@@ -6,6 +6,7 @@ import { sendNav } from "./websocket";
 
 const overview = document.getElementById("overview")!;
 const overviewGrid = document.getElementById("overview-grid")!;
+const stage = document.getElementById("stage")!;
 
 function scaleThumb(thumb: Element): void {
     const svg = thumb.querySelector("svg");
@@ -30,6 +31,27 @@ function computeCols(): void {
     state._overviewCols = cols || 1;
 }
 
+function applyOptimalCols(): void {
+    const n = state.slides.length;
+    const gap = parseFloat(getComputedStyle(overviewGrid).gap) || 28;
+    const availW = overviewGrid.clientWidth;
+    const availH =
+        overview.clientHeight -
+        parseFloat(getComputedStyle(overview).paddingTop) -
+        parseFloat(getComputedStyle(overview).paddingBottom);
+
+    let cols = n;
+    for (let c = 1; c <= n; c++) {
+        const thumbW = (availW - (c - 1) * gap) / c;
+        const rows = Math.ceil(n / c);
+        if (rows * (thumbW * (9 / 16) + gap) - gap <= availH) {
+            cols = Math.max(2, c);
+            break;
+        }
+    }
+    overviewGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+}
+
 export function overviewSetActive(i: number): void {
     state._overviewActive = Math.max(0, Math.min(state.slides.length - 1, i));
     overviewGrid.querySelectorAll(".overview-cell").forEach((el, idx) => {
@@ -43,13 +65,45 @@ export function overviewCommit(): void {
     state.slideIndex = state._overviewActive;
     state.step = 0;
     closeOverview();
-    loadSlide();
+    loadSlide(null, { type: "cut", duration: 0 }, () => {
+        const maxSt = computeMaxStep(stage);
+        applyStepInstant(stage, maxSt);
+        state.step = maxSt;
+    });
     renderPv();
     sendNav();
 }
 
+function computeStageFlip(): { s: number; ox: number; oy: number } | null {
+    const activeCell = overviewGrid.children[
+        state._overviewActive
+    ] as HTMLElement;
+    if (!activeCell) return null;
+    const thumb = activeCell.querySelector<HTMLElement>(".overview-thumb");
+    const el = thumb ?? activeCell;
+    const gr = overviewGrid.getBoundingClientRect();
+    const cr = el.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    // Thumbnail uses outline (not border), so cr is the pure content rect.
+    // Scale so the content matches the stage's inner content area (inside padding).
+    const sp = parseFloat(getComputedStyle(stage).paddingLeft) || 0;
+    const s = Math.min(
+        (sr.width - 2 * sp) / cr.width,
+        (sr.height - 2 * sp) / cr.height,
+    );
+    const thumbCX = cr.left + cr.width / 2 - gr.left;
+    const thumbCY = cr.top + cr.height / 2 - gr.top;
+    const stageCX = sr.left + sr.width / 2 - gr.left;
+    const stageCY = sr.top + sr.height / 2 - gr.top;
+    // origin that maps thumbnail center → stage center under scale(s)
+    const ox = (stageCX - thumbCX * s) / (1 - s);
+    const oy = (stageCY - thumbCY * s) / (1 - s);
+    return { s, ox, oy };
+}
+
 export function openOverview(): void {
     overviewGrid.innerHTML = "";
+    overviewGrid.style.cssText = "";
     state.slides.forEach((s, i) => {
         const cell = document.createElement("div");
         cell.className = "overview-cell";
@@ -60,24 +114,108 @@ export function openOverview(): void {
         overviewGrid.appendChild(cell);
     });
     state._overviewActive = state.slideIndex;
-    // Reveal the grid first so the thumbnails are laid out and their animations
-    // are live, then land each one on its final step with no playback. Doing this
-    // synchronously (before the next paint) means thumbnails never flash their
-    // step-0 state or replay build animations.
-    overview.classList.add("visible");
+    // Layout computation runs while the overlay is still hidden (visibility:hidden
+    // preserves dimensions). The overlay is revealed only once the FLIP snap is
+    // committed, so there is no black flash and no grid-at-full-scale flicker.
     overviewGrid.querySelectorAll(".overview-thumb").forEach((thumb) => {
         applyStepInstant(thumb, computeMaxStep(thumb));
     });
     requestAnimationFrame(() => {
-        overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-        computeCols();
-        overviewSetActive(state._overviewActive);
+        applyOptimalCols();
+        requestAnimationFrame(() => {
+            overviewGrid
+                .querySelectorAll(".overview-thumb")
+                .forEach(scaleThumb);
+            computeCols();
+            overviewSetActive(state._overviewActive);
+            // Snap to the same FLIP transform used by close, so open/close are mirrors
+            const flip = computeStageFlip();
+            const activeCell = overviewGrid.children[
+                state._overviewActive
+            ] as HTMLElement;
+            const activeThumb =
+                activeCell?.querySelector<HTMLElement>(".overview-thumb");
+            const activeNum =
+                activeCell?.querySelector<HTMLElement>(".overview-num");
+            if (flip) {
+                overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
+                overviewGrid.style.transition = "none";
+                overviewGrid.style.transform = `scale(${flip.s})`;
+            }
+            if (activeThumb) activeThumb.style.outlineColor = "transparent";
+            if (activeNum) activeNum.style.color = "transparent";
+            requestAnimationFrame(() => {
+                // Snap is committed — reveal the overlay instantly and start zoom-out.
+                overview.style.transition = "none";
+                overview.classList.add("visible");
+                overviewGrid.style.transition =
+                    "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)";
+                overviewGrid.style.transform = "scale(1)";
+                if (activeThumb) {
+                    activeThumb.style.transition = "outline-color 0.6s ease";
+                    activeThumb.style.outlineColor = "";
+                }
+                if (activeNum) {
+                    activeNum.style.transition = "color 0.6s ease";
+                    activeNum.style.color = "";
+                }
+                const cleanup = (e: TransitionEvent) => {
+                    if (e.propertyName !== "transform") return;
+                    overviewGrid.removeEventListener("transitionend", cleanup);
+                    overviewGrid.style.cssText = overviewGrid.style
+                        .gridTemplateColumns
+                        ? `grid-template-columns:${overviewGrid.style.gridTemplateColumns}`
+                        : "";
+                    if (activeThumb) activeThumb.style.transition = "";
+                    if (activeNum) activeNum.style.transition = "";
+                    overview.style.transition = "";
+                };
+                overviewGrid.addEventListener("transitionend", cleanup);
+            });
+        });
     });
 }
 
+function zoomGridToStage(): void {
+    const activeCell = overviewGrid.children[
+        state._overviewActive
+    ] as HTMLElement;
+    if (!activeCell) return;
+    const thumb = activeCell.querySelector<HTMLElement>(".overview-thumb");
+    const num = activeCell.querySelector<HTMLElement>(".overview-num");
+    const flip = computeStageFlip();
+    if (!flip) return;
+    if (thumb) {
+        thumb.style.transition = "outline-color 0.35s ease";
+        thumb.style.outlineColor = "transparent";
+    }
+    if (num) {
+        num.style.transition = "color 0.35s ease";
+        num.style.color = "transparent";
+    }
+    overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
+    overviewGrid.style.transition =
+        "transform 0.35s cubic-bezier(0.55, 0, 1, 0.45)";
+    overviewGrid.style.transform = `scale(${flip.s})`;
+}
+
 export function closeOverview(): void {
-    overview.classList.remove("visible");
-    overviewGrid.innerHTML = "";
+    zoomGridToStage();
+    setTimeout(() => {
+        overview.style.transition = "opacity 0.28s ease, visibility 0s 0.28s";
+        overview.classList.remove("visible");
+        setTimeout(() => {
+            overview.style.transition = "";
+            if (!overview.classList.contains("visible")) {
+                overviewGrid.innerHTML = "";
+                overviewGrid.style.cssText = "";
+            }
+        }, 300);
+    }, 370);
+}
+
+export function toggleOverview(): void {
+    overview.classList.contains("visible") ? closeOverview() : openOverview();
 }
 
 overview.addEventListener("click", (e) => {
@@ -92,6 +230,9 @@ overview.addEventListener("click", (e) => {
 
 window.addEventListener("resize", () => {
     if (!overview.classList.contains("visible")) return;
-    overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-    computeCols();
+    applyOptimalCols();
+    requestAnimationFrame(() => {
+        overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+        computeCols();
+    });
 });

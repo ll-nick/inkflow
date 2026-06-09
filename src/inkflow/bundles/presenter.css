@@ -51,8 +51,14 @@ body {
   min-height: 0;
   overflow: hidden;
 }
-#stage {
+#stage-wrap {
   flex: 1;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+#stage {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,6 +67,8 @@ body {
   min-width: 0;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 #stage > svg,
 #stage > :first-child {
@@ -344,23 +352,32 @@ kbd {
 
 /* src/css/presenter/overview.css */
 #overview {
-  display: none;
-  position: fixed;
+  display: flex;
+  position: absolute;
   inset: 0;
   z-index: 25;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: #000;
   overflow-y: auto;
+  flex-direction: column;
+  align-items: center;
+  padding: 6vh 2rem 2rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.45s ease, visibility 0s 0.45s;
 }
 #overview.visible {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
 }
 #overview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+  justify-content: center;
   gap: 1.75rem;
-  padding: 2rem;
+  width: 100%;
 }
 .overview-cell {
   display: flex;
@@ -372,6 +389,7 @@ kbd {
   font-size: 0.72rem;
   color: var(--subtext);
   padding: 0 0.2rem;
+  transition: color 0.25s ease;
 }
 .overview-cell.active .overview-num {
   color: var(--accent);
@@ -381,14 +399,15 @@ kbd {
   position: relative;
   overflow: hidden;
   background: var(--bg);
-  border: 2px solid transparent;
   border-radius: 4px;
+  outline: 2px solid transparent;
+  transition: outline-color 0.25s ease;
 }
 .overview-cell:hover .overview-thumb {
-  border-color: var(--overlay);
+  outline-color: var(--overlay);
 }
 .overview-cell.active .overview-thumb {
-  border-color: var(--accent);
+  outline-color: var(--accent);
 }
 .overview-thumb svg {
   position: absolute;

@@ -1,3 +1,4 @@
+import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { loadSlide } from "./transitions";
@@ -71,11 +72,16 @@ function pickerMoveCursor(delta: number): void {
 
 function pickerCommit(): void {
     if (!state._pickerMatches.length) return;
+    const stage = document.getElementById("stage")!;
     state.slideIndex = state._pickerMatches[state._pickerActive];
     state.step = 0;
-    loadSlide();
-    renderPv();
     closePicker();
+    loadSlide(null, { type: "cut", duration: 0 }, () => {
+        const maxSt = computeMaxStep(stage);
+        applyStepInstant(stage, maxSt);
+        state.step = maxSt;
+    });
+    renderPv();
     sendNav();
 }
 

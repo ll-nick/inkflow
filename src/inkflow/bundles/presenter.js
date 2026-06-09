@@ -1202,6 +1202,7 @@
   // src/ts/presenter/overview.ts
   var overview = document.getElementById("overview");
   var overviewGrid = document.getElementById("overview-grid");
+  var stage4 = document.getElementById("stage");
   function scaleThumb(thumb) {
     const svg = thumb.querySelector("svg");
     if (!svg) return;
@@ -1219,6 +1220,22 @@
     const cols = getComputedStyle(overviewGrid).gridTemplateColumns.split(" ").length;
     state._overviewCols = cols || 1;
   }
+  function applyOptimalCols() {
+    const n = state.slides.length;
+    const gap = parseFloat(getComputedStyle(overviewGrid).gap) || 28;
+    const availW = overviewGrid.clientWidth;
+    const availH = overview.clientHeight - parseFloat(getComputedStyle(overview).paddingTop) - parseFloat(getComputedStyle(overview).paddingBottom);
+    let cols = n;
+    for (let c = 1; c <= n; c++) {
+      const thumbW = (availW - (c - 1) * gap) / c;
+      const rows = Math.ceil(n / c);
+      if (rows * (thumbW * (9 / 16) + gap) - gap <= availH) {
+        cols = Math.max(2, c);
+        break;
+      }
+    }
+    overviewGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  }
   function overviewSetActive(i) {
     state._overviewActive = Math.max(0, Math.min(state.slides.length - 1, i));
     overviewGrid.querySelectorAll(".overview-cell").forEach((el, idx) => {
@@ -1231,12 +1248,38 @@
     state.slideIndex = state._overviewActive;
     state.step = 0;
     closeOverview();
-    loadSlide();
+    loadSlide(null, { type: "cut", duration: 0 }, () => {
+      const maxSt = maxStep(stage4);
+      applyStepInstant(stage4, maxSt);
+      state.step = maxSt;
+    });
     renderPv();
     sendNav();
   }
+  function computeStageFlip() {
+    const activeCell = overviewGrid.children[state._overviewActive];
+    if (!activeCell) return null;
+    const thumb = activeCell.querySelector(".overview-thumb");
+    const el = thumb ?? activeCell;
+    const gr = overviewGrid.getBoundingClientRect();
+    const cr = el.getBoundingClientRect();
+    const sr = stage4.getBoundingClientRect();
+    const sp = parseFloat(getComputedStyle(stage4).paddingLeft) || 0;
+    const s = Math.min(
+      (sr.width - 2 * sp) / cr.width,
+      (sr.height - 2 * sp) / cr.height
+    );
+    const thumbCX = cr.left + cr.width / 2 - gr.left;
+    const thumbCY = cr.top + cr.height / 2 - gr.top;
+    const stageCX = sr.left + sr.width / 2 - gr.left;
+    const stageCY = sr.top + sr.height / 2 - gr.top;
+    const ox = (stageCX - thumbCX * s) / (1 - s);
+    const oy = (stageCY - thumbCY * s) / (1 - s);
+    return { s, ox, oy };
+  }
   function openOverview() {
     overviewGrid.innerHTML = "";
+    overviewGrid.style.cssText = "";
     state.slides.forEach((s, i) => {
       const cell = document.createElement("div");
       cell.className = "overview-cell";
@@ -1245,19 +1288,87 @@
       overviewGrid.appendChild(cell);
     });
     state._overviewActive = state.slideIndex;
-    overview.classList.add("visible");
     overviewGrid.querySelectorAll(".overview-thumb").forEach((thumb) => {
       applyStepInstant(thumb, maxStep(thumb));
     });
     requestAnimationFrame(() => {
-      overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-      computeCols();
-      overviewSetActive(state._overviewActive);
+      applyOptimalCols();
+      requestAnimationFrame(() => {
+        overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+        computeCols();
+        overviewSetActive(state._overviewActive);
+        const flip = computeStageFlip();
+        const activeCell = overviewGrid.children[state._overviewActive];
+        const activeThumb = activeCell?.querySelector(".overview-thumb");
+        const activeNum = activeCell?.querySelector(".overview-num");
+        if (flip) {
+          overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
+          overviewGrid.style.transition = "none";
+          overviewGrid.style.transform = `scale(${flip.s})`;
+        }
+        if (activeThumb) activeThumb.style.outlineColor = "transparent";
+        if (activeNum) activeNum.style.color = "transparent";
+        requestAnimationFrame(() => {
+          overview.style.transition = "none";
+          overview.classList.add("visible");
+          overviewGrid.style.transition = "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)";
+          overviewGrid.style.transform = "scale(1)";
+          if (activeThumb) {
+            activeThumb.style.transition = "outline-color 0.6s ease";
+            activeThumb.style.outlineColor = "";
+          }
+          if (activeNum) {
+            activeNum.style.transition = "color 0.6s ease";
+            activeNum.style.color = "";
+          }
+          const cleanup = (e) => {
+            if (e.propertyName !== "transform") return;
+            overviewGrid.removeEventListener("transitionend", cleanup);
+            overviewGrid.style.cssText = overviewGrid.style.gridTemplateColumns ? `grid-template-columns:${overviewGrid.style.gridTemplateColumns}` : "";
+            if (activeThumb) activeThumb.style.transition = "";
+            if (activeNum) activeNum.style.transition = "";
+            overview.style.transition = "";
+          };
+          overviewGrid.addEventListener("transitionend", cleanup);
+        });
+      });
     });
   }
+  function zoomGridToStage() {
+    const activeCell = overviewGrid.children[state._overviewActive];
+    if (!activeCell) return;
+    const thumb = activeCell.querySelector(".overview-thumb");
+    const num = activeCell.querySelector(".overview-num");
+    const flip = computeStageFlip();
+    if (!flip) return;
+    if (thumb) {
+      thumb.style.transition = "outline-color 0.35s ease";
+      thumb.style.outlineColor = "transparent";
+    }
+    if (num) {
+      num.style.transition = "color 0.35s ease";
+      num.style.color = "transparent";
+    }
+    overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
+    overviewGrid.style.transition = "transform 0.35s cubic-bezier(0.55, 0, 1, 0.45)";
+    overviewGrid.style.transform = `scale(${flip.s})`;
+  }
   function closeOverview() {
-    overview.classList.remove("visible");
-    overviewGrid.innerHTML = "";
+    zoomGridToStage();
+    setTimeout(() => {
+      overview.style.transition = "opacity 0.28s ease, visibility 0s 0.28s";
+      overview.classList.remove("visible");
+      setTimeout(() => {
+        overview.style.transition = "";
+        if (!overview.classList.contains("visible")) {
+          overviewGrid.innerHTML = "";
+          overviewGrid.style.cssText = "";
+        }
+      }, 300);
+    }, 370);
+  }
+  function toggleOverview() {
+    overview.classList.contains("visible") ? closeOverview() : openOverview();
   }
   overview.addEventListener("click", (e) => {
     const cell = e.target.closest(".overview-cell");
@@ -1270,8 +1381,11 @@
   });
   window.addEventListener("resize", () => {
     if (!overview.classList.contains("visible")) return;
-    overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-    computeCols();
+    applyOptimalCols();
+    requestAnimationFrame(() => {
+      overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+      computeCols();
+    });
   });
 
   // src/ts/presenter/picker.ts
@@ -1333,11 +1447,16 @@
   }
   function pickerCommit() {
     if (!state._pickerMatches.length) return;
+    const stage5 = document.getElementById("stage");
     state.slideIndex = state._pickerMatches[state._pickerActive];
     state.step = 0;
-    loadSlide();
-    renderPv();
     closePicker();
+    loadSlide(null, { type: "cut", duration: 0 }, () => {
+      const maxSt = maxStep(stage5);
+      applyStepInstant(stage5, maxSt);
+      state.step = maxSt;
+    });
+    renderPv();
     sendNav();
   }
   pickerInput.addEventListener("input", () => filterPicker(pickerInput.value));
@@ -1385,7 +1504,7 @@
   document.getElementById("btn-next").addEventListener("click", advance);
   document.getElementById("btn-fullscreen").addEventListener("click", toggleFullscreen);
   document.getElementById("btn-theme").addEventListener("click", toggleTheme);
-  document.getElementById("btn-overview").addEventListener("click", openOverview);
+  document.getElementById("btn-overview").addEventListener("click", toggleOverview);
   document.getElementById("btn-presenter").addEventListener("click", togglePv);
   document.getElementById("mhud-theme").addEventListener("click", toggleTheme);
   document.getElementById("mhud-fullscreen").addEventListener("click", toggleFullscreen);
@@ -1441,7 +1560,7 @@
     End: { action: gotoLast },
     $: { action: gotoLast },
     g: { action: openPicker, preventDefault: true },
-    o: { action: openOverview, preventDefault: true },
+    o: { action: toggleOverview, preventDefault: true },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
     ".": { action: () => toggleCurtain("black") },
@@ -1456,14 +1575,14 @@
   var curtainEl = document.getElementById("curtain");
   document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
-      if (e.key === "?" || e.key === "Escape") {
+      if (e.key === "?" || e.key === "Escape" || e.key === "q") {
         toggleHelp();
         return;
       }
       if (e.key !== "t") return;
     }
     if (overviewEl2.classList.contains("visible")) {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" || e.key === "q") {
         closeOverview();
         return;
       }
@@ -1490,6 +1609,10 @@
       if (e.key === "Enter") {
         e.preventDefault();
         overviewCommit();
+        return;
+      }
+      if (e.key === "o") {
+        toggleOverview();
         return;
       }
       if (e.key !== "t" && e.key !== "?") return;

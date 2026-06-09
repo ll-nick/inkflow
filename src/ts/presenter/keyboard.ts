@@ -8,9 +8,9 @@ import {
 } from "./navigation";
 import {
     closeOverview,
-    openOverview,
     overviewCommit,
     overviewSetActive,
+    toggleOverview,
 } from "./overview";
 import { openPicker } from "./picker";
 import { togglePv } from "./pv";
@@ -45,7 +45,7 @@ document
 document.getElementById("btn-theme")!.addEventListener("click", toggleTheme);
 document
     .getElementById("btn-overview")!
-    .addEventListener("click", openOverview);
+    .addEventListener("click", toggleOverview);
 document.getElementById("btn-presenter")!.addEventListener("click", togglePv);
 document.getElementById("mhud-theme")!.addEventListener("click", toggleTheme);
 document
@@ -113,7 +113,7 @@ const KEYBINDINGS: Record<
     End: { action: gotoLast },
     $: { action: gotoLast },
     g: { action: openPicker, preventDefault: true },
-    o: { action: openOverview, preventDefault: true },
+    o: { action: toggleOverview, preventDefault: true },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
     ".": { action: () => toggleCurtain("black") },
@@ -131,14 +131,14 @@ const curtainEl = document.getElementById("curtain")!;
 
 document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
-        if (e.key === "?" || e.key === "Escape") {
+        if (e.key === "?" || e.key === "Escape" || e.key === "q") {
             toggleHelp();
             return;
         }
         if (e.key !== "t") return;
     }
     if (overviewEl.classList.contains("visible")) {
-        if (e.key === "Escape") {
+        if (e.key === "Escape" || e.key === "q") {
             closeOverview();
             return;
         }
@@ -165,6 +165,10 @@ document.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
             overviewCommit();
+            return;
+        }
+        if (e.key === "o") {
+            toggleOverview();
             return;
         }
         if (e.key !== "t" && e.key !== "?") return;
