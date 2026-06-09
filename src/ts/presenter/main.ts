@@ -1,7 +1,7 @@
 import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { applyCurrentStep, readURL } from "./status";
-import { loadSlide } from "./transitions";
+import { loadSlide, registerTransition } from "./transitions";
 import { showError } from "./ui";
 import { connectWS } from "./websocket";
 import "./keyboard";
@@ -15,6 +15,9 @@ const INITIAL_ERROR = __ERROR_JSON__;
 // ── Initialize state from server-injected globals ──
 state.slides = INITIAL_SLIDES;
 state.transitions = INITIAL_TRANSITIONS;
+
+// ── Public API ──
+window.inkflow = { registerTransition };
 
 // ── Boot ──
 readURL();

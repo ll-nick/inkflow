@@ -5,8 +5,13 @@ export interface SlideData {
 }
 
 export interface TransitionData {
-    type: "cut" | "crossfade" | "morph";
+    type: string;
     duration: number;
+    easing?: string;
+    direction?: string;
+    color?: string;
+    reverse?: boolean;
+    [key: string]: unknown;
 }
 
 export interface NavMessage {
