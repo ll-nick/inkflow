@@ -3,14 +3,12 @@ from pathlib import Path
 
 from inkflow import (
     Animation,
-    Crossfade,
-    Cut,
     Deck,
     MarkdownSlide,
     Media,
-    Morph,
     Slide,
     animations,
+    transitions,
 )
 
 
@@ -40,7 +38,7 @@ deck.slides = [
     ),
     Slide(
         "slides/02-diagram.svg",
-        transition=Cut(),
+        transition=transitions.Cut(),
         animations=[
             # A mix of the new parameterised animation types.
             animations.SlideIn(
@@ -62,15 +60,15 @@ deck.slides = [
     ),
     Slide(
         "slides/03-crossfade.svg",
-        transition=Crossfade(),
+        transition=transitions.Push(direction="left"),
         notes=(
-            "Crossfade is the gentlest transition — use it between unrelated "
-            "slides. Compare with the morph that comes next."
+            "Push slides both slides horizontally — the new one enters as the "
+            "old one exits. Direction controls which way the new slide enters from."
         ),
     ),
     Slide(
         "slides/04-morph.svg",
-        transition=Morph(duration=1.8),
+        transition=transitions.Morph(duration=1.8),
         notes=Path("slides/04-notes.md"),
     ),
     MarkdownSlide(
