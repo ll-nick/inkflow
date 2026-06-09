@@ -13,6 +13,7 @@ _EMPTY_STATE: State = {
     "ws_clients": set(),
     "error": None,
     "styles_css": "",
+    "scripts_js": "",
     "dark_mode": True,
     "position": {"slideIndex": 0, "step": 0},
 }

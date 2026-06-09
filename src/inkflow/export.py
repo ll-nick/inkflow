@@ -8,7 +8,7 @@ from pathlib import Path
 
 from inkflow.manifest import Deck, MarkdownSlide, Media, Slide
 from inkflow.pipeline import process_deck, resolve_transitions
-from inkflow.server import State, build_html, load_deck, load_styles
+from inkflow.server import State, build_html, load_deck, load_scripts, load_styles
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
@@ -22,6 +22,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
     slides = process_deck(deck, project_dir)
     transitions = resolve_transitions(deck)
     styles_css = load_styles(deck, project_dir)
+    scripts_js = load_scripts(deck, project_dir)
 
     _copy_videos(_collect_video_paths(deck), project_dir, out_dir)
 
@@ -29,6 +30,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
         "slides": slides,
         "transitions": transitions,
         "styles_css": styles_css,
+        "scripts_js": scripts_js,
         "dark_mode": deck.dark_mode,
         "ws_clients": set(),
         "error": None,
