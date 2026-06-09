@@ -1,6 +1,6 @@
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
-import { applyCurrentStep, maxStep } from "./status";
+import { applyCurrentStep, applyCurrentStepInstant, maxStep } from "./status";
 import { loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
 
@@ -28,12 +28,15 @@ export function retreat(): void {
     } else if (state.slideIndex > 0) {
         const t = state.transitions[state.slideIndex];
         state.slideIndex--;
-        state.step = 0;
-        loadSlide(() => {
+        // Entering an earlier slide from ahead: jump straight to its final step
+        // inside the content swap (before the transition paints the fresh
+        // elements) so its build animations show as already-complete instead of
+        // replaying. Subsequent step-by-step retreats then animate in reverse.
+        loadSlide(null, t ? { ...t, reverse: true } : null, () => {
             state.step = maxStep();
-            applyCurrentStep();
+            applyCurrentStepInstant();
             sendNav();
-        }, t ?? null);
+        });
         renderPv();
         return;
     }
@@ -54,8 +57,12 @@ export function prevSlide(): void {
     if (state.slideIndex > 0) {
         const t = state.transitions[state.slideIndex];
         state.slideIndex--;
-        state.step = 0;
-        loadSlide(null, t ?? null);
+        // Jumping back a whole slide enters it from ahead, so land on its final
+        // step shown statically (same as a step-by-step retreat across the edge).
+        loadSlide(null, t ? { ...t, reverse: true } : null, () => {
+            state.step = maxStep();
+            applyCurrentStepInstant();
+        });
         renderPv();
     }
     sendNav();
