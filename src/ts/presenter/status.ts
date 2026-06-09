@@ -1,5 +1,9 @@
 import { buildStepRing } from "../shared/ring";
-import { applyStep, maxStep as computeMaxStep } from "../shared/step";
+import {
+    applyStep,
+    applyStepInstant,
+    maxStep as computeMaxStep,
+} from "../shared/step";
 import { state } from "./state";
 
 const stage = document.getElementById("stage")!;
@@ -18,6 +22,14 @@ export function maxStep(): number {
 // Never touches innerHTML, so transitions fire correctly.
 export function applyCurrentStep(): void {
     applyStep(stage, state.step);
+    updateStatus();
+}
+
+// Like applyCurrentStep but lands the step with no animation playback. Used when
+// entering a slide from ahead so its build animations appear already complete
+// instead of replaying. See applyStepInstant.
+export function applyCurrentStepInstant(): void {
+    applyStepInstant(stage, state.step);
     updateStatus();
 }
 

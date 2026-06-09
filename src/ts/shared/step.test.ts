@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
-import { applyStep, maxStep } from "./step";
+import { applyStep, applyStepInstant, maxStep } from "./step";
 
 function buildSvg(html: string): Element {
     const container = document.createElement("div");
@@ -40,6 +40,23 @@ describe("applyStep", () => {
 
         applyStep(root, 0);
         expect(el.classList.contains("active")).toBe(false);
+    });
+});
+
+describe("applyStepInstant", () => {
+    test("activates the same elements as applyStep", () => {
+        const root = buildSvg(
+            `<rect class="anim-fade-in" data-step="1"></rect>
+             <rect class="anim-fade-in" data-step="2"></rect>`,
+        );
+        document.body.appendChild(root);
+
+        applyStepInstant(root, 1);
+        const els = root.querySelectorAll("[data-step]");
+        expect(els[0].classList.contains("active")).toBe(true);
+        expect(els[1].classList.contains("active")).toBe(false);
+
+        root.remove();
     });
 });
 
