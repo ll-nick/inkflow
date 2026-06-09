@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from lxml import etree
 
@@ -212,7 +212,9 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
 def _serialize_transition(t: Transition | None) -> dict[str, object]:
     if t is None:
         return {"type": "cut", "duration": 0.0}
-    return {"type": type(t).__name__.lower(), **vars(t)}
+    all_fields = cast(dict[str, object], vars(t))
+    fields = {k: v for k, v in all_fields.items() if v is not None}
+    return {"type": _camel_to_kebab(type(t).__name__), **fields}
 
 
 def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
