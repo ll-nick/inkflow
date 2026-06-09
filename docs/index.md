@@ -37,7 +37,7 @@ Keep everything in plain text.
 ## Quick example
 
 ```python
-from inkflow import Crossfade, Deck, Morph, Slide, animations
+from inkflow import Deck, Slide, animations, transitions
 
 deck = Deck()
 deck.slides = [
@@ -48,8 +48,8 @@ deck.slides = [
     Slide("slides/02-diagram.svg", animations=[
         animations.Bounce("#box-a", step=1),
         animations.Bounce("#box-b", step=2),
-    ], transition=Crossfade()),
-    Slide("slides/03-summary.svg", transition=Morph(duration=0.7)),
+    ], transition=transitions.Crossfade()),
+    Slide("slides/03-summary.svg", transition=transitions.Morph(duration=0.7)),
 ]
 ```
 

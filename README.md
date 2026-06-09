@@ -39,7 +39,7 @@ Your source files are SVG, Markdown, and Python: open formats, plain text, not t
 A deck is a plain Python file:
 
 ```python
-from inkflow import Crossfade, Cut, Deck, MarkdownSlide, Media, Morph, Slide, animations
+from inkflow import Deck, MarkdownSlide, Media, Slide, animations, transitions
 
 deck = Deck()
 
@@ -52,11 +52,11 @@ deck.slides = [
             animations.FadeIn("#subtitle", step=2),
         ],
     ),
-    Slide("slides/02-diagram.svg", transition=Crossfade(), animations=[
+    Slide("slides/02-diagram.svg", transition=transitions.Crossfade(), animations=[
         animations.Bounce("#box-a", step=1),
         animations.Bounce("#box-b", step=2),
     ]),
-    Slide("slides/03-chart.svg", transition=Morph(duration=0.7)),
+    Slide("slides/03-chart.svg", transition=transitions.Morph(duration=0.7)),
 
     # Markdown slide: write content in .md, render into a layout SVG
     MarkdownSlide("layouts/content.svg", content="slides/04-notes.md"),
@@ -120,10 +120,8 @@ Saving a slide reloads the presenter automatically.
 It's built on Vue and is capable of making full use of your browser's features
 including many things Inkflow will never do.
 
-This project was built making heavy use of coding agents.
+This project was built making heavy use of coding agents and would not have been possible without them.
 Does that make it "slopware"?
-I'll let you be the judge of that, but every architectural decision is mine
-and every line of code has been reviewed in good old-fashioned manual labor.
-(Take the latter with a grain of salt:
-When it comes to frontend stuff,
-I really have no clue what I'm doing)
+I'll let you be the judge of that but I can say that I try my best to keep the agents in check.
+Every architectural decision is mine, there's a CI to ensure a certain level of code quality,
+and before merging, I spend a good amount of time reviewing all changes in good old-fashioned manual labor.

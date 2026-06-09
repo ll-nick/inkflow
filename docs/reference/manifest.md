@@ -1,8 +1,9 @@
 # Manifest reference
 
 Classes exported from `inkflow` and usable in `deck.py`. Animation types live in the
-`inkflow.animations` namespace (`from inkflow import animations`, then
-`animations.FadeIn(...)`); everything else is imported directly from `inkflow`.
+`inkflow.animations` namespace (`from inkflow import animations`); transition types live in
+the `inkflow.transitions` namespace (`from inkflow import transitions`); everything else is
+imported directly from `inkflow`.
 
 ## `Deck`
 
@@ -11,11 +12,11 @@ Assign a `Deck` instance to the module-level `deck` variable in `deck.py`.
 
 ```python
 deck = Deck(
-    transition=Crossfade(),   # default transition for all slides
-    theme="./my-theme",       # path to theme directory
-    dark_mode=True,           # data-theme="dark" on <html>
-    style="",                 # CSS injected into every slide
-    font_size=36,             # base font size for MarkdownSlide content (px)
+    transition=transitions.Crossfade(),   # default transition for all slides
+    theme="./my-theme",                   # path to theme directory
+    dark_mode=True,                       # data-theme="dark" on <html>
+    style="",                             # CSS injected into every slide
+    font_size=36,                         # base font size for MarkdownSlide content (px)
 )
 deck.slides = [...]
 ```
@@ -38,7 +39,7 @@ An SVG-backed slide.
 Slide(
     "slides/01-title.svg",
     animations=[animations.FadeIn("#headline", step=1)],
-    transition=Crossfade(),
+    transition=transitions.Crossfade(),
     content=[TextBox(element="zone-title", text="My title")],
     style="",
 )

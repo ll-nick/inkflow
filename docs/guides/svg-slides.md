@@ -93,13 +93,13 @@ A transition controls how the slide enters from the previous one.
 Set it per slide, or set a default on the `Deck`:
 
 ```python
-from inkflow import Crossfade, Deck, Morph, Slide
+from inkflow import Deck, Slide, transitions
 
-deck = Deck(transition=Crossfade())  # default for all slides
+deck = Deck(transition=transitions.Crossfade())  # default for all slides
 
 deck.slides = [
-    Slide("slides/01-title.svg"),                        # uses Crossfade
-    Slide("slides/02-diagram.svg", transition=Morph()),  # overrides to Morph
+    Slide("slides/01-title.svg"),                                   # uses Crossfade
+    Slide("slides/02-diagram.svg", transition=transitions.Morph()), # overrides to Morph
 ]
 ```
 
