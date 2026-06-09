@@ -39,6 +39,7 @@ class State(TypedDict):
     ws_clients: set[ServerConnection]
     error: str | None
     styles_css: str
+    scripts_js: str
     dark_mode: bool
     position: dict[str, int]
 
@@ -49,6 +50,7 @@ _state: State = {
     "ws_clients": set(),
     "error": None,
     "styles_css": "",
+    "scripts_js": "",
     "dark_mode": True,
     "position": {"slideIndex": 0, "step": 0},
 }
@@ -89,9 +91,11 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         slides = await asyncio.to_thread(process_deck, deck, project_dir)
         transitions = resolve_transitions(deck)
         styles_css = await asyncio.to_thread(load_styles, deck, project_dir)
+        scripts_js = await asyncio.to_thread(load_scripts, deck, project_dir)
         _state["slides"] = slides
         _state["transitions"] = transitions
         _state["styles_css"] = styles_css
+        _state["scripts_js"] = scripts_js
         _state["dark_mode"] = deck.dark_mode
         _state["error"] = None
         if slides:
@@ -197,6 +201,25 @@ def load_styles(deck: Deck, project_dir: Path) -> str:
     return "\n".join(parts)
 
 
+def load_scripts(deck: Deck, project_dir: Path) -> str:
+    parts: list[str] = []
+
+    if deck.theme is not None:
+        try:
+            theme_dir = resolve_theme_dir(deck.theme, project_dir)
+            theme_js = theme_dir / "scripts.js"
+            if theme_js.exists():
+                parts.append(theme_js.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+
+    project_js = project_dir / "scripts.js"
+    if project_js.exists():
+        parts.append(project_js.read_text(encoding="utf-8"))
+
+    return "\n".join(parts)
+
+
 def build_html(state: State, ws_port: int | None) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
@@ -211,6 +234,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("__DATA_THEME__", data_theme)
         .replace("__SLIDES_JSON__", json.dumps(state["slides"]))
         .replace("__TRANSITIONS_JSON__", json.dumps(state["transitions"]))
+        .replace("__SCRIPTS__", state["scripts_js"])
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
     )
