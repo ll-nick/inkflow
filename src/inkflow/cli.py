@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from inkflow import git_setup, init, ns
+from inkflow import colors, git_setup, init, loaders, ns
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     create_slide,
@@ -36,6 +36,14 @@ def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
         raise click.ClickException(f"deck not found: {resolved}")
     deck_obj = load_deck(resolved)
     return deck_obj, resolved.parent
+
+
+def _resolve_deck_or_none(
+    deck_path: Path, no_deck: bool
+) -> tuple[Deck | None, Path | None]:
+    if no_deck:
+        return None, None
+    return _deck_context(deck_path)
 
 
 _deck_option = click.option(
@@ -477,6 +485,11 @@ def export_cmd(
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"[inkflow] exported {out}")
+
+
+# ── colorize / palette shared helpers ────────────────────────────────────────
+
+
 def _resolve_dark_mode(
     color_mode: str | None, deck_obj: Deck | None, no_deck: bool
 ) -> bool:
@@ -484,3 +497,114 @@ def _resolve_dark_mode(
         return color_mode != "light"
     return deck_obj.dark_mode if color_mode is None else color_mode == "dark"
 
+
+@main.command("colorize")
+@click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
+@_deck_option
+@_no_deck_option
+@_mode_option
+def colorize_cmd(
+    files: tuple[Path, ...],
+    deck_path: Path,
+    no_deck: bool,
+    color_mode: str | None,
+) -> None:
+    """Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
+
+    Reads the active theme's color tokens and replaces matching fill/stroke
+    attributes and inline style declarations with inkflow-fill-* / inkflow-stroke-*
+    classes. The hardcoded attributes are removed after replacement.
+    """
+    deck_obj, project_dir = _resolve_deck_or_none(deck_path, no_deck)
+    dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
+    hex_map = colors.hex_to_class_map(
+        colors.extract_tokens(loaders.load_styles(deck_obj, project_dir), dark_mode)
+    )
+
+    errors = False
+    for f in files:
+        p = Path(f).resolve()
+        if not p.exists():
+            click.echo(f"[inkflow] colorize: not found: {f}", err=True)
+            errors = True
+            continue
+        try:
+            new_svg, changed = colors.colorize_svg(
+                p.read_text(encoding="utf-8"), hex_map
+            )
+            if changed:
+                p.write_text(new_svg, encoding="utf-8")
+                click.echo(f"[colorized]   {f}")
+            else:
+                click.echo(f"[no changes]  {f}")
+        except Exception as exc:
+            click.echo(f"[inkflow] colorize: error processing {f}: {exc}", err=True)
+            errors = True
+
+    if errors:
+        sys.exit(1)
+
+
+# ── palette ───────────────────────────────────────────────────────────────────
+
+
+@main.command("palette")
+@_deck_option
+@_no_deck_option
+@_mode_option
+@click.option(
+    "--output",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Write palette to FILE instead of stdout.",
+)
+@click.option(
+    "--install",
+    is_flag=True,
+    help="Install to ~/.config/inkscape/palettes/inkflow.gpl.",
+)
+def palette_cmd(
+    deck_path: Path,
+    no_deck: bool,
+    color_mode: str | None,
+    output_path: Path | None,
+    install: bool,
+) -> None:
+    """Generate an Inkscape GPL color palette for the active theme.
+
+    Outputs a .gpl file whose colors correspond to the inkflow-fill-* /
+    inkflow-stroke-* CSS class tokens so you can pick theme colors by name
+    in Inkscape's swatches panel and then run 'inkflow colorize' to convert
+    the hardcoded hex values to semantic classes.
+    """
+    if output_path and install:
+        raise click.UsageError("--output and --install are mutually exclusive")
+
+    deck_obj, project_dir = _resolve_deck_or_none(deck_path, no_deck)
+    dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
+    tokens = colors.extract_tokens(
+        loaders.load_styles(deck_obj, project_dir), dark_mode
+    )
+
+    theme_label: str | None = deck_obj.theme if deck_obj else None
+    mode_label = "light" if not dark_mode else "dark"
+    palette_name = (
+        f"inkflow/{Path(theme_label).name} ({mode_label})"
+        if theme_label
+        else f"inkflow ({mode_label})"
+    )
+    gpl = colors.build_gpl(tokens, palette_name)
+
+    if install:
+        dest = Path.home() / ".config" / "inkscape" / "palettes" / "inkflow.gpl"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(gpl, encoding="utf-8")
+        click.echo(f"[inkflow] installed palette to {dest}")
+    elif output_path:
+        output_path = output_path.resolve()
+        output_path.write_text(gpl, encoding="utf-8")
+        click.echo(f"[inkflow] wrote palette to {output_path}")
+    else:
+        click.get_text_stream("stdout").write(gpl)
