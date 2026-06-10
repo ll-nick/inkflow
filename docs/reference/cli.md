@@ -171,6 +171,7 @@ inkflow parent set FILE PARENT [--deck DECK]
 | `FILE` | required | Path to the slide SVG |
 | `PARENT` | required | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
 | `--deck` | `deck.py` | Path to `deck.py` |
+| `--no-deck` | off | Skip deck lookup (for theme authoring; restricts parents to `builtin:` and relative paths) |
 
 Validates that `PARENT` resolves, updates the attribute in place,
 then automatically runs `parent inject` on the file.
@@ -202,7 +203,7 @@ The SVG's own content is untouched.
 Refresh ancestor layout layers in slide SVG(s) for editor preview.
 
 ```bash
-inkflow parent inject [FILES...] [--deck DECK] [--check] [--no-deck]
+inkflow parent inject [FILES...] [--deck DECK] [--check] [--no-deck] [--mode dark|light]
 ```
 
 | Argument/Option | Default | Description |
@@ -211,12 +212,17 @@ inkflow parent inject [FILES...] [--deck DECK] [--check] [--no-deck]
 | `--deck` | `deck.py` | Path to `deck.py` |
 | `--check` | off | Report stale files without rewriting. Exits 1 if any are stale |
 | `--no-deck` | off | Skip deck lookup (for theme authoring, see below) |
+| `--mode` | deck's `dark_mode` | Force `dark` or `light` color mode for the preview style |
 
 Writes each ancestor layout as a locked layer into each slide SVG.
 These layers are visible in Inkscape as a spatial reference
 and are stripped by the pipeline before serving.
 
-Idempotent: compares a hash of each ancestor against an existing layer's stored hash
+Also injects a `<style id="inkflow-preview">` block with hardcoded hex values for
+each `inkflow-fill-*` / `inkflow-stroke-*` class so Inkscape renders semantic classes
+with the correct theme colors. This block is stripped by the pipeline before serving.
+
+Idempotent: compares content hashes for both layout layers and the preview style,
 and only rewrites stale entries.
 
 `--no-deck` is intended for theme authors who work without a `deck.py`.
@@ -264,4 +270,71 @@ inkflow add content slides/07-new.svg
 # [inkflow] created slides/07-new.svg
 # [inkflow] add to deck.py:
 #     Slide("slides/07-new.svg"),
+```
+
+---
+
+## `inkflow colorize`
+
+Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
+
+```bash
+inkflow colorize FILE [FILE ...] [--deck DECK] [--no-deck] [--mode dark|light]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILE` | required | One or more SVG file paths |
+| `--deck` | `deck.py` | Path to `deck.py` |
+| `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
+| `--mode` | deck's `dark_mode` | Match `dark` or `light` mode palette hex values |
+
+Reads the active theme's color tokens for the selected mode and scans each SVG for
+`fill` and `stroke` attributes (and `style=` declarations) whose hex values match.
+Matching values are replaced with `inkflow-fill-*` / `inkflow-stroke-*` classes
+and the hardcoded attribute is removed.
+
+Intended as the second step after picking colors from the inkflow Inkscape palette:
+
+```bash
+inkflow colorize slides/*.svg
+# [colorized]   slides/02-diagram.svg
+# [no changes]  slides/03-crossfade.svg
+```
+
+After colorizing, run `inkflow parent inject` to refresh Inkscape's preview style.
+
+---
+
+## `inkflow palette`
+
+Generate an Inkscape GPL color palette for the active theme.
+
+```bash
+inkflow palette [--deck DECK] [--no-deck] [--mode dark|light] [--output FILE] [--install]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `--deck` | `deck.py` | Path to `deck.py` |
+| `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
+| `--mode` | deck's `dark_mode` | Generate `dark` or `light` mode palette |
+| `--output`, `-o` | stdout | Write palette to FILE instead of stdout |
+| `--install` | off | Install to `~/.config/inkscape/palettes/inkflow.gpl` |
+
+`--output` and `--install` are mutually exclusive.
+
+Outputs a GIMP Palette (`.gpl`) file whose named colors correspond to the
+`inkflow-fill-*` / `inkflow-stroke-*` CSS token set.
+Load this palette in Inkscape's swatches panel to pick theme colors by name.
+
+```bash
+# Install for the current user:
+inkflow palette --install
+
+# Preview the palette for a custom theme in light mode:
+inkflow palette --deck deck.py --mode light
+
+# Save for theme distribution:
+inkflow palette --deck deck.py --output my-theme/inkflow.gpl
 ```
