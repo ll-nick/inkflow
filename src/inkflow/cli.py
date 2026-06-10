@@ -309,7 +309,7 @@ def parent_inject(
         project_dir: Path | None = None
         theme: str | None = None
         deck_obj: Deck | None = None
-        dark_mode = color_mode != "light"
+        dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
         targets = [(Path(f).resolve(), str(f)) for f in files]
         for svg_path, _ in targets:
             if not svg_path.exists():
@@ -317,7 +317,7 @@ def parent_inject(
     else:
         deck_obj, project_dir = _deck_context(deck_path)
         theme = deck_obj.theme
-        dark_mode = deck_obj.dark_mode if color_mode is None else (color_mode == "dark")
+        dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
         if files:
             targets = [(Path(f).resolve(), str(f)) for f in files]
             for svg_path, _ in targets:
@@ -477,3 +477,10 @@ def export_cmd(
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"[inkflow] exported {out}")
+def _resolve_dark_mode(
+    color_mode: str | None, deck_obj: Deck | None, no_deck: bool
+) -> bool:
+    if no_deck or deck_obj is None:
+        return color_mode != "light"
+    return deck_obj.dark_mode if color_mode is None else color_mode == "dark"
+
