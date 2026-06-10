@@ -25,6 +25,7 @@ from inkflow.server import serve as _serve
 
 
 @click.group()
+@click.version_option()
 def main() -> None:
     """Beautiful slides from SVG. Your editor, your style."""
 
