@@ -1,0 +1,56 @@
+:root {
+    --inkflow-laser-color: #ef4444;
+}
+
+#laser-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 2;
+}
+
+body.laser-mode #stage-wrap {
+    cursor: none;
+}
+
+#laser-dot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--inkflow-laser-color);
+    box-shadow: 0 0 8px 2px var(--inkflow-laser-color);
+    pointer-events: none;
+    will-change: transform;
+    display: none;
+    z-index: 3;
+}
+
+body.laser-mode #laser-dot {
+    display: block;
+}
+
+.laser-trail {
+    fill: none;
+    stroke: var(--inkflow-laser-color);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.8;
+}
+
+@keyframes trail-fade {
+    from {
+        opacity: 0.8;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.trail {
+    animation: trail-fade 1.5s ease-out forwards;
+}
