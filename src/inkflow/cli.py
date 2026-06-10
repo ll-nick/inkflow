@@ -186,7 +186,8 @@ def parent_get(files: tuple[Path, ...]) -> None:
 @click.argument("file", type=click.Path(path_type=Path))
 @click.argument("parent_str", metavar="PARENT")
 @_deck_option
-def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
+@_no_deck_option
+def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> None:
     """Set the inkflow:parent of a slide SVG and refresh its layout layers.
 
     PARENT is a layout name or inkflow:parent string:
@@ -199,10 +200,15 @@ def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
     if not svg_path.exists():
         raise click.ClickException(f"file not found: {svg_path}")
 
-    deck_obj, project_dir = _deck_context(deck_path)
+    if no_deck:
+        project_dir: Path | None = None
+        theme: str | None = None
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        theme = deck_obj.theme
 
     try:
-        resolve_parent_path(parent_str, svg_path, project_dir, deck_obj.theme)
+        resolve_parent_path(parent_str, svg_path, project_dir, theme)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -222,7 +228,7 @@ def parent_set(file: Path, parent_str: str, deck_path: Path) -> None:
     else:
         click.echo(f"[inkflow] {svg_path.name}: parent set to {parent_str!r}")
 
-    chain = resolve_chain(svg_path, project_dir, deck_obj.theme)
+    chain = resolve_chain(svg_path, project_dir, theme)
     if chain:
         inject_layout_layers(svg_path, chain)
         click.echo(f"[injected]    {svg_path.name}")
