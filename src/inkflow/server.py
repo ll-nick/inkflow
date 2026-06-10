@@ -403,6 +403,7 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
         with Live(Text(""), console=console, auto_refresh=False) as live:
             ui = LiveUI(
                 live,
+                host,
                 http_port,
                 deck_path.parent,
                 get_clients=lambda: len(_state["ws_clients"]),
