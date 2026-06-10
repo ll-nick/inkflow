@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.resources
 import re
 
+from lxml import etree
+
 # ── Token registry ────────────────────────────────────────────────────────────
 
 # All --inkflow-* variable names that get SVG utility classes (fill + stroke).
@@ -176,6 +178,79 @@ def parse_style(style: str) -> list[tuple[str, str]]:
 
 def serialize_style(decls: list[tuple[str, str]]) -> str:
     return "; ".join(f"{p}: {v}" for p, v in decls)
+
+
+# ── SVG colorize ─────────────────────────────────────────────────────────────
+
+
+def colorize_element(
+    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    hex_map: dict[str, list[tuple[str, str]]],
+) -> bool:
+    """Replace fill/stroke attributes on one element with semantic CSS classes.
+
+    Handles direct attributes (``fill="#..."`` / ``stroke="#..."``) and the
+    same properties inside an inline ``style`` attribute.  Modifies in place;
+    returns True if any change was made.
+    """
+    changed = False
+    existing_classes: list[str] = str(el.get("class") or "").split()
+
+    for prop in ("fill", "stroke"):
+        val = str(el.get(prop) or "").lower().strip()
+        if not val or val in ("none", "inherit", "currentcolor"):
+            continue
+        cls_matches = [cls for cls, p in hex_map.get(val, []) if p == prop]
+        if not cls_matches:
+            continue
+        existing_classes = [c for c in existing_classes if c not in cls_matches]
+        existing_classes.extend(cls_matches)
+        del el.attrib[prop]
+        changed = True
+
+    style_attr = str(el.get("style") or "")
+    if style_attr:
+        decls = parse_style(style_attr)
+        remaining: list[tuple[str, str]] = []
+        for prop, val in decls:
+            if prop in ("fill", "stroke"):
+                cls_matches = [
+                    cls for cls, p in hex_map.get(val.lower().strip(), []) if p == prop
+                ]
+                if cls_matches:
+                    existing_classes = [
+                        c for c in existing_classes if c not in cls_matches
+                    ]
+                    existing_classes.extend(cls_matches)
+                    changed = True
+                    continue
+            remaining.append((prop, val))
+        if changed:
+            if remaining:
+                el.set("style", serialize_style(remaining))
+            elif "style" in el.attrib:
+                del el.attrib["style"]
+
+    if changed:
+        el.set("class", " ".join(existing_classes))
+
+    return changed
+
+
+def colorize_svg(
+    svg_str: str,
+    hex_map: dict[str, list[tuple[str, str]]],
+) -> tuple[str, bool]:
+    """Apply :func:`colorize_element` to every element in an SVG string.
+
+    Returns ``(result_svg, was_changed)``.  When nothing changed the original
+    string is returned unchanged so the caller can skip the write.
+    """
+    root = etree.fromstring(svg_str.encode())
+    changed = any(colorize_element(el, hex_map) for el in root.iter())
+    if not changed:
+        return svg_str, False
+    return etree.tostring(root, encoding="unicode", xml_declaration=False), True
 
 
 # ── Default dark-mode token helper ────────────────────────────────────────────

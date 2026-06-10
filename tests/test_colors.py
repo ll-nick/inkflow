@@ -7,10 +7,10 @@ from inkflow.colors import (
     build_gpl,
     build_preview_style,
     builtin_tokens,
+    colorize_svg,
     extract_tokens,
     hex_to_class_map,
 )
-
 
 # ── extract_tokens ────────────────────────────────────────────────────────────
 
@@ -129,3 +129,67 @@ def test_hex_to_class_map_shared_hex_collects_all() -> None:
     classes = {cls for cls, _ in mapping["#cdd6f4"]}
     assert "inkflow-fill-text" in classes
     assert "inkflow-fill-code-text" in classes
+
+
+# ── colorize_svg ──────────────────────────────────────────────────────────────
+
+_HEX_MAP = hex_to_class_map({"accent": "#cba6f7", "text": "#cdd6f4"})
+
+_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#cba6f7"/></svg>'
+
+
+def test_colorize_svg_replaces_fill_attribute() -> None:
+    result, changed = colorize_svg(_SVG, _HEX_MAP)
+    assert changed
+    assert 'fill="#cba6f7"' not in result
+    assert "inkflow-fill-accent" in result
+
+
+def test_colorize_svg_no_match_returns_unchanged() -> None:
+    svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#123456"/></svg>'
+    result, changed = colorize_svg(svg, _HEX_MAP)
+    assert not changed
+    assert result == svg
+
+
+def test_colorize_svg_preserves_existing_classes() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<rect class="my-class" fill="#cba6f7"/></svg>'
+    )
+    result, changed = colorize_svg(svg, _HEX_MAP)
+    assert changed
+    assert "my-class" in result
+    assert "inkflow-fill-accent" in result
+
+
+def test_colorize_svg_replaces_stroke_attribute() -> None:
+    svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect stroke="#cba6f7"/></svg>'
+    result, changed = colorize_svg(svg, _HEX_MAP)
+    assert changed
+    assert "inkflow-stroke-accent" in result
+    assert 'stroke="#cba6f7"' not in result
+
+
+def test_colorize_svg_replaces_inline_style_fill() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<rect style="fill:#cba6f7;opacity:0.5"/></svg>'
+    )
+    result, changed = colorize_svg(svg, _HEX_MAP)
+    assert changed
+    assert "inkflow-fill-accent" in result
+    assert "opacity" in result  # non-color declarations survive
+
+
+def test_colorize_svg_skips_fill_none() -> None:
+    svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="none"/></svg>'
+    _, changed = colorize_svg(svg, _HEX_MAP)
+    assert not changed
+
+
+def test_colorize_svg_handles_uppercase_hex() -> None:
+    svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#CBA6F7"/></svg>'
+    result, changed = colorize_svg(svg, _HEX_MAP)
+    assert changed
+    assert "inkflow-fill-accent" in result
