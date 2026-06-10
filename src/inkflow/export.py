@@ -6,9 +6,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from inkflow.loaders import load_scripts, load_styles
 from inkflow.manifest import Deck, MarkdownSlide, Media, Slide
 from inkflow.pipeline import process_deck, resolve_transitions
-from inkflow.server import State, build_html, load_deck, load_scripts, load_styles
+from inkflow.server import State, build_html, load_deck
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 

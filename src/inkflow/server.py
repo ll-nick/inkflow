@@ -25,7 +25,7 @@ from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
-from inkflow.layout import resolve_theme_dir
+from inkflow.loaders import load_scripts, load_styles
 from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.tui import LiveUI
@@ -179,45 +179,6 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
 # ── HTTP handler ──────────────────────────────────────────────────────────────
 
 _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
-
-
-def load_styles(deck: Deck, project_dir: Path) -> str:
-    pkg = importlib.resources.files("inkflow")
-    parts = [pkg.joinpath("theme", "styles.css").read_text(encoding="utf-8")]
-
-    if deck.theme is not None:
-        try:
-            theme_dir = resolve_theme_dir(deck.theme, project_dir)
-            theme_css = theme_dir / "styles.css"
-            if theme_css.exists():
-                parts.append(theme_css.read_text(encoding="utf-8"))
-        except ValueError:
-            pass
-
-    project_css = project_dir / "styles.css"
-    if project_css.exists():
-        parts.append(project_css.read_text(encoding="utf-8"))
-
-    return "\n".join(parts)
-
-
-def load_scripts(deck: Deck, project_dir: Path) -> str:
-    parts: list[str] = []
-
-    if deck.theme is not None:
-        try:
-            theme_dir = resolve_theme_dir(deck.theme, project_dir)
-            theme_js = theme_dir / "scripts.js"
-            if theme_js.exists():
-                parts.append(theme_js.read_text(encoding="utf-8"))
-        except ValueError:
-            pass
-
-    project_js = project_dir / "scripts.js"
-    if project_js.exists():
-        parts.append(project_js.read_text(encoding="utf-8"))
-
-    return "\n".join(parts)
 
 
 def build_html(state: State, ws_port: int | None) -> bytes:

@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 from typing import cast
 
+from inkflow.loaders import load_styles
 from inkflow.manifest import Deck
-from inkflow.server import State, build_html, load_styles
+from inkflow.server import State, build_html
 
 _EMPTY_STATE: State = {
     "slides": [],
