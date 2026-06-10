@@ -335,8 +335,8 @@ def _open_browser(url: str) -> None:
 
 async def _read_keys(
     deck_path: Path,
+    host: str,
     http_port: int,
-    display_host: str,
     ui: LiveUI,
     lock: asyncio.Lock,
     shutdown: asyncio.Event,
@@ -362,7 +362,7 @@ async def _read_keys(
                 shutdown.set()
                 return
             elif ch == "o":
-                _open_browser(f"http://{display_host}:{http_port}")
+                _open_browser(f"http://{host}:{http_port}")
             elif ch == "r":
                 async with lock:
                     await rebuild(deck_path, ui)
@@ -410,14 +410,21 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
             try:
                 async with (
                     http_server,
-                    ws_serve(make_ws_handler(ui), "127.0.0.1", ws_port),
+                    ws_serve(make_ws_handler(ui), host, ws_port),
                 ):
                     await rebuild(deck_path, ui)
                     tasks = [
                         asyncio.create_task(http_server.serve_forever()),
                         asyncio.create_task(_watch(deck_path, ui, rebuild_lock)),
                         asyncio.create_task(
-                            _read_keys(deck_path, http_port, ui, rebuild_lock, shutdown)
+                            _read_keys(
+                                deck_path,
+                                host,
+                                http_port,
+                                ui,
+                                rebuild_lock,
+                                shutdown,
+                            )
                         ),
                     ]
                     await shutdown.wait()
