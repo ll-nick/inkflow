@@ -23,6 +23,11 @@ _MIME_MAP = {
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
+
+def _is_url(src: str) -> bool:
+    return src.startswith(("http://", "https://", "//"))
+
+
 _ALIGN_MAP: dict[str, tuple[int, int]] = {
     "center": (50, 50),
     "top": (50, 0),
@@ -360,6 +365,12 @@ def _replace_with_media(
         media_el = etree.Element(
             f"{{{ns.XHTML}}}video",
             {"src": src, "controls": ""},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    elif _is_url(src):
+        media_el = etree.Element(
+            f"{{{ns.XHTML}}}img",
+            {"src": src},
             nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
         )
     else:
