@@ -5,16 +5,6 @@ Items covered in the docs are implemented and not listed here.
 
 ---
 
-## Open design questions
-
-**Layout overrides**
-Some layouts visually override the base layout frame — a section divider or full-bleed title slide typically drops the footer and page number.
-The mechanism for opting out (per-layout or per-slide) is not yet decided.
-Candidates: a flag attribute on the layout SVG root (`inkflow:no-layout="true"`), or a `layout_zones` exclusion list in `deck.py`.
-This affects both `inject-layout` (which layers to inject) and the pipeline (which elements to include).
-
----
-
 ## Pipeline
 
 **Font embedding**
@@ -26,14 +16,6 @@ Makes each output SVG self-contained without converting text to paths.
 ---
 
 ## Presenter experience
-
-**Hidden / draft slides**
-`Slide("...", visible=False)` keeps a slide in `deck.py` but excludes it from the presentation.
-Essential for working decks where you trim slides depending on audience or time.
-
-**Remote control**
-A `/remote` URL serving a minimal forward/back interface for a phone browser.
-The WebSocket architecture makes this nearly free to implement.
 
 **Drawing and annotation mode**
 A toggle that overlays a canvas element and lets you draw with the mouse or stylus during Q&A.
@@ -96,13 +78,6 @@ Auto-discovery so `Deck(theme="catppuccin-mocha")` works after `pip install inkf
 
 **Theme eject**
 `inkflow eject-theme` copies a theme into the project and updates `deck.py` to point at the local copy.
-
----
-
-## Reliability and polish
-
-**CLI polish**
-`--no-browser` flag, `--host` for SSH forwarding, `--version`.
 
 ---
 
