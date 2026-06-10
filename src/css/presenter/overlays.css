@@ -57,10 +57,25 @@
     padding-left: 1rem;
 }
 
+#help-box tr.kb-group td {
+    padding-top: 1rem;
+    padding-bottom: 0.25rem;
+    padding-left: 0;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    border-bottom: 1px solid var(--overlay);
+    text-align: left;
+}
+#help-box tr.kb-group:first-child td {
+    padding-top: 0;
+}
+
 #help-box p {
     margin-top: 1rem;
     font-size: 0.7rem;
-    color: var(--overlay);
+    color: var(--subtext);
     text-align: center;
 }
 
