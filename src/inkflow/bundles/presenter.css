@@ -226,10 +226,24 @@ body.is-fullscreen #sb-spacer {
   color: var(--subtext);
   padding-left: 1rem;
 }
+#help-box tr.kb-group td {
+  padding-top: 1rem;
+  padding-bottom: 0.25rem;
+  padding-left: 0;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  border-bottom: 1px solid var(--overlay);
+  text-align: left;
+}
+#help-box tr.kb-group:first-child td {
+  padding-top: 0;
+}
 #help-box p {
   margin-top: 1rem;
   font-size: 0.7rem;
-  color: var(--overlay);
+  color: var(--subtext);
   text-align: center;
 }
 kbd {
@@ -653,6 +667,57 @@ body.pv-open #pv {
 }
 .anim-highlight.active {
   animation: anim-highlight-pulse var(--anim-duration, 0.6s) var(--anim-easing, ease) var(--anim-delay, 0s) var(--anim-passes, 1);
+}
+
+/* src/css/presenter/laser.css */
+:root {
+  --inkflow-laser-color: #ef4444;
+}
+#laser-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+body.laser-mode #stage-wrap {
+  cursor: none;
+}
+#laser-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--inkflow-laser-color);
+  box-shadow: 0 0 8px 2px var(--inkflow-laser-color);
+  pointer-events: none;
+  will-change: transform;
+  display: none;
+  z-index: 3;
+}
+body.laser-mode #laser-dot {
+  display: block;
+}
+.laser-trail {
+  fill: none;
+  stroke: var(--inkflow-laser-color);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+@keyframes trail-fade {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.trail {
+  animation: trail-fade 1.5s ease-out forwards;
 }
 
 /* src/css/presenter/mobile.css */
