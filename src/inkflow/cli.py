@@ -25,6 +25,7 @@ from inkflow.server import serve as _serve
 
 
 @click.group()
+@click.version_option()
 def main() -> None:
     """Beautiful slides from SVG. Your editor, your style."""
 
@@ -90,15 +91,21 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
 
 @main.command()
 @click.argument("deck", default="deck.py")
+@click.option(
+    "--host",
+    default="localhost",
+    show_default=True,
+    help="Bind address",
+)
 @click.option("--port", default=7777, show_default=True, help="HTTP port")
 @click.option("--ws-port", default=7778, show_default=True, help="WebSocket port")
-def serve(deck: str, port: int, ws_port: int) -> None:
+def serve(deck: str, host: str, port: int, ws_port: int) -> None:
     """Start the presentation server."""
     deck_path = Path(deck).resolve()
     if not deck_path.exists():
         raise click.ClickException(f"deck not found: {deck_path}")
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(_serve(deck_path, port, ws_port))
+        asyncio.run(_serve(deck_path, host, port, ws_port))
 
 
 @main.command()

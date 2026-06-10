@@ -17,12 +17,14 @@ class LiveUI:
     def __init__(
         self,
         live: Live,
+        host: str,
         http_port: int,
         watch_path: Path,
         get_clients: Callable[[], int],
     ) -> None:
         self._live: Live = live
         self._http_port: int = http_port
+        self._host: str = host
         self._watch_path: Path = watch_path
         self._get_clients: Callable[[], int] = get_clients
         self._phase: str = "idle"
@@ -42,7 +44,7 @@ class LiveUI:
 
         content = Group(
             Text.assemble(
-                (f"http://localhost:{self._http_port}", "bold"),
+                (f"http://{self._host}:{self._http_port}", "bold"),
                 ("  ·  ", "dim"),
                 (client_str, "dim"),
             ),
