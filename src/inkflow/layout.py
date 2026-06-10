@@ -207,6 +207,8 @@ def _chain_refs(svg_path: Path, chain: list[Path]) -> list[str]:
     The ref for chain[i] is the inkflow:parent value on its child — chain[i+1]
     for all but the last entry, svg_path for the last.
     """
+    if not chain:
+        return []
     children = [*chain[1:], svg_path]
     return [_read_parent_attr(child) or "" for child in children]
 
@@ -217,8 +219,8 @@ _LAYER_ATTRS: dict[str, str] = {
 }
 
 
-def is_layout_current(svg_path: Path, chain: list[Path]) -> bool:
-    """Return True if svg_path already has up-to-date inject-layout layers."""
+def is_layout_current(svg_path: Path, chain: list[Path], preview_css: str = "") -> bool:
+    """Return True if svg_path has up-to-date layout layers and preview style."""
     root = etree.parse(svg_path).getroot()
     existing = [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]
     if len(existing) != len(chain):
@@ -231,6 +233,10 @@ def is_layout_current(svg_path: Path, chain: list[Path]) -> bool:
         if el.get(INKFLOW_LAYOUT_HASH) != new_hashes[str(p.resolve())]:
             return False
         if any(el.get(attr) != val for attr, val in _LAYER_ATTRS.items()):
+            return False
+    if preview_css:
+        style_el = root.find(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]')
+        if style_el is None or (style_el.text or "").strip() != preview_css.strip():
             return False
     return True
 
@@ -319,12 +325,42 @@ def create_slide(
         inject_layout_layers(output_path, chain)
 
 
-def inject_layout_layers(svg_path: Path, chain: list[Path]) -> bool:
+def _ensure_defs(
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+    defs = root.find(f"{{{ns.SVG}}}defs")
+    if defs is None:
+        defs = etree.Element(f"{{{ns.SVG}}}defs")
+        root.insert(0, defs)
+    return defs
+
+
+def _update_preview_style(
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    preview_css: str,
+) -> None:
+    for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
+        parent = el.getparent()
+        if parent is not None:
+            parent.remove(el)
+    if not preview_css:
+        return
+    defs = _ensure_defs(root)
+    style_el = etree.SubElement(defs, f"{{{ns.SVG}}}style")
+    style_el.set("id", "inkflow-preview")
+    style_el.text = preview_css
+
+
+def inject_layout_layers(
+    svg_path: Path, chain: list[Path], preview_css: str = ""
+) -> bool:
     """Inject ancestor SVGs as locked Inkscape layers into svg_path in place.
 
+    Also writes a ``<style id="inkflow-preview">`` block when ``preview_css``
+    is provided, so Inkscape renders semantic classes with the correct colors.
     Returns True if the file was modified, False if already up to date.
     """
-    if is_layout_current(svg_path, chain):
+    if is_layout_current(svg_path, chain, preview_css):
         return False
 
     root = etree.parse(svg_path).getroot()
@@ -336,6 +372,8 @@ def inject_layout_layers(svg_path: Path, chain: list[Path]) -> bool:
     refs = _chain_refs(svg_path, chain)
     for i, (ancestor_path, ref) in enumerate(zip(chain, refs, strict=True)):
         root.insert(i, _build_layer_group(ancestor_path, ref, hashes))
+
+    _update_preview_style(root, preview_css)
 
     out = with_namespaces(root, {"inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI})
     svg_path.write_text(

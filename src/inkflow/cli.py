@@ -263,6 +263,15 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
         click.echo(f"[stripped]    {label}" if had_parent else f"[no parent]   {label}")
 
 
+_mode_option = click.option(
+    "--mode",
+    "color_mode",
+    type=click.Choice(["dark", "light"]),
+    default=None,
+    help="Color mode for preview style (default: deck dark_mode; dark with --no-deck).",
+)
+
+
 @parent.command("inject")
 @click.argument("files", nargs=-1, type=click.Path(path_type=Path))
 @click.option(
@@ -272,10 +281,18 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
 )
 @_deck_option
 @_no_deck_option
+@_mode_option
 def parent_inject(
-    files: tuple[Path, ...], check: bool, deck_path: Path, no_deck: bool
+    files: tuple[Path, ...],
+    check: bool,
+    deck_path: Path,
+    no_deck: bool,
+    color_mode: str | None,
 ) -> None:
     """Refresh ancestor layout layers in slide SVG(s) for editor preview.
+
+    Also injects a preview style block so Inkscape renders semantic CSS classes
+    (e.g. inkflow-fill-accent) with the correct theme colors.
 
     If FILES is omitted, refreshes all slides in the deck.
     Use --no-deck when authoring a theme without a project deck.py.
@@ -285,6 +302,8 @@ def parent_inject(
             raise click.UsageError("FILES required with --no-deck")
         project_dir: Path | None = None
         theme: str | None = None
+        deck_obj: Deck | None = None
+        dark_mode = color_mode != "light"
         targets = [(Path(f).resolve(), str(f)) for f in files]
         for svg_path, _ in targets:
             if not svg_path.exists():
@@ -292,6 +311,7 @@ def parent_inject(
     else:
         deck_obj, project_dir = _deck_context(deck_path)
         theme = deck_obj.theme
+        dark_mode = deck_obj.dark_mode if color_mode is None else (color_mode == "dark")
         if files:
             targets = [(Path(f).resolve(), str(f)) for f in files]
             for svg_path, _ in targets:
@@ -304,6 +324,10 @@ def parent_inject(
                 if not isinstance(s, MarkdownSlide)
             ]
 
+    css = loaders.load_styles(deck_obj, project_dir)
+    tokens = colors.extract_tokens(css, dark_mode)
+    preview_css = colors.build_preview_style(tokens)
+
     stale_found = False
     for svg_path, label in targets:
         try:
@@ -311,17 +335,26 @@ def parent_inject(
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
         if not chain:
-            if files or no_deck:
+            if not (files or no_deck):
+                continue
+            if check:
+                if is_layout_current(svg_path, [], preview_css):
+                    click.echo(f"[ok]          {label}")
+                else:
+                    click.echo(f"[stale]       {label}")
+                    stale_found = True
+            else:
+                inject_layout_layers(svg_path, [], preview_css)
                 click.echo(f"[no parent]   {label}")
             continue
         if check:
-            if is_layout_current(svg_path, chain):
+            if is_layout_current(svg_path, chain, preview_css):
                 click.echo(f"[ok]     {label}")
             else:
                 click.echo(f"[stale]  {label}")
                 stale_found = True
         else:
-            changed = inject_layout_layers(svg_path, chain)
+            changed = inject_layout_layers(svg_path, chain, preview_css)
             click.echo(
                 f"[injected]    {label}" if changed else f"[up to date]  {label}"
             )
