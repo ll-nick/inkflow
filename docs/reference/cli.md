@@ -4,6 +4,7 @@ All commands are available via the `inkflow` entry point.
 
 ```bash
 inkflow --help
+inkflow --version
 ```
 
 ---
@@ -13,16 +14,18 @@ inkflow --help
 Start the presentation server with live reload.
 
 ```bash
-inkflow serve [DECK] [--port PORT] [--ws-port WS_PORT]
+inkflow serve [DECK] [--port PORT] [--ws-port WS_PORT] [--host HOST]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
 | `DECK` | `deck.py` | Path to `deck.py` |
-| `--port` | `7777` | HTTP server port |
 | `--ws-port` | `7778` | WebSocket server port |
+| `--host` | `127.0.0.1` | Bind address. Use `0.0.0.0` to expose on all interfaces |
+| `--port` | `7777` | HTTP server port |
 
-Opens `http://localhost:{port}` in the default browser.
+The server is accessible at `http://{host}:{port}`.
+Press `o` to open it in the default browser.
 File changes trigger a live reload over WebSocket.
 The presenter updates in place without a full page reload.
 
