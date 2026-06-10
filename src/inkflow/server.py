@@ -336,6 +336,7 @@ def _open_browser(url: str) -> None:
 async def _read_keys(
     deck_path: Path,
     http_port: int,
+    display_host: str,
     ui: LiveUI,
     lock: asyncio.Lock,
     shutdown: asyncio.Event,
@@ -361,7 +362,7 @@ async def _read_keys(
                 shutdown.set()
                 return
             elif ch == "o":
-                _open_browser(f"http://localhost:{http_port}")
+                _open_browser(f"http://{display_host}:{http_port}")
             elif ch == "r":
                 async with lock:
                     await rebuild(deck_path, ui)
@@ -375,7 +376,7 @@ async def _read_keys(
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
-async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
+async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> None:
     console = Console()
     rebuild_lock = asyncio.Lock()
     shutdown = asyncio.Event()
@@ -388,9 +389,7 @@ async def serve(deck_path: Path, http_port: int, ws_port: int) -> None:
         http_handler = make_http_handler(ws_port, deck_path.parent)
         # Bind before the Live UI so port conflicts fail fast with a clean message
         try:
-            http_server = await asyncio.start_server(
-                http_handler, "127.0.0.1", http_port
-            )
+            http_server = await asyncio.start_server(http_handler, host, http_port)
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
                 msg = (
