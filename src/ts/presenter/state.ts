@@ -12,4 +12,5 @@ export const state = {
     _overviewCols: 1,
     ws: null as WebSocket | null,
     _syncingFromServer: false,
+    _laserMode: false,
 };

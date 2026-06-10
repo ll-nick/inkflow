@@ -1,3 +1,4 @@
+import { toggleLaser } from "./laser";
 import {
     advance,
     gotoFirst,
@@ -116,7 +117,7 @@ const KEYBINDINGS: Record<
     o: { action: toggleOverview, preventDefault: true },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
-    ".": { action: () => toggleCurtain("black") },
+    ".": { action: toggleLaser },
     w: { action: () => toggleCurtain("white") },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },

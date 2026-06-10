@@ -36,7 +36,8 @@
     _overviewActive: 0,
     _overviewCols: 1,
     ws: null,
-    _syncingFromServer: false
+    _syncingFromServer: false,
+    _laserMode: false
   };
 
   // src/ts/presenter/pv.ts
@@ -1129,6 +1130,78 @@
     state.ws.onerror = () => state.ws?.close();
   }
 
+  // src/ts/presenter/laser.ts
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var stageWrap = document.getElementById("stage-wrap");
+  var overlay = document.getElementById(
+    "laser-overlay"
+  );
+  var dot = document.getElementById("laser-dot");
+  var DOT_RADIUS = 8;
+  var isDrawing = false;
+  var currentPath = null;
+  var currentPoints = [];
+  var pendingClientX = 0;
+  var pendingClientY = 0;
+  var rafId = null;
+  var stageRect = stageWrap.getBoundingClientRect();
+  new ResizeObserver(() => {
+    stageRect = stageWrap.getBoundingClientRect();
+  }).observe(stageWrap);
+  function flushFrame() {
+    rafId = null;
+    const x = pendingClientX - stageRect.left;
+    const y = pendingClientY - stageRect.top;
+    dot.style.transform = `translate(${x - DOT_RADIUS}px, ${y - DOT_RADIUS}px)`;
+    if (isDrawing && currentPath && currentPoints.length > 0) {
+      currentPath.setAttribute("d", currentPoints.join(" "));
+    }
+  }
+  stageWrap.addEventListener("pointermove", (e) => {
+    if (!state._laserMode) return;
+    pendingClientX = e.clientX;
+    pendingClientY = e.clientY;
+    if (isDrawing) {
+      const x = e.clientX - stageRect.left;
+      const y = e.clientY - stageRect.top;
+      currentPoints.push(`L ${x} ${y}`);
+    }
+    if (rafId === null) rafId = requestAnimationFrame(flushFrame);
+  });
+  stageWrap.addEventListener("pointerdown", (e) => {
+    if (!state._laserMode) return;
+    if (e.target.closest("#overview")) return;
+    stageWrap.setPointerCapture(e.pointerId);
+    const x = e.clientX - stageRect.left;
+    const y = e.clientY - stageRect.top;
+    currentPath = document.createElementNS(SVG_NS, "path");
+    currentPoints = [`M ${x} ${y}`];
+    currentPath.classList.add("laser-trail");
+    overlay.appendChild(currentPath);
+    isDrawing = true;
+  });
+  stageWrap.addEventListener("pointerup", finalizeDraw);
+  stageWrap.addEventListener("pointercancel", finalizeDraw);
+  function finalizeDraw() {
+    if (!isDrawing || !currentPath) return;
+    isDrawing = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      flushFrame();
+    }
+    currentPath.classList.add("trail");
+    const path = currentPath;
+    path.addEventListener("animationend", () => path.remove(), { once: true });
+    currentPath = null;
+    currentPoints = [];
+  }
+  function toggleLaser() {
+    state._laserMode = !state._laserMode;
+    document.body.classList.toggle("laser-mode", state._laserMode);
+    if (!state._laserMode) finalizeDraw();
+  }
+
   // src/ts/presenter/navigation.ts
   function advance() {
     if (state.step < maxStep2()) {
@@ -1563,7 +1636,7 @@
     o: { action: toggleOverview, preventDefault: true },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
-    ".": { action: () => toggleCurtain("black") },
+    ".": { action: toggleLaser },
     w: { action: () => toggleCurtain("white") },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
