@@ -156,61 +156,67 @@ class TestBuildSlideContent:
         md.write_text("Body content here.\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
         assert isinstance(result, SlideContent)
-        assert any(
-            isinstance(c, TextBox) and "#zone-content" in c.element
-            for c in result.content
-        )
+        assert "zone-content" in result.content
+        assert isinstance(result.content["zone-content"], TextBox)
 
     def test_h1_creates_title_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# My Title\n\nBody.\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        titles = [
-            c
-            for c in result.content
-            if isinstance(c, TextBox) and "#zone-title" in c.element
-        ]
-        assert len(titles) == 1
-        assert titles[0].text is not None
-        assert "My Title" in titles[0].text
-        assert "<h1>" in titles[0].text
+        assert "zone-title" in result.content
+        tb = result.content["zone-title"]
+        assert isinstance(tb, TextBox)
+        assert tb.text is not None
+        assert "My Title" in tb.text
+        assert "<h1>" in tb.text
 
-    def test_image_kwarg_creates_media(self) -> None:
-        result = build_slide_content(None, False, {"image": "photo.png"})
-        media = [c for c in result.content if isinstance(c, Media)]
-        assert len(media) == 1
-        assert media[0].element == "#zone-image"
-        assert media[0].src == "photo.png"
+    def test_str_zone_creates_textbox(self) -> None:
+        result = build_slide_content(None, False, {"content": "**bold**"})
+        assert "zone-content" in result.content
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
+        assert "bold" in (tb.text or "")
 
-    def test_video_kwarg_creates_media(self) -> None:
-        result = build_slide_content(None, False, {"video": "clip.mp4"})
-        media = [c for c in result.content if isinstance(c, Media)]
-        assert len(media) == 1
-        assert media[0].element == "#zone-video"
-        assert media[0].src == "clip.mp4"
+    def test_str_zone_rendered_as_markdown(self) -> None:
+        result = build_slide_content(None, False, {"title": "# Hello"})
+        tb = result.content["zone-title"]
+        assert isinstance(tb, TextBox)
+        assert "<h1>" in (tb.text or "")
 
     def test_media_kwarg_accepts_media_object_with_tuning(self) -> None:
         result = build_slide_content(
             None, False, {"image": Media("photo.png", fit="cover", align="top")}
         )
-        media = [c for c in result.content if isinstance(c, Media)]
-        assert len(media) == 1
-        assert media[0].element == "#zone-image"
-        assert media[0].src == "photo.png"
-        assert media[0].fit == "cover"
-        assert media[0].align == "top"
+        assert "zone-image" in result.content
+        m = result.content["zone-image"]
+        assert isinstance(m, Media)
+        assert m.src == "photo.png"
+        assert m.fit == "cover"
+        assert m.align == "top"
+
+    def test_textbox_zone_preserves_alignment_fields(self) -> None:
+        result = build_slide_content(
+            None,
+            False,
+            {"content": TextBox(text="<p>hello</p>", align=Align.CENTER, padding=30)},
+        )
+        assert "zone-content" in result.content
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
+        assert tb.align == Align.CENTER
+        assert tb.padding == 30
 
     def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("- One\n- Two\n- Three\n", encoding="utf-8")
         result = build_slide_content(md, True, {})
-        box = next(c for c in result.content if isinstance(c, TextBox))
+        box = next(v for v in result.content.values() if isinstance(v, TextBox))
         assert box.text is not None
         assert "data-step" in box.text
 
     def test_no_content_no_extra_returns_empty(self) -> None:
         result = build_slide_content(None, False, {})
-        assert result.content == []
+        assert result.content == {}
         assert result.notes == ""
 
     def test_notes_zone_returned_as_html(self, tmp_path: Path) -> None:
@@ -220,16 +226,13 @@ class TestBuildSlideContent:
         )
         result = build_slide_content(md, False, {})
         assert "<strong>this</strong>" in result.notes
-        assert not any(
-            isinstance(c, TextBox) and "#zone-notes" in c.element
-            for c in result.content
-        )
+        assert "zone-notes" not in result.content
 
     def test_notes_zone_not_injected_into_slide(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::notes::\n\nPrivate note.\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        assert result.content == []
+        assert result.content == {}
         assert "Private note." in result.notes
 
     def test_no_notes_zone_returns_empty_notes(self, tmp_path: Path) -> None:
@@ -276,35 +279,40 @@ class TestZoneParams:
         md = tmp_path / "slide.md"
         md.write_text("::content align=center::\n\nBody text\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        tb = next(c for c in result.content if isinstance(c, TextBox))
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
         assert tb.align == Align.CENTER
 
     def test_build_slide_content_valign_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content valign=center::\n\nBody text\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        tb = next(c for c in result.content if isinstance(c, TextBox))
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
         assert tb.valign == VAlign.CENTER
 
     def test_build_slide_content_padding_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content padding=40::\n\nBody text\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        tb = next(c for c in result.content if isinstance(c, TextBox))
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
         assert tb.padding == 40.0
 
     def test_unknown_params_ignored(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content unknown=foo align=left::\n\nBody\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        tb = next(c for c in result.content if isinstance(c, TextBox))
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
         assert tb.align == Align.LEFT
 
     def test_no_params_textbox_fields_are_none(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content::\n\nBody\n", encoding="utf-8")
         result = build_slide_content(md, False, {})
-        tb = next(c for c in result.content if isinstance(c, TextBox))
+        tb = result.content["zone-content"]
+        assert isinstance(tb, TextBox)
         assert tb.align is None
         assert tb.valign is None
         assert tb.padding is None

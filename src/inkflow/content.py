@@ -8,7 +8,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Align, Content, TextBox, VAlign
+from inkflow.manifest import Align, Media, TextBox, VAlign
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
@@ -375,13 +375,12 @@ def _replace_with_media(
 
 def substitute_content(
     svg_str: str,
-    content: list[Content],
+    content: dict[str, TextBox | Media],
     font_size: int = 36,
 ) -> str:
     root = etree.fromstring(svg_str.encode())
 
-    for item in content:
-        zone_id = item.element.lstrip("#")
+    for zone_id, item in content.items():
         el = root.find(f'.//*[@id="{zone_id}"]')
         if el is None:
             print(f"[inkflow] warning: zone #{zone_id} not found in SVG")

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
 from markdown_it import MarkdownIt
 
-from inkflow.manifest import Align, Content, Media, TextBox, VAlign
+from inkflow.manifest import Align, Media, TextBox, VAlign, ZoneContent
 
 
 @dataclass
 class SlideContent:
-    content: list[Content]
+    content: dict[str, TextBox | Media]  # zone-id (e.g. "zone-content") → content
     notes: str
 
 
@@ -181,7 +181,7 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
 def build_slide_content(
     content_path: Path | None,
     steps: bool,
-    extra: dict[str, str | Media],
+    extra: dict[str, ZoneContent],
 ) -> SlideContent:
     zones: dict[str, list[str]] = {}
     zone_params: dict[str, dict[str, str]] = {}
@@ -195,26 +195,23 @@ def build_slide_content(
     if notes_chunks:
         notes_html, _ = chunks_to_html(notes_chunks, 0)
 
-    content: list[Content] = []
+    content: dict[str, TextBox | Media] = {}
     base_step = 0
 
     for zone_name, chunks in zones.items():
         html, base_step = chunks_to_html(chunks, base_step, wrap_list_items=steps)
         p = zone_params.get(zone_name, {})
-        content.append(
-            TextBox(
-                f"#zone-{zone_name}",
-                text=html,
-                align=Align(p["align"]) if "align" in p else None,
-                valign=VAlign(p["valign"]) if "valign" in p else None,
-                padding=float(p["padding"]) if "padding" in p else None,
-            )
+        content[f"zone-{zone_name}"] = TextBox(
+            text=html,
+            align=Align(p["align"]) if "align" in p else None,
+            valign=VAlign(p["valign"]) if "valign" in p else None,
+            padding=float(p["padding"]) if "padding" in p else None,
         )
 
     for key, val in extra.items():
-        if isinstance(val, Media):
-            content.append(replace(val, element=f"#zone-{key}"))
+        if isinstance(val, str):
+            content[f"zone-{key}"] = TextBox(text=markdown_to_html(val))
         else:
-            content.append(Media(val, element=f"#zone-{key}"))
+            content[f"zone-{key}"] = val
 
     return SlideContent(content=content, notes=notes_html)
