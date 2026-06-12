@@ -25,6 +25,7 @@ from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
+from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_scripts, load_styles
 from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
@@ -89,6 +90,14 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         slides = await asyncio.to_thread(process_deck, deck, project_dir)
         transitions = resolve_transitions(deck)
         styles_css = await asyncio.to_thread(load_styles, deck, project_dir)
+        if deck.embed_fonts:
+            font_css, font_warnings = await asyncio.to_thread(
+                embed_fonts_css, slides, project_dir
+            )
+        else:
+            font_css, font_warnings = "", []
+        if font_css:
+            styles_css = (font_css + "\n" + styles_css).strip()
         scripts_js = await asyncio.to_thread(load_scripts, deck, project_dir)
         _state["slides"] = slides
         _state["transitions"] = transitions
@@ -102,7 +111,7 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         else:
             _state["position"]["slideIndex"] = 0
         _state["position"]["step"] = 0
-        ui.set_ok(len(slides), time.monotonic() - t0)
+        ui.set_ok(len(slides), time.monotonic() - t0, warnings=font_warnings)
         await broadcast(
             json.dumps({"type": "update", "slides": slides, "transitions": transitions})
         )
