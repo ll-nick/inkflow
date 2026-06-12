@@ -16,9 +16,7 @@ from inkflow.animations import (
 )
 from inkflow.manifest import (
     Deck,
-    MarkdownSlide,
     Slide,
-    TextBox,
 )
 from inkflow.pipeline import (
     _resolve_notes,
@@ -314,12 +312,7 @@ class TestProcessSlideWithContent:
 
     def test_foreignobject_replaces_zone_rect(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
-        deck = Deck()
-        deck.slides = [
-            Slide(
-                src="slide.svg", content=[TextBox("#zone-content", text="<p>hello</p>")]
-            )
-        ]
+        deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "hello"})])
         results = process_deck(deck, tmp_path)
         assert len(results) == 1
         assert "foreignObject" in results[0]["svg"]
@@ -327,20 +320,14 @@ class TestProcessSlideWithContent:
 
     def test_zone_rect_id_inherited_by_foreignobject(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
-        deck = Deck()
-        deck.slides = [
-            Slide(src="slide.svg", content=[TextBox("#zone-content", text="hi")])
-        ]
+        deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "hi"})])
         results = process_deck(deck, tmp_path)
         assert 'id="zone-content"' in results[0]["svg"]
 
     def test_unreferenced_zone_rects_removed(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _LAYOUT_SVG)
-        deck = Deck()
         # Only supply content for zone-content, leave zone-title unconsumed
-        deck.slides = [
-            Slide(src="slide.svg", content=[TextBox("#zone-content", text="body")])
-        ]
+        deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "body"})])
         results = process_deck(deck, tmp_path)
         assert 'id="zone-title"' not in results[0]["svg"]
 
@@ -348,15 +335,12 @@ class TestProcessSlideWithContent:
         self, tmp_path: Path
     ) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
-        deck = Deck()
-        deck.slides = [
-            Slide(src="slide.svg", content=[TextBox("#zone-content", text="x")])
-        ]
+        deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "x"})])
         results = process_deck(deck, tmp_path)
         assert "inkflow-content" in results[0]["svg"]
 
 
-class TestMarkdownSlideExpansion:
+class TestLayoutBackedSlideExpansion:
     def _setup(self, tmp_path: Path) -> tuple[Path, Path]:
         layout = tmp_path / "layouts" / "layout.svg"
         layout.parent.mkdir(parents=True, exist_ok=True)
@@ -369,8 +353,7 @@ class TestMarkdownSlideExpansion:
         _, slides_dir = self._setup(tmp_path)
         md = slides_dir / "content.md"
         md.write_text("# Hello\n\nBody text here.\n", encoding="utf-8")
-        deck = Deck()
-        deck.slides = [MarkdownSlide("layout", content="content")]
+        deck = Deck(slides=[Slide("layout", md="content")])
         results = process_deck(deck, tmp_path)
         assert len(results) == 1
         assert "foreignObject" in results[0]["svg"]
@@ -380,19 +363,36 @@ class TestMarkdownSlideExpansion:
         _, slides_dir = self._setup(tmp_path)
         md = slides_dir / "content.md"
         md.write_text("# My Title\n\nSome content.\n", encoding="utf-8")
-        deck = Deck()
-        deck.slides = [MarkdownSlide("layout", content="content")]
+        deck = Deck(slides=[Slide("layout", md="content")])
         results = process_deck(deck, tmp_path)
         assert results[0]["title"] == "My Title"
 
     def test_markdown_slide_animations_applied(self, tmp_path: Path) -> None:
-        self._setup(tmp_path)
-        deck = Deck()
-        deck.slides = [
-            MarkdownSlide("layout", animations=[FadeIn("#zone-title", step=1)])
-        ]
+        _, slides_dir = self._setup(tmp_path)
+        (slides_dir / "content.md").write_text("", encoding="utf-8")
+        deck = Deck(
+            slides=[
+                Slide(
+                    "layout", md="content", animations=[FadeIn("#zone-title", step=1)]
+                )
+            ]
+        )
         results = process_deck(deck, tmp_path)
         assert "anim-fade-in" in results[0]["svg"]
+
+    def test_zones_media_injected(self, tmp_path: Path) -> None:
+        self._setup(tmp_path)
+        from inkflow.manifest import Media
+
+        deck = Deck(slides=[Slide("layout", zones={"content": Media("photo.jpg")})])
+        results = process_deck(deck, tmp_path)
+        assert "photo.jpg" in results[0]["svg"]
+
+    def test_zones_inline_markdown_injected(self, tmp_path: Path) -> None:
+        self._setup(tmp_path)
+        deck = Deck(slides=[Slide("layout", zones={"content": "**bold text**"})])
+        results = process_deck(deck, tmp_path)
+        assert "bold" in results[0]["svg"]
 
 
 class TestComposeWithAncestors:

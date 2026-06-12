@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -18,11 +17,10 @@ from inkflow.layout import resolve_chain, resolve_parent_path, strip_layout_laye
 from inkflow.manifest import (
     Animation,
     Deck,
-    MarkdownSlide,
     Slide,
     Transition,
 )
-from inkflow.markdown import markdown_to_html
+from inkflow.markdown import build_slide_content, markdown_to_html, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 
@@ -33,33 +31,22 @@ class SlideData(TypedDict):
     notes: str
 
 
-@dataclass
-class _ResolvedMarkdown:
-    slide: Slide
-    notes: str
-
-
 # ── Path conventions ─────────────────────────────────────────────────────────
 
 
-def _infer_slide_title(src: str) -> str:
-    stem = Path(src).stem
-    stem = re.sub(r"^\d+-", "", stem)
-    return stem.replace("-", " ").replace("_", " ").title()
-
-
-def _infer_md_title(entry: MarkdownSlide, slide_num: int, project_dir: Path) -> str:
-    if entry.title:
-        return entry.title
-    if entry.content is not None:
-        from inkflow.markdown import parse_markdown_zones
-
-        content_path = _resolve_content_src(entry.content, project_dir)
+def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
+    if slide.title:
+        return slide.title
+    if slide.md is not None:
+        content_path = _resolve_content_src(slide.md, project_dir)
         zones = parse_markdown_zones(content_path)
         chunks = zones.get("title", [])
         if chunks:
             return chunks[0].lstrip("#").strip()
-    return f"Slide {slide_num}"
+        return f"Slide {slide_num}"
+    stem = Path(slide.src).stem
+    stem = re.sub(r"^\d+-", "", stem)
+    return stem.replace("-", " ").replace("_", " ").title()
 
 
 def _resolve_notes(notes: str | Path | None, project_dir: Path) -> str:
@@ -72,25 +59,29 @@ def _resolve_notes(notes: str | Path | None, project_dir: Path) -> str:
     return markdown_to_html(notes)
 
 
-def resolve_slide_src(src: str, project_dir: Path) -> Path:
+def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> Path:
     """Resolve a Slide.src string to an absolute Path.
 
-    Bare single-part names (no separator) are looked up in slides/.
-    Explicit paths (with / or absolute) are resolved relative to project_dir.
+    Bare single-part names (no prefix, no separator, no extension) are checked
+    against slides/<name>.svg first; if not found, the 3-level layout search
+    runs (project layouts/ → theme layouts/ → builtin layouts/).
+    Everything else delegates directly to resolve_parent_path.
     """
     p = Path(src)
-    if p.is_absolute():
-        return p if p.suffix else p.with_suffix(".svg")
-    if len(p.parts) == 1:
-        name = p.stem if p.suffix else src
-        return project_dir / "slides" / (name + ".svg")
-    if not p.suffix:
-        p = p.with_suffix(".svg")
-    return (project_dir / p).resolve()
+    if (
+        not p.is_absolute()
+        and len(p.parts) == 1
+        and not p.suffix
+        and not src.startswith(("local:", "theme:", "builtin:", "./", "../"))
+    ):
+        slides_candidate = project_dir / "slides" / (src + ".svg")
+        if slides_candidate.exists():
+            return slides_candidate
+    return resolve_parent_path(src, project_dir, project_dir, theme)
 
 
 def _resolve_content_src(src: str, project_dir: Path) -> Path:
-    """Resolve a MarkdownSlide content path to an absolute Path.
+    """Resolve a slide Markdown content path to an absolute Path.
 
     Bare single-part names are looked up in slides/ with a .md suffix.
     """
@@ -274,36 +265,6 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
     return etree.tostring(slide_root, encoding="unicode")
 
 
-def _resolve_markdown_slide(
-    ms: MarkdownSlide, project_dir: Path, theme: str | None
-) -> _ResolvedMarkdown:
-    from inkflow.markdown import build_slide_content
-
-    # Use project_dir as the synthetic svg_path parent so multi-part relative
-    # paths in the template string resolve relative to the project root.
-    template_path = resolve_parent_path(
-        ms.template, project_dir / "_", project_dir, theme
-    )
-    content_path = (
-        _resolve_content_src(ms.content, project_dir)
-        if ms.content is not None
-        else None
-    )
-    result = build_slide_content(content_path, ms.steps, ms.extra)
-    explicit_notes = _resolve_notes(ms.notes, project_dir)
-    notes_html = "\n".join(filter(None, [explicit_notes, result.notes]))
-    return _ResolvedMarkdown(
-        slide=Slide(
-            src=str(template_path),
-            animations=ms.animations,
-            content=result.content,
-            transition=ms.transition,
-            style=ms.style,
-        ),
-        notes=notes_html,
-    )
-
-
 def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
     """Assign a unique ID to the SVG root and wrap every <style> in @scope.
 
@@ -331,14 +292,20 @@ def process_slide(
     deck_style: str = "",
     font_size: int = 36,
 ) -> str:
-    src = resolve_slide_src(slide.src, project_dir)
+    src = resolve_slide_src(slide.src, project_dir, theme)
+
     svg_str = clean_inkscape_svg(src)
     chain = resolve_chain(src, project_dir, theme)
     if chain:
         svg_str = compose_with_ancestors(svg_str, chain)
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
-    if slide.content:
-        svg_str = substitute_content(svg_str, slide.content, font_size)
+
+    if slide.md is not None or slide.zones:
+        content_path = _resolve_content_src(slide.md, project_dir) if slide.md else None
+        result = build_slide_content(content_path, slide.steps, slide.zones)
+        if result.content:
+            svg_str = substitute_content(svg_str, result.content, font_size)
+
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
     combined_css = "\n".join(filter(None, [deck_style, slide.style]))
@@ -353,15 +320,14 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
     total = len(visible_slides)
     results: list[SlideData] = []
-    for i, entry in enumerate(visible_slides):
-        if isinstance(entry, MarkdownSlide):
-            title = _infer_md_title(entry, i + 1, project_dir)
-            resolved = _resolve_markdown_slide(entry, project_dir, deck.theme)
-            slide, notes = resolved.slide, resolved.notes
-        else:
-            title = entry.title or _infer_slide_title(entry.src)
-            slide = entry
-            notes = _resolve_notes(entry.notes, project_dir)
+    for i, slide in enumerate(visible_slides):
+        title = _infer_slide_title(slide, i + 1, project_dir)
+        explicit_notes = _resolve_notes(slide.notes, project_dir)
+        md_notes = ""
+        if slide.md is not None:
+            content_path = _resolve_content_src(slide.md, project_dir)
+            md_notes = build_slide_content(content_path, slide.steps, slide.zones).notes
+        notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         svg = process_slide(
             slide,
             project_dir,
