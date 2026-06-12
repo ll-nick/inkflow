@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 from inkflow.loaders import load_scripts, load_styles
-from inkflow.manifest import Deck, MarkdownSlide, Media, Slide
+from inkflow.manifest import Deck, Media
 from inkflow.pipeline import process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
 
@@ -41,17 +41,11 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
 def _collect_local_media_paths(deck: Deck) -> list[str]:
     paths: list[str] = []
     for slide in deck.slides:
-        items = slide.content if isinstance(slide, Slide) else []
-        for item in items:
-            if isinstance(item, Media) and not item.src.startswith(
+        for val in slide.zones.values():
+            if isinstance(val, Media) and not val.src.startswith(
                 ("http://", "https://", "//")
             ):
-                paths.append(item.src)
-        if isinstance(slide, MarkdownSlide):
-            for val in slide.extra.values():
-                src = val.src if isinstance(val, Media) else val
-                if not src.startswith(("http://", "https://", "//")):
-                    paths.append(src)
+                paths.append(val.src)
     return paths
 
 
