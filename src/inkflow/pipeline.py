@@ -338,7 +338,7 @@ def process_slide(
         svg_str = compose_with_ancestors(svg_str, chain)
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
     if slide.content:
-        svg_str = substitute_content(svg_str, slide.content, project_dir, font_size)
+        svg_str = substitute_content(svg_str, slide.content, font_size)
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
     combined_css = "\n".join(filter(None, [deck_style, slide.style]))

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 import pytest
 from lxml import etree
@@ -71,100 +70,80 @@ class TestSubstituteZoneNumbers:
 
 
 class TestSubstituteContent:
-    def test_textbox_replaced_with_foreignobject(self, tmp_path: Path) -> None:
+    def test_textbox_replaced_with_foreignobject(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [TextBox("#zone-content", text="<p>hello</p>")], tmp_path
+            _ZONE_SVG, [TextBox("#zone-content", text="<p>hello</p>")]
         )
         assert "foreignObject" in result
         assert "hello" in result
 
-    def test_foreignobject_inherits_zone_id(self, tmp_path: Path) -> None:
-        result = substitute_content(
-            _ZONE_SVG, [TextBox("#zone-content", text="hi")], tmp_path
-        )
+    def test_foreignobject_inherits_zone_id(self) -> None:
+        result = substitute_content(_ZONE_SVG, [TextBox("#zone-content", text="hi")])
         assert 'id="zone-content"' in result
 
-    def test_foreignobject_has_correct_geometry(self, tmp_path: Path) -> None:
-        result = substitute_content(
-            _ZONE_SVG, [TextBox("#zone-content", text="x")], tmp_path
-        )
+    def test_foreignobject_has_correct_geometry(self) -> None:
+        result = substitute_content(_ZONE_SVG, [TextBox("#zone-content", text="x")])
         assert 'x="80"' in result
         assert 'y="200"' in result
         assert 'width="1760"' in result
         assert 'height="780"' in result
 
-    def test_image_replaced_with_foreignobject(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_image_replaced_with_foreignobject(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert "foreignObject" in result
-        assert "data:image/png;base64," in result
+        assert "photo.png" in result
 
-    def test_video_replaced_with_foreignobject(self, tmp_path: Path) -> None:
+    def test_video_replaced_with_foreignobject(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [Media("video.mp4", element="#zone-video")], tmp_path
+            _ZONE_SVG, [Media("video.mp4", element="#zone-video")]
         )
         assert "foreignObject" in result
         assert "video.mp4" in result
 
-    def test_media_default_fit_is_contain(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_media_default_fit_is_contain(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert "object-fit:contain" in result
 
-    def test_media_cover_fit(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_media_cover_fit(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [Media("photo.png", fit="cover", element="#zone-image")],
-            tmp_path,
         )
         assert "object-fit:cover" in result
 
-    def test_media_default_align_is_center(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_media_default_align_is_center(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert "object-position:50% 50%" in result
 
-    def test_media_align_top(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_media_align_top(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [Media("photo.png", align="top", element="#zone-image")],
-            tmp_path,
         )
         assert "object-position:50% 0%" in result
 
-    def test_media_y_offset_produces_calc(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_media_y_offset_produces_calc(self) -> None:
         # zone-image height=300; y=-60 → -20%
         result = substitute_content(
-            _ZONE_SVG, [Media("photo.png", y=-60.0, element="#zone-image")], tmp_path
+            _ZONE_SVG, [Media("photo.png", y=-60.0, element="#zone-image")]
         )
         assert "calc(50% - 20%" in result
 
-    def test_media_x_offset_produces_calc(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_media_x_offset_produces_calc(self) -> None:
         # zone-image width=400; x=100 → +25%
         result = substitute_content(
-            _ZONE_SVG, [Media("photo.png", x=100.0, element="#zone-image")], tmp_path
+            _ZONE_SVG, [Media("photo.png", x=100.0, element="#zone-image")]
         )
         assert "calc(50% + 25%" in result
 
     def test_missing_zone_warns_and_continues(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         result = substitute_content(
             _ZONE_SVG,
@@ -172,30 +151,27 @@ class TestSubstituteContent:
                 TextBox("#zone-nonexistent", text="x"),
                 TextBox("#zone-content", text="kept"),
             ],
-            tmp_path,
         )
         assert "zone-nonexistent" in capsys.readouterr().out
         assert "kept" in result
 
-    def test_returns_valid_svg_string(self, tmp_path: Path) -> None:
+    def test_returns_valid_svg_string(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [TextBox("#zone-content", text="<p>ok</p>")], tmp_path
+            _ZONE_SVG, [TextBox("#zone-content", text="<p>ok</p>")]
         )
         etree.fromstring(result.encode())  # should not raise
 
 
 class TestTextBoxAlignment:
-    def test_wrapper_div_always_present(self, tmp_path: Path) -> None:
+    def test_wrapper_div_always_present(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, [TextBox("#zone-content", text="<p>hi</p>")], tmp_path
+            _ZONE_SVG, [TextBox("#zone-content", text="<p>hi</p>")]
         )
         assert "inkflow-wrapper" in result
         assert "inkflow-content" in result
 
-    def test_no_inline_style_when_params_absent(self, tmp_path: Path) -> None:
-        result = substitute_content(
-            _ZONE_SVG, [TextBox("#zone-content", text="hi")], tmp_path
-        )
+    def test_no_inline_style_when_params_absent(self) -> None:
+        result = substitute_content(_ZONE_SVG, [TextBox("#zone-content", text="hi")])
         root = etree.fromstring(result.encode())
         fo = root.find('.//*[@id="zone-content"]')
         assert fo is not None
@@ -204,51 +180,45 @@ class TestTextBoxAlignment:
         content = wrapper[0]
         assert content.get("style") is None
 
-    def test_align_sets_text_align_on_content(self, tmp_path: Path) -> None:
+    def test_align_sets_text_align_on_content(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [TextBox("#zone-content", text="hi", align=Align.CENTER)],
-            tmp_path,
         )
         assert "text-align:center" in result
 
-    def test_valign_center_sets_justify_content(self, tmp_path: Path) -> None:
+    def test_valign_center_sets_justify_content(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [TextBox("#zone-content", text="hi", valign=VAlign.CENTER)],
-            tmp_path,
         )
         assert "justify-content:center" in result
 
-    def test_valign_top_sets_flex_start(self, tmp_path: Path) -> None:
+    def test_valign_top_sets_flex_start(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [TextBox("#zone-content", text="hi", valign=VAlign.TOP)],
-            tmp_path,
         )
         assert "justify-content:start" in result
 
-    def test_valign_bottom_sets_flex_end(self, tmp_path: Path) -> None:
+    def test_valign_bottom_sets_flex_end(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [TextBox("#zone-content", text="hi", valign=VAlign.BOTTOM)],
-            tmp_path,
         )
         assert "justify-content:end" in result
 
-    def test_padding_sets_inline_style_on_wrapper(self, tmp_path: Path) -> None:
+    def test_padding_sets_inline_style_on_wrapper(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [TextBox("#zone-content", text="hi", padding=40)],
-            tmp_path,
         )
         assert "padding:40px" in result
 
-    def test_inline_style_on_wrapper_not_content(self, tmp_path: Path) -> None:
+    def test_inline_style_on_wrapper_not_content(self) -> None:
         result = substitute_content(
             _ZONE_SVG,
             [TextBox("#zone-content", text="hi", valign=VAlign.CENTER, padding=20)],
-            tmp_path,
         )
         root = etree.fromstring(result.encode())
         fo = root.find('.//*[@id="zone-content"]')
@@ -261,40 +231,33 @@ class TestTextBoxAlignment:
 
 
 class TestNonRectZones:
-    def test_polygon_zone_bounding_box(self, tmp_path: Path) -> None:
+    def test_polygon_zone_bounding_box(self) -> None:
         # polygon points="100,0 500,0 400,300 0,300" → bbox x=0,y=0,w=500,h=300
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert 'width="500"' in result or 'width="500.0"' in result
         assert 'height="300"' in result or 'height="300.0"' in result
 
-    def test_polygon_media_zone_gets_clip_path(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_polygon_media_zone_gets_clip_path(self) -> None:
         result = substitute_content(
-            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert "clipPath" in result
         assert "inkflow-clip-zone-image" in result
         assert 'clip-path="url(#inkflow-clip-zone-image)"' in result
 
-    def test_polygon_textbox_zone_no_clip(self, tmp_path: Path) -> None:
+    def test_polygon_textbox_zone_no_clip(self) -> None:
         result = substitute_content(
             _POLYGON_ZONE_SVG,
             [TextBox("#zone-image", text="<p>hello</p>")],
-            tmp_path,
         )
         assert "clipPath" not in result
         assert "clip-path" not in result
 
-    def test_polygon_media_clip_shape_in_defs(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_polygon_media_clip_shape_in_defs(self) -> None:
         result = substitute_content(
-            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _POLYGON_ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         root = etree.fromstring(result.encode())
         defs = root.find("{http://www.w3.org/2000/svg}defs")
@@ -307,40 +270,33 @@ class TestNonRectZones:
 
 
 class TestPathZones:
-    def test_path_zone_bounding_box(self, tmp_path: Path) -> None:
+    def test_path_zone_bounding_box(self) -> None:
         # M 100,0 L 500,0 400,300 0,300 Z → bbox x=0,y=0,w=500,h=300
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
         result = substitute_content(
-            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert 'width="500"' in result or 'width="500.0"' in result
         assert 'height="300"' in result or 'height="300.0"' in result
 
-    def test_path_media_zone_gets_clip_path(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_path_media_zone_gets_clip_path(self) -> None:
         result = substitute_content(
-            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         assert "clipPath" in result
         assert "inkflow-clip-zone-image" in result
         assert 'clip-path="url(#inkflow-clip-zone-image)"' in result
 
-    def test_path_textbox_zone_no_clip(self, tmp_path: Path) -> None:
+    def test_path_textbox_zone_no_clip(self) -> None:
         result = substitute_content(
             _PATH_ZONE_SVG,
             [TextBox("#zone-image", text="<p>hello</p>")],
-            tmp_path,
         )
         assert "clipPath" not in result
         assert "clip-path" not in result
 
-    def test_path_clip_shape_is_path_element(self, tmp_path: Path) -> None:
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    def test_path_clip_shape_is_path_element(self) -> None:
         result = substitute_content(
-            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")], tmp_path
+            _PATH_ZONE_SVG, [Media("photo.png", element="#zone-image")]
         )
         root = etree.fromstring(result.encode())
         defs = root.find("{http://www.w3.org/2000/svg}defs")
@@ -351,18 +307,14 @@ class TestPathZones:
         assert path_el is not None
         assert path_el.get("id") is None  # id stripped from copy
 
-    def test_relative_path_bbox(self, tmp_path: Path) -> None:
+    def test_relative_path_bbox(self) -> None:
         # Relative commands: m/l — same shape as absolute version
         svg = textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg">
               <path id="zone-image" d="m 100,0 l 400,0 -100,300 -400,0 z"/>
             </svg>
         """)
-        img = tmp_path / "photo.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
-        result = substitute_content(
-            svg, [Media("photo.png", element="#zone-image")], tmp_path
-        )
+        result = substitute_content(svg, [Media("photo.png", element="#zone-image")])
         assert 'width="500"' in result or 'width="500.0"' in result
         assert 'height="300"' in result or 'height="300.0"' in result
 

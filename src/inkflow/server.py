@@ -202,13 +202,19 @@ def build_html(state: State, ws_port: int | None) -> bytes:
     return html.encode("utf-8")
 
 
-_SERVED_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 _MIME_TYPES = {
     ".mp4": "video/mp4",
     ".webm": "video/webm",
     ".ogg": "video/ogg",
     ".mov": "video/quicktime",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
 }
+_SERVED_SUFFIXES = set(_MIME_TYPES)
 
 
 def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamHandler:
