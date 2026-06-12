@@ -109,24 +109,27 @@ See [Transitions](transitions.md) for details on each type.
 
 ## Content injection
 
-SVG slides support the same `TextBox` and `Media` content injection as `MarkdownSlide`.
+SVG slides support `zones` for injecting text or media into named zone elements.
 This is useful when the SVG carries the visual design
 but some text or media should live outside the SVG file:
 
 ```python
-from inkflow import Media, Slide, TextBox
+from inkflow import Media, Slide
 
 Slide(
     "slides/01-title.svg",
-    content=[
-        TextBox(element="zone-title", text="My talk title"),
-        Media("assets/headshot.jpg", fit="cover", element="zone-media"),
-    ],
+    zones={
+        "title": "My talk title",
+        "media": Media("assets/headshot.jpg", fit="cover"),
+    },
 )
 ```
 
-The `element` field on `TextBox` and `Media` targets a `zone-*` rect in the SVG by ID.
-The pipeline replaces it with a `<foreignObject>` (for text) or an `<img>`/`<video>` (for media) at build time.
+Keys in `zones` are zone names without the `zone-` prefix.
+A `str` value is rendered as inline Markdown.
+A `TextBox` value gives explicit control over alignment and padding from Python.
+A `Media` value injects an image or video.
+The pipeline replaces the matching `zone-*` rect with the injected content at build time.
 
 ## Per-slide styling
 

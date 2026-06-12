@@ -1,6 +1,6 @@
 # Markdown slides
 
-`MarkdownSlide` lets you write text content in Markdown instead of placing text inside the SVG.
+`Slide` with an `md` field lets you write text content in Markdown instead of placing text inside the SVG.
 A layout SVG defines where the content goes (the zones).
 A `.md` file provides what goes there.
 
@@ -11,16 +11,16 @@ or anything you'd rather edit in a text editor than in Inkscape.
 ## Minimal example
 
 ```python
-from inkflow import Deck, MarkdownSlide
+from inkflow import Deck, Slide
 
 def main() -> Deck:
     return Deck(slides=[
-        MarkdownSlide("default", content="slides/01-intro.md"),
+        Slide("default", md="slides/01-intro.md"),
     ])
 ```
 
 `"default"` is the name of a built-in layout.
-`content` points to a Markdown file relative to the deck.
+`md` points to a Markdown file relative to the deck.
 
 ## How content is placed
 
@@ -112,7 +112,7 @@ Third point — revealed on second keypress.
 Enable stepping on the slide with `steps=True`:
 
 ```python
-MarkdownSlide("default", content="slides/02-bullets.md", steps=True)
+Slide("default", md="slides/02-bullets.md", steps=True)
 ```
 
 ## Speaker notes
@@ -131,31 +131,34 @@ These are my private notes. They support **markdown** and are only shown
 in the presenter view.
 ```
 
-You can also set notes directly on `MarkdownSlide` or `Slide` via the `notes=` parameter:
+You can also set notes directly on `Slide` via the `notes=` parameter:
 
 ```python
 Slide("slides/01-title.svg", notes="Remember to greet the audience.")
-MarkdownSlide("default", content="slides/02-bullets.md", notes=Path("notes/02.md"))
+Slide("default", md="slides/02-bullets.md", notes=Path("notes/02.md"))
 ```
 
 `str` is used as-is (inline HTML/text). `Path` pointing to a `.md` file is rendered as Markdown; any other extension is read as-is.
-When both `notes=` and `::notes::` are present on a `MarkdownSlide`, they are concatenated
-(`notes=` first, then `::notes::`).
+When both `notes=` and `::notes::` are present, they are concatenated (`notes=` first, then `::notes::`).
 
 ## Media
 
-Pass an image or video alongside the text content
-using keyword arguments that match zone names in the layout:
+Pass an image or video into a zone using the `zones` dict:
 
 ```python
-from inkflow import Media, MarkdownSlide
+from inkflow import Media, Slide
 
-MarkdownSlide(
+Slide(
     "media-right",
-    content="slides/03-feature.md",
-    media=Media("assets/screenshot.png", fit="cover"),
+    md="slides/03-feature.md",
+    zones={"media": Media("assets/screenshot.png", fit="cover")},
 )
 ```
+
+`zones` keys are zone names (without the `zone-` prefix).
+`Media` values are injected as images or videos.
+`str` values are rendered as inline Markdown.
+`TextBox` values give you explicit control over alignment and padding from Python.
 
 `Media` accepts:
 
@@ -166,10 +169,8 @@ MarkdownSlide(
 | `align` | `"center"` | CSS `object-position` value |
 | `x`, `y` | `0.0` | Fine-tune position offset (px) |
 
-For videos, pass the path string directly (shorthand for `Media(src=...)`):
-
 ```python
-MarkdownSlide("media-right", content="slides/04-demo.md", media="assets/demo.mp4")
+Slide("media-right", md="slides/04-demo.md", zones={"media": Media("assets/demo.mp4")})
 ```
 
 ## Built-in layouts
@@ -196,21 +197,20 @@ The built-in theme ships these layouts:
 Pass a path instead of a bare name:
 
 ```python
-MarkdownSlide("layouts/my-layout.svg", content="slides/05-custom.md")
+Slide("layouts/my-layout.svg", md="slides/05-custom.md")
 ```
 
 See [Layout system](layout-system.md) for how to build your own layouts.
 
-## Animations on Markdown slides
+## Mixing animations and Markdown steps
 
-`MarkdownSlide` supports the same `animations` list as `Slide`.
 The step counter is shared:
 `::step::` markers in the Markdown file continue from wherever SVG animations end.
 
 ```python
-MarkdownSlide(
+Slide(
     "default",
-    content="slides/06-mixed.md",
+    md="slides/06-mixed.md",
     steps=True,
     animations=[
         animations.FadeIn("#extra-element", step=1),

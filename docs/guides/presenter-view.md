@@ -41,7 +41,7 @@ Press <kbd>p</kbd> again (or click the button again) to close it and return to t
 
 Notes come from the same slide data as the main view.
 
-For `MarkdownSlide`, use the `::notes::` zone marker.
+For slides with a Markdown file (`md=`), use the `::notes::` zone marker.
 Anything after the marker is routed to the notes pane and does not appear
 on the slide itself:
 
@@ -56,7 +56,7 @@ These are the speaker notes.
 They support **Markdown**, including lists and `code`.
 ```
 
-For `Slide` (raw SVG), pass a string or a `Path`:
+You can also pass notes directly via the `notes=` parameter on any `Slide`:
 
 ```python
 Slide("slides/03-diagram.svg", notes="Walk through the diagram top to bottom.")

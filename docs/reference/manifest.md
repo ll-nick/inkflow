@@ -17,86 +17,65 @@ def main() -> Deck:
         theme="./my-theme",                   # path to theme directory
         dark_mode=True,                       # data-theme="dark" on <html>
         style="",                             # CSS injected into every slide
-        font_size=36,                         # base font size for MarkdownSlide content (px)
+        font_size=36,                         # base font size for zone content (px)
         slides=[...],
     )
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `slides` | `list[Slide \| MarkdownSlide]` | `[]` | The slide list |
+| `slides` | `list[Slide]` | `[]` | The slide list |
 | `transition` | `Transition \| None` | `None` | Default transition. `Cut` if unset |
 | `theme` | `str \| None` | `None` | Path to theme directory |
 | `dark_mode` | `bool` | `True` | Sets `data-theme` on `<html>` |
 | `style` | `str` | `""` | CSS string injected into every slide |
-| `font_size` | `int` | `36` | Base font size for `MarkdownSlide` (px) |
+| `font_size` | `int` | `36` | Base font size for zone content (px) |
 
 ---
 
 ## `Slide`
 
-An SVG-backed slide.
+A slide. Pass an SVG path for a pure SVG slide, or a layout name with `md=` for a Markdown-backed slide.
 
 ```python
+# SVG slide with animations
 Slide(
     "slides/01-title.svg",
     animations=[animations.FadeIn("#headline", step=1)],
     transition=transitions.Crossfade(),
-    content=[TextBox(element="zone-title", text="My title")],
     style="",
+)
+
+# Layout-backed slide with Markdown content
+Slide(
+    "default",
+    md="slides/02-bullets.md",
+    steps=True,
+    zones={"media": Media("assets/photo.jpg")},
 )
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `src` | `str` | required | Path to SVG file, relative to `deck.py` |
+| `src` | `str` | required | SVG file path, or bare layout name (e.g. `"default"`) |
+| `md` | `str \| None` | `None` | Path to `.md` file, relative to `deck.py`. Makes `src` resolve as a layout name |
+| `zones` | `dict[str, str \| Media \| TextBox]` | `{}` | Per-zone overrides. Keys are zone names without the `zone-` prefix. `str` values are rendered as inline Markdown; `TextBox` values give explicit alignment/padding control; `Media` values inject an image or video |
+| `steps` | `bool` | `False` | Enable `::step::` markers in the Markdown file |
 | `animations` | `list[Animation]` | `[]` | Animation declarations |
 | `transition` | `Transition \| None` | `None` | Overrides deck-level transition |
-| `content` | `list[Content]` | `[]` | `TextBox` or `Media` injections into named zone elements |
 | `style` | `str` | `""` | CSS string injected into this slide |
-| `title` | `str \| None` | `None` | Optional slide title; auto-inferred from filename if not set |
-| `notes` | `str \| Path \| None` | `None` | Speaker notes. A string is rendered as Markdown. A `Path` to a `.md` file is rendered as Markdown; other suffixes are read as raw HTML |
-| `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely. Useful for draft slides or audience-specific content |
+| `title` | `str \| None` | `None` | Optional slide title. Auto-inferred from filename or leading `# heading` |
+| `notes` | `str \| Path \| None` | `None` | Speaker notes. A `str` is used as-is. A `Path` to a `.md` file is rendered as Markdown; other suffixes are read as raw HTML. Concatenated with any `::notes::` marker in the Markdown file |
+| `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely |
 
 **`step_count`** (property): the highest `step` value across all animations.
 This is the number of keypresses before advancing.
 
 ---
 
-## `MarkdownSlide`
-
-A layout-backed slide with content injected from a Markdown file.
-
-```python
-MarkdownSlide(
-    "default",                        # layout name or path
-    content="slides/02-bullets.md",   # Markdown file
-    steps=True,                       # enable ::step:: markers
-    animations=[],
-    transition=None,
-    style="",
-    media=Media("assets/photo.jpg"),  # keyword: matches zone name
-)
-```
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `template` | `str` | required | Layout name or path |
-| `content` | `str \| None` | `None` | Path to `.md` file, relative to `deck.py` |
-| `steps` | `bool` | `False` | Enable `::step::` markers in Markdown |
-| `animations` | `list[Animation]` | `[]` | Additional animation declarations |
-| `transition` | `Transition \| None` | `None` | Overrides deck-level transition |
-| `style` | `str` | `""` | CSS string injected into this slide |
-| `title` | `str \| None` | `None` | Optional slide title. Auto-inferred from leading `# heading` if not set |
-| `notes` | `str \| Path \| None` | `None` | Speaker notes. Concatenated with any `::notes::` zone in the Markdown file |
-| `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely |
-| `**kwargs` | `str \| Media` | — | Extra content routed to matching zones |
-
----
-
 ## `Media`
 
-A media asset (image or video) for use with `Slide` or `MarkdownSlide`.
+A media asset (image or video) for injection into a zone.
 
 ```python
 Media(
@@ -110,14 +89,17 @@ Media(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `src` | `str` | required | Path to image or video file |
+| `src` | `str` | required | Path to image or video file, or a URL |
 | `fit` | `str` | `"contain"` | `"contain"` or `"cover"` |
 | `align` | `str` | `"center"` | CSS `object-position` value |
 | `x` | `float` | `0.0` | Horizontal offset in pixels |
 | `y` | `float` | `0.0` | Vertical offset in pixels |
 
-For video files, you can pass the path string directly as a shorthand:
-`media="assets/demo.mp4"`.
+Pass it as a value in the `zones` dict to inject it into a named zone:
+
+```python
+Slide("media-right", md="slides/03-feature.md", zones={"media": Media("assets/demo.mp4")})
+```
 
 ---
 
@@ -129,7 +111,6 @@ Injects text into a named zone element in an SVG slide.
 from inkflow import Align, VAlign, TextBox
 
 TextBox(
-    element="#zone-content",
     text="<p>My content</p>",
     align=Align.CENTER,
     valign=VAlign.CENTER,
@@ -139,7 +120,6 @@ TextBox(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `element` | `str` | required | CSS ID selector for the target zone element |
 | `text` | `str \| None` | `None` | HTML content to inject |
 | `steps` | `bool` | `False` | Enable step-based reveal within the text |
 | `align` | `Align \| None` | `None` | Horizontal text alignment. `None` defers to the layout CSS variable |
@@ -170,6 +150,18 @@ Vertical alignment of the content block inside a `TextBox` zone.
 | `VAlign.TOP` | Content anchored to the top of the zone (default when no override is set) |
 | `VAlign.CENTER` | Content centred vertically |
 | `VAlign.BOTTOM` | Content anchored to the bottom of the zone |
+
+---
+
+## `ZoneContent`
+
+Type alias for the values accepted in `Slide.zones`:
+
+```python
+ZoneContent = str | Media | TextBox
+```
+
+`str` is rendered as inline Markdown. `TextBox` gives explicit alignment and padding control. `Media` injects an image or video.
 
 ---
 

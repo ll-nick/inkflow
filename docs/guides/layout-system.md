@@ -173,7 +173,7 @@ Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediat
 4. Reference it in `deck.py`:
 
 ```python
-MarkdownSlide("my-layout", content="slides/03-custom.md")
+Slide("my-layout", md="slides/03-custom.md")
 ```
 
 ### Example layout
