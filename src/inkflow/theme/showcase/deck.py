@@ -1,18 +1,37 @@
-from inkflow import Deck, MarkdownSlide, transitions
+from inkflow import Deck, MarkdownSlide, Media, transitions
 
 deck = Deck(transition=transitions.Crossfade())
 
 deck.slides = [
-    MarkdownSlide("cover", content="01-cover"),
-    MarkdownSlide("section", content="02-section"),
-    MarkdownSlide("default", content="03-default", steps=True),
-    MarkdownSlide("center", content="04-center"),
-    MarkdownSlide("two-cols", content="05-two-cols"),
-    MarkdownSlide("two-cols-header", content="06-two-cols-header"),
-    MarkdownSlide("fact", content="07-fact"),
-    MarkdownSlide("quote", content="08-quote"),
-    MarkdownSlide("statement", content="09-statement"),
-    MarkdownSlide("media-left", content="10-media-left"),
-    MarkdownSlide("media-right", content="11-media-right"),
-    MarkdownSlide("end", content="12-end"),
+    MarkdownSlide(
+        "cover",
+        content="cover",
+        media=Media(
+            "https://images.unsplash.com/photo-1560237731-890b122a9b6c?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            fit="cover",
+        ),
+    ),
+    MarkdownSlide("default", content="default"),
+    MarkdownSlide("section", content="section"),
+    MarkdownSlide("center", content="center"),
+    MarkdownSlide("two-cols", content="two-cols"),
+    MarkdownSlide("fact", content="fact"),
+    MarkdownSlide("quote", content="quote"),
+    MarkdownSlide(
+        "media-left",
+        content="media-left",
+        media=Media(
+            "https://images.unsplash.com/photo-1560237731-890b122a9b6c?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            fit="cover",
+        ),
+    ),
+    MarkdownSlide(
+        "media-right",
+        content="media-right",
+        media=Media(
+            "https://images.unsplash.com/photo-1560237731-890b122a9b6c?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            fit="cover",
+        ),
+    ),
+    MarkdownSlide("end", content="end"),
 ]

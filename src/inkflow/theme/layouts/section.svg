@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="../main.svg" viewBox="0 0 1920 1080" width="1920" height="1080">
-  <rect id="zone-section-title" x="80" y="380" width="1760" height="220"/>
-  <rect id="zone-section-subtitle" x="80" y="620" width="1760" height="120"/>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="./base" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg2">
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="709eadd0" id="g1">
+    <defs id="defs1"/>
+    <rect width="1920" height="1080" class="inkflow-fill-bg" id="rect1"/>
+  </g>
+  <defs id="defs2">
+    </defs>
+  <rect id="zone-title" x="80" y="380" width="1760" height="220"/>
+  <rect id="zone-subtitle" x="80" y="620" width="1760" height="120"/>
 </svg>
