@@ -30,6 +30,7 @@ def main() -> Deck:
 | `dark_mode` | `bool` | `True` | Sets `data-theme` on `<html>` |
 | `style` | `str` | `""` | CSS string injected into every slide |
 | `font_size` | `int` | `36` | Base font size for zone content (px) |
+| `embed_fonts` | `bool` | `True` | Auto-discover and embed fonts used in slides. See [Font embedding](../guides/fonts.md) |
 
 ---
 

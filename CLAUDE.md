@@ -31,6 +31,7 @@ src/
                                Cut, Crossfade, Morph, Animation, Transition,, Align, VAlign
                                and the `animations` namespace
     manifest.py       dataclasses for the deck DSL; Animation/Transition base + protocol
+                               Deck params: transition, theme, dark_mode, style, font_size, embed_fonts
     animations.py     concrete animation types (FadeIn, FadeOut, Bounce, SlideIn/Out,
                                ZoomIn/Out, Highlight) subclassing manifest.Animation
     pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
@@ -101,6 +102,23 @@ Edit the source files, run `mise run bundle`, and reload the browser to see chan
 Pressing `p` toggles `body.pv-open`, which CSS-transitions the sidebar to 30% width while the stage flexes back.
 `pv.ts` owns all panel logic (clock, next-preview, notes); it reads directly from `state.slides` so no second WS connection or position sync is needed.
 For second-screen use, open the same URL in two windows and toggle the panel in one.
+
+**Font embedding is automatic and zero-config.**
+After `process_deck()`, `fonts.embed_fonts_css()` (serve) or `fonts.embed_fonts_css_subsetted()`
+(build/export) scans every slide SVG for named `font-family` values, discovers matching font
+files, and injects `@font-face` blocks (base64 data-URI) into the global CSS via `__STYLES__`.
+Generic families (`sans-serif`, `serif`, `monospace`, etc.) are always skipped.
+
+Font search order: `<project_dir>/fonts/` → user font dirs → system font dirs (all OS-specific).
+Committing fonts in `fonts/` gives fully reproducible output independent of the host system.
+
+For serve: full font files are embedded; the font index is cached at module level so only the
+first rebuild in a session pays the directory-scan cost. For build/export: fonts are subsetted
+to only the codepoints present in the slides (via `fonttools`), typically 10–30 KB per variant.
+`brotli` is required for WOFF2 subsetting output; without it subsetting falls back to TTF.
+
+Unresolvable fonts produce a yellow TUI warning and fall back to system rendering.
+Opt out per-deck: `Deck(embed_fonts=False)`.
 
 **MarkdownSlide content injection uses `<foreignObject>`.**
 Markdown is rendered to HTML via `markdown-it-py`.
