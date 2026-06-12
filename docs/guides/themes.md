@@ -23,7 +23,7 @@ my-theme/
 Point `Deck` at the theme directory:
 
 ```python
-deck = Deck(theme="./my-theme")
+Deck(theme="./my-theme")
 ```
 
 Bare theme names (e.g. `Deck(theme="catppuccin-mocha")`) will be resolved from installed pip packages
@@ -36,8 +36,8 @@ before falling back to the built-in layouts.
 ## Dark mode
 
 ```python
-deck = Deck(dark_mode=True)   # default
-deck = Deck(dark_mode=False)
+Deck(dark_mode=True)   # default
+Deck(dark_mode=False)
 ```
 
 `dark_mode` sets a `data-theme="dark"` (or `"light"`) attribute on the presenter's `<html>` element.
@@ -155,7 +155,7 @@ Beyond the theme, you can inject CSS at two levels:
 **Deck-level**: applied to every slide:
 
 ```python
-deck = Deck(style="""
+Deck(style="""
     text { font-family: "Inter", sans-serif; }
 """)
 ```
@@ -189,5 +189,5 @@ cp -r $(uv run python -c "import inkflow; print(inkflow.__file__.replace('__init
 Then point your deck at it:
 
 ```python
-deck = Deck(theme="./my-theme")
+Deck(theme="./my-theme")
 ```

@@ -13,10 +13,10 @@ or anything you'd rather edit in a text editor than in Inkscape.
 ```python
 from inkflow import Deck, MarkdownSlide
 
-deck = Deck()
-deck.slides = [
-    MarkdownSlide("default", content="slides/01-intro.md"),
-]
+def main() -> Deck:
+    return Deck(slides=[
+        MarkdownSlide("default", content="slides/01-intro.md"),
+    ])
 ```
 
 `"default"` is the name of a built-in layout.

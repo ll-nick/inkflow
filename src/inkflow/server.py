@@ -65,11 +65,9 @@ def load_deck(deck_path: Path) -> Deck:
         raise ImportError(f"Cannot load module from {deck_path}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    if not hasattr(mod, "deck"):
-        raise AttributeError(
-            f"{deck_path} must define a module-level variable named 'deck'"
-        )
-    return cast(Deck, mod.deck)
+    if not hasattr(mod, "main"):
+        raise AttributeError(f"{deck_path} must define a main() -> Deck function")
+    return cast(Callable[[], Deck], mod.main)()
 
 
 # ── Build pipeline ────────────────────────────────────────────────────────────
