@@ -3,24 +3,24 @@ from inkflow.manifest import (
     Align,
     Animation,
     Deck,
-    MarkdownSlide,
     Media,
     Slide,
     TextBox,
     Transition,
     VAlign,
+    ZoneContent,
 )
 
 __all__ = [
     "Align",
     "Animation",
     "Deck",
-    "MarkdownSlide",
     "Media",
     "Slide",
     "TextBox",
     "Transition",
     "VAlign",
+    "ZoneContent",
     "animations",
     "transitions",
 ]

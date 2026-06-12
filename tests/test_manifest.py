@@ -3,7 +3,6 @@ from __future__ import annotations
 from inkflow.animations import Bounce, FadeIn, FadeOut
 from inkflow.manifest import (
     Deck,
-    MarkdownSlide,
     Media,
     Slide,
     TextBox,
@@ -88,21 +87,19 @@ def test_slide_transition_stored() -> None:
 
 
 def test_textbox_fields() -> None:
-    tb = TextBox("#zone-content", text="<p>hello</p>", steps=True)
-    assert tb.element == "#zone-content"
+    tb = TextBox(text="<p>hello</p>", steps=True)
     assert tb.text == "<p>hello</p>"
     assert tb.steps is True
 
 
 def test_textbox_defaults() -> None:
-    tb = TextBox("#zone-content")
+    tb = TextBox()
     assert tb.text is None
     assert tb.steps is False
 
 
 def test_media_fields_defaults() -> None:
-    m = Media("photo.png", element="#zone-photo")
-    assert m.element == "#zone-photo"
+    m = Media("photo.png")
     assert m.src == "photo.png"
     assert m.fit == "contain"
     assert m.align == "center"
@@ -111,26 +108,23 @@ def test_media_fields_defaults() -> None:
 
 
 def test_media_fields_custom() -> None:
-    m = Media(
-        "hero.jpg", fit="cover", align="top", x=10.0, y=-80.0, element="#zone-hero"
-    )
+    m = Media("hero.jpg", fit="cover", align="top", x=10.0, y=-80.0)
     assert m.fit == "cover"
     assert m.align == "top"
     assert m.x == 10.0
     assert m.y == -80.0
 
 
-def test_slide_content_defaults_empty() -> None:
-    assert Slide(src="x.svg").content == []
+def test_slide_zones_defaults_empty() -> None:
+    assert Slide(src="x.svg").zones == {}
 
 
 def test_slide_style_defaults_empty() -> None:
     assert Slide(src="x.svg").style == ""
 
 
-def test_slide_content_stored() -> None:
-    slide = Slide(src="x.svg", content=[TextBox("#zone-content", text="hi")])
-    assert len(slide.content) == 1
+def test_slide_md_defaults_none() -> None:
+    assert Slide(src="x.svg").md is None
 
 
 def test_deck_style_defaults_empty() -> None:
@@ -149,22 +143,23 @@ def test_deck_font_size_stored() -> None:
     assert Deck(font_size=48).font_size == 48
 
 
-def test_markdownslide_fields() -> None:
-    ms = MarkdownSlide("layouts/bullets.svg", content="slides/05.md", steps=True)
-    assert ms.template == "layouts/bullets.svg"
-    assert ms.content == "slides/05.md"
-    assert ms.steps is True
-    assert ms.animations == []
-    assert ms.transition is None
-    assert ms.style == ""
+def test_slide_md_field() -> None:
+    s = Slide("layouts/bullets.svg", md="slides/05.md", steps=True)
+    assert s.src == "layouts/bullets.svg"
+    assert s.md == "slides/05.md"
+    assert s.steps is True
+    assert s.animations == []
+    assert s.transition is None
+    assert s.style == ""
 
 
-def test_markdownslide_animations_stored() -> None:
+def test_slide_animations_stored() -> None:
     anim = FadeIn("#logo", step=1)
-    ms = MarkdownSlide("layout.svg", animations=[anim])
-    assert ms.animations == [anim]
+    s = Slide("layout.svg", animations=[anim])
+    assert s.animations == [anim]
 
 
-def test_markdownslide_kwargs_captured() -> None:
-    ms = MarkdownSlide("layout.svg", image="photo.png", video="clip.mp4")
-    assert ms.extra == {"image": "photo.png", "video": "clip.mp4"}
+def test_slide_zones_stored() -> None:
+    s = Slide("layout.svg", zones={"image": Media("photo.png"), "label": "hello"})
+    assert isinstance(s.zones["image"], Media)
+    assert s.zones["label"] == "hello"
