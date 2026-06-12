@@ -10,7 +10,7 @@ without coupling that identity to individual slide files.
 my-theme/
   main.svg              ← base layout (no parent); background + brand elements
   numbered-main.svg     ← variant that adds zone-slide-number / zone-slide-total
-  styles.css            ← CSS cascade injected into every MarkdownSlide
+  styles.css            ← CSS cascade injected into every slide
   layouts/
     cover.svg
     default.svg
@@ -30,7 +30,7 @@ Bare theme names (e.g. `Deck(theme="catppuccin-mocha")`) will be resolved from i
 once named theme support is implemented.
 For now, use a path.
 
-With a theme set, bare layout names in `MarkdownSlide` are resolved through the theme's `layouts/` directory
+With a theme set, bare layout names in `Slide` are resolved through the theme's `layouts/` directory
 before falling back to the built-in layouts.
 
 ## Dark mode
@@ -172,7 +172,7 @@ Slide-level style takes precedence over deck-level, which takes precedence over 
 
 ## Font size
 
-The base font size for `MarkdownSlide` content is controlled by `Deck(font_size=36)` (default 36px).
+The base font size for zone content is controlled by `Deck(font_size=36)` (default 36px).
 This sets the CSS `font-size` on the `<foreignObject>` root,
 and all `em`/`rem` units in your theme cascade from it.
 

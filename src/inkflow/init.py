@@ -18,14 +18,12 @@ _MD_CONTENT = (
 )
 
 _DECK_PY = (
-    "from inkflow import Deck, MarkdownSlide, Slide\n\n"
+    "from inkflow import Deck, Slide\n\n"
     "def main() -> Deck:\n"
-    "    return Deck(\n"
-    "        slides=[\n"
+    "    return Deck({deck_arg}slides=[\n"
     '        Slide("slides/01-title.svg"),\n'
-    '        MarkdownSlide("builtin:default", content="slides/02-content.md"),\n'
-    "        ]\n"
-    "    )\n"
+    '        Slide("builtin:default", md="slides/02-content.md"),\n'
+    "    ])\n"
 )
 
 
@@ -48,7 +46,7 @@ def scaffold(target: Path, theme_path: str | None) -> None:
 
     (slides_dir / "02-content.md").write_text(_MD_CONTENT, encoding="utf-8")
 
-    deck_arg = f'theme="{theme_path}"' if theme_path else ""
+    deck_arg = f'theme="{theme_path}", ' if theme_path else ""
     (target / "deck.py").write_text(
         _DECK_PY.format(deck_arg=deck_arg), encoding="utf-8"
     )

@@ -18,7 +18,7 @@ from inkflow.layout import (
     strip_parent,
     with_namespaces,
 )
-from inkflow.manifest import Deck, MarkdownSlide
+from inkflow.manifest import Deck
 from inkflow.pipeline import clean_inkscape_svg, resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
@@ -261,9 +261,9 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
     else:
         deck_obj, project_dir = _deck_context(deck_path)
         targets = [
-            (resolve_slide_src(s.src, project_dir), str(s.src))
+            (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
             for s in deck_obj.slides
-            if not isinstance(s, MarkdownSlide)
+            if s.md is None
         ]
 
     if not confirmed:
@@ -333,9 +333,9 @@ def parent_inject(
                     raise click.ClickException(f"file not found: {svg_path}")
         else:
             targets = [
-                (resolve_slide_src(s.src, project_dir), str(s.src))
+                (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
                 for s in deck_obj.slides
-                if not isinstance(s, MarkdownSlide)
+                if s.md is None
             ]
 
     css = loaders.load_styles(deck_obj, project_dir)
@@ -386,10 +386,7 @@ def parent_list(deck_path: Path) -> None:
     deck_obj, project_dir = _deck_context(deck_path)
 
     for slide in deck_obj.slides:
-        if isinstance(slide, MarkdownSlide):
-            click.echo(f"{'[markdown: ' + slide.template + ']':<45} (markdown slide)")
-            continue
-        svg_path = resolve_slide_src(slide.src, project_dir)
+        svg_path = resolve_slide_src(slide.src, project_dir, deck_obj.theme)
         root = _etree.parse(svg_path).getroot()
         value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
         click.echo(f"{slide.src!s:<45} {value}")

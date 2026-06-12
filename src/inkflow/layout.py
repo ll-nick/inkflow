@@ -46,7 +46,7 @@ def _read_parent_attr(svg_path: Path) -> str | None:
 
 def resolve_parent_path(
     parent_str: str,
-    svg_path: Path,
+    base_dir: Path,
     project_root: Path | None,
     theme: str | None,
 ) -> Path:
@@ -56,14 +56,14 @@ def resolve_parent_path(
       local:foo      →  {project_root}/layouts/foo.svg   (requires project_root)
       theme:foo      →  {theme_dir}/layouts/foo.svg      (requires theme)
       builtin:foo    →  {builtin_theme_dir}/layouts/foo.svg
-      ./foo, ../foo  →  relative to svg_path's directory
+      ./foo, ../foo  →  relative to base_dir
       /absolute      →  literal filesystem path
 
     Bare single-part name (no prefix, no separator):
       Three-level search: project layouts/ → theme layouts/ → built-in layouts/
       Levels are skipped when project_root or theme is None.
     Multi-part relative path (has /, no prefix):
-      Relative to svg_path's directory (backward-compatible with inkflow:parent).
+      Relative to base_dir.
     """
 
     def _with_svg(p: Path) -> Path:
@@ -101,14 +101,14 @@ def resolve_parent_path(
         return resolved
 
     if parent_str.startswith(("./", "../")):
-        return _with_svg((svg_path.parent / parent_str).resolve())
+        return _with_svg((base_dir / parent_str).resolve())
 
     if parent_str.startswith("/"):
         return _with_svg(Path(parent_str))
 
-    # Multi-part relative path (has /) — relative to svg_path's parent
+    # Multi-part relative path (has /) — relative to base_dir
     if "/" in parent_str:
-        return _with_svg((svg_path.parent / parent_str).resolve())
+        return _with_svg((base_dir / parent_str).resolve())
 
     # Bare single-part name — three-level search; levels skipped when context is absent
     name = parent_str
@@ -153,7 +153,9 @@ def resolve_chain(
         parent_str = _read_parent_attr(current)
         if parent_str is None:
             break
-        parent_path = resolve_parent_path(parent_str, current, project_root, theme)
+        parent_path = resolve_parent_path(
+            parent_str, current.parent, project_root, theme
+        )
         if parent_path in visited:
             raise ValueError(f"Circular inkflow:parent chain detected at {parent_path}")
         visited.add(parent_path)
@@ -302,7 +304,7 @@ def create_slide(
 
     Raises ValueError if the parent string cannot be resolved.
     """
-    parent_abs = resolve_parent_path(parent_str, output_path, project_dir, theme)
+    parent_abs = resolve_parent_path(parent_str, output_path.parent, project_dir, theme)
 
     view_box, width, height = "0 0 1920 1080", "1920", "1080"
     if parent_abs.exists():

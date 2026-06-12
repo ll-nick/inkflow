@@ -4,7 +4,6 @@ from pathlib import Path
 from inkflow import (
     Animation,
     Deck,
-    MarkdownSlide,
     Media,
     Slide,
     Transition,
@@ -88,34 +87,34 @@ def main() -> Deck:
                 transition=transitions.Morph(duration=1.8),
                 notes=Path("slides/04-notes.md"),
             ),
-            MarkdownSlide(
+            Slide(
                 "layouts/content.svg",
-                content="slides/05-invisible.md",
+                md="slides/05-invisible.md",
                 visible=False,
             ),
-            MarkdownSlide(
+            Slide(
                 "layouts/content.svg",
-                content="slides/06-markdown.md",
+                md="slides/06-markdown.md",
             ),
-            MarkdownSlide(
+            Slide(
                 "layouts/media-right.svg",
-                content="slides/07-image.md",
-                media=Media("assets/demo.jpg", fit="cover"),
+                md="slides/07-image.md",
+                zones={"media": Media("assets/demo.jpg", fit="cover")},
             ),
-            MarkdownSlide(
+            Slide(
                 "layouts/media-right.svg",
-                content="slides/08-video.md",
-                media="assets/demo.mp4",
+                md="slides/08-video.md",
+                zones={"media": Media("assets/demo.mp4")},
                 notes="Notes can also be added both in markdown and in `deck.py`.",
             ),
             Slide(
                 "slides/10-clips.svg",
                 transition=Flip(duration=0.8),
-                content=[
-                    Media("assets/demo.jpg", element="#zone-left", fit="cover"),
-                    Media("assets/demo.jpg", element="#zone-center", fit="cover"),
-                    Media("assets/demo.mp4", element="#zone-right", fit="cover"),
-                ],
+                zones={
+                    "left": Media("assets/demo.jpg", fit="cover"),
+                    "center": Media("assets/demo.jpg", fit="cover"),
+                    "right": Media("assets/demo.mp4", fit="cover"),
+                },
             ),
         ]
     )

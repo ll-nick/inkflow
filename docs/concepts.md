@@ -61,14 +61,19 @@ by giving it an ID like `zone-title` or `zone-content`.
 Inkflow replaces that rectangle with your content at build time.
 You fill zones from `deck.py` using `TextBox` for text or `Media` for images and video.
 
-`MarkdownSlide` is shorthand for the common case where most of the slide content is text.
-Instead of a source SVG you provide a layout template: an SVG that defines zones but little else.
-Instead of a `TextBox`, you point it at a `.md` file and Inkflow fills the zones automatically.
+When most of the slide content is text, pass a layout name and a `.md` file path to `Slide`:
+
+```python
+Slide("default", md="slides/02-intro.md")
+```
+
+Instead of a source SVG, the `src` is a layout name (or path) that defines zones but little else.
+Inkflow renders the Markdown and fills the zones automatically.
 Within the Markdown file, `::zone-name::` markers route sections to different zones,
 and `::step::` markers split content into reveal steps.
 
-Use `Slide` when the visual design is the point.
-Use `MarkdownSlide` when the text content is the point.
+Use `Slide` with an SVG path when the visual design is the point.
+Use `Slide` with `md=` when the text content is the point.
 
 ## The layout system
 

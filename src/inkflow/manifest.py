@@ -61,7 +61,6 @@ class VAlign(StrEnum):
 
 @dataclass
 class TextBox:
-    element: str
     text: str | None = None
     steps: bool = False
     align: Align | None = None
@@ -76,10 +75,9 @@ class Media:
     align: str = "center"
     x: float = 0.0
     y: float = 0.0
-    element: str = field(default="", kw_only=True)
 
 
-Content = TextBox | Media
+ZoneContent = str | Media | TextBox
 
 
 # ── Slide / Deck ──────────────────────────────────────────────────────────────
@@ -87,60 +85,26 @@ Content = TextBox | Media
 
 @dataclass
 class Slide:
-    src: str
+    src: str  # SVG path or bare layout name
+    md: str | None = None  # .md file path
+    zones: dict[str, ZoneContent] = field(
+        default_factory=dict
+    )  # per-zone overrides; str = inline markdown
     animations: list[Animation] = field(default_factory=list)
     transition: Transition | None = None
-    content: list[Content] = field(default_factory=list)
     style: str = ""
     title: str | None = None
     notes: str | Path | None = None
     visible: bool = True
+    steps: bool = False
 
     @property
     def step_count(self) -> int:
         return max((a.step for a in self.animations), default=0)
 
 
-class MarkdownSlide:
-    template: str
-    content: str | None
-    steps: bool
-    animations: list[Animation]
-    transition: Transition | None
-    style: str
-    title: str | None
-    notes: str | Path | None
-    visible: bool
-    extra: dict[str, str | Media]
-
-    def __init__(
-        self,
-        template: str,
-        *,
-        content: str | None = None,
-        steps: bool = False,
-        animations: list[Animation] | None = None,
-        transition: Transition | None = None,
-        style: str = "",
-        title: str | None = None,
-        notes: str | Path | None = None,
-        visible: bool = True,
-        **kwargs: str | Media,
-    ) -> None:
-        self.template = template
-        self.content = content
-        self.steps = steps
-        self.animations = animations or []
-        self.transition = transition
-        self.style = style
-        self.title = title
-        self.notes = notes
-        self.visible = visible
-        self.extra = kwargs
-
-
 class Deck:
-    slides: list[Slide | MarkdownSlide]
+    slides: list[Slide]
     transition: Transition | None
     theme: str | None
     dark_mode: bool
@@ -149,12 +113,12 @@ class Deck:
 
     def __init__(
         self,
+        slides: list[Slide] | None = None,
         transition: Transition | None = None,
         theme: str | None = None,
         dark_mode: bool = True,
         style: str = "",
         font_size: int = 36,
-        slides: list[Slide | MarkdownSlide] | None = None,
     ) -> None:
         self.slides = list(slides) if slides is not None else []
         self.transition = transition

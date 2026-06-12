@@ -53,8 +53,8 @@ class TestResolveParentPath:
         assert result == layout.resolve()
 
     def test_file_relative(self, tmp_path: Path) -> None:
-        svg = tmp_path / "slides" / "01.svg"
-        result = resolve_parent_path("../layouts/main", svg, tmp_path, None)
+        slides_dir = tmp_path / "slides"
+        result = resolve_parent_path("../layouts/main", slides_dir, tmp_path, None)
         assert result == (tmp_path / "layouts" / "main.svg").resolve()
 
     def test_theme_prefix(self, tmp_path: Path) -> None:
