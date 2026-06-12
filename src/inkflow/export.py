@@ -6,12 +6,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from inkflow.loaders import load_scripts, load_styles
 from inkflow.manifest import Deck, MarkdownSlide, Media, Slide
 from inkflow.pipeline import process_deck, resolve_transitions
-from inkflow.server import State, build_html, load_deck, load_scripts, load_styles
-
-_VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
-
+from inkflow.server import State, build_html, load_deck
 
 # ── build ─────────────────────────────────────────────────────────────────────
 
@@ -24,7 +22,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
     styles_css = load_styles(deck, project_dir)
     scripts_js = load_scripts(deck, project_dir)
 
-    _copy_videos(_collect_video_paths(deck), project_dir, out_dir)
+    _copy_assets(_collect_local_media_paths(deck), project_dir, out_dir)
 
     state: State = {
         "slides": slides,
@@ -40,25 +38,24 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
     (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
 
 
-def _collect_video_paths(deck: Deck) -> list[str]:
+def _collect_local_media_paths(deck: Deck) -> list[str]:
     paths: list[str] = []
     for slide in deck.slides:
         items = slide.content if isinstance(slide, Slide) else []
         for item in items:
-            if (
-                isinstance(item, Media)
-                and Path(item.src).suffix.lower() in _VIDEO_SUFFIXES
+            if isinstance(item, Media) and not item.src.startswith(
+                ("http://", "https://", "//")
             ):
                 paths.append(item.src)
         if isinstance(slide, MarkdownSlide):
             for val in slide.extra.values():
                 src = val.src if isinstance(val, Media) else val
-                if Path(src).suffix.lower() in _VIDEO_SUFFIXES:
+                if not src.startswith(("http://", "https://", "//")):
                     paths.append(src)
     return paths
 
 
-def _copy_videos(paths: list[str], project_dir: Path, out_dir: Path) -> None:
+def _copy_assets(paths: list[str], project_dir: Path, out_dir: Path) -> None:
     for rel in paths:
         src = project_dir / rel
         dst = out_dir / rel
@@ -101,6 +98,7 @@ def build_pdf(
     with tempfile.TemporaryDirectory() as tmp:
         html_path = Path(tmp) / "slides.html"
         html_path.write_text(html, encoding="utf-8")
+        _copy_assets(_collect_local_media_paths(deck), project_dir, Path(tmp))
         cmd = [
             exe,
             "--headless",

@@ -116,7 +116,9 @@ def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
     return _parse_markdown_zones_full(md_path).zones
 
 
-def chunks_to_html(chunks: list[str], base_step: int) -> tuple[str, int]:
+def chunks_to_html(
+    chunks: list[str], base_step: int, wrap_list_items: bool = False
+) -> tuple[str, int]:
     parts: list[str] = []
     step = base_step
     chunk_index = 0
@@ -125,11 +127,24 @@ def chunks_to_html(chunks: list[str], base_step: int) -> tuple[str, int]:
         if item == _STEP:
             step += 1
             continue
+        html = markdown_to_html(item)
         if chunk_index == 0:
-            parts.append(markdown_to_html(item))
+            if wrap_list_items:
+                html, step = steps_wrap_list_items(html, step)
+            parts.append(html)
         else:
-            html = markdown_to_html(item)
-            parts.append(f'<div class="anim-fade-in" data-step="{step}">{html}</div>')
+            if wrap_list_items:
+                # _STEP already incremented step; pass step-1 so the first
+                # list item lands at `step`, not `step+1`
+                html_wrapped, new_step = steps_wrap_list_items(html, step - 1)
+                if new_step >= step:
+                    html = html_wrapped
+                    step = new_step
+                else:
+                    html = f'<div class="anim-fade-in" data-step="{step}">{html}</div>'
+            else:
+                html = f'<div class="anim-fade-in" data-step="{step}">{html}</div>'
+            parts.append(html)
         chunk_index += 1
 
     return "".join(parts), step
@@ -184,9 +199,7 @@ def build_slide_content(
     base_step = 0
 
     for zone_name, chunks in zones.items():
-        html, base_step = chunks_to_html(chunks, base_step)
-        if steps:
-            html, base_step = steps_wrap_list_items(html, base_step)
+        html, base_step = chunks_to_html(chunks, base_step, wrap_list_items=steps)
         p = zone_params.get(zone_name, {})
         content.append(
             TextBox(

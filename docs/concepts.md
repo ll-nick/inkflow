@@ -22,20 +22,20 @@ Nothing on disk changes.
 
 ## The deck manifest
 
-`deck.py` is a plain Python module that assigns a `Deck` instance to the module-level variable `deck`.
-Inkflow loads it with `importlib` at serve time.
+`deck.py` is a plain Python module that defines a `main()` function returning a `Deck`.
+Inkflow calls it with `importlib` at serve time.
 This means you get full Python: loops, conditionals, variables, imports.
 
 ```python
 from inkflow import Deck, Slide, animations
 
-deck = Deck()
-deck.slides = [
-    Slide("slides/01-title.svg", animations=[
-        animations.FadeIn("#headline", step=1),
-        animations.FadeIn("#subtitle", step=2),
-    ]),
-]
+def main() -> Deck:
+    return Deck(slides=[
+        Slide("slides/01-title.svg", animations=[
+            animations.FadeIn("#headline", step=1),
+            animations.FadeIn("#subtitle", step=2),
+        ]),
+    ])
 ```
 
 The manifest records intent, not rendering.
@@ -97,7 +97,7 @@ Inkflow ships with a built-in theme.
 To use your own, point `Deck` at the directory:
 
 ```python
-deck = Deck(theme="./my-theme")
+Deck(theme="./my-theme")
 ```
 
 The CSS stylesheet is injected into every slide.

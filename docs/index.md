@@ -39,18 +39,18 @@ Keep everything in plain text.
 ```python
 from inkflow import Deck, Slide, animations, transitions
 
-deck = Deck()
-deck.slides = [
-    Slide("slides/01-title.svg", animations=[
-        animations.FadeIn("#headline", step=1),
-        animations.FadeIn("#subtitle", step=2),
-    ]),
-    Slide("slides/02-diagram.svg", animations=[
-        animations.Bounce("#box-a", step=1),
-        animations.Bounce("#box-b", step=2),
-    ], transition=transitions.Crossfade()),
-    Slide("slides/03-summary.svg", transition=transitions.Morph(duration=0.7)),
-]
+def main() -> Deck:
+    return Deck(slides=[
+        Slide("slides/01-title.svg", animations=[
+            animations.FadeIn("#headline", step=1),
+            animations.FadeIn("#subtitle", step=2),
+        ]),
+        Slide("slides/02-diagram.svg", animations=[
+            animations.Bounce("#box-a", step=1),
+            animations.Bounce("#box-b", step=2),
+        ], transition=transitions.Crossfade()),
+        Slide("slides/03-summary.svg", transition=transitions.Morph(duration=0.7)),
+    ])
 ```
 
 ```bash

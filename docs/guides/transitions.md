@@ -10,13 +10,15 @@ and override per slide as needed:
 ```python
 from inkflow import Deck, Slide, transitions
 
-deck = Deck(transition=transitions.Crossfade())  # default
-
-deck.slides = [
-    Slide("slides/01-title.svg"),                                    # Crossfade (default)
-    Slide("slides/02-diagram.svg", transition=transitions.Cut()),    # override: instant cut
-    Slide("slides/03-morph.svg", transition=transitions.Morph(1.0)), # override: morph
-]
+def main() -> Deck:
+    return Deck(
+        transition=transitions.Crossfade(),  # default
+        slides=[
+            Slide("slides/01-title.svg"),                                    # Crossfade (default)
+            Slide("slides/02-diagram.svg", transition=transitions.Cut()),    # override: instant cut
+            Slide("slides/03-morph.svg", transition=transitions.Morph(1.0)), # override: morph
+        ],
+    )
 ```
 
 If no transition is set on the deck and none on the slide, the default is `Cut` (instant).

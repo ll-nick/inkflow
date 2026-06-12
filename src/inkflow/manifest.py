@@ -154,8 +154,9 @@ class Deck:
         dark_mode: bool = True,
         style: str = "",
         font_size: int = 36,
+        slides: list[Slide | MarkdownSlide] | None = None,
     ) -> None:
-        self.slides = []
+        self.slides = list(slides) if slides is not None else []
         self.transition = transition
         self.theme = theme
         self.dark_mode = dark_mode

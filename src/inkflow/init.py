@@ -19,11 +19,13 @@ _MD_CONTENT = (
 
 _DECK_PY = (
     "from inkflow import Deck, MarkdownSlide, Slide\n\n"
-    "deck = Deck({deck_arg})\n\n"
-    "deck.slides = [\n"
-    '    Slide("slides/01-title.svg"),\n'
-    '    MarkdownSlide("builtin:default", content="slides/02-content.md"),\n'
-    "]\n"
+    "def main() -> Deck:\n"
+    "    return Deck(\n"
+    "        slides=[\n"
+    '        Slide("slides/01-title.svg"),\n'
+    '        MarkdownSlide("builtin:default", content="slides/02-content.md"),\n'
+    "        ]\n"
+    "    )\n"
 )
 
 

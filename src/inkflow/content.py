@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import base64
 import copy
-import mimetypes
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,16 +10,12 @@ from lxml import etree
 from inkflow import ns
 from inkflow.manifest import Align, Content, TextBox, VAlign
 
-_MIME_MAP = {
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".svg": "image/svg+xml",
-}
-
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
+
+
+def _is_url(src: str) -> bool:
+    return src.startswith(("http://", "https://", "//"))
+
 
 _ALIGN_MAP: dict[str, tuple[int, int]] = {
     "center": (50, 50),
@@ -335,7 +329,6 @@ def _replace_with_media(
     align: str,
     x: float,
     y: float,
-    project_dir: Path,
 ) -> None:
     geom = _zone_geometry(el)
     rect = geom.rect
@@ -362,17 +355,16 @@ def _replace_with_media(
             {"src": src, "controls": ""},
             nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
         )
-    else:
-        img_path = project_dir / src
-        mime = (
-            _MIME_MAP.get(suffix)
-            or mimetypes.guess_type(str(img_path))[0]
-            or "image/png"
-        )
-        b64 = base64.b64encode(img_path.read_bytes()).decode()
+    elif _is_url(src):
         media_el = etree.Element(
             f"{{{ns.XHTML}}}img",
-            {"src": f"data:{mime};base64,{b64}"},
+            {"src": src},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    else:
+        media_el = etree.Element(
+            f"{{{ns.XHTML}}}img",
+            {"src": src},
             nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
         )
 
@@ -384,7 +376,6 @@ def _replace_with_media(
 def substitute_content(
     svg_str: str,
     content: list[Content],
-    project_dir: Path,
     font_size: int = 36,
 ) -> str:
     root = etree.fromstring(svg_str.encode())
@@ -416,7 +407,6 @@ def substitute_content(
                 item.align,
                 item.x,
                 item.y,
-                project_dir,
             )
 
     return etree.tostring(root, encoding="unicode")

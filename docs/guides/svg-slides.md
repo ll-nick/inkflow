@@ -9,10 +9,10 @@ and how to transition in from the previous slide.
 ```python
 from inkflow import Deck, Slide
 
-deck = Deck()
-deck.slides = [
-    Slide("slides/01-title.svg"),
-]
+def main() -> Deck:
+    return Deck(slides=[
+        Slide("slides/01-title.svg"),
+    ])
 ```
 
 The SVG file is loaded as-is, stripped of editor metadata, and served.
@@ -95,12 +95,14 @@ Set it per slide, or set a default on the `Deck`:
 ```python
 from inkflow import Deck, Slide, transitions
 
-deck = Deck(transition=transitions.Crossfade())  # default for all slides
-
-deck.slides = [
-    Slide("slides/01-title.svg"),                                   # uses Crossfade
-    Slide("slides/02-diagram.svg", transition=transitions.Morph()), # overrides to Morph
-]
+def main() -> Deck:
+    return Deck(
+        transition=transitions.Crossfade(),  # default for all slides
+        slides=[
+            Slide("slides/01-title.svg"),                                   # uses Crossfade
+            Slide("slides/02-diagram.svg", transition=transitions.Morph()), # overrides to Morph
+        ],
+    )
 ```
 
 See [Transitions](transitions.md) for details on each type.

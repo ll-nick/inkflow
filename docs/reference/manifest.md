@@ -8,21 +8,23 @@ imported directly from `inkflow`.
 ## `Deck`
 
 The top-level container.
-Assign a `Deck` instance to the module-level `deck` variable in `deck.py`.
+Define a `main() -> Deck` function in `deck.py`; Inkflow calls it at serve time.
 
 ```python
-deck = Deck(
-    transition=transitions.Crossfade(),   # default transition for all slides
-    theme="./my-theme",                   # path to theme directory
-    dark_mode=True,                       # data-theme="dark" on <html>
-    style="",                             # CSS injected into every slide
-    font_size=36,                         # base font size for MarkdownSlide content (px)
-)
-deck.slides = [...]
+def main() -> Deck:
+    return Deck(
+        transition=transitions.Crossfade(),   # default transition for all slides
+        theme="./my-theme",                   # path to theme directory
+        dark_mode=True,                       # data-theme="dark" on <html>
+        style="",                             # CSS injected into every slide
+        font_size=36,                         # base font size for MarkdownSlide content (px)
+        slides=[...],
+    )
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
+| `slides` | `list[Slide \| MarkdownSlide]` | `[]` | The slide list |
 | `transition` | `Transition \| None` | `None` | Default transition. `Cut` if unset |
 | `theme` | `str \| None` | `None` | Path to theme directory |
 | `dark_mode` | `bool` | `True` | Sets `data-theme` on `<html>` |

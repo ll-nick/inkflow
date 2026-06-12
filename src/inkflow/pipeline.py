@@ -183,6 +183,12 @@ def clean_inkscape_svg(src: Path) -> str:
             del el.attrib[k]
 
     etree.cleanup_namespaces(root)
+
+    for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
+        parent = el.getparent()
+        if parent is not None:
+            parent.remove(el)
+
     return etree.tostring(root, encoding="unicode", pretty_print=True)
 
 
@@ -298,6 +304,24 @@ def _resolve_markdown_slide(
     )
 
 
+def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
+    """Assign a unique ID to the SVG root and wrap every <style> in @scope.
+
+    Inline SVG <style> elements are document-global; without this, zone rules
+    like `#zone-title { --inkflow-valign: end }` bleed onto other slides that
+    are simultaneously in the DOM during a CSS transition.
+    """
+    root = etree.fromstring(svg_str.encode())
+    slide_id = f"inkflow-slide-{slide_number}"
+    root.set("id", slide_id)
+    for style_el in root.findall(f".//{{{ns.SVG}}}style"):
+        css = style_el.text
+        if not css or not css.strip():
+            continue
+        style_el.text = f"@scope(#{slide_id}) {{\n{css}\n}}"
+    return etree.tostring(root, encoding="unicode")
+
+
 def process_slide(
     slide: Slide,
     project_dir: Path,
@@ -314,13 +338,14 @@ def process_slide(
         svg_str = compose_with_ancestors(svg_str, chain)
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
     if slide.content:
-        svg_str = substitute_content(svg_str, slide.content, project_dir, font_size)
+        svg_str = substitute_content(svg_str, slide.content, font_size)
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
     combined_css = "\n".join(filter(None, [deck_style, slide.style]))
     if combined_css:
         svg_str = inject_style(svg_str, combined_css)
     svg_str = remove_unreferenced_zones(svg_str)
+    svg_str = _scope_slide_styles(svg_str, slide_number)
     return svg_str
 
 

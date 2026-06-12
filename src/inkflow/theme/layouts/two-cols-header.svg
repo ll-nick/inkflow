@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="../numbered-main.svg" viewBox="0 0 1920 1080" width="1920" height="1080">
-  <rect id="zone-header" x="80" y="60" width="1760" height="120"/>
-  <rect id="zone-left" x="80" y="220" width="840" height="780"/>
-  <rect id="zone-right" x="1000" y="220" width="840" height="780"/>
-</svg>
