@@ -110,6 +110,7 @@ class Deck:
     dark_mode: bool
     style: str
     font_size: int
+    embed_fonts: bool
 
     def __init__(
         self,
@@ -119,6 +120,7 @@ class Deck:
         dark_mode: bool = True,
         style: str = "",
         font_size: int = 36,
+        embed_fonts: bool = True,
     ) -> None:
         self.slides = list(slides) if slides is not None else []
         self.transition = transition
@@ -126,3 +128,4 @@ class Deck:
         self.dark_mode = dark_mode
         self.style = style
         self.font_size = font_size
+        self.embed_fonts = embed_fonts

@@ -17,7 +17,9 @@ classifiers = [
     "Topic :: Multimedia :: Graphics :: Presentation",
 ]
 dependencies = [
+    "brotli>=1.2.0",
     "click>=8.0",
+    "fonttools>=4.63.0",
     "lxml>=5.0",
     "markdown-it-py>=3.0",
     "rich>=15.0.0",
@@ -55,6 +57,7 @@ docs = [
 
 [tool.pyright]
 reportUnusedCallResult = "none"
+reportMissingTypeStubs = "none"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

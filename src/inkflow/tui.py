@@ -31,6 +31,7 @@ class LiveUI:
         self._slides: int = 0
         self._elapsed: float = 0.0
         self._built_at: str = ""
+        self._warnings: list[str] = []
         self._error_trace: str | None = None
         self._show_trace: bool = False
 
@@ -75,6 +76,11 @@ class LiveUI:
         if self._phase == "building":
             parts.append(Spinner("dots", text=" Building…"))
         elif self._phase == "ok":
+            for w in self._warnings:
+                parts.append(Text(f" ⚠  {w}", style="yellow"))
+            if self._warnings:
+                parts.append(Text(""))
+
             slide_word = "slide" if self._slides == 1 else "slides"
             summary = f" ✓  built {self._slides} {slide_word} in {self._elapsed:.2f}s"
             parts.append(
@@ -106,13 +112,17 @@ class LiveUI:
 
     def set_building(self) -> None:
         self._phase = "building"
+        self._warnings = []
         self.refresh()
 
-    def set_ok(self, slides: int, elapsed: float) -> None:
+    def set_ok(
+        self, slides: int, elapsed: float, warnings: list[str] | None = None
+    ) -> None:
         self._phase = "ok"
         self._slides = slides
         self._elapsed = elapsed
         self._built_at = datetime.now().strftime("%H:%M:%S")
+        self._warnings = warnings or []
         self._error_trace = None
         self._show_trace = False
         self.refresh()

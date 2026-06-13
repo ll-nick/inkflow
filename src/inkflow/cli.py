@@ -446,7 +446,9 @@ def build_cmd(deck: str, output: str | None) -> None:
     if not deck_path.exists():
         raise click.ClickException(f"deck not found: {deck_path}")
     out_dir = Path(output).resolve() if output else deck_path.parent / "build"
-    build_static_html(deck_path, out_dir)
+    warnings = build_static_html(deck_path, out_dir)
+    for w in warnings:
+        click.echo(click.style(f" ⚠  {w}", fg="yellow"))
     click.echo(f"[inkflow] built {out_dir / 'index.html'}")
 
 
@@ -478,9 +480,11 @@ def export_cmd(
         raise click.ClickException(f"deck not found: {deck_path}")
     out = Path(output).resolve() if output else deck_path.with_suffix(".pdf")
     try:
-        build_pdf(deck_path, out, chromium, no_sandbox)
+        warnings = build_pdf(deck_path, out, chromium, no_sandbox)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
+    for w in warnings:
+        click.echo(click.style(f" ⚠  {w}", fg="yellow"))
     click.echo(f"[inkflow] exported {out}")
 
 

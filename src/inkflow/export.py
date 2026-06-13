@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_scripts, load_styles
 from inkflow.manifest import Deck, Media
 from inkflow.pipeline import process_deck, resolve_transitions
@@ -14,12 +15,17 @@ from inkflow.server import State, build_html, load_deck
 # ── build ─────────────────────────────────────────────────────────────────────
 
 
-def build_static_html(deck_path: Path, out_dir: Path) -> None:
+def build_static_html(deck_path: Path, out_dir: Path) -> list[str]:
     deck = load_deck(deck_path)
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir)
     transitions = resolve_transitions(deck)
     styles_css = load_styles(deck, project_dir)
+    warnings: list[str] = []
+    if deck.embed_fonts:
+        font_css, warnings = embed_fonts_css_subsetted(slides, project_dir)
+        if font_css:
+            styles_css = (font_css + "\n" + styles_css).strip()
     scripts_js = load_scripts(deck, project_dir)
 
     _copy_assets(_collect_local_media_paths(deck), project_dir, out_dir)
@@ -36,6 +42,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
+    return warnings
 
 
 def _collect_local_media_paths(deck: Deck) -> list[str]:
@@ -66,7 +73,7 @@ def build_pdf(
     output: Path,
     chromium: str | None = None,
     no_sandbox: bool = False,
-) -> None:
+) -> list[str]:
     exe = chromium or _find_chromium()
     if exe is None:
         raise RuntimeError(
@@ -78,6 +85,11 @@ def build_pdf(
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir)
     styles_css = load_styles(deck, project_dir)
+    warnings: list[str] = []
+    if deck.embed_fonts:
+        font_css, warnings = embed_fonts_css_subsetted(slides, project_dir)
+        if font_css:
+            styles_css = (font_css + "\n" + styles_css).strip()
 
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")
@@ -104,6 +116,7 @@ def build_pdf(
         if no_sandbox:
             cmd.insert(1, "--no-sandbox")
         subprocess.run(cmd, check=True)
+    return warnings
 
 
 def _find_chromium() -> str | None:
