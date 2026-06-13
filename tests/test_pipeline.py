@@ -465,7 +465,15 @@ class TestLayoutClasses:
         results = process_deck(deck, tmp_path)
         assert "layout-mylayout" in results[0]["svg"]
 
-    def test_no_scope_wrapper_in_output(self, tmp_path: Path) -> None:
+    def test_scope_wraps_injected_deck_style(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide = tmp_path / "slides" / "plain.svg"
+        slide.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(style="#box { fill: red; }", slides=[Slide("slides/plain.svg")])
+        results = process_deck(deck, tmp_path)
+        assert "@scope" in results[0]["svg"]
+
+    def test_no_scope_without_inline_styles(self, tmp_path: Path) -> None:
         (tmp_path / "slides").mkdir()
         slide = tmp_path / "slides" / "plain.svg"
         slide.write_text(_PLAIN_SVG, encoding="utf-8")

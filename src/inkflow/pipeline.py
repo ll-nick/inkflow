@@ -266,11 +266,10 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
 
 
 def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
-    """Assign a unique ID to the SVG root and wrap every <style> in @scope.
+    """Assign a unique ID to the SVG root and wrap any inline <style> in @scope.
 
-    Inline SVG <style> elements are document-global; without this, zone rules
-    like `#zone-title { --inkflow-valign: end }` bleed onto other slides that
-    are simultaneously in the DOM during a CSS transition.
+    SVG style blocks would bleed onto adjacent slides
+    during CSS transitions without this guard.
     """
     root = etree.fromstring(svg_str.encode())
     slide_id = f"inkflow-slide-{slide_number}"
@@ -280,6 +279,19 @@ def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
         if not css or not css.strip():
             continue
         style_el.text = f"@scope(#{slide_id}) {{\n{css}\n}}"
+    return etree.tostring(root, encoding="unicode")
+
+
+def _add_layout_classes(svg_str: str, chain: list[Path], src: Path) -> str:
+    """Add layout-<stem> classes to the SVG root for every entry in [*chain, src].
+
+    This scopes CSS rules in styles.css to a slide type
+    (e.g. `.layout-cover #zone-title`)
+    """
+    root = etree.fromstring(svg_str.encode())
+    existing = [c for c in root.get("class", "").split() if not c.startswith("layout-")]
+    new_classes = [f"layout-{p.stem}" for p in [*chain, src]]
+    root.set("class", " ".join(existing + new_classes))
     return etree.tostring(root, encoding="unicode")
 
 
@@ -298,6 +310,7 @@ def process_slide(
     chain = resolve_chain(src, project_dir, theme)
     if chain:
         svg_str = compose_with_ancestors(svg_str, chain)
+    svg_str = _add_layout_classes(svg_str, chain, src)
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
 
     if slide.md is not None or slide.zones:
