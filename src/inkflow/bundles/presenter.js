@@ -243,7 +243,7 @@
           (i) => parseInt(hexDigits.slice(i, i + 2), 16)
         );
     }
-    const rgbMatch = colorString.match(/rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\)/);
+    const rgbMatch = colorString.match(/rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)/);
     if (rgbMatch) return [+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]];
     return null;
   }
@@ -595,7 +595,7 @@
       const fromValue = morph.fromAttributes[attribute];
       const toValue = morph.toAttributes[attribute];
       if (fromValue !== void 0 && toValue !== void 0)
-        morph.element.setAttribute(
+        morph.element.style.setProperty(
           attribute,
           interpolateAttribute(
             attribute,
@@ -690,9 +690,7 @@
   }
   function finalizeMorph(morph) {
     for (const attribute of INTERPOLATED_ATTRIBUTES) {
-      const toValue = morph.toAttributes[attribute];
-      if (toValue !== void 0)
-        morph.element.setAttribute(attribute, toValue);
+      morph.element.style.removeProperty(attribute);
     }
     if (morph.kind === "line") {
       morph.element.setAttribute("x1", String(morph.to.x1));
