@@ -132,22 +132,81 @@ def _hex_to_rgb(hex_val: str) -> tuple[int, int, int]:
     return r, g, b
 
 
-def build_gpl(tokens: dict[str, str], palette_name: str) -> str:
-    """Generate Inkscape GPL palette content from a token→hex mapping."""
-    lines = [
-        "GIMP Palette",
-        f"Name: {palette_name}",
-        "#",
+def _hex_to_hsl(hex_val: str) -> tuple[float, float, float]:
+    r, g, b = _hex_to_rgb(hex_val)
+    red, green, blue = r / 255, g / 255, b / 255
+    cmax, cmin = max(red, green, blue), min(red, green, blue)
+    delta = cmax - cmin
+    lightness = (cmax + cmin) / 2
+    saturation = 0.0 if delta == 0 else delta / (1 - abs(2 * lightness - 1))
+    if delta == 0:
+        hue = 0.0
+    elif cmax == red:
+        hue = 60 * (((green - blue) / delta) % 6)
+    elif cmax == green:
+        hue = 60 * ((blue - red) / delta + 2)
+    else:
+        hue = 60 * ((red - green) / delta + 4)
+    return hue, saturation, lightness
+
+
+# Tokens sorted by lightness in the palette neutral ramp.
+_NEUTRAL_TOKENS: frozenset[str] = frozenset(
+    [
+        "bg",
+        "surface",
+        "border",
+        "text",
+        "text-muted",
+        "accent-fg",
+        "code-bg",
+        "code-text",
+        "grey",
     ]
+)
+# Tokens sorted by hue in the palette chromatic strip.
+_CHROMATIC_TOKENS: frozenset[str] = frozenset(
+    ["accent", "red", "orange", "yellow", "green", "teal", "blue", "purple", "pink"]
+)
+
+
+def build_gpl(tokens: dict[str, str], palette_name: str) -> str:
+    """Generate Inkscape GPL palette content from a token→hex mapping.
+
+    Deduplicates by hex value (first occurrence in SVG_TOKENS order wins),
+    then outputs a neutral ramp sorted dark→light followed by chromatic
+    colors sorted by hue.
+    """
+    seen: set[str] = set()
+    neutrals: list[tuple[float, int, int, int, str]] = []  # (lightness, r, g, b, name)
+    chromatic: list[tuple[float, int, int, int, str]] = []  # (hue, r, g, b, name)
+
     for token in SVG_TOKENS:
         hex_val = tokens.get(token)
         if not hex_val:
             continue
+        key = hex_val.lower()
+        if key in seen:
+            continue
+        seen.add(key)
         try:
-            r, g, b = _hex_to_rgb(hex_val)
+            r, g, b = _hex_to_rgb(key)
+            hue, _saturation, lightness = _hex_to_hsl(key)
         except (ValueError, IndexError):
             continue
-        lines.append(f"{r:3d} {g:3d} {b:3d}\t{token}")
+        if token in _NEUTRAL_TOKENS:
+            neutrals.append((lightness, r, g, b, token))
+        elif token in _CHROMATIC_TOKENS:
+            chromatic.append((hue, r, g, b, token))
+
+    neutrals.sort(key=lambda e: e[0])
+    chromatic.sort(key=lambda e: e[0])
+
+    lines = ["GIMP Palette", f"Name: {palette_name}", "#"]
+    for _, r, g, b, name in neutrals:
+        lines.append(f"{r:3d} {g:3d} {b:3d}\t{name}")
+    for _, r, g, b, name in chromatic:
+        lines.append(f"{r:3d} {g:3d} {b:3d}\t{name}")
     return "\n".join(lines) + "\n"
 
 
