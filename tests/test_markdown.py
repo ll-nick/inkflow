@@ -10,6 +10,7 @@ from inkflow.markdown import (
     _parse_markdown_zones_full,  # pyright: ignore[reportPrivateUsage]
     build_slide_content,
     chunks_to_html,
+    markdown_to_html,
     parse_markdown_zones,
     steps_wrap_list_items,
 )
@@ -316,3 +317,23 @@ class TestZoneParams:
         assert tb.align is None
         assert tb.valign is None
         assert tb.padding is None
+
+
+class TestMath:
+    def test_inline_math_renders_to_mathml(self) -> None:
+        out = markdown_to_html("This is $x^2 + y^2 = z^2$ inline.")
+        assert "<math" in out
+        assert "$" not in out
+
+    def test_block_math_renders_to_mathml(self) -> None:
+        out = markdown_to_html("$$E = mc^2$$")
+        assert "<math" in out
+        assert 'class="math block"' in out
+        assert "$" not in out
+
+    def test_math_does_not_raise_on_unknown_commands(self) -> None:
+        # latex2mathml is lenient and renders unknown commands rather than raising.
+        # Verify no exception propagates and the output is non-empty.
+        out = markdown_to_html(r"$\zzznonsense$")
+        assert isinstance(out, str)
+        assert len(out) > 0

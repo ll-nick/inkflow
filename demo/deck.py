@@ -108,6 +108,10 @@ def main() -> Deck:
                 notes="Notes can also be added both in markdown and in `deck.py`.",
             ),
             Slide(
+                "layouts/content.svg",
+                md="slides/09-math.md",
+            ),
+            Slide(
                 "slides/10-clips.svg",
                 transition=Flip(duration=0.8),
                 zones={

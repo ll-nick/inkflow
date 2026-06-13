@@ -3,9 +3,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TypedDict, cast
 
+from latex2mathml.converter import convert as _latex_to_mathml
 from markdown_it import MarkdownIt
+from mdit_py_plugins.dollarmath import dollarmath_plugin
 
 from inkflow.manifest import Align, Media, TextBox, VAlign, ZoneContent
 
@@ -28,7 +30,17 @@ _ZONE_PATTERN = re.compile(
 _STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
 _STEP = "\x00step\x00"
 
-_md = MarkdownIt()
+
+class _MathOpts(TypedDict, total=False):
+    display_mode: bool
+
+
+def _math_to_mathml(content: str, options: _MathOpts) -> str:
+    display = "block" if options.get("display_mode") else "inline"
+    return _latex_to_mathml(content, display=display)
+
+
+_md = MarkdownIt().use(dollarmath_plugin, renderer=_math_to_mathml)
 
 
 def markdown_to_html(md_str: str) -> str:
