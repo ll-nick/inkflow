@@ -19,6 +19,7 @@ from inkflow.manifest import (
     Slide,
 )
 from inkflow.pipeline import (
+    _add_layout_classes,
     _resolve_notes,
     annotate_svg,
     clean_inkscape_svg,
@@ -423,6 +424,54 @@ class TestComposeWithAncestors:
         result = compose_with_ancestors(slide_with_layer, [anc])
         assert "stale/layer.svg" not in result
         assert "slide-content" in result
+
+
+class TestLayoutClasses:
+    def test_full_chain_adds_all_classes(self, tmp_path: Path) -> None:
+        base = tmp_path / "base.svg"
+        cover = tmp_path / "cover.svg"
+        src = tmp_path / "hero.svg"
+        for p in (base, cover, src):
+            p.write_text(_PLAIN_SVG, encoding="utf-8")
+        result = _add_layout_classes(_PLAIN_SVG, [base, cover], src)
+        assert 'class="layout-base layout-cover layout-hero"' in result
+
+    def test_standalone_gets_src_stem_class(self, tmp_path: Path) -> None:
+        src = tmp_path / "standalone.svg"
+        src.write_text(_PLAIN_SVG, encoding="utf-8")
+        result = _add_layout_classes(_PLAIN_SVG, [], src)
+        assert 'class="layout-standalone"' in result
+
+    def test_existing_non_layout_classes_preserved(self, tmp_path: Path) -> None:
+        src = tmp_path / "slide.svg"
+        svg = _PLAIN_SVG.replace("<svg ", '<svg class="my-class" ')
+        result = _add_layout_classes(svg, [], src)
+        assert "my-class" in result
+        assert "layout-slide" in result
+
+    def test_existing_layout_classes_replaced(self, tmp_path: Path) -> None:
+        src = tmp_path / "slide.svg"
+        svg = _PLAIN_SVG.replace("<svg ", '<svg class="layout-old" ')
+        result = _add_layout_classes(svg, [], src)
+        assert "layout-old" not in result
+        assert "layout-slide" in result
+
+    def test_layout_class_in_processed_slide(self, tmp_path: Path) -> None:
+        layouts_dir = tmp_path / "layouts"
+        layouts_dir.mkdir()
+        (layouts_dir / "mylayout.svg").write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        (tmp_path / "slides").mkdir()
+        deck = Deck(slides=[Slide("mylayout", zones={"content": "hi"})])
+        results = process_deck(deck, tmp_path)
+        assert "layout-mylayout" in results[0]["svg"]
+
+    def test_no_scope_wrapper_in_output(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide = tmp_path / "slides" / "plain.svg"
+        slide.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(slides=[Slide("slides/plain.svg")])
+        results = process_deck(deck, tmp_path)
+        assert "@scope" not in results[0]["svg"]
 
 
 class TestResolveNotes:

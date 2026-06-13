@@ -5,13 +5,28 @@ Items covered in the docs are implemented and not listed here.
 
 ---
 
-## Pipeline
+## Developer experience
 
-**Font embedding**
-SVGs reference fonts by name.
-On the authoring machine this works; on any other machine it may not.
-Use fonttools to resolve fonts via fontconfig, base64-encode them, and inline `@font-face` declarations inside a `<defs>` block.
-Makes each output SVG self-contained without converting text to paths.
+**`inkflow.logging` — unified log/warn/error sink**
+
+Replace ad-hoc `print()` calls and warning return values across library code with a
+single `inkflow.logging` module backed by Python's built-in `logging`.
+
+**Motivation:** library code currently mixes `print()` (pipeline, content, fonts) with
+`-> tuple[str, list[str]]` return values to surface warnings to callers. Both patterns
+are inconsistent and require threading messages up the call stack manually.
+
+**Design:** a thin `inkflow.logging` wrapper around `logging` that:
+- Provides `warn(msg)` / `info(msg)` for use anywhere in library code
+- Installs a collecting handler at the top of each CLI command and the server rebuild
+  loop so warnings can be formatted with color (`click.style`, Rich `Text`) at the
+  presentation layer
+- Keeps the default handler as a plain `print`-equivalent so library code works
+  correctly in isolation (tests, scripts) without any configuration
+
+**Migration path:** every `log.warn(msg)` or `print(f"[inkflow] warning: ...")` becomes
+`logger.warning(msg)`; every `with log.collecting() as warnings:` becomes a standard
+`logging.Handler` install/remove. Straightforward, low risk.
 
 ---
 
@@ -20,9 +35,6 @@ Makes each output SVG self-contained without converting text to paths.
 **Drawing and annotation mode**
 A toggle that overlays a canvas element and lets you draw with the mouse or stylus during Q&A.
 Drawings are ephemeral — they don't persist between slides.
-
-**Laser pointer**
-A coloured dot that follows the mouse while a modifier key is held.
 
 ---
 
@@ -87,7 +99,6 @@ Auto-discovery so `Deck(theme="catppuccin-mocha")` works after `pip install inkf
 - **Morph for paths and groups** — `<path>`, `<polygon>`, `<g>`, `<text>` currently fall back to an instant cut
 - **Auto-advance** — timed slides for kiosk or lightning-talk use
 - **Hyperlinks** — SVG `<a>` elements open in a new tab during presentation
-- **Within-slide Morph** — element changes shape as part of a step sequence on a single slide
 - **Configurable keybindings** — a `keybindings` dict on `Deck`
 
 ---
