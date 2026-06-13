@@ -247,7 +247,10 @@ def colorize_svg(
     string is returned unchanged so the caller can skip the write.
     """
     root = etree.fromstring(svg_str.encode())
-    changed = any(colorize_element(el, hex_map) for el in root.iter())
+    changed = False
+    for el in root.iter():
+        if colorize_element(el, hex_map):
+            changed = True
     if not changed:
         return svg_str, False
     return etree.tostring(root, encoding="unicode", xml_declaration=False), True
