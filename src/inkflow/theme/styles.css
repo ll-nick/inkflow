@@ -1,37 +1,63 @@
-/* ── CSS variable defaults (Catppuccin Mocha — dark) ─────────────────────── */
+/* ── Raw palette (dark / Catppuccin Mocha) ────────────────────────────────── */
 
 :root {
-  --inkflow-bg: #1e1e2e;        /* Base    */
-  --inkflow-surface: #313244;   /* Surface0 */
-  --inkflow-border: #585b70;    /* Surface2 */
-  --inkflow-text: #cdd6f4;      /* Text    */
-  --inkflow-text-muted: #a6adc8;/* Subtext0 */
-  --inkflow-accent: #cba6f7;    /* Mauve   */
-  --inkflow-accent-fg: #11111b; /* Crust   */
-  --inkflow-code-bg: #181825;   /* Mantle  */
-  --inkflow-code-text: #cdd6f4; /* Text    */
-  --inkflow-red: #f38ba8;       /* Red     */
-  --inkflow-green: #a6e3a1;     /* Green   */
-  --inkflow-blue: #89b4fa;      /* Blue    */
-  --inkflow-yellow: #f9e2af;    /* Yellow  */
+  --inkflow-red:    #f38ba8;   /* Red      */
+  --inkflow-orange: #fab387;   /* Peach    */
+  --inkflow-yellow: #f9e2af;   /* Yellow   */
+  --inkflow-green:  #a6e3a1;   /* Green    */
+  --inkflow-teal:   #94e2d5;   /* Teal     */
+  --inkflow-blue:   #89b4fa;   /* Blue     */
+  --inkflow-purple: #cba6f7;   /* Mauve    */
+  --inkflow-pink:   #f5c2e7;   /* Pink     */
+  --inkflow-grey:   #6c7086;   /* Overlay0 */
 }
 
-/* ── CSS variable overrides (Catppuccin Latte — light) ───────────────────── */
+/* ── Semantic tokens (dark / Catppuccin Mocha) ────────────────────────────── */
+
+:root {
+  --inkflow-bg:         #1e1e2e;   /* Base     */
+  --inkflow-surface:    #313244;   /* Surface0 */
+  --inkflow-border:     #585b70;   /* Surface2 */
+  --inkflow-text:       #cdd6f4;   /* Text     */
+  --inkflow-text-muted: #a6adc8;   /* Subtext0 */
+  --inkflow-accent:     #cba6f7;   /* = purple */
+  --inkflow-accent-fg:  #11111b;   /* Crust    */
+  --inkflow-code-bg:    #181825;   /* Mantle   */
+  --inkflow-code-text:  #cdd6f4;   /* = text   */
+  --inkflow-link:       #89b4fa;   /* = blue   */
+  --inkflow-heading:    #cdd6f4;   /* = text   */
+  --inkflow-blockquote: #585b70;   /* = border */
+}
+
+/* ── Raw palette overrides (light / Catppuccin Latte) ─────────────────────── */
 
 :root[data-theme="light"] {
-  --inkflow-bg: #eff1f5;        /* Base    */
-  --inkflow-surface: #ccd0da;   /* Surface0 */
-  --inkflow-border: #acb0be;    /* Surface2 */
-  --inkflow-text: #4c4f69;      /* Text    */
-  --inkflow-text-muted: #6c6f85;/* Subtext0 */
-  --inkflow-accent: #8839ef;    /* Mauve   */
-  --inkflow-accent-fg: #eff1f5; /* Base    */
-  --inkflow-code-bg: #e6e9ef;   /* Mantle  */
-  --inkflow-code-text: #4c4f69; /* Text    */
-  --inkflow-red: #d20f39;       /* Red     */
-  --inkflow-green: #40a02b;     /* Green   */
-  --inkflow-blue: #1e66f5;      /* Blue    */
-  --inkflow-yellow: #df8e1d;    /* Yellow  */
+  --inkflow-red:    #d20f39;   /* Red      */
+  --inkflow-orange: #fe640b;   /* Peach    */
+  --inkflow-yellow: #df8e1d;   /* Yellow   */
+  --inkflow-green:  #40a02b;   /* Green    */
+  --inkflow-teal:   #179299;   /* Teal     */
+  --inkflow-blue:   #1e66f5;   /* Blue     */
+  --inkflow-purple: #8839ef;   /* Mauve    */
+  --inkflow-pink:   #ea76cb;   /* Pink     */
+  --inkflow-grey:   #9ca0b0;   /* Overlay0 */
+}
+
+/* ── Semantic token overrides (light / Catppuccin Latte) ─────────────────── */
+
+:root[data-theme="light"] {
+  --inkflow-bg:         #eff1f5;   /* Base     */
+  --inkflow-surface:    #ccd0da;   /* Surface0 */
+  --inkflow-border:     #acb0be;   /* Surface2 */
+  --inkflow-text:       #4c4f69;   /* Text     */
+  --inkflow-text-muted: #6c6f85;   /* Subtext0 */
+  --inkflow-accent:     #8839ef;   /* = purple */
+  --inkflow-accent-fg:  #eff1f5;   /* Base     */
+  --inkflow-code-bg:    #e6e9ef;   /* Mantle   */
+  --inkflow-code-text:  #4c4f69;   /* = text   */
+  --inkflow-link:       #1e66f5;   /* = blue   */
+  --inkflow-heading:    #4c4f69;   /* = text   */
+  --inkflow-blockquote: #acb0be;   /* = border */
 }
 
 /* ── SVG element fill utilities ───────────────────────────────────────────── */
@@ -46,9 +72,14 @@
 .inkflow-fill-code-bg    { fill: var(--inkflow-code-bg); }
 .inkflow-fill-code-text  { fill: var(--inkflow-code-text); }
 .inkflow-fill-red        { fill: var(--inkflow-red); }
-.inkflow-fill-green      { fill: var(--inkflow-green); }
-.inkflow-fill-blue       { fill: var(--inkflow-blue); }
+.inkflow-fill-orange     { fill: var(--inkflow-orange); }
 .inkflow-fill-yellow     { fill: var(--inkflow-yellow); }
+.inkflow-fill-green      { fill: var(--inkflow-green); }
+.inkflow-fill-teal       { fill: var(--inkflow-teal); }
+.inkflow-fill-blue       { fill: var(--inkflow-blue); }
+.inkflow-fill-purple     { fill: var(--inkflow-purple); }
+.inkflow-fill-pink       { fill: var(--inkflow-pink); }
+.inkflow-fill-grey       { fill: var(--inkflow-grey); }
 
 /* ── SVG element stroke utilities ─────────────────────────────────────────── */
 
@@ -62,9 +93,14 @@
 .inkflow-stroke-code-bg    { stroke: var(--inkflow-code-bg); }
 .inkflow-stroke-code-text  { stroke: var(--inkflow-code-text); }
 .inkflow-stroke-red        { stroke: var(--inkflow-red); }
-.inkflow-stroke-green      { stroke: var(--inkflow-green); }
-.inkflow-stroke-blue       { stroke: var(--inkflow-blue); }
+.inkflow-stroke-orange     { stroke: var(--inkflow-orange); }
 .inkflow-stroke-yellow     { stroke: var(--inkflow-yellow); }
+.inkflow-stroke-green      { stroke: var(--inkflow-green); }
+.inkflow-stroke-teal       { stroke: var(--inkflow-teal); }
+.inkflow-stroke-blue       { stroke: var(--inkflow-blue); }
+.inkflow-stroke-purple     { stroke: var(--inkflow-purple); }
+.inkflow-stroke-pink       { stroke: var(--inkflow-pink); }
+.inkflow-stroke-grey       { stroke: var(--inkflow-grey); }
 
 /* ── foreignObject layout wrapper ────────────────────────────────────────── */
 
@@ -96,12 +132,15 @@
 .inkflow-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
 .inkflow-content ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.5em; }
 .inkflow-content li { display: list-item; margin-bottom: 0.3em; }
-.inkflow-content h1 { font-size: 2em; font-weight: bold; line-height: 1; margin-bottom: 0.2em; color: var(--inkflow-text); }
-.inkflow-content h2 { font-size: 1.3em; line-height: 1.2; margin-bottom: 0.3em; color: var(--inkflow-text); }
-.inkflow-content h3 { margin-bottom: 0.4em; color: var(--inkflow-text); }
-.inkflow-content h4 { margin-bottom: 0.4em; color: var(--inkflow-text); }
-.inkflow-content h5 { margin-bottom: 0.4em; color: var(--inkflow-text); }
+.inkflow-content h1 { font-size: 2em; font-weight: bold; line-height: 1; margin-bottom: 0.2em; color: var(--inkflow-heading); }
+.inkflow-content h2 { font-size: 1.3em; line-height: 1.2; margin-bottom: 0.3em; color: var(--inkflow-heading); }
+.inkflow-content h3 { margin-bottom: 0.4em; color: var(--inkflow-heading); }
+.inkflow-content h4 { margin-bottom: 0.4em; color: var(--inkflow-heading); }
+.inkflow-content h5 { margin-bottom: 0.4em; color: var(--inkflow-heading); }
 .inkflow-content h6 { margin-bottom: 0.4em; color: var(--inkflow-text-muted); }
+.inkflow-content a { color: var(--inkflow-link); text-decoration: underline; }
+.inkflow-content a:hover { opacity: 0.8; }
 .inkflow-content code { font-family: monospace; background: var(--inkflow-code-bg); color: var(--inkflow-code-text); padding: 0.1em 0.3em; border-radius: 3px; }
 .inkflow-content pre { overflow: auto; background: var(--inkflow-code-bg); color: var(--inkflow-code-text); padding: 0.5em; border-radius: 4px; }
 .inkflow-content pre code { background: none; padding: 0; }
+.inkflow-content blockquote { border-left: 3px solid var(--inkflow-blockquote); padding-left: 0.8em; margin: 0.5em 0; color: var(--inkflow-text-muted); }

@@ -52,7 +52,7 @@ export function parseColorToRGB(
                 parseInt(hexDigits.slice(i, i + 2), 16),
             ) as [number, number, number];
     }
-    const rgbMatch = colorString.match(/rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\)/);
+    const rgbMatch = colorString.match(/rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)/);
     if (rgbMatch) return [+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]];
     return null;
 }

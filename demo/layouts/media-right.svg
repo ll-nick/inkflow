@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="local:main.svg" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg1">
   <g inkflow:layout-src="local:main.svg" inkflow:layout-hash="92687e1c" id="g3">
     <!-- Catppuccin Mocha background -->
-    <rect width="1920" height="1080" fill="#1e1e2e" id="rect1"/>
+    <rect width="1920" height="1080" id="rect1" class="inkflow-fill-bg"/>
     <!-- Footer bar -->
-    <rect y="1040" width="1920" height="40" fill="#313244" id="rect2"/>
+    <rect y="1040" width="1920" height="40" id="rect2" class="inkflow-fill-surface"/>
     <!-- Accent line above footer -->
-    <rect y="1036" width="1920" height="4" fill="#cba6f7" id="rect3"/>
+    <rect y="1036" width="1920" height="4" id="rect3" class="inkflow-fill-accent inkflow-fill-purple"/>
     <!-- Slide number -->
-    <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">99</text>
-    <text x="1852" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" id="text3">/</text>
-    <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="start">99</text>
+    <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" text-anchor="end" class="inkflow-fill-grey">99</text>
+    <text x="1852" y="1066" font-family="sans-serif" font-size="20" id="text3" class="inkflow-fill-grey">/</text>
+    <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" text-anchor="start" class="inkflow-fill-grey">99</text>
   </g>
   <defs id="defs1"/>
   <rect id="zone-title" x="80" y="60" width="1760" height="120"/>

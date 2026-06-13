@@ -478,7 +478,7 @@ function applyColorAttributes(morph: Morph, easedProgress: number): void {
         const fromValue = morph.fromAttributes[attribute];
         const toValue = morph.toAttributes[attribute];
         if (fromValue !== undefined && toValue !== undefined)
-            morph.element.setAttribute(
+            morph.element.style.setProperty(
                 attribute,
                 interpolateAttribute(
                     attribute,
@@ -597,9 +597,7 @@ function tickTasks(tasks: AnimationTask[], rawProgress: number): void {
 
 function finalizeMorph(morph: Morph): void {
     for (const attribute of INTERPOLATED_ATTRIBUTES) {
-        const toValue = morph.toAttributes[attribute];
-        if (toValue !== undefined)
-            morph.element.setAttribute(attribute, toValue);
+        morph.element.style.removeProperty(attribute);
     }
 
     if (morph.kind === "line") {

@@ -1,29 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" viewBox="0 0 1920 1080" width="1920" height="1080" inkflow:parent="local:main.svg"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:main__" sodipodi:insensitive="true" inkflow:layout-src="local:main.svg" inkflow:layout-hash="92687e1c"><!-- Catppuccin Mocha background -->
-  <rect width="1920" height="1080" fill="#1e1e2e"/>
+  <rect width="1920" height="1080" class="inkflow-fill-bg"/>
   <!-- Footer bar -->
-  <rect y="1040" width="1920" height="40" fill="#313244"/>
+  <rect y="1040" width="1920" height="40" class="inkflow-fill-surface"/>
   <!-- Accent line above footer -->
-  <rect y="1036" width="1920" height="4" fill="#cba6f7"/>
+  <rect y="1036" width="1920" height="4" class="inkflow-fill-accent inkflow-fill-purple"/>
   <!-- Slide number -->
-  <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="end">99</text>
-  <text x="1852" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086">/</text>
-  <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" fill="#6c7086" text-anchor="start">99</text>
-</g><text x="960" y="96" text-anchor="middle" font-family="sans-serif" font-size="44" fill="#cdd6f4">One morph, every transform</text>
+  <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" text-anchor="end" class="inkflow-fill-grey">99</text>
+  <text x="1852" y="1066" font-family="sans-serif" font-size="20" class="inkflow-fill-grey">/</text>
+  <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" text-anchor="start" class="inkflow-fill-grey">99</text>
+</g><text x="960" y="96" text-anchor="middle" font-family="sans-serif" font-size="44" class="inkflow-fill-text inkflow-fill-code-text">One morph, every transform</text>
   <!-- hero box: moves, resizes non-uniformly, recolours — corners stay round -->
-  <rect id="box" x="140" y="220" width="380" height="430" rx="28" fill="#89b4fa"/>
+  <rect id="box" x="140" y="220" width="380" height="430" rx="28" class="inkflow-fill-blue"/>
   <!-- group with two text lines: nested transform, text stays crisp -->
   <g id="grp" transform="translate(720, 240)">
-    <rect width="440" height="250" rx="18" fill="#cba6f7"/>
-    <text x="220" y="120" text-anchor="middle" font-family="monospace" font-size="24" fill="#1e1e2e">grouped</text>
-    <text x="220" y="152" text-anchor="middle" font-family="monospace" font-size="18" fill="#1e1e2e">font grows</text>
+    <rect width="440" height="250" rx="18" class="inkflow-fill-accent inkflow-fill-purple"/>
+    <text x="220" y="120" text-anchor="middle" font-family="monospace" font-size="24" class="inkflow-fill-bg">grouped</text>
+    <text x="220" y="152" text-anchor="middle" font-family="monospace" font-size="18" class="inkflow-fill-bg">font grows</text>
   </g>
   <!-- free circle: uniform scale, move, recolour -->
-  <circle id="dot" cx="1700" cy="300" r="110" fill="#a6e3a1"/>
+  <circle id="dot" cx="1700" cy="300" r="110" class="inkflow-fill-green"/>
   <!-- rotation -->
-  <rect id="bar" x="1320" y="560" width="320" height="120" rx="14" fill="#fab387" transform="rotate(-18, 1480, 620)"/>
+  <rect id="bar" x="1320" y="560" width="320" height="120" rx="14" transform="rotate(-18, 1480, 620)" class="inkflow-fill-orange"/>
   <!-- line: endpoints slide, stroke stays even -->
-  <line id="line" x1="180" y1="760" x2="780" y2="760" stroke="#f38ba8" stroke-width="10"/>
+  <line id="line" x1="180" y1="760" x2="780" y2="760" stroke-width="10" class="inkflow-stroke-red"/>
   <!-- unmatched content fades out -->
-  <rect id="exit-only" x="840" y="800" width="300" height="92" rx="12" fill="#f5c2e7"/>
-  <text x="990" y="856" text-anchor="middle" font-family="monospace" font-size="26" fill="#1e1e2e">exits</text>
+  <rect id="exit-only" x="840" y="800" width="300" height="92" rx="12" class="inkflow-fill-pink"/>
+  <text x="990" y="856" text-anchor="middle" font-family="monospace" font-size="26" class="inkflow-fill-bg">exits</text>
 </svg>
