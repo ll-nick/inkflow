@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
   <defs/>
   <!-- Catppuccin Mocha background -->
-  <rect width="1920" height="1080" fill="#1e1e2e"/>
+  <rect width="1920" height="1080" class="inkflow-fill-bg"/>
   <!-- Footer bar -->
   <rect y="1040" width="1920" height="40" fill="#313244"/>
   <!-- Accent line above footer -->
