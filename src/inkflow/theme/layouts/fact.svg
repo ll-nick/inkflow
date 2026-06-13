@@ -1,12 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="./numbered" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="709eadd0"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
-</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="9465a60d"><text id="zone-slide-number" x="1820" y="1055" class="inkflow-fill-text-muted" text-anchor="end" font-size="28px" font-family="sans-serif">99</text>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="./numbered" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="2bc66eb2"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
+</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="0b32ae6e"><defs/><text id="zone-slide-number" x="1820" y="1055" class="inkflow-fill-text-muted" text-anchor="end" font-size="28px" font-family="sans-serif">99</text>
   <text id="zone-slide-total" x="1860" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">99</text>
   <text id="text1" x="1832.489" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">/</text>
 </g><defs>
-    <style id="style1">
-      #zone-fact    { --inkflow-align: center; --inkflow-valign: end; }
-      #zone-caption    { --inkflow-align: center; --inkflow-valign: start; }
-    </style>
     </defs><rect id="zone-fact" x="80" y="300" width="1760" height="300"/>
   <rect id="zone-caption" x="80" y="650" width="1760" height="160"/>
-</svg>
+<rect x="880" y="624" width="160" height="3" class="inkflow-fill-accent"/></svg>

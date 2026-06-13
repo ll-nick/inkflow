@@ -1,14 +1,6 @@
 <svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="./base" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg2">
-  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="709eadd0" id="g1">
-    <defs id="defs1"/>
-    <rect width="1920" height="1080" class="inkflow-fill-bg" id="rect1"/>
-  </g>
-  <defs id="defs2">
-    <style id="style1">
-      #zone-title    { --inkflow-align: left; --inkflow-valign: end; }
-      #zone-subtitle { --inkflow-align: left; --inkflow-valign: start; }
-      #zone-subtitle .inkflow-content * { color: var(--inkflow-text-muted); }
-    </style>
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="2bc66eb2"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
+</g><defs id="defs2">
     </defs>
   <rect id="zone-media" width="1920" height="1080" x="0" y="0" ry="0" style="stroke:#000000;stroke-opacity:1;fill:none;stroke-width:8;stroke-dasharray:none"/>
   <rect id="zone-title" x="160" y="397.59955" width="1600" height="142.40045" style="stroke-width:0.804534"/>
