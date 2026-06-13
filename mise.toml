@@ -15,7 +15,7 @@ run = "uv run basedpyright"
 run = "uv run pytest"
 
 [tasks.lint-js]
-run = "npx biome check src/ts/ src/css/"
+run = "npx biome check ."
 
 [tasks.typecheck-js]
 run = "npx tsc --noEmit"
