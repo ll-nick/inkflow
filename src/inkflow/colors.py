@@ -9,6 +9,7 @@ from lxml import etree
 
 # All --inkflow-* variable names that get SVG utility classes (fill + stroke).
 SVG_TOKENS: list[str] = [
+    # semantic
     "bg",
     "surface",
     "border",
@@ -18,10 +19,17 @@ SVG_TOKENS: list[str] = [
     "accent-fg",
     "code-bg",
     "code-text",
+    # raw palette — chromatic
     "red",
-    "green",
-    "blue",
+    "orange",
     "yellow",
+    "green",
+    "teal",
+    "blue",
+    "purple",
+    "pink",
+    # raw palette — neutral
+    "grey",
 ]
 
 # ── Token extraction ──────────────────────────────────────────────────────────
