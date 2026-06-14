@@ -192,8 +192,8 @@ def strip_parent(svg_path: Path) -> bool:
 def _layer_hashes(chain: list[Path]) -> dict[str, str]:
     hashes: dict[str, str] = {}
     for p in chain:
-        digest = hashlib.sha1(p.read_bytes()).hexdigest()[:8]
-        hashes[str(p.resolve())] = digest
+        cleaned = clean_inkscape_svg(p).encode()
+        hashes[str(p.resolve())] = hashlib.sha1(cleaned).hexdigest()[:8]
     return hashes
 
 
