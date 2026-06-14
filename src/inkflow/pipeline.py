@@ -152,7 +152,7 @@ _PRESERVE_ATTRS: frozenset[str] = frozenset(
 )
 
 
-def clean_inkscape_svg(src: Path) -> str:
+def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
     tree = etree.parse(src)
     root = tree.getroot()
 
@@ -175,10 +175,11 @@ def clean_inkscape_svg(src: Path) -> str:
 
     etree.cleanup_namespaces(root)
 
-    for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
-        parent = el.getparent()
-        if parent is not None:
-            parent.remove(el)
+    if not keep_preview:
+        for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
+            parent = el.getparent()
+            if parent is not None:
+                parent.remove(el)
 
     return etree.tostring(root, encoding="unicode", pretty_print=True)
 

@@ -141,7 +141,7 @@ def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
             errors = True
             continue
         try:
-            cleaned = clean_inkscape_svg(p)
+            cleaned = clean_inkscape_svg(p, keep_preview=True)
             if check:
                 if cleaned != p.read_text(encoding="utf-8"):
                     click.echo(f"[inkflow] would clean: {p}", err=True)
