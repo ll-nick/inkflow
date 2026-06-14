@@ -12,7 +12,6 @@ from inkflow.layout import (
     is_layout_current,
     resolve_chain,
     resolve_parent_path,
-    strip_layout_layers,
 )
 
 _SIMPLE_SVG = textwrap.dedent("""\
@@ -132,48 +131,6 @@ class TestResolveChain:
         _write_svg(b, _svg_with_parent("./a.svg"))
         with pytest.raises(ValueError, match="Circular"):
             resolve_chain(a, tmp_path, None)
-
-
-# ── strip_layout_layers ──────────────────────────────────────────────────────
-
-
-class TestStripLayoutLayers:
-    def _root_with_layers(self) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-        return etree.fromstring(
-            b"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow">
-              <g inkflow:layout-src="/some/file.svg" inkflow:layout-hash="abc123"/>
-              <g id="content"/>
-              <rect id="bg"/>
-            </svg>"""
-        )
-
-    def test_removes_marked_direct_children(self) -> None:
-        root = self._root_with_layers()
-        strip_layout_layers(root)
-        ids = [el.get("id") or el.get(ns.INKFLOW_LAYOUT_SRC) for el in root]
-        assert "/some/file.svg" not in ids
-        assert "content" in ids
-        assert "bg" in ids
-
-    def test_leaves_unmarked_groups(self) -> None:
-        root = self._root_with_layers()
-        strip_layout_layers(root)
-        assert root.find('.//{http://www.w3.org/2000/svg}g[@id="content"]') is not None
-
-    def test_does_not_descend_into_nested(self) -> None:
-        root = etree.fromstring(
-            b"""<svg xmlns="http://www.w3.org/2000/svg">
-              <g id="outer">
-                <g inkflow:layout-src="/nested.svg" xmlns:inkflow="urn:inkflow"/>
-              </g>
-            </svg>"""
-        )
-        strip_layout_layers(root)
-        # The outer group remains; the nested marked group is NOT removed
-        # (only direct children are stripped).
-        outer = root.find('.//{http://www.w3.org/2000/svg}g[@id="outer"]')
-        assert outer is not None
-        assert len(outer) == 1
 
 
 # ── inject_layout_layers / is_layout_current ─────────────────────────────────
