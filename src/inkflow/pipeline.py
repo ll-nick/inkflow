@@ -7,14 +7,14 @@ from typing import TypedDict, cast
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg
+from inkflow.clean import clean_inkscape_svg, strip_layout_layers
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.layout import resolve_chain, resolve_parent_path, strip_layout_layers
+from inkflow.layout import resolve_chain, resolve_parent_path
 from inkflow.manifest import (
     Animation,
     Deck,

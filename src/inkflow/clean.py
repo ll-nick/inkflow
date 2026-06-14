@@ -19,7 +19,22 @@ _PRESERVE_ATTRS: frozenset[str] = frozenset(
 )
 
 
+def strip_layout_layers(root: etree._Element) -> None:  # pyright: ignore[reportPrivateUsage]
+    """Remove direct-child <g> elements injected by inject_layout_layers."""
+    to_remove = [el for el in root if el.get(ns.INKFLOW_LAYOUT_SRC) is not None]
+    for el in to_remove:
+        root.remove(el)
+
+
 def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
+    """Strip Inkscape/Sodipodi editor metadata from an SVG file.
+
+    When keep_preview is False (default), also removes inkflow preview content
+    (injected layout layers and the inkflow-preview style block) so the output
+    is suitable for the presentation pipeline.  Pass keep_preview=True to
+    preserve that content for Inkscape editing (used by the clean CLI command
+    and the pre-commit hook).
+    """
     tree = etree.parse(src)
     root = tree.getroot()
 
@@ -43,6 +58,7 @@ def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
     etree.cleanup_namespaces(root)
 
     if not keep_preview:
+        strip_layout_layers(root)
         for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
             parent = el.getparent()
             if parent is not None:
