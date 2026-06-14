@@ -9,6 +9,7 @@ from typing import cast
 from lxml import etree
 
 from inkflow import ns
+from inkflow.clean import clean_inkscape_svg, strip_layout_layers
 from inkflow.ns import (
     INKFLOW_LAYOUT_HASH,
     INKFLOW_LAYOUT_SRC,
@@ -168,13 +169,6 @@ def resolve_chain(
 # ── Layout layer stripping ────────────────────────────────────────────────────
 
 
-def strip_layout_layers(root: etree._Element) -> None:  # pyright: ignore[reportPrivateUsage]
-    """Remove direct-child <g> elements injected by inject_layout_layers."""
-    to_remove = [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]
-    for el in to_remove:
-        root.remove(el)
-
-
 def strip_parent(svg_path: Path) -> bool:
     """Remove inkflow:parent and injected layout layers from svg_path in place.
 
@@ -198,8 +192,8 @@ def strip_parent(svg_path: Path) -> bool:
 def _layer_hashes(chain: list[Path]) -> dict[str, str]:
     hashes: dict[str, str] = {}
     for p in chain:
-        digest = hashlib.sha1(p.read_bytes()).hexdigest()[:8]
-        hashes[str(p.resolve())] = digest
+        cleaned = clean_inkscape_svg(p).encode()
+        hashes[str(p.resolve())] = hashlib.sha1(cleaned).hexdigest()[:8]
     return hashes
 
 

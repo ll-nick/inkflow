@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from inkflow import colors, git_setup, init, loaders, ns
+from inkflow.clean import clean_inkscape_svg
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     create_slide,
@@ -19,7 +20,7 @@ from inkflow.layout import (
     with_namespaces,
 )
 from inkflow.manifest import Deck
-from inkflow.pipeline import clean_inkscape_svg, resolve_slide_src
+from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
 
@@ -141,7 +142,7 @@ def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
             errors = True
             continue
         try:
-            cleaned = clean_inkscape_svg(p)
+            cleaned = clean_inkscape_svg(p, keep_preview=True)
             if check:
                 if cleaned != p.read_text(encoding="utf-8"):
                     click.echo(f"[inkflow] would clean: {p}", err=True)

@@ -19,9 +19,9 @@ from inkflow.manifest import (
     Slide,
 )
 from inkflow.pipeline import (
+    _add_layout_classes,
     _resolve_notes,
     annotate_svg,
-    clean_inkscape_svg,
     compose_with_ancestors,
     process_deck,
     resolve_transitions,
@@ -32,36 +32,6 @@ _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
       <rect id="box" x="0" y="0" width="50" height="50"/>
       <circle id="dot" cx="75" cy="25" r="10"/>
-    </svg>
-""")
-
-_INKSCAPE_SVG = textwrap.dedent("""\
-    <?xml version="1.0" encoding="UTF-8"?>
-    <svg xmlns="http://www.w3.org/2000/svg"
-         xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-         xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-         inkscape:version="1.3.2"
-         width="100" height="100">
-      <sodipodi:namedview id="namedview1" inkscape:zoom="1.0"/>
-      <rect id="box" x="0" y="0" width="50" height="50" fill="red"/>
-    </svg>
-""")
-
-# SVG with inject-layout-style layer groups: structural attributes must survive clean.
-_INKSCAPE_LAYER_SVG = textwrap.dedent("""\
-    <?xml version="1.0" encoding="UTF-8"?>
-    <svg xmlns="http://www.w3.org/2000/svg"
-         xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-         xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-         inkscape:version="1.3.2"
-         width="100" height="100">
-      <sodipodi:namedview id="namedview1" inkscape:zoom="2.5"/>
-      <g inkscape:groupmode="layer"
-         inkscape:label="__inkflow:layout:main__"
-         sodipodi:insensitive="true">
-        <rect id="bg" width="100" height="100" fill="blue"/>
-      </g>
-      <rect id="box" x="0" y="0" width="50" height="50" fill="red"/>
     </svg>
 """)
 
@@ -142,101 +112,6 @@ class TestAnnotateSvg:
         result = annotate_svg(svg, [FadeIn("#box", duration=0.8)])
         assert "fill:red" in result
         assert "--anim-duration: 0.8s" in result
-
-
-class TestCleanInkscapeSvg:
-    def test_removes_inkscape_attributes(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = clean_inkscape_svg(svg_file)
-        assert "inkscape:version" not in result
-        assert "inkscape:zoom" not in result
-
-    def test_removes_sodipodi_elements(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = clean_inkscape_svg(svg_file)
-        assert "namedview" not in result
-        assert "sodipodi" not in result
-
-    def test_preserves_content_elements(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = clean_inkscape_svg(svg_file)
-        assert 'id="box"' in result
-        assert 'fill="red"' in result
-
-    def test_removes_inkscape_namespace_declarations(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = clean_inkscape_svg(svg_file)
-        assert "http://www.inkscape.org/namespaces/inkscape" not in result
-        assert "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" not in result
-
-    def test_preserves_layer_structural_attributes(self, tmp_path: Path) -> None:
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_LAYER_SVG, encoding="utf-8")
-        result = clean_inkscape_svg(svg_file)
-        assert 'inkscape:groupmode="layer"' in result
-        assert 'inkscape:label="__inkflow:layout:main__"' in result
-        assert 'sodipodi:insensitive="true"' in result
-
-    def test_still_strips_editor_noise_when_layers_present(
-        self, tmp_path: Path
-    ) -> None:
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_LAYER_SVG, encoding="utf-8")
-        result = clean_inkscape_svg(svg_file)
-        assert "namedview" not in result
-        assert "inkscape:version" not in result
-        assert "inkscape:zoom" not in result
-
-
-class TestCleanCheckFlag:
-    def test_exits_nonzero_for_dirty_file(self, tmp_path: Path) -> None:
-        from click.testing import CliRunner
-
-        from inkflow.cli import main
-
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
-        assert result.exit_code != 0
-
-    def test_exits_zero_for_already_clean_file(self, tmp_path: Path) -> None:
-        from click.testing import CliRunner
-
-        from inkflow.cli import main
-        from inkflow.pipeline import clean_inkscape_svg
-
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        svg_file.write_text(clean_inkscape_svg(svg_file), encoding="utf-8")
-        result = CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
-        assert result.exit_code == 0
-
-    def test_does_not_modify_file(self, tmp_path: Path) -> None:
-        from click.testing import CliRunner
-
-        from inkflow.cli import main
-
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        original = svg_file.read_text(encoding="utf-8")
-        CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
-        assert svg_file.read_text(encoding="utf-8") == original
-
-    def test_check_and_stdout_are_mutually_exclusive(self, tmp_path: Path) -> None:
-        from click.testing import CliRunner
-
-        from inkflow.cli import main
-
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = CliRunner().invoke(
-            main, ["clean", "--check", "--stdout", str(svg_file)]
-        )
-        assert result.exit_code != 0
 
 
 class TestResolveTransitions:
@@ -423,6 +298,62 @@ class TestComposeWithAncestors:
         result = compose_with_ancestors(slide_with_layer, [anc])
         assert "stale/layer.svg" not in result
         assert "slide-content" in result
+
+
+class TestLayoutClasses:
+    def test_full_chain_adds_all_classes(self, tmp_path: Path) -> None:
+        base = tmp_path / "base.svg"
+        cover = tmp_path / "cover.svg"
+        src = tmp_path / "hero.svg"
+        for p in (base, cover, src):
+            p.write_text(_PLAIN_SVG, encoding="utf-8")
+        result = _add_layout_classes(_PLAIN_SVG, [base, cover], src)
+        assert 'class="layout-base layout-cover layout-hero"' in result
+
+    def test_standalone_gets_src_stem_class(self, tmp_path: Path) -> None:
+        src = tmp_path / "standalone.svg"
+        src.write_text(_PLAIN_SVG, encoding="utf-8")
+        result = _add_layout_classes(_PLAIN_SVG, [], src)
+        assert 'class="layout-standalone"' in result
+
+    def test_existing_non_layout_classes_preserved(self, tmp_path: Path) -> None:
+        src = tmp_path / "slide.svg"
+        svg = _PLAIN_SVG.replace("<svg ", '<svg class="my-class" ')
+        result = _add_layout_classes(svg, [], src)
+        assert "my-class" in result
+        assert "layout-slide" in result
+
+    def test_existing_layout_classes_replaced(self, tmp_path: Path) -> None:
+        src = tmp_path / "slide.svg"
+        svg = _PLAIN_SVG.replace("<svg ", '<svg class="layout-old" ')
+        result = _add_layout_classes(svg, [], src)
+        assert "layout-old" not in result
+        assert "layout-slide" in result
+
+    def test_layout_class_in_processed_slide(self, tmp_path: Path) -> None:
+        layouts_dir = tmp_path / "layouts"
+        layouts_dir.mkdir()
+        (layouts_dir / "mylayout.svg").write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        (tmp_path / "slides").mkdir()
+        deck = Deck(slides=[Slide("mylayout", zones={"content": "hi"})])
+        results = process_deck(deck, tmp_path)
+        assert "layout-mylayout" in results[0]["svg"]
+
+    def test_scope_wraps_injected_deck_style(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide = tmp_path / "slides" / "plain.svg"
+        slide.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(style="#box { fill: red; }", slides=[Slide("slides/plain.svg")])
+        results = process_deck(deck, tmp_path)
+        assert "@scope" in results[0]["svg"]
+
+    def test_no_scope_without_inline_styles(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide = tmp_path / "slides" / "plain.svg"
+        slide.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(slides=[Slide("slides/plain.svg")])
+        results = process_deck(deck, tmp_path)
+        assert "@scope" not in results[0]["svg"]
 
 
 class TestResolveNotes:

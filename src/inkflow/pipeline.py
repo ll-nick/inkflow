@@ -7,13 +7,14 @@ from typing import TypedDict, cast
 from lxml import etree
 
 from inkflow import ns
+from inkflow.clean import clean_inkscape_svg, strip_layout_layers
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.layout import resolve_chain, resolve_parent_path, strip_layout_layers
+from inkflow.layout import resolve_chain, resolve_parent_path
 from inkflow.manifest import (
     Animation,
     Deck,
@@ -139,50 +140,6 @@ def _anim_style(anim: Animation) -> str:
     return "; ".join(decls)
 
 
-_INKSCAPE_NAMESPACES: frozenset[str] = frozenset({ns.INKSCAPE, ns.SODIPODI})
-
-# These attributes carry structural meaning (layer identity and lock state) and
-# survive the clean pass so Inkscape keeps recognising layers correctly.
-_PRESERVE_ATTRS: frozenset[str] = frozenset(
-    {
-        f"{{{ns.INKSCAPE}}}groupmode",
-        f"{{{ns.INKSCAPE}}}label",
-        f"{{{ns.SODIPODI}}}insensitive",
-    }
-)
-
-
-def clean_inkscape_svg(src: Path) -> str:
-    tree = etree.parse(src)
-    root = tree.getroot()
-
-    for ns_uri in _INKSCAPE_NAMESPACES:
-        for el in root.findall(f".//{{{ns_uri}}}*"):
-            parent = el.getparent()
-            if parent is not None:
-                parent.remove(el)
-
-    for el in root.iter():
-        to_del = [
-            k
-            for k in el.attrib
-            if isinstance(k, str)
-            and k not in _PRESERVE_ATTRS
-            and any(k.startswith(f"{{{ns_uri}}}") for ns_uri in _INKSCAPE_NAMESPACES)
-        ]
-        for k in to_del:
-            del el.attrib[k]
-
-    etree.cleanup_namespaces(root)
-
-    for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
-        parent = el.getparent()
-        if parent is not None:
-            parent.remove(el)
-
-    return etree.tostring(root, encoding="unicode", pretty_print=True)
-
-
 def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
     root = etree.fromstring(svg_str.encode())
 
@@ -266,11 +223,10 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
 
 
 def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
-    """Assign a unique ID to the SVG root and wrap every <style> in @scope.
+    """Assign a unique ID to the SVG root and wrap any inline <style> in @scope.
 
-    Inline SVG <style> elements are document-global; without this, zone rules
-    like `#zone-title { --inkflow-valign: end }` bleed onto other slides that
-    are simultaneously in the DOM during a CSS transition.
+    SVG style blocks would bleed onto adjacent slides
+    during CSS transitions without this guard.
     """
     root = etree.fromstring(svg_str.encode())
     slide_id = f"inkflow-slide-{slide_number}"
@@ -280,6 +236,19 @@ def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
         if not css or not css.strip():
             continue
         style_el.text = f"@scope(#{slide_id}) {{\n{css}\n}}"
+    return etree.tostring(root, encoding="unicode")
+
+
+def _add_layout_classes(svg_str: str, chain: list[Path], src: Path) -> str:
+    """Add layout-<stem> classes to the SVG root for every entry in [*chain, src].
+
+    This scopes CSS rules in styles.css to a slide type
+    (e.g. `.layout-cover #zone-title`)
+    """
+    root = etree.fromstring(svg_str.encode())
+    existing = [c for c in root.get("class", "").split() if not c.startswith("layout-")]
+    new_classes = [f"layout-{p.stem}" for p in [*chain, src]]
+    root.set("class", " ".join(existing + new_classes))
     return etree.tostring(root, encoding="unicode")
 
 
@@ -298,6 +267,7 @@ def process_slide(
     chain = resolve_chain(src, project_dir, theme)
     if chain:
         svg_str = compose_with_ancestors(svg_str, chain)
+    svg_str = _add_layout_classes(svg_str, chain, src)
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
 
     if slide.md is not None or slide.zones:
