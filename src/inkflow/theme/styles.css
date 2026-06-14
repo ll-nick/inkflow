@@ -1,202 +1,411 @@
 /* ── Raw palette (dark / Catppuccin Mocha) ────────────────────────────────── */
 
 :root {
-  --inkflow-red:    #f38ba8;   /* Red      */
-  --inkflow-orange: #fab387;   /* Peach    */
-  --inkflow-yellow: #f9e2af;   /* Yellow   */
-  --inkflow-green:  #a6e3a1;   /* Green    */
-  --inkflow-teal:   #94e2d5;   /* Teal     */
-  --inkflow-blue:   #89b4fa;   /* Blue     */
-  --inkflow-purple: #cba6f7;   /* Mauve    */
-  --inkflow-pink:   #f5c2e7;   /* Pink     */
-  --inkflow-grey:   #6c7086;   /* Overlay0 */
+    --inkflow-red: #f38ba8; /* Red      */
+    --inkflow-orange: #fab387; /* Peach    */
+    --inkflow-yellow: #f9e2af; /* Yellow   */
+    --inkflow-green: #a6e3a1; /* Green    */
+    --inkflow-teal: #94e2d5; /* Teal     */
+    --inkflow-blue: #89b4fa; /* Blue     */
+    --inkflow-purple: #cba6f7; /* Mauve    */
+    --inkflow-pink: #f5c2e7; /* Pink     */
+    --inkflow-grey: #6c7086; /* Overlay0 */
 }
 
 /* ── Semantic tokens (dark / Catppuccin Mocha) ────────────────────────────── */
 
 :root {
-  --inkflow-bg:         #1e1e2e;   /* Base     */
-  --inkflow-surface:    #313244;   /* Surface0 */
-  --inkflow-border:     #585b70;   /* Surface2 */
-  --inkflow-text:       #cdd6f4;   /* Text     */
-  --inkflow-text-muted: #a6adc8;   /* Subtext0 */
-  --inkflow-accent:     #cba6f7;   /* = purple */
-  --inkflow-accent-fg:  #11111b;   /* Crust    */
-  --inkflow-code-bg:    #181825;   /* Mantle   */
-  --inkflow-code-text:  #cdd6f4;   /* = text   */
-  --inkflow-link:       #89b4fa;   /* = blue   */
-  --inkflow-heading:    #cdd6f4;   /* = text   */
-  --inkflow-blockquote: #585b70;   /* = border */
+    --inkflow-bg: #1e1e2e; /* Base     */
+    --inkflow-surface: #313244; /* Surface0 */
+    --inkflow-border: #585b70; /* Surface2 */
+    --inkflow-text: #cdd6f4; /* Text     */
+    --inkflow-text-muted: #a6adc8; /* Subtext0 */
+    --inkflow-accent: #cba6f7; /* = purple */
+    --inkflow-accent-fg: #11111b; /* Crust    */
+    --inkflow-code-bg: #181825; /* Mantle   */
+    --inkflow-code-text: #cdd6f4; /* = text   */
+    --inkflow-link: #89b4fa; /* = blue   */
+    --inkflow-heading: #cdd6f4; /* = text   */
+    --inkflow-blockquote: #585b70; /* = border */
 }
 
 /* ── Raw palette overrides (light / Catppuccin Latte) ─────────────────────── */
 
 :root[data-theme="light"] {
-  --inkflow-red:    #d20f39;   /* Red      */
-  --inkflow-orange: #fe640b;   /* Peach    */
-  --inkflow-yellow: #df8e1d;   /* Yellow   */
-  --inkflow-green:  #40a02b;   /* Green    */
-  --inkflow-teal:   #179299;   /* Teal     */
-  --inkflow-blue:   #1e66f5;   /* Blue     */
-  --inkflow-purple: #8839ef;   /* Mauve    */
-  --inkflow-pink:   #ea76cb;   /* Pink     */
-  --inkflow-grey:   #9ca0b0;   /* Overlay0 */
+    --inkflow-red: #d20f39; /* Red      */
+    --inkflow-orange: #fe640b; /* Peach    */
+    --inkflow-yellow: #df8e1d; /* Yellow   */
+    --inkflow-green: #40a02b; /* Green    */
+    --inkflow-teal: #179299; /* Teal     */
+    --inkflow-blue: #1e66f5; /* Blue     */
+    --inkflow-purple: #8839ef; /* Mauve    */
+    --inkflow-pink: #ea76cb; /* Pink     */
+    --inkflow-grey: #9ca0b0; /* Overlay0 */
 }
 
 /* ── Semantic token overrides (light / Catppuccin Latte) ─────────────────── */
 
 :root[data-theme="light"] {
-  --inkflow-bg:         #eff1f5;   /* Base     */
-  --inkflow-surface:    #ccd0da;   /* Surface0 */
-  --inkflow-border:     #acb0be;   /* Surface2 */
-  --inkflow-text:       #4c4f69;   /* Text     */
-  --inkflow-text-muted: #6c6f85;   /* Subtext0 */
-  --inkflow-accent:     #8839ef;   /* = purple */
-  --inkflow-accent-fg:  #eff1f5;   /* Base     */
-  --inkflow-code-bg:    #e6e9ef;   /* Mantle   */
-  --inkflow-code-text:  #4c4f69;   /* = text   */
-  --inkflow-link:       #1e66f5;   /* = blue   */
-  --inkflow-heading:    #4c4f69;   /* = text   */
-  --inkflow-blockquote: #acb0be;   /* = border */
+    --inkflow-bg: #eff1f5; /* Base     */
+    --inkflow-surface: #ccd0da; /* Surface0 */
+    --inkflow-border: #acb0be; /* Surface2 */
+    --inkflow-text: #4c4f69; /* Text     */
+    --inkflow-text-muted: #6c6f85; /* Subtext0 */
+    --inkflow-accent: #8839ef; /* = purple */
+    --inkflow-accent-fg: #eff1f5; /* Base     */
+    --inkflow-code-bg: #e6e9ef; /* Mantle   */
+    --inkflow-code-text: #4c4f69; /* = text   */
+    --inkflow-link: #1e66f5; /* = blue   */
+    --inkflow-heading: #4c4f69; /* = text   */
+    --inkflow-blockquote: #acb0be; /* = border */
 }
 
 /* ── SVG element fill utilities ───────────────────────────────────────────── */
 
-.inkflow-fill-bg         { fill: var(--inkflow-bg); }
-.inkflow-fill-surface    { fill: var(--inkflow-surface); }
-.inkflow-fill-border     { fill: var(--inkflow-border); }
-.inkflow-fill-text       { fill: var(--inkflow-text); }
-.inkflow-fill-text-muted { fill: var(--inkflow-text-muted); }
-.inkflow-fill-accent     { fill: var(--inkflow-accent); }
-.inkflow-fill-accent-fg  { fill: var(--inkflow-accent-fg); }
-.inkflow-fill-code-bg    { fill: var(--inkflow-code-bg); }
-.inkflow-fill-code-text  { fill: var(--inkflow-code-text); }
-.inkflow-fill-red        { fill: var(--inkflow-red); }
-.inkflow-fill-orange     { fill: var(--inkflow-orange); }
-.inkflow-fill-yellow     { fill: var(--inkflow-yellow); }
-.inkflow-fill-green      { fill: var(--inkflow-green); }
-.inkflow-fill-teal       { fill: var(--inkflow-teal); }
-.inkflow-fill-blue       { fill: var(--inkflow-blue); }
-.inkflow-fill-purple     { fill: var(--inkflow-purple); }
-.inkflow-fill-pink       { fill: var(--inkflow-pink); }
-.inkflow-fill-grey       { fill: var(--inkflow-grey); }
+.inkflow-fill-bg {
+    fill: var(--inkflow-bg);
+}
+.inkflow-fill-surface {
+    fill: var(--inkflow-surface);
+}
+.inkflow-fill-border {
+    fill: var(--inkflow-border);
+}
+.inkflow-fill-text {
+    fill: var(--inkflow-text);
+}
+.inkflow-fill-text-muted {
+    fill: var(--inkflow-text-muted);
+}
+.inkflow-fill-accent {
+    fill: var(--inkflow-accent);
+}
+.inkflow-fill-accent-fg {
+    fill: var(--inkflow-accent-fg);
+}
+.inkflow-fill-code-bg {
+    fill: var(--inkflow-code-bg);
+}
+.inkflow-fill-code-text {
+    fill: var(--inkflow-code-text);
+}
+.inkflow-fill-red {
+    fill: var(--inkflow-red);
+}
+.inkflow-fill-orange {
+    fill: var(--inkflow-orange);
+}
+.inkflow-fill-yellow {
+    fill: var(--inkflow-yellow);
+}
+.inkflow-fill-green {
+    fill: var(--inkflow-green);
+}
+.inkflow-fill-teal {
+    fill: var(--inkflow-teal);
+}
+.inkflow-fill-blue {
+    fill: var(--inkflow-blue);
+}
+.inkflow-fill-purple {
+    fill: var(--inkflow-purple);
+}
+.inkflow-fill-pink {
+    fill: var(--inkflow-pink);
+}
+.inkflow-fill-grey {
+    fill: var(--inkflow-grey);
+}
 
 /* ── SVG element stroke utilities ─────────────────────────────────────────── */
 
-.inkflow-stroke-bg         { stroke: var(--inkflow-bg); }
-.inkflow-stroke-surface    { stroke: var(--inkflow-surface); }
-.inkflow-stroke-border     { stroke: var(--inkflow-border); }
-.inkflow-stroke-text       { stroke: var(--inkflow-text); }
-.inkflow-stroke-text-muted { stroke: var(--inkflow-text-muted); }
-.inkflow-stroke-accent     { stroke: var(--inkflow-accent); }
-.inkflow-stroke-accent-fg  { stroke: var(--inkflow-accent-fg); }
-.inkflow-stroke-code-bg    { stroke: var(--inkflow-code-bg); }
-.inkflow-stroke-code-text  { stroke: var(--inkflow-code-text); }
-.inkflow-stroke-red        { stroke: var(--inkflow-red); }
-.inkflow-stroke-orange     { stroke: var(--inkflow-orange); }
-.inkflow-stroke-yellow     { stroke: var(--inkflow-yellow); }
-.inkflow-stroke-green      { stroke: var(--inkflow-green); }
-.inkflow-stroke-teal       { stroke: var(--inkflow-teal); }
-.inkflow-stroke-blue       { stroke: var(--inkflow-blue); }
-.inkflow-stroke-purple     { stroke: var(--inkflow-purple); }
-.inkflow-stroke-pink       { stroke: var(--inkflow-pink); }
-.inkflow-stroke-grey       { stroke: var(--inkflow-grey); }
+.inkflow-stroke-bg {
+    stroke: var(--inkflow-bg);
+}
+.inkflow-stroke-surface {
+    stroke: var(--inkflow-surface);
+}
+.inkflow-stroke-border {
+    stroke: var(--inkflow-border);
+}
+.inkflow-stroke-text {
+    stroke: var(--inkflow-text);
+}
+.inkflow-stroke-text-muted {
+    stroke: var(--inkflow-text-muted);
+}
+.inkflow-stroke-accent {
+    stroke: var(--inkflow-accent);
+}
+.inkflow-stroke-accent-fg {
+    stroke: var(--inkflow-accent-fg);
+}
+.inkflow-stroke-code-bg {
+    stroke: var(--inkflow-code-bg);
+}
+.inkflow-stroke-code-text {
+    stroke: var(--inkflow-code-text);
+}
+.inkflow-stroke-red {
+    stroke: var(--inkflow-red);
+}
+.inkflow-stroke-orange {
+    stroke: var(--inkflow-orange);
+}
+.inkflow-stroke-yellow {
+    stroke: var(--inkflow-yellow);
+}
+.inkflow-stroke-green {
+    stroke: var(--inkflow-green);
+}
+.inkflow-stroke-teal {
+    stroke: var(--inkflow-teal);
+}
+.inkflow-stroke-blue {
+    stroke: var(--inkflow-blue);
+}
+.inkflow-stroke-purple {
+    stroke: var(--inkflow-purple);
+}
+.inkflow-stroke-pink {
+    stroke: var(--inkflow-pink);
+}
+.inkflow-stroke-grey {
+    stroke: var(--inkflow-grey);
+}
 
 /* ── foreignObject layout wrapper ────────────────────────────────────────── */
 
 /* --inkflow-valign: start | center | end  (set on #zone-* in layout SVG CSS) */
 /* --inkflow-padding: any CSS length        (set on #zone-* in layout SVG CSS) */
 .inkflow-wrapper {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  justify-content: var(--inkflow-valign, start);
-  padding: var(--inkflow-padding, 0);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    justify-content: var(--inkflow-valign, start);
+    padding: var(--inkflow-padding, 0);
 }
 
 /* ── .inkflow-content typography ─────────────────────────────────────────── */
 
 /* --inkflow-align: left | center | right | justify (set on #zone-* in layout SVG CSS) */
 .inkflow-content {
-  font-family: sans-serif;
-  font-size: 1em;
-  color: var(--inkflow-text);
-  box-sizing: border-box;
-  overflow: hidden;
-  line-height: 1.4;
-  text-align: var(--inkflow-align, left);
+    font-family: sans-serif;
+    font-size: 1em;
+    color: var(--inkflow-text);
+    box-sizing: border-box;
+    overflow: hidden;
+    line-height: 1.4;
+    text-align: var(--inkflow-align, left);
 }
-.inkflow-content p { margin-bottom: 0.5em; }
-.inkflow-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
-.inkflow-content ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.5em; }
-.inkflow-content li { display: list-item; margin-bottom: 0.3em; }
-.inkflow-content h1 { font-size: 2em; font-weight: bold; line-height: 1; margin-bottom: 0.2em; color: var(--inkflow-heading); }
-.inkflow-content h2 { font-size: 1.3em; line-height: 1.2; margin-bottom: 0.3em; color: var(--inkflow-heading); }
-.inkflow-content h3 { margin-bottom: 0.4em; color: var(--inkflow-heading); }
-.inkflow-content h4 { margin-bottom: 0.4em; color: var(--inkflow-heading); }
-.inkflow-content h5 { margin-bottom: 0.4em; color: var(--inkflow-heading); }
-.inkflow-content h6 { margin-bottom: 0.4em; color: var(--inkflow-text-muted); }
-.inkflow-content a { color: var(--inkflow-link); text-decoration: underline; }
-.inkflow-content a:hover { opacity: 0.8; }
-.inkflow-content code { font-family: monospace; background: var(--inkflow-code-bg); color: var(--inkflow-code-text); padding: 0.1em 0.3em; border-radius: 3px; }
-.inkflow-content pre { overflow: auto; background: var(--inkflow-code-bg); color: var(--inkflow-code-text); padding: 0.5em; border-radius: 4px; }
-.inkflow-content pre code { background: none; padding: 0; }
-.inkflow-content blockquote { border-left: 3px solid var(--inkflow-blockquote); padding-left: 0.8em; margin: 0.5em 0; color: var(--inkflow-text-muted); }
+.inkflow-content p {
+    margin-bottom: 0.5em;
+}
+.inkflow-content ul {
+    list-style-type: disc;
+    padding-left: 1.5em;
+    margin-bottom: 0.5em;
+}
+.inkflow-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 0.5em;
+}
+.inkflow-content li {
+    display: list-item;
+    margin-bottom: 0.3em;
+}
+.inkflow-content h1 {
+    font-size: 2em;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 0.2em;
+    color: var(--inkflow-heading);
+}
+.inkflow-content h2 {
+    font-size: 1.3em;
+    line-height: 1.2;
+    margin-bottom: 0.3em;
+    color: var(--inkflow-heading);
+}
+.inkflow-content h3 {
+    margin-bottom: 0.4em;
+    color: var(--inkflow-heading);
+}
+.inkflow-content h4 {
+    margin-bottom: 0.4em;
+    color: var(--inkflow-heading);
+}
+.inkflow-content h5 {
+    margin-bottom: 0.4em;
+    color: var(--inkflow-heading);
+}
+.inkflow-content h6 {
+    margin-bottom: 0.4em;
+    color: var(--inkflow-text-muted);
+}
+.inkflow-content a {
+    color: var(--inkflow-link);
+    text-decoration: underline;
+}
+.inkflow-content a:hover {
+    opacity: 0.8;
+}
+.inkflow-content code {
+    font-family: monospace;
+    background: var(--inkflow-code-bg);
+    color: var(--inkflow-code-text);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+.inkflow-content pre {
+    overflow: auto;
+    background: var(--inkflow-code-bg);
+    color: var(--inkflow-code-text);
+    padding: 0.5em;
+    border-radius: 4px;
+}
+.inkflow-content pre code {
+    background: none;
+    padding: 0;
+}
+.inkflow-content blockquote {
+    border-left: 3px solid var(--inkflow-blockquote);
+    padding-left: 0.8em;
+    margin: 0.5em 0;
+    color: var(--inkflow-text-muted);
+}
 
 /* ── Per-layout zone alignment and typography ─────────────────────────────── */
 
 /* default ------------------------------------------------------------------ */
-.layout-default #zone-title    { --inkflow-valign: end; }
-.layout-default #zone-subtitle { --inkflow-valign: start; }
+.layout-default #zone-title {
+    --inkflow-valign: end;
+}
+.layout-default #zone-subtitle {
+    --inkflow-valign: start;
+}
 
-.layout-default #zone-title .inkflow-content h1 { color: var(--inkflow-accent); }
-.layout-default #zone-subtitle .inkflow-content { color: var(--inkflow-text-muted); font-size: 0.9em; }
+.layout-default #zone-title .inkflow-content h1 {
+    color: var(--inkflow-accent);
+}
+.layout-default #zone-subtitle .inkflow-content {
+    color: var(--inkflow-text-muted);
+    font-size: 0.9em;
+}
 
 /* cover -------------------------------------------------------------------- */
-.layout-cover   #zone-title    { --inkflow-align: left;   --inkflow-valign: end;   }
-.layout-cover   #zone-subtitle { --inkflow-align: left;   --inkflow-valign: start; }
+.layout-cover #zone-title {
+    --inkflow-align: left;
+    --inkflow-valign: end;
+}
+.layout-cover #zone-subtitle {
+    --inkflow-align: left;
+    --inkflow-valign: start;
+}
 
-.layout-cover #zone-title .inkflow-content h1    { font-size: 2.8em; font-weight: 700; line-height: 1.1; }
-.layout-cover #zone-subtitle .inkflow-content    { color: var(--inkflow-text-muted); font-style: italic; font-size: 0.95em; }
+.layout-cover #zone-title .inkflow-content h1 {
+    font-size: 2.8em;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.layout-cover #zone-subtitle .inkflow-content {
+    color: var(--inkflow-text-muted);
+    font-style: italic;
+    font-size: 0.95em;
+}
 
 /* section ------------------------------------------------------------------ */
-.layout-section #zone-title    { --inkflow-align: center; --inkflow-valign: end;   }
-.layout-section #zone-subtitle { --inkflow-align: center; --inkflow-valign: start; }
+.layout-section #zone-title {
+    --inkflow-align: center;
+    --inkflow-valign: end;
+}
+.layout-section #zone-subtitle {
+    --inkflow-align: center;
+    --inkflow-valign: start;
+}
 
-.layout-section #zone-title .inkflow-content h1    { color: var(--inkflow-accent); font-size: 3.5em; font-weight: 500; line-height: 1.1; }
-.layout-section #zone-subtitle .inkflow-content    { color: var(--inkflow-text-muted); }
+.layout-section #zone-title .inkflow-content h1 {
+    color: var(--inkflow-accent);
+    font-size: 3.5em;
+    font-weight: 500;
+    line-height: 1.1;
+}
+.layout-section #zone-subtitle .inkflow-content {
+    color: var(--inkflow-text-muted);
+}
 
 /* end ---------------------------------------------------------------------- */
-.layout-end #zone-title    { --inkflow-align: center; --inkflow-valign: end;   }
-.layout-end #zone-subtitle { --inkflow-align: center; --inkflow-valign: start; }
+.layout-end #zone-title {
+    --inkflow-align: center;
+    --inkflow-valign: end;
+}
+.layout-end #zone-subtitle {
+    --inkflow-align: center;
+    --inkflow-valign: start;
+}
 
-.layout-end #zone-title .inkflow-content h1    { color: var(--inkflow-accent); font-size: 3em; font-weight: 500; }
-.layout-end #zone-subtitle .inkflow-content    { color: var(--inkflow-text-muted); }
+.layout-end #zone-title .inkflow-content h1 {
+    color: var(--inkflow-accent);
+    font-size: 3em;
+    font-weight: 500;
+}
+.layout-end #zone-subtitle .inkflow-content {
+    color: var(--inkflow-text-muted);
+}
 
 /* fact --------------------------------------------------------------------- */
-.layout-fact #zone-fact    { --inkflow-align: center; --inkflow-valign: end;   }
-.layout-fact #zone-caption { --inkflow-align: center; --inkflow-valign: start; }
+.layout-fact #zone-fact {
+    --inkflow-align: center;
+    --inkflow-valign: end;
+}
+.layout-fact #zone-caption {
+    --inkflow-align: center;
+    --inkflow-valign: start;
+}
 
-.layout-fact #zone-fact .inkflow-content h1     { font-size: 6em; font-weight: 700; color: var(--inkflow-accent); line-height: 1; }
-.layout-fact #zone-caption .inkflow-content     { color: var(--inkflow-text-muted); font-size: 0.85em; }
+.layout-fact #zone-fact .inkflow-content h1 {
+    font-size: 6em;
+    font-weight: 700;
+    color: var(--inkflow-accent);
+    line-height: 1;
+}
+.layout-fact #zone-caption .inkflow-content {
+    color: var(--inkflow-text-muted);
+    font-size: 0.85em;
+}
 
 /* center ------------------------------------------------------------------- */
-.layout-center #zone-content { --inkflow-align: center; --inkflow-valign: center; }
+.layout-center #zone-content {
+    --inkflow-align: center;
+    --inkflow-valign: center;
+}
 
 /* quote -------------------------------------------------------------------- */
-.layout-quote #zone-quote        { --inkflow-align: left; --inkflow-valign: center; }
-.layout-quote #zone-attribution  { --inkflow-align: left; --inkflow-valign: start;  }
+.layout-quote #zone-quote {
+    --inkflow-align: left;
+    --inkflow-valign: center;
+}
+.layout-quote #zone-attribution {
+    --inkflow-align: left;
+    --inkflow-valign: start;
+}
 
 .layout-quote #zone-quote .inkflow-content blockquote {
-  border-left: none;
-  padding-left: 0;
-  color: var(--inkflow-text);
-  font-size: 1.4em;
-  font-style: italic;
-  line-height: 1.6;
-  margin: 0;
+    border-left: none;
+    padding-left: 0;
+    color: var(--inkflow-text);
+    font-size: 1.4em;
+    font-style: italic;
+    line-height: 1.6;
+    margin: 0;
 }
-.layout-quote #zone-attribution .inkflow-content      { color: var(--inkflow-text-muted); font-size: 0.9em; }
-.layout-quote #zone-attribution .inkflow-content p::before { content: "— "; }
+.layout-quote #zone-attribution .inkflow-content {
+    color: var(--inkflow-text-muted);
+    font-size: 0.9em;
+}
+.layout-quote #zone-attribution .inkflow-content p::before {
+    content: "— ";
+}

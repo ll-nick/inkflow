@@ -1,12 +1,12 @@
 {
-  "compilerOptions": {
-    "lib": ["DOM", "ESNext"],
-    "types": [],
-    "strict": true,
-    "noEmit": true,
-    "module": "ESNext",
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true
-  },
-  "include": ["src/ts/**/*"]
+    "compilerOptions": {
+        "lib": ["DOM", "ESNext"],
+        "types": [],
+        "strict": true,
+        "noEmit": true,
+        "module": "ESNext",
+        "verbatimModuleSyntax": true,
+        "skipLibCheck": true
+    },
+    "include": ["src/ts/**/*"]
 }

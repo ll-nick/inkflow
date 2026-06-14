@@ -5,16 +5,30 @@
 
 /* Flicker — neon-light flicker-on effect, defined as a custom subclass in deck.py */
 @keyframes anim-flicker-in {
-    0%, 16%, 22%        { opacity: 0; }
-    10%, 15%, 35%, 100% { opacity: 1; }
-    61%, 63%            { opacity: 0; }
-    80%                 { opacity: 1; }
+    0%,
+    16%,
+    22% {
+        opacity: 0;
+    }
+    10%,
+    15%,
+    35%,
+    100% {
+        opacity: 1;
+    }
+    61%,
+    63% {
+        opacity: 0;
+    }
+    80% {
+        opacity: 1;
+    }
 }
 
 .anim-flicker {
     opacity: 0;
 }
 .anim-flicker.active {
-    animation: anim-flicker-in var(--anim-duration, 0.7s) var(--anim-easing, linear)
-        var(--anim-delay, 0s) forwards;
+    animation: anim-flicker-in var(--anim-duration, 0.7s)
+        var(--anim-easing, linear) var(--anim-delay, 0s) forwards;
 }

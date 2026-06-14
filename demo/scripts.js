@@ -55,7 +55,8 @@ window.inkflow.registerTransition("flip", (swap, t, then) => {
     void stage.offsetHeight;
 
     const cleanup = () => {
-        while (newLayer.firstChild) stage.insertBefore(newLayer.firstChild, newLayer);
+        while (newLayer.firstChild)
+            stage.insertBefore(newLayer.firstChild, newLayer);
         newLayer.remove();
         oldLayer.remove();
         stage.style.perspective = "";
