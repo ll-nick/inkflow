@@ -1,8 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="./numbered" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="2bc66eb2"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
-</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="0b32ae6e"><defs/><text id="zone-slide-number" x="1820" y="1055" class="inkflow-fill-text-muted" text-anchor="end" font-size="28px" font-family="sans-serif">99</text>
-  <text id="zone-slide-total" x="1860" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">99</text>
-  <text id="text1" x="1832.489" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">/</text>
-</g><defs><style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="./numbered" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg3">
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="2bc66eb2" id="g1">
+    <defs id="defs1"/>
+    <rect width="1920" height="1080" class="inkflow-fill-bg" id="rect1"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="0b32ae6e" id="g2">
+    <defs id="defs2"/>
+    <text id="zone-slide-number" x="1820" y="1055" class="inkflow-fill-text-muted" text-anchor="end" font-size="28px" font-family="sans-serif">99</text>
+    <text id="zone-slide-total" x="1860" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">99</text>
+    <text id="text1" x="1832.489" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">/</text>
+  </g>
+  <defs id="defs3">
+    <style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
 .inkflow-stroke-bg { stroke: #1e1e2e; }
 .inkflow-fill-surface { fill: #313244; }
 .inkflow-stroke-surface { stroke: #313244; }
@@ -37,7 +45,9 @@
 .inkflow-fill-pink { fill: #f5c2e7; }
 .inkflow-stroke-pink { stroke: #f5c2e7; }
 .inkflow-fill-grey { fill: #6c7086; }
-.inkflow-stroke-grey { stroke: #6c7086; }</style></defs><rect id="zone-title" x="80" y="60" width="1760" height="120"/>
+.inkflow-stroke-grey { stroke: #6c7086; }</style>
+  </defs>
+  <rect id="zone-title" x="80" y="60" width="1760" height="120"/>
   <rect id="zone-left" x="80" y="220" width="840" height="780"/>
   <rect id="zone-right" x="1000" y="220" width="840" height="780"/>
-<rect x="958" y="220" width="2" height="780" class="inkflow-fill-border"/></svg>
+</svg>
