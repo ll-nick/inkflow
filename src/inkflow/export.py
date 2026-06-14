@@ -96,7 +96,7 @@ def build_pdf(
     data_theme = "" if deck.dark_mode else "light"
     slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
     html = (
-        template.replace("__STYLES__", styles_css)
+        template.replace("/* __STYLES__ */", styles_css)
         .replace("__DATA_THEME__", data_theme)
         .replace("__SLIDES__", slides_html)
     )

@@ -196,13 +196,13 @@ def build_html(state: State, ws_port: int | None) -> bytes:
     data_theme = "" if state["dark_mode"] else "light"
     ws_port_js = "null" if ws_port is None else str(ws_port)
     html = (
-        template.replace("__CSS__", css)
-        .replace("__JS__", js)
-        .replace("__STYLES__", state["styles_css"])
+        template.replace("/* __CSS__ */", css)
+        .replace("/* __JS__ */", js)
+        .replace("/* __STYLES__ */", state["styles_css"])
         .replace("__DATA_THEME__", data_theme)
         .replace("__SLIDES_JSON__", json.dumps(state["slides"]))
         .replace("__TRANSITIONS_JSON__", json.dumps(state["transitions"]))
-        .replace("__SCRIPTS__", state["scripts_js"])
+        .replace("/* __SCRIPTS__ */", state["scripts_js"])
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
     )

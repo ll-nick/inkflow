@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inkflow</title>
-  <style>__STYLES__</style>
-  <style>__CSS__</style>
+  <style>/* __STYLES__ */</style>
+  <style>/* __CSS__ */</style>
 </head>
 <body>
   <div id="error-overlay">
@@ -50,26 +50,26 @@
   </div>
   <!-- Mobile: left/right edge tap indicators (pointer-events:none, visual only) -->
   <div id="mobile-prev" aria-hidden="true">
-    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
       <path d="M15 18l-6-6 6-6"/>
     </svg>
   </div>
   <div id="mobile-next" aria-hidden="true">
-    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
       <path d="M9 18l6-6-6-6"/>
     </svg>
   </div>
   <!-- Mobile: floating HUD (theme, slide info, step ring, fullscreen) -->
   <div id="mobile-hud">
-    <button class="hud-btn" id="mhud-theme" title="Toggle dark/light">
-      <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="mhud-theme" title="Toggle dark/light">
+      <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="pointer-events:none">
         <circle cx="8" cy="8" r="3"/>
         <line x1="8" y1="1" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15"/>
         <line x1="1" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15" y2="8"/>
         <line x1="3.4" y1="3.4" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.6" y2="12.6"/>
         <line x1="12.6" y1="3.4" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3.4" y2="12.6"/>
       </svg>
-      <svg class="icon-moon" viewBox="0 0 16 16" width="17" height="17" fill="currentColor" style="pointer-events:none">
+      <svg class="icon-moon" viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true" style="pointer-events:none">
         <path d="M14 8.5A6 6 0 1 1 7.5 2 4.7 4.7 0 0 0 14 8.5z"/>
       </svg>
     </button>
@@ -78,8 +78,8 @@
     <span class="sep">|</span>
     <span id="mhud-step-ring"></span>
     <span class="hud-sep"></span>
-    <button class="hud-btn" id="mhud-fullscreen" title="Fullscreen">
-      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="mhud-fullscreen" title="Fullscreen">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M1 5V2h3M12 2h3v3M15 11v3h-3M4 14H1v-3"/>
       </svg>
     </button>
@@ -87,7 +87,7 @@
   <div id="main-area">
     <div id="stage-wrap">
       <div id="stage"></div>
-      <svg id="laser-overlay" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"></svg>
+      <svg id="laser-overlay" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"></svg>
       <div id="laser-dot"></div>
       <div id="overview" role="dialog" aria-modal="true">
         <div id="overview-grid"></div>
@@ -111,45 +111,45 @@
     </aside>
   </div>
   <div id="statusbar">
-    <button class="hud-btn" id="btn-theme" title="Toggle dark/light">
-      <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="btn-theme" title="Toggle dark/light">
+      <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="pointer-events:none">
         <circle cx="8" cy="8" r="3"/>
         <line x1="8" y1="1" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15"/>
         <line x1="1" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15" y2="8"/>
         <line x1="3.4" y1="3.4" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.6" y2="12.6"/>
         <line x1="12.6" y1="3.4" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3.4" y2="12.6"/>
       </svg>
-      <svg class="icon-moon" viewBox="0 0 16 16" width="17" height="17" fill="currentColor" style="pointer-events:none">
+      <svg class="icon-moon" viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true" style="pointer-events:none">
         <path d="M14 8.5A6 6 0 1 1 7.5 2 4.7 4.7 0 0 0 14 8.5z"/>
       </svg>
     </button>
     <span class="hud-sep"></span>
-    <button class="hud-btn" id="btn-prev" title="Previous (← h Backspace)">
-      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="btn-prev" title="Previous (← h Backspace)">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M10 12L6 8l4-4"/>
       </svg>
     </button>
-    <button class="hud-btn" id="btn-fullscreen" title="Fullscreen (f)">
-      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="btn-fullscreen" title="Fullscreen (f)">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M1 5V2h3M12 2h3v3M15 11v3h-3M4 14H1v-3"/>
       </svg>
     </button>
-    <button class="hud-btn" id="btn-next" title="Next (→ l Space)">
-      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="btn-next" title="Next (→ l Space)">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M6 4l4 4-4 4"/>
       </svg>
     </button>
     <span class="hud-sep"></span>
-    <button class="hud-btn" id="btn-overview" title="Overview (o)">
-      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="btn-overview" title="Overview (o)">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="pointer-events:none">
         <rect x="1.5" y="1.5" width="5" height="5" rx="0.75"/>
         <rect x="9.5" y="1.5" width="5" height="5" rx="0.75"/>
         <rect x="1.5" y="9.5" width="5" height="5" rx="0.75"/>
         <rect x="9.5" y="9.5" width="5" height="5" rx="0.75"/>
       </svg>
     </button>
-    <button class="hud-btn" id="btn-presenter" title="Presenter view (p)">
-      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+    <button type="button" class="hud-btn" id="btn-presenter" title="Presenter view (p)">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <rect x="1" y="2" width="14" height="10" rx="1.5"/>
         <path d="M5.5 15h5M8 12v3"/>
       </svg>
@@ -163,7 +163,7 @@
     <span id="ws-dot"></span>
   </div>
 
-  <script>__JS__</script>
-  <script>__SCRIPTS__</script>
+  <script>/* __JS__ */</script>
+  <script>/* __SCRIPTS__ */</script>
 </body>
 </html>

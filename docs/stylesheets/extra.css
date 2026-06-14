@@ -1,92 +1,98 @@
 /* ── Catppuccin Latte (light scheme) ──────────────────────────────────────── */
 
 [data-md-color-scheme="default"] {
-  --ctp-blue:     #1e66f5;
-  --ctp-sapphire: #209fb5;
-  --ctp-lavender: #7287fd;
-  --ctp-text:     #4c4f69;
-  --ctp-subtext0: #6c6f85;
-  --ctp-overlay0: #9ca0b0;
-  --ctp-surface2: #acb0be;
-  --ctp-surface1: #bcc0cc;
-  --ctp-surface0: #ccd0da;
-  --ctp-base:     #eff1f5;
-  --ctp-mantle:   #e6e9ef;
-  --ctp-crust:    #dce0e8;
+    --ctp-blue: #1e66f5;
+    --ctp-sapphire: #209fb5;
+    --ctp-lavender: #7287fd;
+    --ctp-text: #4c4f69;
+    --ctp-subtext0: #6c6f85;
+    --ctp-overlay0: #9ca0b0;
+    --ctp-surface2: #acb0be;
+    --ctp-surface1: #bcc0cc;
+    --ctp-surface0: #ccd0da;
+    --ctp-base: #eff1f5;
+    --ctp-mantle: #e6e9ef;
+    --ctp-crust: #dce0e8;
 
-  --md-primary-fg-color:        var(--ctp-blue);
-  --md-primary-fg-color--light: var(--ctp-lavender);
-  --md-primary-fg-color--dark:  var(--ctp-sapphire);
-  --md-primary-bg-color:        var(--ctp-base);
-  --md-primary-bg-color--light: rgba(239, 241, 245, 0.7);
+    --md-primary-fg-color: var(--ctp-blue);
+    --md-primary-fg-color--light: var(--ctp-lavender);
+    --md-primary-fg-color--dark: var(--ctp-sapphire);
+    --md-primary-bg-color: var(--ctp-base);
+    --md-primary-bg-color--light: rgba(239, 241, 245, 0.7);
 
-  --md-accent-fg-color:             var(--ctp-blue);
-  --md-accent-fg-color--transparent: rgba(30, 102, 245, 0.1);
+    --md-accent-fg-color: var(--ctp-blue);
+    --md-accent-fg-color--transparent: rgba(30, 102, 245, 0.1);
 
-  --md-default-fg-color:          var(--ctp-text);
-  --md-default-fg-color--light:   var(--ctp-subtext0);
-  --md-default-fg-color--lighter: var(--ctp-overlay0);
-  --md-default-fg-color--lightest: var(--ctp-surface2);
-  --md-default-bg-color:           var(--ctp-base);
-  --md-default-bg-color--light:    var(--ctp-mantle);
-  --md-default-bg-color--lighter:  var(--ctp-crust);
-  --md-default-bg-color--lightest: var(--ctp-surface0);
+    --md-default-fg-color: var(--ctp-text);
+    --md-default-fg-color--light: var(--ctp-subtext0);
+    --md-default-fg-color--lighter: var(--ctp-overlay0);
+    --md-default-fg-color--lightest: var(--ctp-surface2);
+    --md-default-bg-color: var(--ctp-base);
+    --md-default-bg-color--light: var(--ctp-mantle);
+    --md-default-bg-color--lighter: var(--ctp-crust);
+    --md-default-bg-color--lightest: var(--ctp-surface0);
 
-  --md-code-fg-color: var(--ctp-text);
-  --md-code-bg-color: var(--ctp-mantle);
+    --md-code-fg-color: var(--ctp-text);
+    --md-code-bg-color: var(--ctp-mantle);
 
-  --md-typeset-a-color: var(--ctp-blue);
+    --md-typeset-a-color: var(--ctp-blue);
 }
 
 /* ── Catppuccin Mocha (dark scheme) ───────────────────────────────────────── */
 
 [data-md-color-scheme="slate"] {
-  --ctp-blue:     #89b4fa;
-  --ctp-sapphire: #74c7ec;
-  --ctp-lavender: #b4befe;
-  --ctp-text:     #cdd6f4;
-  --ctp-subtext0: #a6adc8;
-  --ctp-overlay0: #6c7086;
-  --ctp-surface2: #585b70;
-  --ctp-surface1: #45475a;
-  --ctp-surface0: #313244;
-  --ctp-base:     #1e1e2e;
-  --ctp-mantle:   #181825;
-  --ctp-crust:    #11111b;
+    --ctp-blue: #89b4fa;
+    --ctp-sapphire: #74c7ec;
+    --ctp-lavender: #b4befe;
+    --ctp-text: #cdd6f4;
+    --ctp-subtext0: #a6adc8;
+    --ctp-overlay0: #6c7086;
+    --ctp-surface2: #585b70;
+    --ctp-surface1: #45475a;
+    --ctp-surface0: #313244;
+    --ctp-base: #1e1e2e;
+    --ctp-mantle: #181825;
+    --ctp-crust: #11111b;
 
-  --md-primary-fg-color:        var(--ctp-blue);
-  --md-primary-fg-color--light: var(--ctp-lavender);
-  --md-primary-fg-color--dark:  var(--ctp-sapphire);
-  --md-primary-bg-color:        var(--ctp-base);
-  --md-primary-bg-color--light: rgba(30, 30, 46, 0.7);
+    --md-primary-fg-color: var(--ctp-blue);
+    --md-primary-fg-color--light: var(--ctp-lavender);
+    --md-primary-fg-color--dark: var(--ctp-sapphire);
+    --md-primary-bg-color: var(--ctp-base);
+    --md-primary-bg-color--light: rgba(30, 30, 46, 0.7);
 
-  --md-accent-fg-color:              var(--ctp-blue);
-  --md-accent-fg-color--transparent: rgba(137, 180, 250, 0.1);
+    --md-accent-fg-color: var(--ctp-blue);
+    --md-accent-fg-color--transparent: rgba(137, 180, 250, 0.1);
 
-  --md-default-fg-color:           var(--ctp-text);
-  --md-default-fg-color--light:    var(--ctp-subtext0);
-  --md-default-fg-color--lighter:  var(--ctp-overlay0);
-  --md-default-fg-color--lightest: var(--ctp-surface0);
-  --md-default-bg-color:           var(--ctp-base);
-  --md-default-bg-color--light:    var(--ctp-mantle);
-  --md-default-bg-color--lighter:  var(--ctp-crust);
-  --md-default-bg-color--lightest: var(--ctp-surface0);
+    --md-default-fg-color: var(--ctp-text);
+    --md-default-fg-color--light: var(--ctp-subtext0);
+    --md-default-fg-color--lighter: var(--ctp-overlay0);
+    --md-default-fg-color--lightest: var(--ctp-surface0);
+    --md-default-bg-color: var(--ctp-base);
+    --md-default-bg-color--light: var(--ctp-mantle);
+    --md-default-bg-color--lighter: var(--ctp-crust);
+    --md-default-bg-color--lightest: var(--ctp-surface0);
 
-  --md-code-fg-color: var(--ctp-text);
-  --md-code-bg-color: var(--ctp-mantle);
+    --md-code-fg-color: var(--ctp-text);
+    --md-code-bg-color: var(--ctp-mantle);
 
-  --md-typeset-a-color: var(--ctp-blue);
+    --md-typeset-a-color: var(--ctp-blue);
 }
 
 /* ── Home page logo: responds to MkDocs theme toggle ─────────────────────── */
 
-.inkflow-logo-dark { display: none; }
+.inkflow-logo-dark {
+    display: none;
+}
 
-[data-md-color-scheme="slate"] .inkflow-logo-light { display: none; }
-[data-md-color-scheme="slate"] .inkflow-logo-dark  { display: block; }
+[data-md-color-scheme="slate"] .inkflow-logo-light {
+    display: none;
+}
+[data-md-color-scheme="slate"] .inkflow-logo-dark {
+    display: block;
+}
 
 /* ── Dark mode header: use light icon on the blue bar ─────────────────────── */
 
 [data-md-color-scheme="slate"] .md-header__button.md-logo img {
-  content: url('../assets/logo-light-icon.svg');
+    content: url("../assets/logo-light-icon.svg");
 }
