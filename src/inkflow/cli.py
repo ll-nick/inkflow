@@ -287,97 +287,6 @@ _mode_option = click.option(
 )
 
 
-@parent.command("inject")
-@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
-@click.option(
-    "--check",
-    is_flag=True,
-    help="Report stale files without rewriting. Exits 1 if any are stale.",
-)
-@_deck_option
-@_no_deck_option
-@_mode_option
-def parent_inject(
-    files: tuple[Path, ...],
-    check: bool,
-    deck_path: Path,
-    no_deck: bool,
-    color_mode: str | None,
-) -> None:
-    """Refresh ancestor layout layers in slide SVG(s) for editor preview.
-
-    Also injects a preview style block so Inkscape renders semantic CSS classes
-    (e.g. inkflow-fill-accent) with the correct theme colors.
-
-    If FILES is omitted, refreshes all slides in the deck.
-    Use --no-deck when authoring a theme without a project deck.py.
-    """
-    if no_deck:
-        if not files:
-            raise click.UsageError("FILES required with --no-deck")
-        project_dir: Path | None = None
-        theme: str | None = None
-        deck_obj: Deck | None = None
-        dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
-        targets = [(Path(f).resolve(), str(f)) for f in files]
-        for svg_path, _ in targets:
-            if not svg_path.exists():
-                raise click.ClickException(f"file not found: {svg_path}")
-    else:
-        deck_obj, project_dir = _deck_context(deck_path)
-        theme = deck_obj.theme
-        dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
-        if files:
-            targets = [(Path(f).resolve(), str(f)) for f in files]
-            for svg_path, _ in targets:
-                if not svg_path.exists():
-                    raise click.ClickException(f"file not found: {svg_path}")
-        else:
-            targets = [
-                (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
-                for s in deck_obj.slides
-                if s.md is None
-            ]
-
-    css = loaders.load_styles(deck_obj, project_dir)
-    tokens = colors.extract_tokens(css, dark_mode)
-    preview_css = colors.build_preview_style(tokens)
-
-    stale_found = False
-    for svg_path, label in targets:
-        try:
-            chain = resolve_chain(svg_path, project_dir, theme)
-        except ValueError as exc:
-            raise click.ClickException(str(exc)) from exc
-        if not chain:
-            if not (files or no_deck):
-                continue
-            if check:
-                if is_layout_current(svg_path, [], preview_css):
-                    click.echo(f"[ok]          {label}")
-                else:
-                    click.echo(f"[stale]       {label}")
-                    stale_found = True
-            else:
-                inject_layout_layers(svg_path, [], preview_css)
-                click.echo(f"[no parent]   {label}")
-            continue
-        if check:
-            if is_layout_current(svg_path, chain, preview_css):
-                click.echo(f"[ok]     {label}")
-            else:
-                click.echo(f"[stale]  {label}")
-                stale_found = True
-        else:
-            changed = inject_layout_layers(svg_path, chain, preview_css)
-            click.echo(
-                f"[injected]    {label}" if changed else f"[up to date]  {label}"
-            )
-
-    if check and stale_found:
-        sys.exit(1)
-
-
 @parent.command("list")
 @_deck_option
 def parent_list(deck_path: Path) -> None:
@@ -498,6 +407,98 @@ def _resolve_dark_mode(
     if no_deck or deck_obj is None:
         return color_mode != "light"
     return deck_obj.dark_mode if color_mode is None else color_mode == "dark"
+
+
+@main.command("sync")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@click.option(
+    "--check",
+    is_flag=True,
+    help="Report stale files without rewriting. Exits 1 if any are stale.",
+)
+@_deck_option
+@_no_deck_option
+@_mode_option
+def sync_cmd(
+    files: tuple[Path, ...],
+    check: bool,
+    deck_path: Path,
+    no_deck: bool,
+    color_mode: str | None,
+) -> None:
+    """Refresh layout layers and preview styles in slide SVG(s).
+
+    Injects ancestor layout layers for editor preview and a style block so
+    Inkscape renders semantic CSS classes (e.g. inkflow-fill-accent) with the
+    correct theme colors.
+
+    If FILES is omitted, refreshes all slides in the deck.
+    Use --no-deck when authoring a theme without a project deck.py.
+    """
+    if no_deck:
+        if not files:
+            raise click.UsageError("FILES required with --no-deck")
+        project_dir: Path | None = None
+        theme: str | None = None
+        deck_obj: Deck | None = None
+        dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
+        targets = [(Path(f).resolve(), str(f)) for f in files]
+        for svg_path, _ in targets:
+            if not svg_path.exists():
+                raise click.ClickException(f"file not found: {svg_path}")
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        theme = deck_obj.theme
+        dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
+        if files:
+            targets = [(Path(f).resolve(), str(f)) for f in files]
+            for svg_path, _ in targets:
+                if not svg_path.exists():
+                    raise click.ClickException(f"file not found: {svg_path}")
+        else:
+            targets = [
+                (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
+                for s in deck_obj.slides
+                if s.md is None
+            ]
+
+    css = loaders.load_styles(deck_obj, project_dir)
+    tokens = colors.extract_tokens(css, dark_mode)
+    preview_css = colors.build_preview_style(tokens)
+
+    stale_found = False
+    for svg_path, label in targets:
+        try:
+            chain = resolve_chain(svg_path, project_dir, theme)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        if not chain:
+            if not (files or no_deck):
+                continue
+            if check:
+                if is_layout_current(svg_path, [], preview_css):
+                    click.echo(f"[ok]          {label}")
+                else:
+                    click.echo(f"[stale]       {label}")
+                    stale_found = True
+            else:
+                inject_layout_layers(svg_path, [], preview_css)
+                click.echo(f"[no parent]   {label}")
+            continue
+        if check:
+            if is_layout_current(svg_path, chain, preview_css):
+                click.echo(f"[ok]          {label}")
+            else:
+                click.echo(f"[stale]       {label}")
+                stale_found = True
+        else:
+            changed = inject_layout_layers(svg_path, chain, preview_css)
+            click.echo(
+                f"[injected]    {label}" if changed else f"[up to date]  {label}"
+            )
+
+    if check and stale_found:
+        sys.exit(1)
 
 
 @main.command("colorize")
