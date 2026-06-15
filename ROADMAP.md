@@ -44,10 +44,6 @@ Drawings are ephemeral — they don't persist between slides.
 A `CodeSlide` template (or a `Highlight` animation targeting line ranges) that dims non-highlighted lines per step.
 One of the most-used Slidev features for technical presentations.
 
-**Math / LaTeX**
-Enable the `dollarmath` plugin in `markdown-it-py` and load KaTeX in the presenter.
-Since `<foreignObject>` content is real HTML in the browser, KaTeX's auto-render works there without modification.
-
 **Section dividers and table of contents**
 A `SectionSlide("title")` type that marks a section boundary.
 The pipeline can auto-generate a TOC slide from all section boundaries.
@@ -56,30 +52,13 @@ The pipeline can auto-generate a TOC slide from all section boundaries.
 
 ## Authoring experience
 
-**Element ID validation**
-When `deck.py` references `#headline` but the SVG has no matching element,
-this should be a hard build error naming the slide file and the missing ID.
-Currently a silent skip.
-
 **Watch-only mode**
 `inkflow watch deck.py` rebuilds on change without opening a browser or server.
 Useful for catching `deck.py` errors immediately during authoring.
 
-**Custom slide dimensions**
-Currently hardcoded 1920×1080.
-Should be a per-deck setting on `Deck(width=..., height=...)`.
-
 ---
 
 ## Theme
-
-**Complete the default theme**
-The current built-in theme is a visual placeholder — bare zone rects on a flat background with no typography or decoration.
-Needs a coherent color palette using the `--inkflow-*` CSS variables,
-styled layout SVGs using the semantic CSS classes,
-readable typography for headings, body text, and code blocks,
-and light/dark variants that both look intentional.
-The showcase deck should demonstrate a well-designed presentation, not just exercise every layout type.
 
 **Named theme support**
 `_resolve_theme_dir` currently raises an error for bare names like `Deck(theme="catppuccin-mocha")`.
