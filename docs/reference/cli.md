@@ -130,6 +130,43 @@ They just need to run `inkflow setup-git` themselves to activate the config entr
 
 ---
 
+## `inkflow completion`
+
+Print a shell completion script and install it to enable tab completion.
+
+```bash
+inkflow completion {bash|zsh|fish|carapace}
+```
+
+| Argument | Description |
+|---|---|
+| `bash` | Completion script for Bash |
+| `zsh` | Completion script for Zsh |
+| `fish` | Completion script for Fish |
+| `carapace` | [Carapace](https://carapace-sh.github.io/carapace-bin/) spec (YAML) for any supported shell |
+
+**Bash** — add to `~/.bashrc`:
+```bash
+eval "$(inkflow completion bash)"
+```
+
+**Zsh** — add to `~/.zshrc`:
+```bash
+eval "$(inkflow completion zsh)"
+```
+
+**Fish** — add to `~/.config/fish/config.fish`:
+```fish
+inkflow completion fish | source
+```
+
+**Carapace** — install the spec once, then carapace handles completions for all shells it supports (Nushell, PowerShell, Elvish, and others):
+```bash
+inkflow completion carapace > ~/.config/carapace/specs/inkflow.yaml
+```
+
+---
+
 ## `inkflow parent`
 
 Manage slide layout parents.

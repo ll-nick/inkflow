@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+import subprocess
 import sys
+from importlib.resources import files
 from pathlib import Path
 
 import click
@@ -164,6 +167,28 @@ def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
             errors = True
     if dirty or errors:
         sys.exit(1)
+
+
+@main.command("completion")
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish", "carapace"]))
+def completion_cmd(shell: str) -> None:
+    """Print shell completion script for SHELL.
+
+    \b
+    Add to your shell config:
+      bash:     eval "$(inkflow completion bash)"
+      zsh:      eval "$(inkflow completion zsh)"
+      fish:     inkflow completion fish | source
+      carapace: inkflow completion carapace > ~/.config/carapace/specs/inkflow.yaml
+    """
+    if shell == "carapace":
+        spec = files("inkflow").joinpath("completions/inkflow.yaml")
+        click.echo(spec.read_text(encoding="utf-8"), nl=False)
+        return
+
+    env = {**os.environ, "_INKFLOW_COMPLETE": f"{shell}_source"}
+    result = subprocess.run([sys.argv[0]], env=env, capture_output=True, text=True)
+    click.echo(result.stdout, nl=False)
 
 
 @main.command("setup-git")
