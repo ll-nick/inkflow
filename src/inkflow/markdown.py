@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
@@ -69,18 +70,47 @@ def _math_to_mathml(content: str, options: _MathOpts) -> str:
 
 _md = MarkdownIt().use(dollarmath_plugin, renderer=_math_to_mathml)
 
+# ── Markdown rendering ────────────────────────────────────────────────────────
+
 
 def markdown_to_html(md_str: str) -> str:
     return cast(str, _md.render(md_str))
 
 
-def _split_steps(text: str) -> list[str]:
-    parts = _STEP_PATTERN.split(text)
-    result: list[str] = []
+# ── Step / steps parsing ──────────────────────────────────────────────────────
+
+
+def _split_steps(text: str) -> list[Chunk]:
+    """Split text on ::step:: markers and ::steps:: blocks.
+
+    Returns a list of Chunk values where:
+    - str values are regular text segments (may be empty)
+    - _STEP sentinel strings mark step boundaries
+    - _StepsBlock values carry a block whose items reveal individually
+    """
+    result: list[Chunk] = []
+    pos = 0
+
+    for m in _STEPS_BLOCK_RE.finditer(text):
+        before = text[pos : m.start()]
+        if before.strip():
+            parts = _STEP_PATTERN.split(before)
+            for i, part in enumerate(parts):
+                if i > 0:
+                    result.append(_STEP)
+                result.append(part)
+        block_text = _STEP_PATTERN.sub("", m.group(1)).strip()
+        if block_text:
+            result.append(_StepsBlock(block_text))
+        pos = m.end()
+
+    tail = text[pos:]
+    parts = _STEP_PATTERN.split(tail)
     for i, part in enumerate(parts):
         if i > 0:
             result.append(_STEP)
         result.append(part)
+
     return result
 
 
@@ -158,68 +188,101 @@ def parse_markdown_zones(md_path: Path) -> _ZoneChunks:
     return _parse_markdown_zones_full(md_path).zones
 
 
-def chunks_to_html(
-    chunks: list[str], base_step: int, wrap_list_items: bool = False
-) -> tuple[str, int]:
-    parts: list[str] = []
-    step = base_step
-    chunk_index = 0
-
-    for item in chunks:
-        if item == _STEP:
-            step += 1
-            continue
-        html = markdown_to_html(item)
-        if chunk_index == 0:
-            if wrap_list_items:
-                html, step = steps_wrap_list_items(html, step)
-            parts.append(html)
-        else:
-            if wrap_list_items:
-                # _STEP already incremented step; pass step-1 so the first
-                # list item lands at `step`, not `step+1`
-                html_wrapped, new_step = steps_wrap_list_items(html, step - 1)
-                if new_step >= step:
-                    html = html_wrapped
-                    step = new_step
-                else:
-                    html = f'<div class="anim-fade-in" data-step="{step}">{html}</div>'
-            else:
-                html = f'<div class="anim-fade-in" data-step="{step}">{html}</div>'
-            parts.append(html)
-        chunk_index += 1
-
-    return "".join(parts), step
+# ── HTML rendering from chunks ────────────────────────────────────────────────
 
 
 def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
     from lxml import etree
 
-    # Wrap in a root element to parse as fragment
     wrapped = f"<div>{html}</div>"
     root = etree.fromstring(wrapped.encode())
 
     step = base_step
     for ul_or_ol in root.findall("ul") + root.findall("ol"):
-        for li in ul_or_ol:
+        for li in list(ul_or_ol):
             if li.tag != "li":
                 continue
             step += 1
             wrapper = etree.Element("div")
             wrapper.set("class", "anim-fade-in")
             wrapper.set("data-step", str(step))
-            # Move li into wrapper
             idx = list(ul_or_ol).index(li)
             ul_or_ol.remove(li)
             wrapper.append(li)
             ul_or_ol.insert(idx, wrapper)
-    steps: bool,
-    steps: bool,
 
     inner = etree.tostring(root, encoding="unicode")
-    # Strip outer <div> wrapper
     inner = inner[len("<div>") : -len("</div>")]
     return inner, step
+
+
+def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
+    """Wrap each top-level <p> and each <li> in a stepped fade-in div."""
+    from lxml import etree
+
+    wrapped = f"<div>{html}</div>"
+    root = etree.fromstring(wrapped.encode())
+
+    step = base_step
+    for child in list(root):
+        tag = child.tag
+        if tag in ("ul", "ol"):
+            for li in list(child):
+                if li.tag != "li":
+                    continue
+                step += 1
+                wrapper = etree.Element("div")
+                wrapper.set("class", "anim-fade-in")
+                wrapper.set("data-step", str(step))
+                idx = list(child).index(li)
+                child.remove(li)
+                wrapper.append(li)
+                child.insert(idx, wrapper)
+        elif tag == "p":
+            step += 1
+            wrapper = etree.Element("div")
+            wrapper.set("class", "anim-fade-in")
+            wrapper.set("data-step", str(step))
+            idx = list(root).index(child)
+            root.remove(child)
+            wrapper.append(child)
+            root.insert(idx, wrapper)
+
+    inner = etree.tostring(root, encoding="unicode")
+    inner = inner[len("<div>") : -len("</div>")]
+    return inner, step
+
+
+def chunks_to_html(chunks: Sequence[Chunk], base_step: int) -> tuple[str, int]:
+    parts: list[str] = []
+    step = base_step
+    needs_step_wrap = False  # True only after a ::step:: marker
+
+    for item in chunks:
+        if item == _STEP:
+            step += 1
+            needs_step_wrap = True
+            continue
+
+        if isinstance(item, _StepsBlock):
+            html = markdown_to_html(item.text)
+            html, step = steps_wrap_content(html, step)
+            parts.append(html)
+            needs_step_wrap = False
+            continue
+
+        # Regular string chunk: wrap only when an explicit ::step:: preceded it
+        html = markdown_to_html(item)
+        if needs_step_wrap:
+            parts.append(f'<div class="anim-fade-in" data-step="{step}">{html}</div>')
+        else:
+            parts.append(html)
+        needs_step_wrap = False
+
+    return "".join(parts), step
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
 
 
 def build_slide_content(

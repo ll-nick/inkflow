@@ -42,7 +42,7 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
         content_path = _resolve_content_src(slide.md, project_dir)
         zones = parse_markdown_zones(content_path)
         chunks = zones.get("title", [])
-        if chunks:
+        if chunks and isinstance(chunks[0], str):
             return chunks[0].lstrip("#").strip()
         return f"Slide {slide_num}"
     stem = Path(slide.src).stem
