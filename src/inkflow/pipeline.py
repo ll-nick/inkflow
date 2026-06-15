@@ -40,7 +40,7 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
         return slide.title
     if slide.md is not None:
         content_path = _resolve_content_src(slide.md, project_dir)
-        zones = parse_markdown_zones(content_path)
+        zones = parse_markdown_zones(content_path).zones
         chunks = zones.get("title", [])
         if chunks and isinstance(chunks[0], str):
             return chunks[0].lstrip("#").strip()

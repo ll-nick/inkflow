@@ -54,7 +54,7 @@ _ZoneParams = dict[str, _ParamMap]
 
 
 @dataclass
-class _ParsedMarkdown:
+class ParsedMarkdown:
     zones: _ZoneChunks
     params: _ZoneParams
 
@@ -154,12 +154,12 @@ def _auto_extract(text: str) -> _ZoneChunks:
     return zones
 
 
-def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
+def parse_markdown_zones(md_path: Path) -> ParsedMarkdown:
     text = md_path.read_text(encoding="utf-8")
 
     markers = list(_ZONE_PATTERN.finditer(text))
     if not markers:
-        return _ParsedMarkdown(zones=_auto_extract(text), params={})
+        return ParsedMarkdown(zones=_auto_extract(text), params={})
 
     zones: _ZoneChunks = {}
     params: _ZoneParams = {}
@@ -181,11 +181,7 @@ def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
         if raw_params.strip():
             params[zone_name] = _parse_zone_params(raw_params)
 
-    return _ParsedMarkdown(zones=zones, params=params)
-
-
-def parse_markdown_zones(md_path: Path) -> _ZoneChunks:
-    return _parse_markdown_zones_full(md_path).zones
+    return ParsedMarkdown(zones=zones, params=params)
 
 
 # ── HTML rendering from chunks ────────────────────────────────────────────────
@@ -292,7 +288,7 @@ def build_slide_content(
     zones: _ZoneChunks = {}
     zone_params: _ZoneParams = {}
     if content_path is not None:
-        parsed = _parse_markdown_zones_full(content_path)
+        parsed = parse_markdown_zones(content_path)
         zones = parsed.zones
         zone_params = parsed.params
 
