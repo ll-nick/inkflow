@@ -381,16 +381,35 @@ def build_cmd(deck: str, output: str | None) -> None:
     is_flag=True,
     help="Pass --no-sandbox to Chromium (needed when running as root or in Docker).",
 )
+@click.option(
+    "--size",
+    default=None,
+    metavar="WxH",
+    help="Override PDF page size, e.g. 1280x720. Auto-detected from slides if not set.",
+)
 def export_cmd(
-    deck: str, output: str | None, chromium: str | None, no_sandbox: bool
+    deck: str,
+    output: str | None,
+    chromium: str | None,
+    no_sandbox: bool,
+    size: str | None,
 ) -> None:
     """Export a PDF via headless Chromium (one page per slide)."""
     deck_path = Path(deck).resolve()
     if not deck_path.exists():
         raise click.ClickException(f"deck not found: {deck_path}")
     out = Path(output).resolve() if output else deck_path.with_suffix(".pdf")
+    parsed_size: tuple[int, int] | None = None
+    if size is not None:
+        try:
+            parts = size.lower().split("x")
+            parsed_size = (int(parts[0]), int(parts[1]))
+        except (ValueError, IndexError):
+            raise click.ClickException(
+                f"--size must be WxH (e.g. 1920x1080), got: {size!r}"
+            ) from None
     try:
-        warnings = build_pdf(deck_path, out, chromium, no_sandbox)
+        warnings = build_pdf(deck_path, out, chromium, no_sandbox, size=parsed_size)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
     for w in warnings:
