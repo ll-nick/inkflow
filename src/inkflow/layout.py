@@ -345,3 +345,65 @@ def inject_layout_layers(
         encoding="utf-8",
     )
     return True
+
+
+# ── Layout discovery and inspection ──────────────────────────────────────────
+
+
+def discover_layouts(
+    project_dir: Path | None,
+    theme: str | None,
+) -> list[tuple[str, Path]]:
+    """Return (source_label, layout_path) pairs from all available layout directories.
+
+    Order: builtin → theme → local.
+    """
+    sources: list[tuple[str, Path]] = []
+
+    for p in sorted((builtin_theme_dir() / "layouts").glob("*.svg")):
+        sources.append(("builtin", p))
+
+    if theme and project_dir:
+        theme_layouts = resolve_theme_dir(theme, project_dir) / "layouts"
+        if theme_layouts.is_dir():
+            for p in sorted(theme_layouts.glob("*.svg")):
+                sources.append(("theme", p))
+
+    if project_dir:
+        local_layouts = project_dir / "layouts"
+        if local_layouts.is_dir():
+            for p in sorted(local_layouts.glob("*.svg")):
+                sources.append(("local", p))
+
+    return sources
+
+
+def layout_zones(
+    layout_path: Path,
+    project_dir: Path | None,
+    theme: str | None,
+) -> tuple[list[str], bool]:
+    """Return (content_zones, numbered) for a layout after compositing ancestors.
+
+    content_zones: sorted zone names with the ``zone-`` prefix stripped, excluding
+    the slide-number and slide-total zones which are indicated by ``numbered``.
+    """
+    svg_str = clean_inkscape_svg(layout_path)
+    chain = resolve_chain(layout_path, project_dir, theme)
+    if chain:
+        svg_str = compose_with_ancestors(svg_str, chain)
+    root = etree.fromstring(svg_str.encode())
+
+    all_zone_ids: set[str] = set()
+    for el in root.iter():
+        eid = el.get("id")
+        if eid and eid.startswith("zone-"):
+            all_zone_ids.add(eid)
+
+    numbered = bool({"zone-slide-number", "zone-slide-total"} & all_zone_ids)
+    content_zones = sorted(
+        z[len("zone-") :]
+        for z in all_zone_ids
+        if z not in {"zone-slide-number", "zone-slide-total"}
+    )
+    return content_zones, numbered
