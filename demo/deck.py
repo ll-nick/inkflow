@@ -112,6 +112,10 @@ def main() -> Deck:
                 md="slides/09-math.md",
             ),
             Slide(
+                "layouts/content.svg",
+                md="slides/10-code.md",
+            ),
+            Slide(
                 "slides/10-clips.svg",
                 transition=Flip(duration=0.8),
                 zones={

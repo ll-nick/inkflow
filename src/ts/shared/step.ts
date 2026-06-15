@@ -4,7 +4,34 @@ export function maxStep(root: Element): number {
         const s = +(el.getAttribute("data-step") ?? "0");
         if (s > m) m = s;
     });
+    root.querySelectorAll<HTMLElement>(
+        ".inkflow-codeblock[data-hl-spec][data-base-step]",
+    ).forEach((block) => {
+        const spec: unknown[] = JSON.parse(block.dataset.hlSpec!);
+        const baseStep = +(block.dataset.baseStep ?? "0");
+        const last = baseStep + spec.length - 1;
+        if (last > m) m = last;
+    });
     return m;
+}
+
+function applyCodeHighlights(root: Element, step: number): void {
+    root.querySelectorAll<HTMLElement>(
+        ".inkflow-codeblock[data-hl-spec][data-base-step]",
+    ).forEach((block) => {
+        const spec: (number[] | null)[] = JSON.parse(block.dataset.hlSpec!);
+        const baseStep = +(block.dataset.baseStep ?? "0");
+        const specIdx = Math.min(Math.max(step - baseStep, 0), spec.length - 1);
+        const active = spec[specIdx]; // null = all, [] = none, [1,2,…] = lines
+        const hasHL = active !== null;
+
+        block.querySelectorAll<HTMLElement>(".code-line").forEach((line) => {
+            const n = +(line.dataset.line ?? "0");
+            line.classList.toggle("hl-active", hasHL && active!.includes(n));
+            line.classList.toggle("hl-dim", hasHL && !active!.includes(n));
+            if (!hasHL) line.classList.remove("hl-active", "hl-dim");
+        });
+    });
 }
 
 export function applyStep(root: Element, step: number): void {
@@ -14,6 +41,7 @@ export function applyStep(root: Element, step: number): void {
             +(el.getAttribute("data-step") ?? "0") <= step,
         );
     });
+    applyCodeHighlights(root, step);
 }
 
 // Apply a step and immediately fast-forward whatever the class change scheduled,

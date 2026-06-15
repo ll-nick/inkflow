@@ -40,9 +40,13 @@ Drawings are ephemeral — they don't persist between slides.
 
 ## Content features
 
-**Per-step code line highlighting**
-A `CodeSlide` template (or a `Highlight` animation targeting line ranges) that dims non-highlighted lines per step.
-One of the most-used Slidev features for technical presentations.
+**Configurable step animations (Option B)**
+`::step::` and `::steps::` markers currently hardcode `anim-fade-in` as the reveal animation.
+Add a `step_animation` parameter to `Slide` (and a deck-level default on `Deck`) that accepts a small
+`StepAnimation(kind, duration, delay)` dataclass — analogous to the existing `Animation` subclasses.
+The kind maps to `anim-<kind>`, and duration/delay emit `--anim-*` custom properties on the wrapper div,
+so no new CSS is required for custom durations.
+Per-zone overrides via the `::zone step-anim=slide-in::` marker parameter are a natural follow-on.
 
 **Section dividers and table of contents**
 A `SectionSlide("title")` type that marks a section boundary.

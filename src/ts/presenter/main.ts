@@ -1,6 +1,6 @@
 import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
-import { applyCurrentStepInstant, readURL } from "./status";
+import { readURL } from "./status";
 import { loadSlide, registerTransition } from "./transitions";
 import { showError } from "./ui";
 import { connectWS } from "./websocket";
@@ -21,9 +21,7 @@ window.inkflow = { registerTransition };
 
 // ── Boot ──
 readURL();
-loadSlide(() => {
-    if (state.step > 0) applyCurrentStepInstant();
-});
+loadSlide();
 renderPv();
 updatePvClock();
 setInterval(updatePvClock, 1000);
