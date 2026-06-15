@@ -703,6 +703,7 @@ def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
 @_no_deck_option
 def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
     """List available layouts with their zones."""
+    from rich import box as rich_box
     from rich.console import Console
     from rich.table import Table
 
@@ -715,13 +716,7 @@ def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
         deck_obj, project_dir = _deck_context(deck_path)
         theme = deck_obj.theme
 
-    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
-    table.add_column("NAME", min_width=12)
-    table.add_column("SOURCE", min_width=8)
-    table.add_column("PARENT", min_width=14)
-    table.add_column("ZONES")
-    table.add_column("#", justify="center", min_width=1)
-
+    groups: dict[str, list[tuple[str, str, list[str], bool]]] = {}
     for source_label, layout_path in discover_layouts(project_dir, theme):
         try:
             chain = resolve_chain(layout_path, project_dir, theme)
@@ -729,12 +724,45 @@ def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
             raise click.ClickException(str(exc)) from exc
         parent_str = " → ".join(p.stem for p in chain) if chain else "—"
         zones, numbered = layout_zones(layout_path, project_dir, theme)
-        table.add_row(
-            layout_path.stem,
-            source_label,
-            parent_str,
-            ", ".join(zones) if zones else "—",
-            "✓" if numbered else "",
+        groups.setdefault(source_label, []).append(
+            (layout_path.stem, parent_str, zones, numbered)
         )
 
-    Console().print(table)
+    source_styles = [
+        ("builtin", "steel_blue", "Built-in"),
+        ("theme", "dark_orange", "Theme"),
+        ("local", "green", "Local"),
+    ]
+
+    console = Console()
+    first = True
+    for source_key, color, title in source_styles:
+        rows = groups.get(source_key)
+        if not rows:
+            continue
+        if not first:
+            console.print()
+        first = False
+
+        console.print(f"[bold {color}]‣ {title}[/bold {color}]")
+        table = Table(
+            box=rich_box.ROUNDED,
+            header_style=f"bold {color}",
+            border_style=color,
+            show_header=True,
+            pad_edge=True,
+        )
+        table.add_column("NAME", style="bold", min_width=12)
+        table.add_column("PARENT", style="dim", min_width=14)
+        table.add_column("ZONES", min_width=20)
+        table.add_column("#", justify="center", min_width=1)
+
+        for name, parent_str, zones, numbered in rows:
+            table.add_row(
+                name,
+                parent_str,
+                f"[{color}]{', '.join(zones)}[/{color}]" if zones else "[dim]—[/dim]",
+                f"[{color}]✓[/{color}]" if numbered else "",
+            )
+
+        console.print(table)
