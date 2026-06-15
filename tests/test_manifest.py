@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from inkflow.animations import Bounce, FadeIn, FadeOut
 from inkflow.manifest import (
+    Align,
     Deck,
     Media,
     Slide,
@@ -87,15 +88,15 @@ def test_slide_transition_stored() -> None:
 
 
 def test_textbox_fields() -> None:
-    tb = TextBox(text="<p>hello</p>", steps=True)
+    tb = TextBox(text="<p>hello</p>", align=Align.CENTER)
     assert tb.text == "<p>hello</p>"
-    assert tb.steps is True
+    assert tb.align == Align.CENTER
 
 
 def test_textbox_defaults() -> None:
     tb = TextBox()
     assert tb.text is None
-    assert tb.steps is False
+    assert tb.align is None
 
 
 def test_media_fields_defaults() -> None:
@@ -144,10 +145,9 @@ def test_deck_font_size_stored() -> None:
 
 
 def test_slide_md_field() -> None:
-    s = Slide("layouts/bullets.svg", md="slides/05.md", steps=True)
+    s = Slide("layouts/bullets.svg", md="slides/05.md")
     assert s.src == "layouts/bullets.svg"
     assert s.md == "slides/05.md"
-    assert s.steps is True
     assert s.animations == []
     assert s.transition is None
     assert s.style == ""
