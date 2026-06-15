@@ -11,6 +11,27 @@ from mdit_py_plugins.dollarmath import dollarmath_plugin
 
 from inkflow.manifest import Align, Media, TextBox, VAlign, ZoneContent
 
+# ── Shared regex primitives ───────────────────────────────────────────────────
+
+_WORD = r"[\w-]+"
+_PARAM = rf"(?:\s+{_WORD}=\S+)*"
+_NOT_STEP = r"(?!steps?\b)"
+
+_ZONE_PATTERN = re.compile(
+    rf"^::({_NOT_STEP}{_WORD})({_PARAM})::\s*$",
+    re.MULTILINE,
+)
+_STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
+_STEPS_BLOCK_RE = re.compile(
+    r"^::steps::\s*\n(.*?)(?:^::steps end::\s*$|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+
+_STEP = "\x00step\x00"
+
+
+# ── Public output types ───────────────────────────────────────────────────────
+
 
 @dataclass
 class SlideContent:
