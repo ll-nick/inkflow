@@ -7,11 +7,12 @@ from inkflow.markdown import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
     SlideContent,
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
-    _parse_markdown_zones_full,  # pyright: ignore[reportPrivateUsage]
+    _StepsBlock,  # pyright: ignore[reportPrivateUsage]
     build_slide_content,
     chunks_to_html,
     markdown_to_html,
     parse_markdown_zones,
+    steps_wrap_content,
     steps_wrap_list_items,
 )
 
@@ -20,7 +21,7 @@ class TestParseMarkdownZones:
     def test_no_markers_triggers_auto_extract(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# My Title\n\nBody content.\n", encoding="utf-8")
-        zones = parse_markdown_zones(md)
+        zones = parse_markdown_zones(md).zones
         assert "title" in zones
         assert "content" in zones
 
@@ -29,18 +30,20 @@ class TestParseMarkdownZones:
         md.write_text(
             "::left::\nLeft side.\n::right::\nRight side.\n", encoding="utf-8"
         )
-        zones = parse_markdown_zones(md)
+        zones = parse_markdown_zones(md).zones
         assert "left" in zones
         assert "right" in zones
-        assert "Left side" in "".join(zones["left"])
-        assert "Right side" in "".join(zones["right"])
+        left_text = "".join(c for c in zones["left"] if isinstance(c, str))
+        right_text = "".join(c for c in zones["right"] if isinstance(c, str))
+        assert "Left side" in left_text
+        assert "Right side" in right_text
 
     def test_content_before_first_marker_goes_to_content_zone(
         self, tmp_path: Path
     ) -> None:
         md = tmp_path / "slide.md"
         md.write_text("Intro text.\n::extra::\nExtra content.\n", encoding="utf-8")
-        zones = parse_markdown_zones(md)
+        zones = parse_markdown_zones(md).zones
         assert "content" in zones
         assert "extra" in zones
 
@@ -52,7 +55,7 @@ class TestParseMarkdownZones:
             "# My Title\n\n::left::\nLeft content.\n::right::\nRight content.\n",
             encoding="utf-8",
         )
-        zones = parse_markdown_zones(md)
+        zones = parse_markdown_zones(md).zones
         assert "title" in zones
         assert "left" in zones
         assert "right" in zones
@@ -61,15 +64,62 @@ class TestParseMarkdownZones:
     def test_step_marker_creates_chunk_boundary(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::body::\nFirst.\n::step::\nSecond.\n", encoding="utf-8")
-        zones = parse_markdown_zones(md)
+        zones = parse_markdown_zones(md).zones
         assert _STEP in zones["body"]
 
     def test_empty_zone_section_excluded(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::left::\n\n::right::\nRight content.\n", encoding="utf-8")
-        zones = parse_markdown_zones(md)
+        zones = parse_markdown_zones(md).zones
         assert "left" not in zones
         assert "right" in zones
+
+    def test_steps_block_not_parsed_as_zone(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::steps::\n- Item\n::steps end::\n", encoding="utf-8")
+        zones = parse_markdown_zones(md).zones
+        assert "steps" not in zones
+
+    def test_steps_block_produces_stepsblock(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text(
+            "::content::\n::steps::\n- A\n- B\n::steps end::\n", encoding="utf-8"
+        )
+        zones = parse_markdown_zones(md).zones
+        assert "content" in zones
+        blocks = [c for c in zones["content"] if isinstance(c, _StepsBlock)]
+        assert len(blocks) == 1
+        assert "- A" in blocks[0].text
+
+    def test_steps_block_strips_inner_step_markers(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text(
+            "::content::\n::steps::\n- A\n::step::\n- B\n::steps end::\n",
+            encoding="utf-8",
+        )
+        zones = parse_markdown_zones(md).zones
+        blocks = [c for c in zones["content"] if isinstance(c, _StepsBlock)]
+        assert len(blocks) == 1
+        assert "::step::" not in blocks[0].text
+
+    def test_steps_block_optional_end(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::content::\n::steps::\n- A\n- B\n", encoding="utf-8")
+        zones = parse_markdown_zones(md).zones
+        blocks = [c for c in zones["content"] if isinstance(c, _StepsBlock)]
+        assert len(blocks) == 1
+
+    def test_steps_block_interleaves_with_step(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text(
+            "::content::\nIntro.\n::step::\n::steps::\n- A\n- B\n::steps end::\n",
+            encoding="utf-8",
+        )
+        zones = parse_markdown_zones(md).zones
+        chunks = zones["content"]
+        assert _STEP in chunks
+        blocks = [c for c in chunks if isinstance(c, _StepsBlock)]
+        assert len(blocks) == 1
 
 
 class TestAutoExtract:
@@ -84,7 +134,9 @@ class TestAutoExtract:
     def test_h2_after_body_stays_in_content(self) -> None:
         zones = _auto_extract("# Title\n\nBody text.\n\n## Not a subtitle\n")
         assert "subtitle" not in zones
-        content_text = "".join(c for c in zones.get("content", []) if c != _STEP)
+        content_text = "".join(
+            c for c in zones.get("content", []) if isinstance(c, str)
+        )
         assert "Not a subtitle" in content_text
 
     def test_no_heading_all_to_content(self) -> None:
@@ -122,6 +174,44 @@ class TestChunksToHtml:
         assert 'data-step="2"' in html
         assert step == 2
 
+    def test_stepsblock_wraps_list_items(self) -> None:
+        chunks = [_StepsBlock("- One\n- Two\n")]
+        html, step = chunks_to_html(chunks, 0)
+        assert 'data-step="1"' in html
+        assert 'data-step="2"' in html
+        assert step == 2
+
+    def test_stepsblock_wraps_paragraphs(self) -> None:
+        chunks = [_StepsBlock("First para.\n\nSecond para.\n")]
+        html, step = chunks_to_html(chunks, 0)
+        assert 'data-step="1"' in html
+        assert 'data-step="2"' in html
+        assert step == 2
+
+    def test_stepsblock_counter_continues_from_base(self) -> None:
+        chunks = ["Intro", _STEP, _StepsBlock("- A\n- B\n")]
+        html, step = chunks_to_html(chunks, 0)
+        # _STEP increments to 1, then _StepsBlock items land at 2 and 3
+        assert 'data-step="2"' in html
+        assert 'data-step="3"' in html
+        assert step == 3
+
+    def test_stepsblock_and_step_interleave(self) -> None:
+        chunks = [_StepsBlock("- A\n"), _STEP, "After"]
+        html, step = chunks_to_html(chunks, 0)
+        # block item at step 1, then _STEP → 2, "After" wrapped at 2
+        assert 'data-step="1"' in html
+        assert 'data-step="2"' in html
+        assert step == 2
+
+    def test_content_after_stepsblock_is_always_visible(self) -> None:
+        # Content after ::steps end:: must NOT get a data-step wrapper
+        chunks = [_StepsBlock("- A\n"), "Footer"]
+        html, step = chunks_to_html(chunks, 0)
+        assert "Footer" in html
+        assert html.count("data-step") == 1  # only the block item
+        assert step == 1
+
 
 class TestStepsWrapListItems:
     def test_each_li_wrapped_with_data_step(self) -> None:
@@ -151,11 +241,48 @@ class TestStepsWrapListItems:
         assert result.count("data-step") == 1
 
 
+class TestStepsWrapContent:
+    def test_list_items_each_wrapped(self) -> None:
+        html = "<ul><li>One</li><li>Two</li></ul>"
+        result, step = steps_wrap_content(html, 0)
+        assert 'data-step="1"' in result
+        assert 'data-step="2"' in result
+        assert step == 2
+
+    def test_paragraphs_each_wrapped(self) -> None:
+        html = "<p>First</p><p>Second</p>"
+        result, step = steps_wrap_content(html, 0)
+        assert 'data-step="1"' in result
+        assert 'data-step="2"' in result
+        assert step == 2
+
+    def test_mixed_list_and_paragraph(self) -> None:
+        html = "<ul><li>A</li><li>B</li></ul><p>Para</p>"
+        result, step = steps_wrap_content(html, 0)
+        assert 'data-step="1"' in result
+        assert 'data-step="2"' in result
+        assert 'data-step="3"' in result
+        assert step == 3
+
+    def test_base_step_offset(self) -> None:
+        html = "<p>Only</p>"
+        result, step = steps_wrap_content(html, 4)
+        assert 'data-step="5"' in result
+        assert step == 5
+
+    def test_non_steppable_elements_left_alone(self) -> None:
+        html = "<h2>Heading</h2>"
+        result, step = steps_wrap_content(html, 0)
+        assert "data-step" not in result
+        assert "Heading" in result
+        assert step == 0
+
+
 class TestBuildSlideContent:
     def test_plain_markdown_becomes_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("Body content here.\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         assert isinstance(result, SlideContent)
         assert "zone-content" in result.content
         assert isinstance(result.content["zone-content"], TextBox)
@@ -163,7 +290,7 @@ class TestBuildSlideContent:
     def test_h1_creates_title_textbox(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# My Title\n\nBody.\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         assert "zone-title" in result.content
         tb = result.content["zone-title"]
         assert isinstance(tb, TextBox)
@@ -172,21 +299,21 @@ class TestBuildSlideContent:
         assert "<h1>" in tb.text
 
     def test_str_zone_creates_textbox(self) -> None:
-        result = build_slide_content(None, False, {"content": "**bold**"})
+        result = build_slide_content(None, {"content": "**bold**"})
         assert "zone-content" in result.content
         tb = result.content["zone-content"]
         assert isinstance(tb, TextBox)
         assert "bold" in (tb.text or "")
 
     def test_str_zone_rendered_as_markdown(self) -> None:
-        result = build_slide_content(None, False, {"title": "# Hello"})
+        result = build_slide_content(None, {"title": "# Hello"})
         tb = result.content["zone-title"]
         assert isinstance(tb, TextBox)
         assert "<h1>" in (tb.text or "")
 
     def test_media_kwarg_accepts_media_object_with_tuning(self) -> None:
         result = build_slide_content(
-            None, False, {"image": Media("photo.png", fit="cover", align="top")}
+            None, {"image": Media("photo.png", fit="cover", align="top")}
         )
         assert "zone-image" in result.content
         m = result.content["zone-image"]
@@ -198,7 +325,6 @@ class TestBuildSlideContent:
     def test_textbox_zone_preserves_alignment_fields(self) -> None:
         result = build_slide_content(
             None,
-            False,
             {"content": TextBox(text="<p>hello</p>", align=Align.CENTER, padding=30)},
         )
         assert "zone-content" in result.content
@@ -207,16 +333,16 @@ class TestBuildSlideContent:
         assert tb.align == Align.CENTER
         assert tb.padding == 30
 
-    def test_steps_true_wraps_list_items(self, tmp_path: Path) -> None:
+    def test_steps_block_wraps_bullets(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
-        md.write_text("- One\n- Two\n- Three\n", encoding="utf-8")
-        result = build_slide_content(md, True, {})
+        md.write_text("::steps::\n- One\n- Two\n- Three\n", encoding="utf-8")
+        result = build_slide_content(md, {})
         box = next(v for v in result.content.values() if isinstance(v, TextBox))
         assert box.text is not None
         assert "data-step" in box.text
 
     def test_no_content_no_extra_returns_empty(self) -> None:
-        result = build_slide_content(None, False, {})
+        result = build_slide_content(None, {})
         assert result.content == {}
         assert result.notes == ""
 
@@ -225,21 +351,21 @@ class TestBuildSlideContent:
         md.write_text(
             "Body text.\n\n::notes::\n\nRemember **this**.\n", encoding="utf-8"
         )
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         assert "<strong>this</strong>" in result.notes
         assert "zone-notes" not in result.content
 
     def test_notes_zone_not_injected_into_slide(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::notes::\n\nPrivate note.\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         assert result.content == {}
         assert "Private note." in result.notes
 
     def test_no_notes_zone_returns_empty_notes(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("# Title\n\nSome content.\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         assert result.notes == ""
 
 
@@ -247,7 +373,7 @@ class TestZoneParams:
     def test_parse_zone_params_extracted(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::title align=center::\n\n# Hello\n", encoding="utf-8")
-        parsed = _parse_markdown_zones_full(md)
+        parsed = parse_markdown_zones(md)
         assert parsed.params.get("title") == {"align": "center"}
 
     def test_parse_zone_multiple_params(self, tmp_path: Path) -> None:
@@ -256,7 +382,7 @@ class TestZoneParams:
             "::content align=right valign=center padding=20::\n\nBody\n",
             encoding="utf-8",
         )
-        parsed = _parse_markdown_zones_full(md)
+        parsed = parse_markdown_zones(md)
         assert parsed.params["content"] == {
             "align": "right",
             "valign": "center",
@@ -266,20 +392,20 @@ class TestZoneParams:
     def test_zone_without_params_has_no_entry(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content::\n\nBody\n", encoding="utf-8")
-        parsed = _parse_markdown_zones_full(md)
+        parsed = parse_markdown_zones(md)
         assert "content" not in parsed.params
 
-    def test_parse_zones_public_api_unchanged(self, tmp_path: Path) -> None:
+    def test_parse_zones_returns_parsed_markdown(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::title align=center::\n\n# Hello\n", encoding="utf-8")
-        zones = parse_markdown_zones(md)
-        assert "title" in zones
-        assert isinstance(zones["title"], list)
+        parsed = parse_markdown_zones(md)
+        assert "title" in parsed.zones
+        assert isinstance(parsed.zones["title"], list)
 
     def test_build_slide_content_align_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content align=center::\n\nBody text\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         tb = result.content["zone-content"]
         assert isinstance(tb, TextBox)
         assert tb.align == Align.CENTER
@@ -287,7 +413,7 @@ class TestZoneParams:
     def test_build_slide_content_valign_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content valign=center::\n\nBody text\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         tb = result.content["zone-content"]
         assert isinstance(tb, TextBox)
         assert tb.valign == VAlign.CENTER
@@ -295,7 +421,7 @@ class TestZoneParams:
     def test_build_slide_content_padding_param(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content padding=40::\n\nBody text\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         tb = result.content["zone-content"]
         assert isinstance(tb, TextBox)
         assert tb.padding == 40.0
@@ -303,7 +429,7 @@ class TestZoneParams:
     def test_unknown_params_ignored(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content unknown=foo align=left::\n\nBody\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         tb = result.content["zone-content"]
         assert isinstance(tb, TextBox)
         assert tb.align == Align.LEFT
@@ -311,7 +437,7 @@ class TestZoneParams:
     def test_no_params_textbox_fields_are_none(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
         md.write_text("::content::\n\nBody\n", encoding="utf-8")
-        result = build_slide_content(md, False, {})
+        result = build_slide_content(md, {})
         tb = result.content["zone-content"]
         assert isinstance(tb, TextBox)
         assert tb.align is None

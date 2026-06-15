@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
@@ -11,6 +12,27 @@ from mdit_py_plugins.dollarmath import dollarmath_plugin
 
 from inkflow.manifest import Align, Media, TextBox, VAlign, ZoneContent
 
+# ── Shared regex primitives ───────────────────────────────────────────────────
+
+_WORD = r"[\w-]+"
+_PARAM = rf"(?:\s+{_WORD}=\S+)*"
+_NOT_STEP = r"(?!steps?\b)"
+
+_ZONE_PATTERN = re.compile(
+    rf"^::({_NOT_STEP}{_WORD})({_PARAM})::\s*$",
+    re.MULTILINE,
+)
+_STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
+_STEPS_BLOCK_RE = re.compile(
+    r"^::steps::\s*\n(.*?)(?:^::steps end::\s*$|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+
+_STEP = "\x00step\x00"
+
+
+# ── Public output types ───────────────────────────────────────────────────────
+
 
 @dataclass
 class SlideContent:
@@ -19,16 +41,22 @@ class SlideContent:
 
 
 @dataclass
-class _ParsedMarkdown:
-    zones: dict[str, list[str]]
-    params: dict[str, dict[str, str]]  # zone_name → {align, valign, padding, …}
+class _StepsBlock:
+    text: str  # markdown content inside as ::steps:: block
 
 
-_ZONE_PATTERN = re.compile(
-    r"^::((?!step\b)[\w-]+)((?:\s+[\w-]+=\S+)*)::\s*$", re.MULTILINE
-)
-_STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
-_STEP = "\x00step\x00"
+# ── Internal types ────────────────────────────────────────────────────────────
+
+Chunk = str | _StepsBlock
+_ZoneChunks = dict[str, list[Chunk]]
+_ParamMap = dict[str, str]
+_ZoneParams = dict[str, _ParamMap]
+
+
+@dataclass
+class ParsedMarkdown:
+    zones: _ZoneChunks
+    params: _ZoneParams
 
 
 class _MathOpts(TypedDict, total=False):
@@ -42,23 +70,52 @@ def _math_to_mathml(content: str, options: _MathOpts) -> str:
 
 _md = MarkdownIt().use(dollarmath_plugin, renderer=_math_to_mathml)
 
+# ── Markdown rendering ────────────────────────────────────────────────────────
+
 
 def markdown_to_html(md_str: str) -> str:
     return cast(str, _md.render(md_str))
 
 
-def _split_steps(text: str) -> list[str]:
-    parts = _STEP_PATTERN.split(text)
-    result: list[str] = []
+# ── Step / steps parsing ──────────────────────────────────────────────────────
+
+
+def _split_steps(text: str) -> list[Chunk]:
+    """Split text on ::step:: markers and ::steps:: blocks.
+
+    Returns a list of Chunk values where:
+    - str values are regular text segments (may be empty)
+    - _STEP sentinel strings mark step boundaries
+    - _StepsBlock values carry a block whose items reveal individually
+    """
+    result: list[Chunk] = []
+    pos = 0
+
+    for m in _STEPS_BLOCK_RE.finditer(text):
+        before = text[pos : m.start()]
+        if before.strip():
+            parts = _STEP_PATTERN.split(before)
+            for i, part in enumerate(parts):
+                if i > 0:
+                    result.append(_STEP)
+                result.append(part)
+        block_text = _STEP_PATTERN.sub("", m.group(1)).strip()
+        if block_text:
+            result.append(_StepsBlock(block_text))
+        pos = m.end()
+
+    tail = text[pos:]
+    parts = _STEP_PATTERN.split(tail)
     for i, part in enumerate(parts):
         if i > 0:
             result.append(_STEP)
         result.append(part)
+
     return result
 
 
-def _parse_zone_params(params_str: str) -> dict[str, str]:
-    params: dict[str, str] = {}
+def _parse_zone_params(params_str: str) -> _ParamMap:
+    params: _ParamMap = {}
     for token in params_str.split():
         if "=" in token:
             key, _, value = token.partition("=")
@@ -66,8 +123,11 @@ def _parse_zone_params(params_str: str) -> dict[str, str]:
     return params
 
 
-def _auto_extract(text: str) -> dict[str, list[str]]:
-    zones: dict[str, list[str]] = {}
+# ── Zone parsing ──────────────────────────────────────────────────────────────
+
+
+def _auto_extract(text: str) -> _ZoneChunks:
+    zones: _ZoneChunks = {}
     lines = text.splitlines(keepends=True)
     i = 0
     n = len(lines)
@@ -94,15 +154,15 @@ def _auto_extract(text: str) -> dict[str, list[str]]:
     return zones
 
 
-def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
+def parse_markdown_zones(md_path: Path) -> ParsedMarkdown:
     text = md_path.read_text(encoding="utf-8")
 
     markers = list(_ZONE_PATTERN.finditer(text))
     if not markers:
-        return _ParsedMarkdown(zones=_auto_extract(text), params={})
+        return ParsedMarkdown(zones=_auto_extract(text), params={})
 
-    zones: dict[str, list[str]] = {}
-    params: dict[str, dict[str, str]] = {}
+    zones: _ZoneChunks = {}
+    params: _ZoneParams = {}
 
     # Content before the first marker:
     # auto-extract title/subtitle, remainder → "content"
@@ -121,84 +181,114 @@ def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
         if raw_params.strip():
             params[zone_name] = _parse_zone_params(raw_params)
 
-    return _ParsedMarkdown(zones=zones, params=params)
+    return ParsedMarkdown(zones=zones, params=params)
 
 
-def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
-    return _parse_markdown_zones_full(md_path).zones
-
-
-def chunks_to_html(
-    chunks: list[str], base_step: int, wrap_list_items: bool = False
-) -> tuple[str, int]:
-    parts: list[str] = []
-    step = base_step
-    chunk_index = 0
-
-    for item in chunks:
-        if item == _STEP:
-            step += 1
-            continue
-        html = markdown_to_html(item)
-        if chunk_index == 0:
-            if wrap_list_items:
-                html, step = steps_wrap_list_items(html, step)
-            parts.append(html)
-        else:
-            if wrap_list_items:
-                # _STEP already incremented step; pass step-1 so the first
-                # list item lands at `step`, not `step+1`
-                html_wrapped, new_step = steps_wrap_list_items(html, step - 1)
-                if new_step >= step:
-                    html = html_wrapped
-                    step = new_step
-                else:
-                    html = f'<div class="anim-fade-in" data-step="{step}">{html}</div>'
-            else:
-                html = f'<div class="anim-fade-in" data-step="{step}">{html}</div>'
-            parts.append(html)
-        chunk_index += 1
-
-    return "".join(parts), step
+# ── HTML rendering from chunks ────────────────────────────────────────────────
 
 
 def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
     from lxml import etree
 
-    # Wrap in a root element to parse as fragment
     wrapped = f"<div>{html}</div>"
     root = etree.fromstring(wrapped.encode())
 
     step = base_step
     for ul_or_ol in root.findall("ul") + root.findall("ol"):
-        for li in ul_or_ol:
+        for li in list(ul_or_ol):
             if li.tag != "li":
                 continue
             step += 1
             wrapper = etree.Element("div")
             wrapper.set("class", "anim-fade-in")
             wrapper.set("data-step", str(step))
-            # Move li into wrapper
             idx = list(ul_or_ol).index(li)
             ul_or_ol.remove(li)
             wrapper.append(li)
             ul_or_ol.insert(idx, wrapper)
 
     inner = etree.tostring(root, encoding="unicode")
-    # Strip outer <div> wrapper
     inner = inner[len("<div>") : -len("</div>")]
     return inner, step
 
 
+def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
+    """Wrap each top-level <p> and each <li> in a stepped fade-in div."""
+    from lxml import etree
+
+    wrapped = f"<div>{html}</div>"
+    root = etree.fromstring(wrapped.encode())
+
+    step = base_step
+    for child in list(root):
+        tag = child.tag
+        if tag in ("ul", "ol"):
+            for li in list(child):
+                if li.tag != "li":
+                    continue
+                step += 1
+                wrapper = etree.Element("div")
+                wrapper.set("class", "anim-fade-in")
+                wrapper.set("data-step", str(step))
+                idx = list(child).index(li)
+                child.remove(li)
+                wrapper.append(li)
+                child.insert(idx, wrapper)
+        elif tag == "p":
+            step += 1
+            wrapper = etree.Element("div")
+            wrapper.set("class", "anim-fade-in")
+            wrapper.set("data-step", str(step))
+            idx = list(root).index(child)
+            root.remove(child)
+            wrapper.append(child)
+            root.insert(idx, wrapper)
+
+    inner = etree.tostring(root, encoding="unicode")
+    inner = inner[len("<div>") : -len("</div>")]
+    return inner, step
+
+
+def chunks_to_html(chunks: Sequence[Chunk], base_step: int) -> tuple[str, int]:
+    parts: list[str] = []
+    step = base_step
+    needs_step_wrap = False  # True only after a ::step:: marker
+
+    for item in chunks:
+        if item == _STEP:
+            step += 1
+            needs_step_wrap = True
+            continue
+
+        if isinstance(item, _StepsBlock):
+            html = markdown_to_html(item.text)
+            html, step = steps_wrap_content(html, step)
+            parts.append(html)
+            needs_step_wrap = False
+            continue
+
+        # Regular string chunk: wrap only when an explicit ::step:: preceded it
+        html = markdown_to_html(item)
+        if needs_step_wrap:
+            parts.append(f'<div class="anim-fade-in" data-step="{step}">{html}</div>')
+        else:
+            parts.append(html)
+        needs_step_wrap = False
+
+    return "".join(parts), step
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+
 def build_slide_content(
     content_path: Path | None,
-    steps: bool,
     extra: dict[str, ZoneContent],
 ) -> SlideContent:
-    zones: dict[str, list[str]] = {}
-    zone_params: dict[str, dict[str, str]] = {}
+    zones: _ZoneChunks = {}
+    zone_params: _ZoneParams = {}
     if content_path is not None:
-        parsed = _parse_markdown_zones_full(content_path)
+        parsed = parse_markdown_zones(content_path)
         zones = parsed.zones
         zone_params = parsed.params
 
@@ -211,7 +301,7 @@ def build_slide_content(
     base_step = 0
 
     for zone_name, chunks in zones.items():
-        html, base_step = chunks_to_html(chunks, base_step, wrap_list_items=steps)
+        html, base_step = chunks_to_html(chunks, base_step)
         p = zone_params.get(zone_name, {})
         content[f"zone-{zone_name}"] = TextBox(
             text=html,

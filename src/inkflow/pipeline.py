@@ -40,9 +40,9 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
         return slide.title
     if slide.md is not None:
         content_path = _resolve_content_src(slide.md, project_dir)
-        zones = parse_markdown_zones(content_path)
+        zones = parse_markdown_zones(content_path).zones
         chunks = zones.get("title", [])
-        if chunks:
+        if chunks and isinstance(chunks[0], str):
             return chunks[0].lstrip("#").strip()
         return f"Slide {slide_num}"
     stem = Path(slide.src).stem
@@ -272,7 +272,7 @@ def process_slide(
 
     if slide.md is not None or slide.zones:
         content_path = _resolve_content_src(slide.md, project_dir) if slide.md else None
-        result = build_slide_content(content_path, slide.steps, slide.zones)
+        result = build_slide_content(content_path, slide.zones)
         if result.content:
             svg_str = substitute_content(svg_str, result.content, font_size)
 
@@ -296,7 +296,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         md_notes = ""
         if slide.md is not None:
             content_path = _resolve_content_src(slide.md, project_dir)
-            md_notes = build_slide_content(content_path, slide.steps, slide.zones).notes
+            md_notes = build_slide_content(content_path, slide.zones).notes
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         svg = process_slide(
             slide,

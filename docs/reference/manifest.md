@@ -51,7 +51,6 @@ Slide(
 Slide(
     "default",
     md="slides/02-bullets.md",
-    steps=True,
     zones={"media": Media("assets/photo.jpg")},
 )
 ```
@@ -61,7 +60,6 @@ Slide(
 | `src` | `str` | required | SVG file path, or bare layout name (e.g. `"default"`) |
 | `md` | `str \| None` | `None` | Path to `.md` file, relative to `deck.py`. Makes `src` resolve as a layout name |
 | `zones` | `dict[str, str \| Media \| TextBox]` | `{}` | Per-zone overrides. Keys are zone names without the `zone-` prefix. `str` values are rendered as inline Markdown; `TextBox` values give explicit alignment/padding control; `Media` values inject an image or video |
-| `steps` | `bool` | `False` | Enable `::step::` markers in the Markdown file |
 | `animations` | `list[Animation]` | `[]` | Animation declarations |
 | `transition` | `Transition \| None` | `None` | Overrides deck-level transition |
 | `style` | `str` | `""` | CSS string injected into this slide |
@@ -122,7 +120,6 @@ TextBox(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `text` | `str \| None` | `None` | HTML content to inject |
-| `steps` | `bool` | `False` | Enable step-based reveal within the text |
 | `align` | `Align \| None` | `None` | Horizontal text alignment. `None` defers to the layout CSS variable |
 | `valign` | `VAlign \| None` | `None` | Vertical alignment of the content block. `None` defers to the layout CSS variable |
 | `padding` | `float \| None` | `None` | Inner padding in SVG user units. `None` defers to the layout CSS variable |

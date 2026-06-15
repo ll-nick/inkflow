@@ -62,7 +62,6 @@ class VAlign(StrEnum):
 @dataclass
 class TextBox:
     text: str | None = None
-    steps: bool = False
     align: Align | None = None
     valign: VAlign | None = None
     padding: float | None = None  # SVG user units. Fall back to CSS if not set.
@@ -96,7 +95,6 @@ class Slide:
     title: str | None = None
     notes: str | Path | None = None
     visible: bool = True
-    steps: bool = False
 
     @property
     def step_count(self) -> int:
