@@ -19,7 +19,7 @@ from inkflow.ns import (
 # ── Built-in theme ───────────────────────────────────────────────────────────
 
 
-def _builtin_theme_dir() -> Path:
+def builtin_theme_dir() -> Path:
     return Path(str(importlib.resources.files("inkflow").joinpath("theme")))
 
 
@@ -94,7 +94,7 @@ def resolve_parent_path(
 
     if parent_str.startswith("builtin:"):
         name = parent_str[len("builtin:") :]
-        resolved = _with_svg(_builtin_theme_dir() / "layouts" / name)
+        resolved = _with_svg(builtin_theme_dir() / "layouts" / name)
         if not resolved.exists():
             raise ValueError(
                 f"builtin:{name} not found — no built-in layout named '{name}'"
@@ -122,7 +122,7 @@ def resolve_parent_path(
                 resolve_theme_dir(theme, project_root or Path()) / "layouts" / name
             )
         )
-    candidates.append(_with_svg(_builtin_theme_dir() / "layouts" / name))
+    candidates.append(_with_svg(builtin_theme_dir() / "layouts" / name))
 
     for candidate in candidates:
         if candidate.exists():

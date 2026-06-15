@@ -39,7 +39,7 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
     if slide.title:
         return slide.title
     if slide.md is not None:
-        content_path = _resolve_content_src(slide.md, project_dir)
+        content_path = resolve_content_src(slide.md, project_dir)
         zones = parse_markdown_zones(content_path).zones
         chunks = zones.get("title", [])
         if chunks and isinstance(chunks[0], str):
@@ -81,7 +81,7 @@ def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> 
     return resolve_parent_path(src, project_dir, project_dir, theme)
 
 
-def _resolve_content_src(src: str, project_dir: Path) -> Path:
+def resolve_content_src(src: str, project_dir: Path) -> Path:
     """Resolve a slide Markdown content path to an absolute Path.
 
     Bare single-part names are looked up in slides/ with a .md suffix.
@@ -271,7 +271,7 @@ def process_slide(
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
 
     if slide.md is not None or slide.zones:
-        content_path = _resolve_content_src(slide.md, project_dir) if slide.md else None
+        content_path = resolve_content_src(slide.md, project_dir) if slide.md else None
         result = build_slide_content(content_path, slide.zones)
         if result.content:
             svg_str = substitute_content(svg_str, result.content, font_size)
@@ -295,7 +295,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         explicit_notes = _resolve_notes(slide.notes, project_dir)
         md_notes = ""
         if slide.md is not None:
-            content_path = _resolve_content_src(slide.md, project_dir)
+            content_path = resolve_content_src(slide.md, project_dir)
             md_notes = build_slide_content(content_path, slide.zones).notes
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         svg = process_slide(
