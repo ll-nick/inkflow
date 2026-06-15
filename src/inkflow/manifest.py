@@ -95,6 +95,7 @@ class Slide:
     title: str | None = None
     notes: str | Path | None = None
     visible: bool = True
+    font_size: int | None = None
 
     @property
     def step_count(self) -> int:

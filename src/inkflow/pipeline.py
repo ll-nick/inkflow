@@ -305,7 +305,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             i + 1,
             total,
             deck.style,
-            deck.font_size,
+            slide.font_size if slide.font_size is not None else deck.font_size,
         )
         results.append({"svg": svg, "title": title, "notes": notes})
     return results
