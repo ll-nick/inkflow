@@ -136,7 +136,32 @@
       const s = +(el.getAttribute("data-step") ?? "0");
       if (s > m) m = s;
     });
+    root.querySelectorAll(
+      ".inkflow-codeblock[data-hl-spec][data-base-step]"
+    ).forEach((block) => {
+      const spec = JSON.parse(block.dataset.hlSpec);
+      const baseStep = +(block.dataset.baseStep ?? "0");
+      const last = baseStep + spec.length - 1;
+      if (last > m) m = last;
+    });
     return m;
+  }
+  function applyCodeHighlights(root, step) {
+    root.querySelectorAll(
+      ".inkflow-codeblock[data-hl-spec][data-base-step]"
+    ).forEach((block) => {
+      const spec = JSON.parse(block.dataset.hlSpec);
+      const baseStep = +(block.dataset.baseStep ?? "0");
+      const specIdx = Math.min(Math.max(step - baseStep, 0), spec.length - 1);
+      const active = spec[specIdx];
+      const hasHL = active !== null;
+      block.querySelectorAll(".code-line").forEach((line) => {
+        const n = +(line.dataset.line ?? "0");
+        line.classList.toggle("hl-active", hasHL && active.includes(n));
+        line.classList.toggle("hl-dim", hasHL && !active.includes(n));
+        if (!hasHL) line.classList.remove("hl-active", "hl-dim");
+      });
+    });
   }
   function applyStep(root, step) {
     root.querySelectorAll("[data-step]").forEach((el) => {
@@ -145,6 +170,7 @@
         +(el.getAttribute("data-step") ?? "0") <= step
       );
     });
+    applyCodeHighlights(root, step);
   }
   function applyStepInstant(root, step) {
     applyStep(root, step);
@@ -953,6 +979,7 @@
       stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
       state._maxStepCache = null;
       onSwap?.();
+      applyCurrentStepInstant();
       updateStatus();
     };
     const t = transition ?? state.transitions[state.slideIndex] ?? { type: "cut", duration: 0 };
@@ -1718,9 +1745,7 @@
   state.transitions = INITIAL_TRANSITIONS;
   window.inkflow = { registerTransition };
   readURL();
-  loadSlide(() => {
-    if (state.step > 0) applyCurrentStepInstant();
-  });
+  loadSlide();
   renderPv();
   updatePvClock();
   setInterval(updatePvClock, 1e3);
