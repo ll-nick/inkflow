@@ -148,6 +148,70 @@ If omitted, the block extends to the end of the zone — everything after `::ste
 
 `::step::` markers inside a `::steps::` block are ignored — every item already steps.
 
+## Code blocks
+
+All fenced code blocks are syntax-highlighted automatically using Pygments.
+No configuration is needed — just write standard Markdown fences with a language tag.
+
+````markdown
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+```
+````
+
+### Step-based line highlighting
+
+Add a `{…}` spec after the language name to highlight specific lines on each keypress.
+Each `|`-separated stage is one step.
+
+````markdown
+```python {1|2-3|all}
+def greet(name: str) -> str:
+    message = f"Hello, {name}!"
+    return message
+
+print(greet("world"))
+```
+````
+
+On slide entry the first stage is active (line 1 highlighted, others dimmed).
+Each keypress advances to the next stage.
+When the spec ends, subsequent keypresses continue with whatever comes next in the slide.
+
+**Stage syntax:**
+
+| Stage | Effect |
+|---|---|
+| `1` | Single line highlighted, others dimmed |
+| `1,3,5` | Comma-separated lines highlighted |
+| `2-4` | Inclusive range highlighted |
+| `all` or `*` | No dimming — all lines at full opacity |
+| `none` | All lines dimmed |
+
+Stages can be combined: `1,3-5` highlights lines 1, 3, 4, and 5.
+
+### Step counter integration
+
+Code block stages consume steps from the shared slide counter.
+A block with three stages (`{1|2-3|all}`) uses two extra steps beyond its entry step.
+`::step::` markers and `::steps::` blocks that follow pick up after the code block's last stage.
+
+````markdown
+# Walk through the code
+
+```python {1|2-3}
+def foo():
+    return 42
+```
+
+::step::
+
+This paragraph appears after the code block's second highlight stage.
+````
+
+A code block without a `{…}` spec gets syntax colouring but adds no steps.
+
 ## Speaker notes
 
 Add a `::notes::` marker to route content to speaker notes instead of the slide body.
