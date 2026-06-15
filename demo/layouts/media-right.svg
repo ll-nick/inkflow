@@ -1,17 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="local:main.svg" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg1">
-  <g inkflow:layout-src="local:main.svg" inkflow:layout-hash="92687e1c" id="g3">
-    <!-- Catppuccin Mocha background -->
-    <rect width="1920" height="1080" id="rect1" class="inkflow-fill-bg"/>
-    <!-- Footer bar -->
-    <rect y="1040" width="1920" height="40" id="rect2" class="inkflow-fill-surface"/>
-    <!-- Accent line above footer -->
-    <rect y="1036" width="1920" height="4" id="rect3" class="inkflow-fill-accent inkflow-fill-purple"/>
-    <!-- Slide number -->
-    <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" text-anchor="end" class="inkflow-fill-grey">99</text>
-    <text x="1852" y="1066" font-family="sans-serif" font-size="20" id="text3" class="inkflow-fill-grey">/</text>
-    <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" text-anchor="start" class="inkflow-fill-grey">99</text>
-  </g>
-  <defs id="defs1"/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="local:main.svg" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg1"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:main__" sodipodi:insensitive="true" inkflow:layout-src="local:main.svg" inkflow:layout-hash="d78aa2ad"><defs/><!-- Catppuccin Mocha background -->
+  <rect width="1920" height="1080" class="inkflow-fill-bg"/>
+  <!-- Footer bar -->
+  <rect y="1040" width="1920" height="40" class="inkflow-fill-surface"/>
+  <!-- Accent line above footer -->
+  <rect y="1036" width="1920" height="4" class="inkflow-fill-accent inkflow-fill-purple"/>
+  <!-- Slide number -->
+  <text id="zone-slide-number" x="1840" y="1066" font-family="sans-serif" font-size="20" text-anchor="end" class="inkflow-fill-grey">99</text>
+  <text x="1852" y="1066" font-family="sans-serif" font-size="20" class="inkflow-fill-grey">/</text>
+  <text id="zone-slide-total" x="1864" y="1066" font-family="sans-serif" font-size="20" text-anchor="start" class="inkflow-fill-grey">99</text>
+</g><defs id="defs1"><style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
+.inkflow-stroke-bg { stroke: #1e1e2e; }
+.inkflow-fill-surface { fill: #313244; }
+.inkflow-stroke-surface { stroke: #313244; }
+.inkflow-fill-border { fill: #585b70; }
+.inkflow-stroke-border { stroke: #585b70; }
+.inkflow-fill-text { fill: #cdd6f4; }
+.inkflow-stroke-text { stroke: #cdd6f4; }
+.inkflow-fill-text-muted { fill: #a6adc8; }
+.inkflow-stroke-text-muted { stroke: #a6adc8; }
+.inkflow-fill-accent { fill: #cba6f7; }
+.inkflow-stroke-accent { stroke: #cba6f7; }
+.inkflow-fill-accent-fg { fill: #11111b; }
+.inkflow-stroke-accent-fg { stroke: #11111b; }
+.inkflow-fill-code-bg { fill: #181825; }
+.inkflow-stroke-code-bg { stroke: #181825; }
+.inkflow-fill-code-text { fill: #cdd6f4; }
+.inkflow-stroke-code-text { stroke: #cdd6f4; }
+.inkflow-fill-red { fill: #f38ba8; }
+.inkflow-stroke-red { stroke: #f38ba8; }
+.inkflow-fill-orange { fill: #fab387; }
+.inkflow-stroke-orange { stroke: #fab387; }
+.inkflow-fill-yellow { fill: #f9e2af; }
+.inkflow-stroke-yellow { stroke: #f9e2af; }
+.inkflow-fill-green { fill: #a6e3a1; }
+.inkflow-stroke-green { stroke: #a6e3a1; }
+.inkflow-fill-teal { fill: #94e2d5; }
+.inkflow-stroke-teal { stroke: #94e2d5; }
+.inkflow-fill-blue { fill: #89b4fa; }
+.inkflow-stroke-blue { stroke: #89b4fa; }
+.inkflow-fill-purple { fill: #cba6f7; }
+.inkflow-stroke-purple { stroke: #cba6f7; }
+.inkflow-fill-pink { fill: #f5c2e7; }
+.inkflow-stroke-pink { stroke: #f5c2e7; }
+.inkflow-fill-grey { fill: #6c7086; }
+.inkflow-stroke-grey { stroke: #6c7086; }</style></defs>
   <rect id="zone-title" x="80" y="60" width="1760" height="120"/>
   <rect id="zone-content" x="80" y="220" width="838.99011" height="780"/>
   <rect id="zone-media" x="1001.0099" y="220" width="838.99011" height="780"/>
