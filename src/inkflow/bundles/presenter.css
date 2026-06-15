@@ -409,7 +409,7 @@ kbd {
   color: var(--accent);
 }
 .overview-thumb {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--thumb-ar, 16 / 9);
   position: relative;
   overflow: hidden;
   background: var(--bg);
