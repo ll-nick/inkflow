@@ -687,14 +687,20 @@ def verify_cmd(
 
 
 def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
+    console = Console()
     if not issues:
-        click.echo(f"[ok]          {label}")
+        console.print(f"[bold green]ok   [/bold green]  [dim]{label}[/dim]")
         return
     first = True
     for level, msg in issues:
-        tag = "[error]" if level == "error" else "[warn] "
+        if level == "error":
+            badge = "[bold red]error[/bold red]"
+            msg_markup = f"[red]{msg}[/red]"
+        else:
+            badge = "[bold yellow]warn [/bold yellow]"
+            msg_markup = f"[yellow]{msg}[/yellow]"
         prefix = label if first else " " * len(label)
-        click.echo(f"{tag}       {prefix}  {msg}")
+        console.print(f"{badge}  {prefix}  {msg_markup}")
         first = False
 
 
