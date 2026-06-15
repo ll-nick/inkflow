@@ -1,7 +1,7 @@
 import type { TransitionData } from "../shared/types";
 import { morphToNextSlide } from "./morph";
 import { state } from "./state";
-import { updateStatus } from "./status";
+import { applyCurrentStepInstant, updateStatus } from "./status";
 
 const stage = document.getElementById("stage")!;
 
@@ -314,6 +314,7 @@ export function loadSlide(
             : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
         state._maxStepCache = null;
         onSwap?.();
+        applyCurrentStepInstant();
         updateStatus();
     };
 
