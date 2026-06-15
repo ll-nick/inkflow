@@ -6,14 +6,20 @@ import sys
 from pathlib import Path
 
 import click
+from lxml import etree as _etree
+from rich import box as rich_box
+from rich.console import Console
+from rich.table import Table
 
 from inkflow import colors, git_setup, init, loaders, ns
 from inkflow.clean import clean_inkscape_svg
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     create_slide,
+    discover_layouts,
     inject_layout_layers,
     is_layout_current,
+    layout_zones,
     resolve_chain,
     resolve_parent_path,
     strip_parent,
@@ -179,7 +185,6 @@ def parent() -> None:
 @click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
 def parent_get(files: tuple[Path, ...]) -> None:
     """Print the inkflow:parent value of one or more slide SVGs."""
-    from lxml import etree as _etree
 
     multi = len(files) > 1
     for f in files:
@@ -204,7 +209,6 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
     bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
     or a relative path.
     """
-    from lxml import etree as _etree
 
     svg_path = Path(file).resolve()
     if not svg_path.exists():
@@ -292,7 +296,6 @@ _mode_option = click.option(
 @_deck_option
 def parent_list(deck_path: Path) -> None:
     """List all slides and their inkflow:parent values."""
-    from lxml import etree as _etree
 
     deck_obj, project_dir = _deck_context(deck_path)
 
@@ -703,11 +706,6 @@ def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
 @_no_deck_option
 def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
     """List available layouts with their zones."""
-    from rich import box as rich_box
-    from rich.console import Console
-    from rich.table import Table
-
-    from inkflow.layout import discover_layouts, layout_zones
 
     if no_deck:
         project_dir: Path | None = None
