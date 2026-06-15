@@ -28,7 +28,28 @@ _STEPS_BLOCK_RE = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
+# Fence code-block info-string primitives
+_FENCE_LANG = r"[\w+\-#.]+"  # python, c++, c#, text/plain …
+_FENCE_SPEC = r"\{[^}]*\}"  # optional {…} highlight spec
+
+_FENCE_INFO_RE = re.compile(
+    rf"^\s*(?P<lang>{_FENCE_LANG})?\s*(?P<spec>{_FENCE_SPEC})?\s*$"
+)
+
 _STEP = "\x00step\x00"
+
+# ── Highlight-spec types ──────────────────────────────────────────────────────
+
+# One stage: None = "all" (no dimming), [] = "none" (all dimmed), [1,2] = lines
+_HlStage: TypeAlias = list[int] | None
+_HlSpec: TypeAlias = list[_HlStage]  # ordered list of stages
+
+
+@dataclass
+class _FenceEntry:
+    base_step: int
+    lang: str
+    spec: _HlSpec | None  # None = plain block, no step-based highlighting
 
 
 # ── Public output types ───────────────────────────────────────────────────────
