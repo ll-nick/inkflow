@@ -40,16 +40,22 @@ class SlideContent:
 
 
 @dataclass
+class _StepsBlock:
+    text: str  # markdown content inside as ::steps:: block
+
+
+# ── Internal types ────────────────────────────────────────────────────────────
+
+Chunk = str | _StepsBlock
+_ZoneChunks = dict[str, list[Chunk]]
+_ParamMap = dict[str, str]
+_ZoneParams = dict[str, _ParamMap]
+
+
+@dataclass
 class _ParsedMarkdown:
-    zones: dict[str, list[str]]
-    params: dict[str, dict[str, str]]  # zone_name → {align, valign, padding, …}
-
-
-_ZONE_PATTERN = re.compile(
-    r"^::((?!step\b)[\w-]+)((?:\s+[\w-]+=\S+)*)::\s*$", re.MULTILINE
-)
-_STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
-_STEP = "\x00step\x00"
+    zones: _ZoneChunks
+    params: _ZoneParams
 
 
 class _MathOpts(TypedDict, total=False):
@@ -78,8 +84,8 @@ def _split_steps(text: str) -> list[str]:
     return result
 
 
-def _parse_zone_params(params_str: str) -> dict[str, str]:
-    params: dict[str, str] = {}
+def _parse_zone_params(params_str: str) -> _ParamMap:
+    params: _ParamMap = {}
     for token in params_str.split():
         if "=" in token:
             key, _, value = token.partition("=")
@@ -87,8 +93,11 @@ def _parse_zone_params(params_str: str) -> dict[str, str]:
     return params
 
 
-def _auto_extract(text: str) -> dict[str, list[str]]:
-    zones: dict[str, list[str]] = {}
+# ── Zone parsing ──────────────────────────────────────────────────────────────
+
+
+def _auto_extract(text: str) -> _ZoneChunks:
+    zones: _ZoneChunks = {}
     lines = text.splitlines(keepends=True)
     i = 0
     n = len(lines)
@@ -122,8 +131,8 @@ def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
     if not markers:
         return _ParsedMarkdown(zones=_auto_extract(text), params={})
 
-    zones: dict[str, list[str]] = {}
-    params: dict[str, dict[str, str]] = {}
+    zones: _ZoneChunks = {}
+    params: _ZoneParams = {}
 
     # Content before the first marker:
     # auto-extract title/subtitle, remainder → "content"
@@ -145,7 +154,7 @@ def _parse_markdown_zones_full(md_path: Path) -> _ParsedMarkdown:
     return _ParsedMarkdown(zones=zones, params=params)
 
 
-def parse_markdown_zones(md_path: Path) -> dict[str, list[str]]:
+def parse_markdown_zones(md_path: Path) -> _ZoneChunks:
     return _parse_markdown_zones_full(md_path).zones
 
 
@@ -204,6 +213,8 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
             ul_or_ol.remove(li)
             wrapper.append(li)
             ul_or_ol.insert(idx, wrapper)
+    steps: bool,
+    steps: bool,
 
     inner = etree.tostring(root, encoding="unicode")
     # Strip outer <div> wrapper
@@ -215,8 +226,8 @@ def build_slide_content(
     content_path: Path | None,
     extra: dict[str, ZoneContent],
 ) -> SlideContent:
-    zones: dict[str, list[str]] = {}
-    zone_params: dict[str, dict[str, str]] = {}
+    zones: _ZoneChunks = {}
+    zone_params: _ZoneParams = {}
     if content_path is not None:
         parsed = _parse_markdown_zones_full(content_path)
         zones = parsed.zones
