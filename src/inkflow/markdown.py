@@ -91,6 +91,44 @@ def _math_to_mathml(content: str, options: _MathOpts) -> str:
 
 _md = MarkdownIt().use(dollarmath_plugin, renderer=_math_to_mathml)
 
+# ── Fence info / highlight-spec parsing ───────────────────────────────────────
+
+
+def _parse_hl_spec(spec_str: str) -> _HlSpec:
+    """Parse '{1|2-3|all}' content (without braces) into a list of stages."""
+    stages: _HlSpec = []
+    for part in spec_str.split("|"):
+        part = part.strip()
+        if not part or part in ("all", "*"):
+            stages.append(None)
+        elif part == "none":
+            stages.append([])
+        else:
+            lines: list[int] = []
+            for seg in part.split(","):
+                seg = seg.strip()
+                if "-" in seg:
+                    lo, _, hi = seg.partition("-")
+                    lo, hi = lo.strip(), hi.strip()
+                    if lo.isdigit() and hi.isdigit():
+                        lines.extend(range(int(lo), int(hi) + 1))
+                elif seg.isdigit():
+                    lines.append(int(seg))
+            stages.append(lines)
+    return stages
+
+
+def _parse_fence_info(info: str) -> tuple[str, _HlSpec | None]:
+    """Parse a fence info string like 'python {1|2-3|all}' → ('python', spec)."""
+    m = _FENCE_INFO_RE.match(info)
+    if not m:
+        return info.strip() or "text", None
+    lang = m.group("lang") or "text"
+    raw_spec = m.group("spec")
+    if not raw_spec:
+        return lang, None
+    return lang, _parse_hl_spec(raw_spec[1:-1])  # strip { }
+
 # ── Markdown rendering ────────────────────────────────────────────────────────
 
 
