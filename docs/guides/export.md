@@ -52,6 +52,17 @@ If your binary is elsewhere:
 inkflow export deck.py --chromium /usr/bin/chromium-browser
 ```
 
+### Slide dimensions
+
+The PDF page size is auto-detected from the first slide's `viewBox`.
+No configuration needed for standard decks.
+
+To override — for example when mixing slide sizes or forcing a specific output resolution:
+
+```bash
+inkflow export deck.py --size 1280x720
+```
+
 ### Running as root or in Docker
 
 Pass `--no-sandbox` when Chromium refuses to start due to sandbox restrictions:
