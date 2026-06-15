@@ -192,7 +192,6 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
 
 def build_slide_content(
     content_path: Path | None,
-    steps: bool,
     extra: dict[str, ZoneContent],
 ) -> SlideContent:
     zones: dict[str, list[str]] = {}
@@ -211,7 +210,7 @@ def build_slide_content(
     base_step = 0
 
     for zone_name, chunks in zones.items():
-        html, base_step = chunks_to_html(chunks, base_step, wrap_list_items=steps)
+        html, base_step = chunks_to_html(chunks, base_step)
         p = zone_params.get(zone_name, {})
         content[f"zone-{zone_name}"] = TextBox(
             text=html,
