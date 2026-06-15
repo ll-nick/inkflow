@@ -91,6 +91,8 @@ See the [manifest reference](../reference/manifest.md#textbox).
 
 ## Step markers
 
+### Explicit steps with `::step::`
+
 `::step::` inserts an animation step boundary within a zone.
 Content before the first `::step::` is visible from the start.
 Each marker reveals the next chunk on keypress.
@@ -109,11 +111,42 @@ Second point — revealed on first keypress.
 Third point — revealed on second keypress.
 ```
 
-Enable stepping on the slide with `steps=True`:
+### Auto-stepping with `::steps::`
 
-```python
-Slide("default", md="slides/02-bullets.md", steps=True)
+`::steps::` opens a block where each list item and each paragraph reveals individually,
+without needing a `::step::` before every bullet.
+
+```markdown
+# Why inkflow?
+
+Intro text — always visible.
+
+::steps::
+
+- First bullet reveals on keypress 1.
+- Second bullet reveals on keypress 2.
+
+A paragraph inside the block also steps.
+
+::steps end::
+
+Footer text — always visible again.
 ```
+
+`::steps end::` is optional.
+If omitted, the block extends to the end of the zone — everything after `::steps::` steps.
+
+```markdown
+# All bullets step
+
+::steps::
+
+- One
+- Two
+- Three
+```
+
+`::step::` markers inside a `::steps::` block are ignored — every item already steps.
 
 ## Speaker notes
 
@@ -204,16 +237,26 @@ See [Layout system](layout-system.md) for how to build your own layouts.
 
 ## Mixing animations and Markdown steps
 
-The step counter is shared:
-`::step::` markers in the Markdown file continue from wherever SVG animations end.
+The step counter is shared across the whole slide.
+`::step::` markers and `::steps::` blocks in Markdown continue from wherever SVG animations left off.
 
 ```python
+from inkflow import animations, Deck, Slide
+
 Slide(
     "default",
     md="slides/06-mixed.md",
-    steps=True,
     animations=[
         animations.FadeIn("#extra-element", step=1),
     ],
 )
+```
+
+```markdown
+Visible from the start.
+
+::steps::
+
+- Revealed at step 2 (step 1 was the SVG animation above).
+- Revealed at step 3.
 ```
