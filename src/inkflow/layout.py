@@ -4,7 +4,6 @@ import hashlib
 import importlib.resources
 from copy import deepcopy
 from pathlib import Path
-from typing import cast
 
 from lxml import etree
 
@@ -15,11 +14,12 @@ from inkflow.ns import (
     INKFLOW_LAYOUT_SRC,
     INKFLOW_PARENT,
 )
+from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
 
 # ── Built-in theme ───────────────────────────────────────────────────────────
 
 
-def _builtin_theme_dir() -> Path:
+def builtin_theme_dir() -> Path:
     return Path(str(importlib.resources.files("inkflow").joinpath("theme")))
 
 
@@ -94,7 +94,7 @@ def resolve_parent_path(
 
     if parent_str.startswith("builtin:"):
         name = parent_str[len("builtin:") :]
-        resolved = _with_svg(_builtin_theme_dir() / "layouts" / name)
+        resolved = _with_svg(builtin_theme_dir() / "layouts" / name)
         if not resolved.exists():
             raise ValueError(
                 f"builtin:{name} not found — no built-in layout named '{name}'"
@@ -122,7 +122,7 @@ def resolve_parent_path(
                 resolve_theme_dir(theme, project_root or Path()) / "layouts" / name
             )
         )
-    candidates.append(_with_svg(_builtin_theme_dir() / "layouts" / name))
+    candidates.append(_with_svg(builtin_theme_dir() / "layouts" / name))
 
     for candidate in candidates:
         if candidate.exists():
@@ -269,28 +269,6 @@ def _build_layer_group(
     return g
 
 
-def with_namespaces(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    additions: dict[str, str],
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-    """Return root with extra namespace prefixes declared.
-
-    lxml nsmap is immutable after construction, so adding prefixes requires
-    rebuilding the root element with an extended nsmap.
-    """
-    missing = {k: v for k, v in additions.items() if k not in root.nsmap}
-    if not missing:
-        return root
-    new_root = etree.Element(
-        root.tag,
-        attrib=cast("dict[str, str]", dict(root.attrib)),
-        nsmap=cast("dict[str, str]", {**root.nsmap, **missing}),
-    )
-    for child in root:
-        new_root.append(child)
-    return new_root
-
-
 def create_slide(
     parent_str: str, output_path: Path, project_dir: Path, theme: str | None
 ) -> None:
@@ -321,16 +299,6 @@ def create_slide(
         inject_layout_layers(output_path, chain)
 
 
-def _ensure_defs(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-    defs = root.find(f"{{{ns.SVG}}}defs")
-    if defs is None:
-        defs = etree.Element(f"{{{ns.SVG}}}defs")
-        root.insert(0, defs)
-    return defs
-
-
 def _update_preview_style(
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
     preview_css: str,
@@ -341,7 +309,7 @@ def _update_preview_style(
             parent.remove(el)
     if not preview_css:
         return
-    defs = _ensure_defs(root)
+    defs = ensure_defs(root)
     style_el = etree.SubElement(defs, f"{{{ns.SVG}}}style")
     style_el.set("id", "inkflow-preview")
     style_el.text = preview_css
@@ -377,3 +345,65 @@ def inject_layout_layers(
         encoding="utf-8",
     )
     return True
+
+
+# ── Layout discovery and inspection ──────────────────────────────────────────
+
+
+def discover_layouts(
+    project_dir: Path | None,
+    theme: str | None,
+) -> list[tuple[str, Path]]:
+    """Return (source_label, layout_path) pairs from all available layout directories.
+
+    Order: builtin → theme → local.
+    """
+    sources: list[tuple[str, Path]] = []
+
+    for p in sorted((builtin_theme_dir() / "layouts").glob("*.svg")):
+        sources.append(("builtin", p))
+
+    if theme and project_dir:
+        theme_layouts = resolve_theme_dir(theme, project_dir) / "layouts"
+        if theme_layouts.is_dir():
+            for p in sorted(theme_layouts.glob("*.svg")):
+                sources.append(("theme", p))
+
+    if project_dir:
+        local_layouts = project_dir / "layouts"
+        if local_layouts.is_dir():
+            for p in sorted(local_layouts.glob("*.svg")):
+                sources.append(("local", p))
+
+    return sources
+
+
+def layout_zones(
+    layout_path: Path,
+    project_dir: Path | None,
+    theme: str | None,
+) -> tuple[list[str], bool]:
+    """Return (content_zones, numbered) for a layout after compositing ancestors.
+
+    content_zones: sorted zone names with the ``zone-`` prefix stripped, excluding
+    the slide-number and slide-total zones which are indicated by ``numbered``.
+    """
+    svg_str = clean_inkscape_svg(layout_path)
+    chain = resolve_chain(layout_path, project_dir, theme)
+    if chain:
+        svg_str = compose_with_ancestors(svg_str, chain)
+    root = etree.fromstring(svg_str.encode())
+
+    all_zone_ids: set[str] = set()
+    for el in root.iter():
+        eid = el.get("id")
+        if eid and eid.startswith("zone-"):
+            all_zone_ids.add(eid)
+
+    numbered = bool({"zone-slide-number", "zone-slide-total"} & all_zone_ids)
+    content_zones = sorted(
+        z[len("zone-") :]
+        for z in all_zone_ids
+        if z not in {"zone-slide-number", "zone-slide-total"}
+    )
+    return content_zones, numbered

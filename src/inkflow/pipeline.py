@@ -7,7 +7,7 @@ from typing import TypedDict, cast
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg, strip_layout_layers
+from inkflow.clean import clean_inkscape_svg
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
@@ -22,6 +22,7 @@ from inkflow.manifest import (
     Transition,
 )
 from inkflow.markdown import build_slide_content, markdown_to_html, parse_markdown_zones
+from inkflow.svg import compose_with_ancestors
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
     if slide.title:
         return slide.title
     if slide.md is not None:
-        content_path = _resolve_content_src(slide.md, project_dir)
+        content_path = resolve_content_src(slide.md, project_dir)
         zones = parse_markdown_zones(content_path).zones
         chunks = zones.get("title", [])
         if chunks and isinstance(chunks[0], str):
@@ -81,7 +82,7 @@ def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> 
     return resolve_parent_path(src, project_dir, project_dir, theme)
 
 
-def _resolve_content_src(src: str, project_dir: Path) -> Path:
+def resolve_content_src(src: str, project_dir: Path) -> Path:
     """Resolve a slide Markdown content path to an absolute Path.
 
     Bare single-part names are looked up in slides/ with a .md suffix.
@@ -181,47 +182,6 @@ def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
     ]
 
 
-def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
-    """Prepend ancestor SVG content below the slide's own content."""
-    slide_root = etree.fromstring(svg_str.encode())
-    strip_layout_layers(slide_root)
-
-    ancestor_groups: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
-    merged_defs: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
-
-    for ancestor_path in chain:
-        anc_str = clean_inkscape_svg(ancestor_path)
-        anc_root = etree.fromstring(anc_str.encode())
-        strip_layout_layers(anc_root)
-
-        for defs_el in anc_root.findall(f"{{{ns.SVG}}}defs"):
-            merged_defs.extend(list(defs_el))
-
-        children = [el for el in anc_root if el.tag != f"{{{ns.SVG}}}defs"]
-        if children:
-            g = etree.Element(f"{{{ns.SVG}}}g")
-            for child in children:
-                g.append(child)
-            ancestor_groups.append(g)
-
-    if merged_defs:
-        slide_defs = slide_root.find(f"{{{ns.SVG}}}defs")
-        if slide_defs is None:
-            slide_defs = etree.Element(f"{{{ns.SVG}}}defs")
-            slide_root.insert(0, slide_defs)
-        for i, def_el in enumerate(merged_defs):
-            slide_defs.insert(i, def_el)
-
-    insert_pos = next(
-        (i + 1 for i, el in enumerate(slide_root) if el.tag == f"{{{ns.SVG}}}defs"),
-        0,
-    )
-    for i, group in enumerate(ancestor_groups):
-        slide_root.insert(insert_pos + i, group)
-
-    return etree.tostring(slide_root, encoding="unicode")
-
-
 def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
     """Assign a unique ID to the SVG root and wrap any inline <style> in @scope.
 
@@ -271,7 +231,7 @@ def process_slide(
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
 
     if slide.md is not None or slide.zones:
-        content_path = _resolve_content_src(slide.md, project_dir) if slide.md else None
+        content_path = resolve_content_src(slide.md, project_dir) if slide.md else None
         result = build_slide_content(content_path, slide.zones)
         if result.content:
             svg_str = substitute_content(svg_str, result.content, font_size)
@@ -295,7 +255,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         explicit_notes = _resolve_notes(slide.notes, project_dir)
         md_notes = ""
         if slide.md is not None:
-            content_path = _resolve_content_src(slide.md, project_dir)
+            content_path = resolve_content_src(slide.md, project_dir)
             md_notes = build_slide_content(content_path, slide.zones).notes
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         svg = process_slide(
@@ -305,7 +265,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             i + 1,
             total,
             deck.style,
-            deck.font_size,
+            slide.font_size if slide.font_size is not None else deck.font_size,
         )
         results.append({"svg": svg, "title": title, "notes": notes})
     return results

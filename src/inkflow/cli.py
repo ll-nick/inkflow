@@ -6,23 +6,30 @@ import sys
 from pathlib import Path
 
 import click
+from lxml import etree as _etree
+from rich import box as rich_box
+from rich.console import Console
+from rich.table import Table
 
 from inkflow import colors, git_setup, init, loaders, ns
 from inkflow.clean import clean_inkscape_svg
 from inkflow.export import build_pdf, build_static_html
 from inkflow.layout import (
     create_slide,
+    discover_layouts,
     inject_layout_layers,
     is_layout_current,
+    layout_zones,
     resolve_chain,
     resolve_parent_path,
     strip_parent,
-    with_namespaces,
 )
 from inkflow.manifest import Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
+from inkflow.svg import with_namespaces
+from inkflow.verify import verify_slide
 
 
 @click.group()
@@ -178,7 +185,6 @@ def parent() -> None:
 @click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
 def parent_get(files: tuple[Path, ...]) -> None:
     """Print the inkflow:parent value of one or more slide SVGs."""
-    from lxml import etree as _etree
 
     multi = len(files) > 1
     for f in files:
@@ -203,7 +209,6 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
     bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
     or a relative path.
     """
-    from lxml import etree as _etree
 
     svg_path = Path(file).resolve()
     if not svg_path.exists():
@@ -287,102 +292,10 @@ _mode_option = click.option(
 )
 
 
-@parent.command("inject")
-@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
-@click.option(
-    "--check",
-    is_flag=True,
-    help="Report stale files without rewriting. Exits 1 if any are stale.",
-)
-@_deck_option
-@_no_deck_option
-@_mode_option
-def parent_inject(
-    files: tuple[Path, ...],
-    check: bool,
-    deck_path: Path,
-    no_deck: bool,
-    color_mode: str | None,
-) -> None:
-    """Refresh ancestor layout layers in slide SVG(s) for editor preview.
-
-    Also injects a preview style block so Inkscape renders semantic CSS classes
-    (e.g. inkflow-fill-accent) with the correct theme colors.
-
-    If FILES is omitted, refreshes all slides in the deck.
-    Use --no-deck when authoring a theme without a project deck.py.
-    """
-    if no_deck:
-        if not files:
-            raise click.UsageError("FILES required with --no-deck")
-        project_dir: Path | None = None
-        theme: str | None = None
-        deck_obj: Deck | None = None
-        dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
-        targets = [(Path(f).resolve(), str(f)) for f in files]
-        for svg_path, _ in targets:
-            if not svg_path.exists():
-                raise click.ClickException(f"file not found: {svg_path}")
-    else:
-        deck_obj, project_dir = _deck_context(deck_path)
-        theme = deck_obj.theme
-        dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
-        if files:
-            targets = [(Path(f).resolve(), str(f)) for f in files]
-            for svg_path, _ in targets:
-                if not svg_path.exists():
-                    raise click.ClickException(f"file not found: {svg_path}")
-        else:
-            targets = [
-                (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
-                for s in deck_obj.slides
-                if s.md is None
-            ]
-
-    css = loaders.load_styles(deck_obj, project_dir)
-    tokens = colors.extract_tokens(css, dark_mode)
-    preview_css = colors.build_preview_style(tokens)
-
-    stale_found = False
-    for svg_path, label in targets:
-        try:
-            chain = resolve_chain(svg_path, project_dir, theme)
-        except ValueError as exc:
-            raise click.ClickException(str(exc)) from exc
-        if not chain:
-            if not (files or no_deck):
-                continue
-            if check:
-                if is_layout_current(svg_path, [], preview_css):
-                    click.echo(f"[ok]          {label}")
-                else:
-                    click.echo(f"[stale]       {label}")
-                    stale_found = True
-            else:
-                inject_layout_layers(svg_path, [], preview_css)
-                click.echo(f"[no parent]   {label}")
-            continue
-        if check:
-            if is_layout_current(svg_path, chain, preview_css):
-                click.echo(f"[ok]     {label}")
-            else:
-                click.echo(f"[stale]  {label}")
-                stale_found = True
-        else:
-            changed = inject_layout_layers(svg_path, chain, preview_css)
-            click.echo(
-                f"[injected]    {label}" if changed else f"[up to date]  {label}"
-            )
-
-    if check and stale_found:
-        sys.exit(1)
-
-
 @parent.command("list")
 @_deck_option
 def parent_list(deck_path: Path) -> None:
     """List all slides and their inkflow:parent values."""
-    from lxml import etree as _etree
 
     deck_obj, project_dir = _deck_context(deck_path)
 
@@ -472,16 +385,35 @@ def build_cmd(deck: str, output: str | None) -> None:
     is_flag=True,
     help="Pass --no-sandbox to Chromium (needed when running as root or in Docker).",
 )
+@click.option(
+    "--size",
+    default=None,
+    metavar="WxH",
+    help="Override PDF page size, e.g. 1280x720. Auto-detected from slides if not set.",
+)
 def export_cmd(
-    deck: str, output: str | None, chromium: str | None, no_sandbox: bool
+    deck: str,
+    output: str | None,
+    chromium: str | None,
+    no_sandbox: bool,
+    size: str | None,
 ) -> None:
     """Export a PDF via headless Chromium (one page per slide)."""
     deck_path = Path(deck).resolve()
     if not deck_path.exists():
         raise click.ClickException(f"deck not found: {deck_path}")
     out = Path(output).resolve() if output else deck_path.with_suffix(".pdf")
+    parsed_size: tuple[int, int] | None = None
+    if size is not None:
+        try:
+            parts = size.lower().split("x")
+            parsed_size = (int(parts[0]), int(parts[1]))
+        except (ValueError, IndexError):
+            raise click.ClickException(
+                f"--size must be WxH (e.g. 1920x1080), got: {size!r}"
+            ) from None
     try:
-        warnings = build_pdf(deck_path, out, chromium, no_sandbox)
+        warnings = build_pdf(deck_path, out, chromium, no_sandbox, size=parsed_size)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
     for w in warnings:
@@ -498,6 +430,98 @@ def _resolve_dark_mode(
     if no_deck or deck_obj is None:
         return color_mode != "light"
     return deck_obj.dark_mode if color_mode is None else color_mode == "dark"
+
+
+@main.command("sync")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@click.option(
+    "--check",
+    is_flag=True,
+    help="Report stale files without rewriting. Exits 1 if any are stale.",
+)
+@_deck_option
+@_no_deck_option
+@_mode_option
+def sync_cmd(
+    files: tuple[Path, ...],
+    check: bool,
+    deck_path: Path,
+    no_deck: bool,
+    color_mode: str | None,
+) -> None:
+    """Refresh layout layers and preview styles in slide SVG(s).
+
+    Injects ancestor layout layers for editor preview and a style block so
+    Inkscape renders semantic CSS classes (e.g. inkflow-fill-accent) with the
+    correct theme colors.
+
+    If FILES is omitted, refreshes all slides in the deck.
+    Use --no-deck when authoring a theme without a project deck.py.
+    """
+    if no_deck:
+        if not files:
+            raise click.UsageError("FILES required with --no-deck")
+        project_dir: Path | None = None
+        theme: str | None = None
+        deck_obj: Deck | None = None
+        dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
+        targets = [(Path(f).resolve(), str(f)) for f in files]
+        for svg_path, _ in targets:
+            if not svg_path.exists():
+                raise click.ClickException(f"file not found: {svg_path}")
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        theme = deck_obj.theme
+        dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
+        if files:
+            targets = [(Path(f).resolve(), str(f)) for f in files]
+            for svg_path, _ in targets:
+                if not svg_path.exists():
+                    raise click.ClickException(f"file not found: {svg_path}")
+        else:
+            targets = [
+                (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
+                for s in deck_obj.slides
+                if s.md is None
+            ]
+
+    css = loaders.load_styles(deck_obj, project_dir)
+    tokens = colors.extract_tokens(css, dark_mode)
+    preview_css = colors.build_preview_style(tokens)
+
+    stale_found = False
+    for svg_path, label in targets:
+        try:
+            chain = resolve_chain(svg_path, project_dir, theme)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        if not chain:
+            if not (files or no_deck):
+                continue
+            if check:
+                if is_layout_current(svg_path, [], preview_css):
+                    click.echo(f"[ok]          {label}")
+                else:
+                    click.echo(f"[stale]       {label}")
+                    stale_found = True
+            else:
+                inject_layout_layers(svg_path, [], preview_css)
+                click.echo(f"[no parent]   {label}")
+            continue
+        if check:
+            if is_layout_current(svg_path, chain, preview_css):
+                click.echo(f"[ok]          {label}")
+            else:
+                click.echo(f"[stale]       {label}")
+                stale_found = True
+        else:
+            changed = inject_layout_layers(svg_path, chain, preview_css)
+            click.echo(
+                f"[injected]    {label}" if changed else f"[up to date]  {label}"
+            )
+
+    if check and stale_found:
+        sys.exit(1)
 
 
 @main.command("colorize")
@@ -610,3 +634,139 @@ def palette_cmd(
         click.echo(f"[inkflow] wrote palette to {output_path}")
     else:
         click.get_text_stream("stdout").write(gpl)
+
+
+# ── verify ────────────────────────────────────────────────────────────────────
+
+
+@main.command("verify")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@_deck_option
+@click.option("--all", "include_hidden", is_flag=True, help="Include hidden slides.")
+@click.option(
+    "--strict", is_flag=True, help="Treat warnings as errors (exit 1 if any warn)."
+)
+def verify_cmd(
+    files: tuple[Path, ...],
+    deck_path: Path,
+    include_hidden: bool,
+    strict: bool,
+) -> None:
+    """Check slides for authoring errors before presenting or building."""
+
+    deck_obj, project_dir = _deck_context(deck_path)
+    theme = deck_obj.theme
+    slides = (
+        deck_obj.slides if include_hidden else [s for s in deck_obj.slides if s.visible]
+    )
+    if files:
+        resolved_files = {Path(f).resolve() for f in files}
+        slides = [
+            s
+            for s in slides
+            if resolve_slide_src(s.src, project_dir, theme) in resolved_files
+        ]
+
+    css = loaders.load_styles(deck_obj, project_dir)
+    preview_css = colors.build_preview_style(
+        colors.extract_tokens(css, deck_obj.dark_mode)
+    )
+
+    has_error = has_warn = False
+    for slide in slides:
+        issues = verify_slide(slide, project_dir, theme, preview_css)
+        for level, _ in issues:
+            if level == "error":
+                has_error = True
+            else:
+                has_warn = True
+        _print_slide_issues(str(slide.src), issues)
+
+    if has_error or (strict and has_warn):
+        sys.exit(1)
+
+
+def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
+    console = Console()
+    if not issues:
+        console.print(f"[bold green]ok   [/bold green]  [dim]{label}[/dim]")
+        return
+    first = True
+    for level, msg in issues:
+        if level == "error":
+            badge = "[bold red]error[/bold red]"
+            msg_markup = f"[red]{msg}[/red]"
+        else:
+            badge = "[bold yellow]warn [/bold yellow]"
+            msg_markup = f"[yellow]{msg}[/yellow]"
+        prefix = label if first else " " * len(label)
+        console.print(f"{badge}  {prefix}  {msg_markup}")
+        first = False
+
+
+# ── layouts ───────────────────────────────────────────────────────────────────
+
+
+@main.command("layouts")
+@_deck_option
+@_no_deck_option
+def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
+    """List available layouts with their zones."""
+
+    if no_deck:
+        project_dir: Path | None = None
+        theme: str | None = None
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        theme = deck_obj.theme
+
+    groups: dict[str, list[tuple[str, str, list[str], bool]]] = {}
+    for source_label, layout_path in discover_layouts(project_dir, theme):
+        try:
+            chain = resolve_chain(layout_path, project_dir, theme)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        parent_str = " → ".join(p.stem for p in chain) if chain else "—"
+        zones, numbered = layout_zones(layout_path, project_dir, theme)
+        groups.setdefault(source_label, []).append(
+            (layout_path.stem, parent_str, zones, numbered)
+        )
+
+    source_styles = [
+        ("builtin", "steel_blue", "Built-in"),
+        ("theme", "dark_orange", "Theme"),
+        ("local", "green", "Local"),
+    ]
+
+    console = Console()
+    first = True
+    for source_key, color, title in source_styles:
+        rows = groups.get(source_key)
+        if not rows:
+            continue
+        if not first:
+            console.print()
+        first = False
+
+        console.print(f"[bold {color}]‣ {title}[/bold {color}]")
+        table = Table(
+            box=rich_box.ROUNDED,
+            header_style=f"bold {color}",
+            border_style=color,
+            show_header=True,
+            pad_edge=True,
+        )
+        table.add_column("NAME", style="bold", min_width=12)
+        table.add_column("PARENT", style="dim", min_width=14)
+        table.add_column("ZONES", min_width=20)
+        table.add_column("#", justify="center", min_width=1)
+
+        for name, parent_str, zones, numbered in rows:
+            table.add_row(
+                name,
+                parent_str,
+                f"[{color}]{', '.join(zones)}[/{color}]" if zones else "[dim]—[/dim]",
+                f"[{color}]✓[/{color}]" if numbered else "",
+            )
+
+        console.print(table)

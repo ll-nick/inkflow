@@ -143,6 +143,24 @@ Slide("slides/01-title.svg", style="""
 """)
 ```
 
+## Slide dimensions
+
+Inkflow does not enforce a fixed canvas size.
+Design your slides at whatever dimensions suit your presentation:
+16:9, 4:3, square, portrait — the presenter scales to fill the available screen area automatically.
+
+The built-in theme layouts are authored at **1920 × 1080** (16:9).
+Slides that use them must share that coordinate space.
+If you need a different aspect ratio, create layout SVGs at matching dimensions in your SVG editor;
+the pipeline treats them identically.
+
+PDF export auto-detects the page size from the first slide's `viewBox`.
+You can override it if needed:
+
+```bash
+inkflow export deck.py --size 2560x1440
+```
+
 ## Tips
 
 - Keep element IDs short and semantic: `#title`, `#diagram-step-1`, `#callout`.

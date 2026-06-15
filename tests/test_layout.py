@@ -8,8 +8,10 @@ from lxml import etree
 
 from inkflow import ns
 from inkflow.layout import (
+    discover_layouts,
     inject_layout_layers,
     is_layout_current,
+    layout_zones,
     resolve_chain,
     resolve_parent_path,
 )
@@ -193,3 +195,102 @@ class TestInjectLayoutLayers:
         content = slide.read_text(encoding="utf-8")
         assert "bg-grad" in content
         assert "linearGradient" in content
+
+
+# ── discover_layouts ──────────────────────────────────────────────────────────
+
+
+class TestDiscoverLayouts:
+    def test_builtins_always_included(self) -> None:
+        results = discover_layouts(None, None)
+        labels = [label for label, _ in results]
+        assert "builtin" in labels
+
+    def test_local_layouts_included(self, tmp_path: Path) -> None:
+        local = tmp_path / "layouts"
+        local.mkdir()
+        (local / "custom.svg").write_text(_SIMPLE_SVG, encoding="utf-8")
+        results = discover_layouts(tmp_path, None)
+        local_results = [(label, p) for label, p in results if label == "local"]
+        assert len(local_results) == 1
+        assert local_results[0][1].stem == "custom"
+
+    def test_order_builtin_then_local(self, tmp_path: Path) -> None:
+        local = tmp_path / "layouts"
+        local.mkdir()
+        (local / "custom.svg").write_text(_SIMPLE_SVG, encoding="utf-8")
+        results = discover_layouts(tmp_path, None)
+        labels = [label for label, _ in results]
+        builtin_idx = next(i for i, lbl in enumerate(labels) if lbl == "builtin")
+        local_idx = next(i for i, lbl in enumerate(labels) if lbl == "local")
+        assert builtin_idx < local_idx
+
+    def test_no_project_dir_no_local(self) -> None:
+        results = discover_layouts(None, None)
+        assert all(label != "local" for label, _ in results)
+
+    def test_missing_local_layouts_dir_no_error(self, tmp_path: Path) -> None:
+        results = discover_layouts(tmp_path, None)
+        assert all(label != "local" for label, _ in results)
+
+
+# ── layout_zones ──────────────────────────────────────────────────────────────
+
+
+_ZONE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="zone-title" x="80" y="80" width="1760" height="120"/>
+      <rect id="zone-content" x="80" y="240" width="1760" height="720"/>
+      <text id="zone-slide-number" x="960" y="1060">1</text>
+    </svg>
+""")
+
+_NO_ZONE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="bg" width="1920" height="1080"/>
+    </svg>
+""")
+
+
+class TestLayoutZones:
+    def test_zones_returned_without_prefix(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
+        zones, _ = layout_zones(layout, tmp_path, None)
+        assert "title" in zones
+        assert "content" in zones
+
+    def test_slide_number_zones_excluded_from_list(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
+        zones, _ = layout_zones(layout, tmp_path, None)
+        assert "slide-number" not in zones
+        assert "slide-total" not in zones
+
+    def test_numbered_true_when_slide_number_present(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
+        _, numbered = layout_zones(layout, tmp_path, None)
+        assert numbered is True
+
+    def test_numbered_false_when_no_slide_number(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _NO_ZONE_SVG)
+        _, numbered = layout_zones(layout, tmp_path, None)
+        assert numbered is False
+
+    def test_zones_sorted_alphabetically(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
+        zones, _ = layout_zones(layout, tmp_path, None)
+        assert zones == sorted(zones)
+
+    def test_zones_from_ancestor_included(self, tmp_path: Path) -> None:
+        _write_svg(tmp_path / "base.svg", _ZONE_SVG)
+        child_svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg"'
+            '     xmlns:inkflow="urn:inkflow"'
+            '     inkflow:parent="./base.svg"'
+            '     viewBox="0 0 1920 1080">'
+            '  <rect id="zone-extra" x="0" y="0" width="100" height="100"/>'
+            "</svg>"
+        )
+        child = _write_svg(tmp_path / "child.svg", child_svg)
+        zones, _ = layout_zones(child, tmp_path, None)
+        assert "extra" in zones
+        assert "title" in zones  # inherited from base

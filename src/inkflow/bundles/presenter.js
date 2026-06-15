@@ -1274,6 +1274,11 @@
   var overview = document.getElementById("overview");
   var overviewGrid = document.getElementById("overview-grid");
   var stage4 = document.getElementById("stage");
+  function firstSlideViewBox() {
+    const svg = state.slides[0]?.svg ?? "";
+    const m = svg.match(/viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"/);
+    return m ? [parseFloat(m[1]), parseFloat(m[2])] : [1920, 1080];
+  }
   function scaleThumb(thumb) {
     const svg = thumb.querySelector("svg");
     if (!svg) return;
@@ -1296,11 +1301,13 @@
     const gap = parseFloat(getComputedStyle(overviewGrid).gap) || 28;
     const availW = overviewGrid.clientWidth;
     const availH = overview.clientHeight - parseFloat(getComputedStyle(overview).paddingTop) - parseFloat(getComputedStyle(overview).paddingBottom);
+    const [vbW, vbH] = firstSlideViewBox();
+    const ratio = vbH / vbW;
     let cols = n;
     for (let c = 1; c <= n; c++) {
       const thumbW = (availW - (c - 1) * gap) / c;
       const rows = Math.ceil(n / c);
-      if (rows * (thumbW * (9 / 16) + gap) - gap <= availH) {
+      if (rows * (thumbW * ratio + gap) - gap <= availH) {
         cols = Math.max(2, c);
         break;
       }
@@ -1351,6 +1358,8 @@
   function openOverview() {
     overviewGrid.innerHTML = "";
     overviewGrid.style.cssText = "";
+    const [vbW, vbH] = firstSlideViewBox();
+    overview.style.setProperty("--thumb-ar", `${vbW} / ${vbH}`);
     state.slides.forEach((s, i) => {
       const cell = document.createElement("div");
       cell.className = "overview-cell";

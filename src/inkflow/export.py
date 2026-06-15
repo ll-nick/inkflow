@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.resources
+import re
 import shutil
 import subprocess
 import tempfile
@@ -68,11 +69,20 @@ def _copy_assets(paths: list[str], project_dir: Path, out_dir: Path) -> None:
 # ── export (PDF) ──────────────────────────────────────────────────────────────
 
 
+def _slide_dimensions(svg_str: str) -> tuple[int, int]:
+    """Extract slide width and height from an SVG viewBox, falling back to 1920x1080."""
+    m = re.search(r'viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"', svg_str)
+    if m:
+        return int(float(m.group(1))), int(float(m.group(2)))
+    return 1920, 1080
+
+
 def build_pdf(
     deck_path: Path,
     output: Path,
     chromium: str | None = None,
     no_sandbox: bool = False,
+    size: tuple[int, int] | None = None,
 ) -> list[str]:
     exe = chromium or _find_chromium()
     if exe is None:
@@ -90,6 +100,13 @@ def build_pdf(
         font_css, warnings = embed_fonts_css_subsetted(slides, project_dir)
         if font_css:
             styles_css = (font_css + "\n" + styles_css).strip()
+
+    w, h = size if size is not None else _slide_dimensions(slides[0]["svg"])
+    dim_css = (
+        f"@page {{ size: {w}px {h}px; margin: 0; }}\n"
+        f".slide {{ width: {w}px; height: {h}px; }}"
+    )
+    styles_css = f"{dim_css}\n{styles_css}".strip()
 
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")

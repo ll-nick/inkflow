@@ -65,6 +65,7 @@ Slide(
 | `style` | `str` | `""` | CSS string injected into this slide |
 | `title` | `str \| None` | `None` | Optional slide title. Auto-inferred from filename or leading `# heading` |
 | `notes` | `str \| Path \| None` | `None` | Speaker notes. A `str` is used as-is. A `Path` to a `.md` file is rendered as Markdown; other suffixes are read as raw HTML. Concatenated with any `::notes::` marker in the Markdown file |
+| `font_size` | `int \| None` | `None` | Per-slide font size override (px). Inherits from `Deck.font_size` when `None` |
 | `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely |
 
 **`step_count`** (property): the highest `step` value across all animations.

@@ -174,7 +174,7 @@ inkflow parent set FILE PARENT [--deck DECK]
 | `--no-deck` | off | Skip deck lookup (for theme authoring; restricts parents to `builtin:` and relative paths) |
 
 Validates that `PARENT` resolves, updates the attribute in place,
-then automatically runs `parent inject` on the file.
+then automatically runs `inkflow sync` on the file.
 
 ---
 
@@ -198,12 +198,26 @@ The SVG's own content is untouched.
 
 ---
 
-### `inkflow parent inject`
+### `inkflow parent list`
+
+List all slides and their `inkflow:parent` values.
+
+```bash
+inkflow parent list [--deck DECK]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--deck` | `deck.py` | Path to `deck.py` |
+
+---
+
+## `inkflow sync`
 
 Refresh ancestor layout layers in slide SVG(s) for editor preview.
 
 ```bash
-inkflow parent inject [FILES...] [--deck DECK] [--check] [--no-deck] [--mode dark|light]
+inkflow sync [FILES...] [--deck DECK] [--check] [--no-deck] [--mode dark|light]
 ```
 
 | Argument/Option | Default | Description |
@@ -231,17 +245,76 @@ relative paths (`./`, `../`). Using `local:` or `theme:` with `--no-deck` is an 
 
 ---
 
-### `inkflow parent list`
+## `inkflow verify`
 
-List all slides and their `inkflow:parent` values.
+Run pre-flight checks on a deck and report any issues.
 
 ```bash
-inkflow parent list [--deck DECK]
+inkflow verify [FILES...] [--deck DECK] [--all] [--strict]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILES` | all visible slides | One or more slide SVGs to verify (matched by `src` path) |
+| `--deck` | `deck.py` | Path to `deck.py` |
+| `--all` | off | Include hidden slides (`visible=False`) |
+| `--strict` | off | Promote warnings to errors. Exits 1 if any warnings remain |
+
+Checks per slide:
+
+| # | Check | Level |
+|---|---|---|
+| 1 | SVG source resolves and exists | error |
+| 2 | `.md` file exists (when `slide.md` is set) | error |
+| 3 | `notes=Path(…)` file exists | error |
+| 4 | `Media.src` paths exist relative to `deck.py` | error |
+| 5 | Zone IDs from `slide.zones` keys exist in the composed SVG | error |
+| 6 | Zone IDs from `.md` `::zone::` markers exist in the composed SVG | error |
+| 7 | Animation element IDs (`#id`) exist in the SVG | error |
+| 8 | Animation steps are contiguous from 1 (no gaps) | warning |
+| 9 | Layout layers are up to date (`inkflow sync`) | warning |
+
+Exit codes: `0` if no errors (warnings are allowed unless `--strict`); `1` on any error.
+
+Example output:
+
+```
+slides/01-title.svg          [ok]
+slides/02-diagram.svg        [ok]
+slides/03-media.svg          [error] zone #zone-media not found in layout
+                             [error] media not found: assets/missing.jpg
+slides/04-bullets.svg        [warn]  layout layers stale — run inkflow sync
+```
+
+---
+
+## `inkflow layouts`
+
+Print a table of all available layouts with their zones and parent chain.
+
+```bash
+inkflow layouts [--deck DECK] [--no-deck]
 ```
 
 | Option | Default | Description |
 |---|---|---|
 | `--deck` | `deck.py` | Path to `deck.py` |
+| `--no-deck` | off | Show only built-in layouts (no theme or project layouts) |
+
+Discovers layouts from three sources in order — built-in, theme, project — and renders a
+Rich table with one row per layout:
+
+```
+ NAME          SOURCE    PARENT          ZONES                          #
+ base          builtin   —               —                              ✓
+ cover         builtin   base            title, subtitle, attribution
+ default       builtin   base            title, content                 ✓
+ two-cols      builtin   base            title, left, right             ✓
+ media-right   builtin   base            title, content, media          ✓
+ my-layout     local     builtin:base    logo, body                     ✓
+```
+
+The `#` column shows ✓ when the layout contains `zone-slide-number` or `zone-slide-total`.
 
 ---
 
@@ -260,7 +333,7 @@ inkflow add PARENT OUTPUT [--deck DECK]
 | `--deck` | `deck.py` | Path to `deck.py` |
 
 Creates the SVG with `inkflow:parent` set,
-then automatically runs `parent inject` to add preview layers.
+then automatically runs `inkflow sync` to add preview layers.
 Prints the `Slide(...)` line to add to `deck.py`.
 
 Example:
@@ -302,7 +375,7 @@ inkflow colorize slides/*.svg
 # [no changes]  slides/03-crossfade.svg
 ```
 
-After colorizing, run `inkflow parent inject` to refresh Inkscape's preview style.
+After colorizing, run `inkflow sync` to refresh Inkscape's preview style.
 
 ---
 
