@@ -9,6 +9,7 @@ from lxml import etree
 
 from inkflow import ns
 from inkflow.manifest import Align, Media, TextBox, VAlign
+from inkflow.svg import ensure_defs
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
@@ -216,23 +217,13 @@ def _zone_geometry(
     return _ZoneGeometry(rect=rect, clip_shape=shape_copy)
 
 
-def _ensure_defs(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-    defs = root.find(f"{{{ns.SVG}}}defs")
-    if defs is None:
-        defs = etree.Element(f"{{{ns.SVG}}}defs")
-        root.insert(0, defs)
-    return defs
-
-
 def _add_clip_path(
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
     zone_id: str,
     shape_el: etree._Element,  # pyright: ignore[reportPrivateUsage]
 ) -> str:
     clip_id = f"inkflow-clip-{zone_id}"
-    defs = _ensure_defs(root)
+    defs = ensure_defs(root)
     clip = etree.SubElement(defs, f"{{{ns.SVG}}}clipPath")
     clip.set("id", clip_id)
     clip.append(shape_el)

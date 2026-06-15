@@ -4,7 +4,6 @@ import hashlib
 import importlib.resources
 from copy import deepcopy
 from pathlib import Path
-from typing import cast
 
 from lxml import etree
 
@@ -15,6 +14,7 @@ from inkflow.ns import (
     INKFLOW_LAYOUT_SRC,
     INKFLOW_PARENT,
 )
+from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
 
 # ── Built-in theme ───────────────────────────────────────────────────────────
 
@@ -269,28 +269,6 @@ def _build_layer_group(
     return g
 
 
-def with_namespaces(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    additions: dict[str, str],
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-    """Return root with extra namespace prefixes declared.
-
-    lxml nsmap is immutable after construction, so adding prefixes requires
-    rebuilding the root element with an extended nsmap.
-    """
-    missing = {k: v for k, v in additions.items() if k not in root.nsmap}
-    if not missing:
-        return root
-    new_root = etree.Element(
-        root.tag,
-        attrib=cast("dict[str, str]", dict(root.attrib)),
-        nsmap=cast("dict[str, str]", {**root.nsmap, **missing}),
-    )
-    for child in root:
-        new_root.append(child)
-    return new_root
-
-
 def create_slide(
     parent_str: str, output_path: Path, project_dir: Path, theme: str | None
 ) -> None:
@@ -321,16 +299,6 @@ def create_slide(
         inject_layout_layers(output_path, chain)
 
 
-def _ensure_defs(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-    defs = root.find(f"{{{ns.SVG}}}defs")
-    if defs is None:
-        defs = etree.Element(f"{{{ns.SVG}}}defs")
-        root.insert(0, defs)
-    return defs
-
-
 def _update_preview_style(
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
     preview_css: str,
@@ -341,7 +309,7 @@ def _update_preview_style(
             parent.remove(el)
     if not preview_css:
         return
-    defs = _ensure_defs(root)
+    defs = ensure_defs(root)
     style_el = etree.SubElement(defs, f"{{{ns.SVG}}}style")
     style_el.set("id", "inkflow-preview")
     style_el.text = preview_css

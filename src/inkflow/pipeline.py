@@ -7,7 +7,7 @@ from typing import TypedDict, cast
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg, strip_layout_layers
+from inkflow.clean import clean_inkscape_svg
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
@@ -22,6 +22,7 @@ from inkflow.manifest import (
     Transition,
 )
 from inkflow.markdown import build_slide_content, markdown_to_html, parse_markdown_zones
+from inkflow.svg import compose_with_ancestors
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 
@@ -179,47 +180,6 @@ def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
         for slide in deck.slides
         if slide.visible
     ]
-
-
-def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
-    """Prepend ancestor SVG content below the slide's own content."""
-    slide_root = etree.fromstring(svg_str.encode())
-    strip_layout_layers(slide_root)
-
-    ancestor_groups: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
-    merged_defs: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
-
-    for ancestor_path in chain:
-        anc_str = clean_inkscape_svg(ancestor_path)
-        anc_root = etree.fromstring(anc_str.encode())
-        strip_layout_layers(anc_root)
-
-        for defs_el in anc_root.findall(f"{{{ns.SVG}}}defs"):
-            merged_defs.extend(list(defs_el))
-
-        children = [el for el in anc_root if el.tag != f"{{{ns.SVG}}}defs"]
-        if children:
-            g = etree.Element(f"{{{ns.SVG}}}g")
-            for child in children:
-                g.append(child)
-            ancestor_groups.append(g)
-
-    if merged_defs:
-        slide_defs = slide_root.find(f"{{{ns.SVG}}}defs")
-        if slide_defs is None:
-            slide_defs = etree.Element(f"{{{ns.SVG}}}defs")
-            slide_root.insert(0, slide_defs)
-        for i, def_el in enumerate(merged_defs):
-            slide_defs.insert(i, def_el)
-
-    insert_pos = next(
-        (i + 1 for i, el in enumerate(slide_root) if el.tag == f"{{{ns.SVG}}}defs"),
-        0,
-    )
-    for i, group in enumerate(ancestor_groups):
-        slide_root.insert(insert_pos + i, group)
-
-    return etree.tostring(slide_root, encoding="unicode")
 
 
 def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
