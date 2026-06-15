@@ -409,3 +409,150 @@
 .layout-quote #zone-attribution .inkflow-content p::before {
     content: "— ";
 }
+
+/* ── Pygments syntax-highlight token classes ──────────────────────────────── */
+/* Colours come from --inkflow-* variables, so dark/light themes work for free */
+
+/* Comments */
+.highlight .c,
+.highlight .c1,
+.highlight .cm,
+.highlight .cp,
+.highlight .cpf {
+    color: var(--inkflow-grey);
+    font-style: italic;
+}
+.highlight .cs {
+    color: var(--inkflow-grey);
+    font-style: italic;
+    font-weight: bold;
+}
+
+/* Keywords */
+.highlight .k,
+.highlight .kc,
+.highlight .kd,
+.highlight .kn,
+.highlight .kp,
+.highlight .kr {
+    color: var(--inkflow-purple);
+}
+.highlight .kt {
+    color: var(--inkflow-yellow);
+}
+
+/* Strings */
+.highlight .s,
+.highlight .s1,
+.highlight .s2,
+.highlight .sa,
+.highlight .sb,
+.highlight .sc,
+.highlight .dl,
+.highlight .sh,
+.highlight .sx {
+    color: var(--inkflow-green);
+}
+.highlight .sd {
+    color: var(--inkflow-grey);
+    font-style: italic;
+}
+.highlight .se {
+    color: var(--inkflow-orange);
+}
+.highlight .si,
+.highlight .sr,
+.highlight .ss {
+    color: var(--inkflow-teal);
+}
+
+/* Names / builtins / functions */
+.highlight .nb,
+.highlight .bp {
+    color: var(--inkflow-blue);
+}
+.highlight .nc {
+    color: var(--inkflow-yellow);
+}
+.highlight .nd,
+.highlight .nf,
+.highlight .fm {
+    color: var(--inkflow-blue);
+}
+.highlight .ne {
+    color: var(--inkflow-red);
+}
+.highlight .no {
+    color: var(--inkflow-orange);
+}
+
+/* Numbers */
+.highlight .m,
+.highlight .mb,
+.highlight .mf,
+.highlight .mh,
+.highlight .mi,
+.highlight .il,
+.highlight .mo {
+    color: var(--inkflow-orange);
+}
+
+/* Operators */
+.highlight .o {
+    color: var(--inkflow-teal);
+}
+.highlight .ow {
+    color: var(--inkflow-purple);
+}
+
+/* Diff */
+.highlight .gd {
+    color: var(--inkflow-red);
+}
+.highlight .gi {
+    color: var(--inkflow-green);
+}
+.highlight .ge {
+    font-style: italic;
+}
+.highlight .gs {
+    font-weight: bold;
+}
+
+/* ── Code block container and line highlight states ───────────────────────── */
+
+.inkflow-codeblock {
+    font-family: monospace;
+    margin: 0.4em 0;
+}
+
+.inkflow-codeblock pre.highlight {
+    background: var(--inkflow-code-bg);
+    color: var(--inkflow-code-text);
+    border-radius: 4px;
+    padding: 0.6em 0.8em;
+    overflow: auto;
+    margin: 0;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.inkflow-codeblock pre.highlight code {
+    background: none;
+    padding: 0;
+    font-family: inherit;
+}
+
+.code-line {
+    display: block;
+    min-height: 1.5em;
+    transition: opacity 0.15s ease;
+}
+
+.code-line.hl-dim {
+    opacity: 0.25;
+}
+
+.code-line.hl-active {
+    opacity: 1;
+}
