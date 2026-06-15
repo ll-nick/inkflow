@@ -98,7 +98,7 @@ inkflow add content slides/07-new.svg
 ```
 
 This creates `slides/07-new.svg` with `inkflow:parent="content"` set,
-then automatically runs `parent inject` to add preview layers.
+then automatically runs `inkflow sync` to add preview layers.
 
 Add it to `deck.py`:
 
@@ -122,11 +122,11 @@ inkflow parent strip slides/07-new.svg
 
 ## Previewing layouts in Inkscape
 
-`inkflow parent inject` writes each ancestor as a locked layer into the slide SVG,
+`inkflow sync` writes each ancestor as a locked layer into the slide SVG,
 so you can see the inherited background and zone positions while editing in your SVG editor:
 
 ```bash
-inkflow parent inject
+inkflow sync
 ```
 
 These layers are for authoring reference only.
@@ -135,7 +135,7 @@ The pipeline strips them before serving. They never appear in the browser.
 To check if any layers are stale without rewriting:
 
 ```bash
-inkflow parent inject --check
+inkflow sync --check
 ```
 
 Exits with code 1 if any files need updating (useful in CI).
@@ -160,7 +160,7 @@ Use `builtin:` or relative paths instead:
 To refresh injected layout layers while working on theme files, use `--no-deck`:
 
 ```bash
-inkflow parent inject --no-deck layouts/*.svg
+inkflow sync --no-deck layouts/*.svg
 ```
 
 Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediately.
