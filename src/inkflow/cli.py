@@ -17,12 +17,13 @@ from inkflow.layout import (
     resolve_chain,
     resolve_parent_path,
     strip_parent,
-    with_namespaces,
 )
 from inkflow.manifest import Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
+from inkflow.svg import with_namespaces
+from inkflow.verify import verify_slide
 
 
 @click.group()
@@ -630,3 +631,110 @@ def palette_cmd(
         click.echo(f"[inkflow] wrote palette to {output_path}")
     else:
         click.get_text_stream("stdout").write(gpl)
+
+
+# ── verify ────────────────────────────────────────────────────────────────────
+
+
+@main.command("verify")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@_deck_option
+@click.option("--all", "include_hidden", is_flag=True, help="Include hidden slides.")
+@click.option(
+    "--strict", is_flag=True, help="Treat warnings as errors (exit 1 if any warn)."
+)
+def verify_cmd(
+    files: tuple[Path, ...],
+    deck_path: Path,
+    include_hidden: bool,
+    strict: bool,
+) -> None:
+    """Check slides for authoring errors before presenting or building."""
+
+    deck_obj, project_dir = _deck_context(deck_path)
+    theme = deck_obj.theme
+    slides = (
+        deck_obj.slides if include_hidden else [s for s in deck_obj.slides if s.visible]
+    )
+    if files:
+        resolved_files = {Path(f).resolve() for f in files}
+        slides = [
+            s
+            for s in slides
+            if resolve_slide_src(s.src, project_dir, theme) in resolved_files
+        ]
+
+    css = loaders.load_styles(deck_obj, project_dir)
+    preview_css = colors.build_preview_style(
+        colors.extract_tokens(css, deck_obj.dark_mode)
+    )
+
+    has_error = has_warn = False
+    for slide in slides:
+        issues = verify_slide(slide, project_dir, theme, preview_css)
+        for level, _ in issues:
+            if level == "error":
+                has_error = True
+            else:
+                has_warn = True
+        _print_slide_issues(str(slide.src), issues)
+
+    if has_error or (strict and has_warn):
+        sys.exit(1)
+
+
+def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
+    if not issues:
+        click.echo(f"[ok]          {label}")
+        return
+    first = True
+    for level, msg in issues:
+        tag = "[error]" if level == "error" else "[warn] "
+        prefix = label if first else " " * len(label)
+        click.echo(f"{tag}       {prefix}  {msg}")
+        first = False
+
+
+# ── layouts ───────────────────────────────────────────────────────────────────
+
+
+@main.command("layouts")
+@_deck_option
+@_no_deck_option
+def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
+    """List available layouts with their zones."""
+    from rich.console import Console
+    from rich.table import Table
+
+    from inkflow.layout import discover_layouts, layout_zones
+
+    if no_deck:
+        project_dir: Path | None = None
+        theme: str | None = None
+    else:
+        deck_obj, project_dir = _deck_context(deck_path)
+        theme = deck_obj.theme
+
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    table.add_column("NAME", min_width=12)
+    table.add_column("SOURCE", min_width=8)
+    table.add_column("PARENT", min_width=14)
+    table.add_column("ZONES")
+    table.add_column("#", justify="center", min_width=1)
+
+    for source_label, layout_path in discover_layouts(project_dir, theme):
+        try:
+            chain = resolve_chain(layout_path, project_dir, theme)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        parent_str = " → ".join(p.stem for p in chain) if chain else "—"
+        zones, numbered = layout_zones(layout_path, project_dir, theme)
+        table.add_row(
+            layout_path.stem,
+            source_label,
+            parent_str,
+            ", ".join(zones) if zones else "—",
+            "✓" if numbered else "",
+        )
+
+    Console().print(table)
