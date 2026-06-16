@@ -8,6 +8,7 @@ from lxml import etree
 
 from inkflow import ns
 from inkflow.layout import (
+    LayoutInfo,
     discover_layouts,
     inject_layout_layers,
     is_layout_current,
@@ -251,34 +252,42 @@ _NO_ZONE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+_DEFAULT_ZONE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkflow="urn:inkflow"
+         inkflow:default-zone="quote"
+         viewBox="0 0 1920 1080">
+      <rect id="zone-quote" x="80" y="200" width="1760" height="600"/>
+    </svg>
+""")
+
 
 class TestLayoutZones:
     def test_zones_returned_without_prefix(self, tmp_path: Path) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
-        zones, _ = layout_zones(layout, tmp_path, None)
-        assert "title" in zones
-        assert "content" in zones
+        info = layout_zones(layout, tmp_path, None)
+        assert isinstance(info, LayoutInfo)
+        assert "title" in info.zones
+        assert "content" in info.zones
 
     def test_slide_number_zones_excluded_from_list(self, tmp_path: Path) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
-        zones, _ = layout_zones(layout, tmp_path, None)
-        assert "slide-number" not in zones
-        assert "slide-total" not in zones
+        info = layout_zones(layout, tmp_path, None)
+        assert "slide-number" not in info.zones
+        assert "slide-total" not in info.zones
 
     def test_numbered_true_when_slide_number_present(self, tmp_path: Path) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
-        _, numbered = layout_zones(layout, tmp_path, None)
-        assert numbered is True
+        assert layout_zones(layout, tmp_path, None).numbered is True
 
     def test_numbered_false_when_no_slide_number(self, tmp_path: Path) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _NO_ZONE_SVG)
-        _, numbered = layout_zones(layout, tmp_path, None)
-        assert numbered is False
+        assert layout_zones(layout, tmp_path, None).numbered is False
 
     def test_zones_sorted_alphabetically(self, tmp_path: Path) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
-        zones, _ = layout_zones(layout, tmp_path, None)
-        assert zones == sorted(zones)
+        info = layout_zones(layout, tmp_path, None)
+        assert info.zones == sorted(info.zones)
 
     def test_zones_from_ancestor_included(self, tmp_path: Path) -> None:
         _write_svg(tmp_path / "base.svg", _ZONE_SVG)
@@ -291,6 +300,16 @@ class TestLayoutZones:
             "</svg>"
         )
         child = _write_svg(tmp_path / "child.svg", child_svg)
-        zones, _ = layout_zones(child, tmp_path, None)
-        assert "extra" in zones
-        assert "title" in zones  # inherited from base
+        info = layout_zones(child, tmp_path, None)
+        assert "extra" in info.zones
+        assert "title" in info.zones  # inherited from base
+
+    def test_default_zone_returned(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _DEFAULT_ZONE_SVG)
+        info = layout_zones(layout, tmp_path, None)
+        assert info.default_zone == "quote"
+
+    def test_default_zone_empty_when_absent(self, tmp_path: Path) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
+        info = layout_zones(layout, tmp_path, None)
+        assert info.default_zone == ""
