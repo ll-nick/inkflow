@@ -14,10 +14,6 @@ from inkflow.svg import ensure_defs
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
 
-def _is_url(src: str) -> bool:
-    return src.startswith(("http://", "https://", "//"))
-
-
 _ALIGN_MAP: dict[str, tuple[int, int]] = {
     "center": (50, 50),
     "top": (50, 0),
