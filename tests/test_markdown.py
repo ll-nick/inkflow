@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from inkflow.manifest import Align, Media, TextBox, VAlign
 from inkflow.markdown import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
@@ -11,6 +13,7 @@ from inkflow.markdown import (
     _parse_hl_spec,  # pyright: ignore[reportPrivateUsage]
     _render_codeblock,  # pyright: ignore[reportPrivateUsage]
     _render_md_with_steps,  # pyright: ignore[reportPrivateUsage]
+    _reroute_zones,  # pyright: ignore[reportPrivateUsage]
     _StepsBlock,  # pyright: ignore[reportPrivateUsage]
     build_slide_content,
     chunks_to_html,
@@ -617,3 +620,111 @@ class TestChunksToHtmlCodeblocks:
         html, step = chunks_to_html(["```text {1|2|3}\na\nb\nc\n```"], 3)
         assert 'data-base-step="3"' in html
         assert step == 5  # 3 + (3 - 1)
+
+
+# ── auto_zones tracking ───────────────────────────────────────────────────────
+
+
+class TestAutoZones:
+    def test_auto_zones_no_markers(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("# H1\n\nbody text\n", encoding="utf-8")
+        parsed = parse_markdown_zones(md)
+        assert parsed.auto_zones == frozenset({"title", "content"})
+
+    def test_auto_zones_with_marker(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("# H1\n::quote::\nbody\n", encoding="utf-8")
+        parsed = parse_markdown_zones(md)
+        assert parsed.auto_zones == frozenset({"title"})
+
+    def test_auto_zones_empty_when_only_markers(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("::quote::\nThis is a quote\n", encoding="utf-8")
+        parsed = parse_markdown_zones(md)
+        assert parsed.auto_zones == frozenset()
+
+    def test_auto_zones_title_and_subtitle(self, tmp_path: Path) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("# Title\n## Subtitle\n", encoding="utf-8")
+        parsed = parse_markdown_zones(md)
+        assert parsed.auto_zones == frozenset({"title", "subtitle"})
+
+
+# ── _reroute_zones ────────────────────────────────────────────────────────────
+
+
+class TestRerouteZones:
+    def test_title_displaced_to_default(self) -> None:
+        zones = {"title": ["# A Quote"], "content": ["body text"]}
+        auto_zones = frozenset({"title", "content"})
+        available = {"zone-quote"}
+        result = _reroute_zones(zones, auto_zones, available, "quote")  # pyright: ignore[reportArgumentType]
+        assert "title" not in result
+        assert "content" not in result
+        assert "quote" in result
+        assert result["quote"][0] == "# A Quote"
+
+    def test_content_displaced_and_merged_with_title(self) -> None:
+        zones = {"title": ["# Title"], "content": ["body"]}
+        auto_zones = frozenset({"title", "content"})
+        available = {"zone-quote"}
+        result = _reroute_zones(zones, auto_zones, available, "quote")  # pyright: ignore[reportArgumentType]
+        assert result["quote"] == ["# Title", "body"]
+
+    def test_content_displaced_when_zone_absent(self) -> None:
+        zones = {"content": ["body text"]}
+        auto_zones = frozenset({"content"})
+        available = {"zone-fact"}
+        result = _reroute_zones(zones, auto_zones, available, "fact")  # pyright: ignore[reportArgumentType]
+        assert "content" not in result
+        assert "fact" in result
+
+    def test_content_stays_when_zone_content_exists(self) -> None:
+        zones = {"content": ["body text"]}
+        auto_zones = frozenset({"content"})
+        available = {"zone-content", "zone-fact"}
+        result = _reroute_zones(zones, auto_zones, available, "fact")  # pyright: ignore[reportArgumentType]
+        assert "content" in result
+        assert "fact" not in result
+
+    def test_title_stays_when_zone_exists(self) -> None:
+        zones = {"title": ["# Title"], "content": ["body"]}
+        auto_zones = frozenset({"title", "content"})
+        available = {"zone-title", "zone-content"}
+        result = _reroute_zones(zones, auto_zones, available, "content")  # pyright: ignore[reportArgumentType]
+        assert "title" in result
+        assert "content" in result
+
+    def test_explicit_marker_not_displaced(self) -> None:
+        # ::quote:: is an explicit marker — not in auto_zones, should stay
+        zones = {"quote": ["explicit quote"], "content": ["body"]}
+        auto_zones = frozenset({"content"})
+        available = {"zone-quote"}
+        result = _reroute_zones(zones, auto_zones, available, "quote")  # pyright: ignore[reportArgumentType]
+        assert "quote" in result
+        # body (auto, no zone-content) prepended to default "quote"
+        assert result["quote"][0] == "body"
+
+    def test_no_default_zone_raises(self) -> None:
+        zones = {"content": ["body"]}
+        auto_zones = frozenset({"content"})
+        available = {"zone-media"}
+        with pytest.raises(ValueError, match="inkflow:default-zone"):
+            _reroute_zones(zones, auto_zones, available, "")  # pyright: ignore[reportArgumentType]
+
+    def test_no_displacement_no_error_without_default(self) -> None:
+        zones = {"quote": ["explicit"]}
+        auto_zones: frozenset[str] = frozenset()
+        available = {"zone-quote"}
+        result = _reroute_zones(zones, auto_zones, available, "")  # pyright: ignore[reportArgumentType]
+        assert result == {"quote": ["explicit"]}
+
+    def test_build_slide_content_skips_reroute_without_available_zones(
+        self, tmp_path: Path
+    ) -> None:
+        md = tmp_path / "slide.md"
+        md.write_text("body text\n", encoding="utf-8")
+        # Without available_zones, no rerouting — no ValueError even without default
+        result = build_slide_content(md, {})
+        assert "zone-content" in result.content
