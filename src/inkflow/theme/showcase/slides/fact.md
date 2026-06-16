@@ -1,5 +1,3 @@
-::fact::
-
 # Some fact
 
 ::caption::
