@@ -8,7 +8,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Align, Media, TextBox, VAlign
+from inkflow.manifest import Media, TextBox
 from inkflow.svg import ensure_defs
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
@@ -248,12 +248,9 @@ def _swap_zone(
 
 def _replace_with_foreignobject(
     el: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    html: str,
     zone_id: str,
     font_size: int,
-    align: Align | None = None,
-    valign: VAlign | None = None,
-    padding: float | None = None,
+    item: TextBox,
 ) -> None:
     rect = _zone_geometry(el).rect
 
@@ -262,14 +259,14 @@ def _replace_with_foreignobject(
     fo.set("font-size", str(font_size))  # SVG user units; cascades into HTML via em
 
     wrapper_style_parts: list[str] = []
-    if valign is not None:
-        wrapper_style_parts.append(f"justify-content:{_VALIGN_CSS[valign]}")
-    if padding is not None:
-        wrapper_style_parts.append(f"padding:{padding:g}px")
+    if item.valign is not None:
+        wrapper_style_parts.append(f"justify-content:{_VALIGN_CSS[item.valign]}")
+    if item.padding is not None:
+        wrapper_style_parts.append(f"padding:{item.padding:g}px")
 
     content_style_parts: list[str] = []
-    if align is not None:
-        content_style_parts.append(f"text-align:{align}")
+    if item.align is not None:
+        content_style_parts.append(f"text-align:{item.align}")
 
     # Use XHTML as default namespace so lxml serialises <div>, <p>, <ul>
     # without a prefix — required for the browser's HTML parser to recognise
@@ -288,6 +285,7 @@ def _replace_with_foreignobject(
         content_attrs["style"] = ";".join(content_style_parts)
     content_div = etree.SubElement(wrapper, f"{{{ns.XHTML}}}div", content_attrs)
 
+    html = item.text or ""
     try:
         fragment = etree.fromstring(f"<div xmlns='{ns.XHTML}'>{html}</div>")
         content_div.text = fragment.text
@@ -380,15 +378,7 @@ def substitute_content(
             continue
 
         if isinstance(item, TextBox):
-            _replace_with_foreignobject(
-                el,
-                item.text or "",
-                zone_id,
-                font_size,
-                align=item.align,
-                valign=item.valign,
-                padding=item.padding,
-            )
+            _replace_with_foreignobject(el, zone_id, font_size, item)
         else:
             _replace_with_media(el, root, zone_id, dark_mode, item)
 
