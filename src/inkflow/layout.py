@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.resources
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 
 from lxml import etree
@@ -10,11 +11,19 @@ from lxml import etree
 from inkflow import ns
 from inkflow.clean import clean_inkscape_svg, strip_layout_layers
 from inkflow.ns import (
+    INKFLOW_DEFAULT_ZONE,
     INKFLOW_LAYOUT_HASH,
     INKFLOW_LAYOUT_SRC,
     INKFLOW_PARENT,
 )
 from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
+
+# ── Zone routing constants ────────────────────────────────────────────────────
+
+_FIXED_ROUTING_ZONES: frozenset[str] = frozenset(
+    {"zone-slide-number", "zone-slide-total", "zone-title", "zone-subtitle"}
+)
+
 
 # ── Built-in theme ───────────────────────────────────────────────────────────
 
@@ -350,6 +359,32 @@ def inject_layout_layers(
 # ── Layout discovery and inspection ──────────────────────────────────────────
 
 
+@dataclass
+class LayoutInfo:
+    """Result of inspecting a layout SVG for available zones."""
+
+    zones: list[str]
+    numbered: bool
+    default_zone: str
+
+
+def resolve_default_zone(
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    available_zone_ids: set[str] | None = None,
+) -> str:
+    """Return the effective default zone for a layout SVG.
+
+    Checks inkflow:default-zone first; falls back to "content" when zone-content
+    is present in the layout, so the 80% case requires no attribute at all.
+    """
+    declared = root.get(INKFLOW_DEFAULT_ZONE)
+    if declared:
+        return declared
+    if available_zone_ids and "zone-content" in available_zone_ids:
+        return "content"
+    return ""
+
+
 def discover_layouts(
     project_dir: Path | None,
     theme: str | None,
@@ -382,11 +417,12 @@ def layout_zones(
     layout_path: Path,
     project_dir: Path | None,
     theme: str | None,
-) -> tuple[list[str], bool]:
-    """Return (content_zones, numbered) for a layout after compositing ancestors.
+) -> LayoutInfo:
+    """Return zone information for a layout after compositing ancestors.
 
-    content_zones: sorted zone names with the ``zone-`` prefix stripped, excluding
-    the slide-number and slide-total zones which are indicated by ``numbered``.
+    The returned ``LayoutInfo.zones`` contains sorted zone names with the
+    ``zone-`` prefix stripped, excluding the slide-number and slide-total zones
+    (those are indicated by ``numbered``).
     """
     svg_str = clean_inkscape_svg(layout_path)
     chain = resolve_chain(layout_path, project_dir, theme)
@@ -406,4 +442,8 @@ def layout_zones(
         for z in all_zone_ids
         if z not in {"zone-slide-number", "zone-slide-total"}
     )
-    return content_zones, numbered
+    return LayoutInfo(
+        zones=content_zones,
+        numbered=numbered,
+        default_zone=resolve_default_zone(root, all_zone_ids),
+    )

@@ -5,9 +5,9 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow.clean import clean_inkscape_svg
-from inkflow.layout import is_layout_current, resolve_chain
+from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
 from inkflow.manifest import Media, Slide
-from inkflow.markdown import parse_markdown_zones
+from inkflow.markdown import build_slide_content, parse_markdown_zones
 from inkflow.pipeline import resolve_content_src, resolve_slide_src
 from inkflow.svg import compose_with_ancestors
 
@@ -72,11 +72,14 @@ def _check_zones(slide: Slide, project_dir: Path, zone_ids: set[str]) -> list[Is
     if slide.md is not None:
         md_path = resolve_content_src(slide.md, project_dir)
         if md_path.exists():
-            for zone_name in parse_markdown_zones(md_path).zones:
+            parsed = parse_markdown_zones(md_path)
+            for zone_name in parsed.zones:
                 if zone_name == "notes":
                     continue
                 zone_full = f"zone-{zone_name}"
                 if zone_full not in zone_ids:
+                    if zone_name in parsed.auto_zones:
+                        continue
                     issues.append(
                         ("error", f"zone #{zone_full} (from markdown) not in layout")
                     )
@@ -97,6 +100,29 @@ def _check_animations(slide: Slide, all_ids: set[str]) -> list[Issue]:
                 ("warn", f"animation step gap: {steps} (expected {expected})")
             )
     return issues
+
+
+def _check_default_zone(
+    slide: Slide,
+    project_dir: Path,
+    zone_ids: set[str],
+    default_zone: str,
+) -> list[Issue]:
+    if slide.md is None:
+        return []
+    content_path = resolve_content_src(slide.md, project_dir)
+    if not content_path.exists():
+        return []
+    try:
+        build_slide_content(
+            content_path,
+            slide.zones,
+            available_zones=zone_ids,
+            default_zone=default_zone,
+        )
+    except ValueError as exc:
+        return [("error", str(exc))]
+    return []
 
 
 def _check_sync(
@@ -125,13 +151,21 @@ def verify_slide(
     issues = _check_files(slide, project_dir)
 
     try:
-        all_ids = composed_svg_ids(src, project_dir, theme)
+        svg_str = clean_inkscape_svg(src)
+        chain = resolve_chain(src, project_dir, theme)
+        if chain:
+            svg_str = compose_with_ancestors(svg_str, chain)
+        root = etree.fromstring(svg_str.encode())
     except Exception as exc:
         return [*issues, ("error", f"could not parse SVG: {exc}")]
 
+    all_ids = {eid for el in root.iter() if (eid := el.get("id")) is not None}
     zone_ids = {eid for eid in all_ids if eid.startswith("zone-")}
+    default_zone = resolve_default_zone(root, zone_ids)
+
     issues += _check_media(slide, project_dir)
     issues += _check_zones(slide, project_dir, zone_ids)
     issues += _check_animations(slide, all_ids)
+    issues += _check_default_zone(slide, project_dir, zone_ids, default_zone)
     issues += _check_sync(src, project_dir, theme, preview_css)
     return issues

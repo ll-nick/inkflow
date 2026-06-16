@@ -173,3 +173,52 @@ class TestVerifyAnimations:
         )
         issues = verify_slide(slide, tmp_path, None, "")
         assert not any("step gap" in msg for _, msg in issues)
+
+
+# ── Verify default zone ───────────────────────────────────────────────────────
+
+_QUOTE_LAYOUT_NO_DEFAULT = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkflow="urn:inkflow"
+         viewBox="0 0 1920 1080">
+      <rect id="zone-quote" x="80" y="200" width="1760" height="500"/>
+    </svg>
+""")
+
+_QUOTE_LAYOUT_WITH_DEFAULT = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkflow="urn:inkflow"
+         inkflow:default-zone="quote"
+         viewBox="0 0 1920 1080">
+      <rect id="zone-quote" x="80" y="200" width="1760" height="500"/>
+    </svg>
+""")
+
+
+class TestVerifyDefaultZone:
+    def _write_layout(self, tmp_path: Path, content: str, name: str) -> Path:
+        layouts = tmp_path / "layouts"
+        layouts.mkdir(exist_ok=True)
+        layout = layouts / name
+        layout.write_text(content, encoding="utf-8")
+        return layout
+
+    def test_no_default_zone_with_unrouted_content_is_error(
+        self, tmp_path: Path
+    ) -> None:
+        layout = self._write_layout(tmp_path, _QUOTE_LAYOUT_NO_DEFAULT, "quote.svg")
+        md = tmp_path / "slide.md"
+        md.write_text("This is a quote body.\n", encoding="utf-8")
+        slide = Slide(str(layout), md=str(md))
+        issues = verify_slide(slide, tmp_path, None, "")
+        assert any(
+            level == "error" and "inkflow:default-zone" in msg for level, msg in issues
+        )
+
+    def test_declared_default_zone_no_error(self, tmp_path: Path) -> None:
+        layout = self._write_layout(tmp_path, _QUOTE_LAYOUT_WITH_DEFAULT, "quote.svg")
+        md = tmp_path / "slide.md"
+        md.write_text("This is a quote body.\n", encoding="utf-8")
+        slide = Slide(str(layout), md=str(md))
+        issues = verify_slide(slide, tmp_path, None, "")
+        assert not any("inkflow:default-zone" in msg for _, msg in issues)

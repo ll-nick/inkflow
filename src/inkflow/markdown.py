@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeAlias, TypedDict, cast
 
@@ -87,6 +87,7 @@ _ZoneParams = dict[str, _ParamMap]
 class ParsedMarkdown:
     zones: _ZoneChunks
     params: _ZoneParams
+    auto_zones: frozenset[str] = field(default_factory=frozenset)
 
 
 class _MathOpts(TypedDict, total=False):
@@ -316,7 +317,12 @@ def parse_markdown_zones(md_path: Path) -> ParsedMarkdown:
 
     markers = list(_ZONE_PATTERN.finditer(text))
     if not markers:
-        return ParsedMarkdown(zones=_auto_extract(text), params={})
+        extracted = _auto_extract(text)
+        return ParsedMarkdown(
+            zones=extracted,
+            params={},
+            auto_zones=frozenset(extracted.keys()),
+        )
 
     zones: _ZoneChunks = {}
     params: _ZoneParams = {}
@@ -324,8 +330,11 @@ def parse_markdown_zones(md_path: Path) -> ParsedMarkdown:
     # Content before the first marker:
     # auto-extract title/subtitle, remainder → "content"
     before = text[: markers[0].start()].strip()
+    auto_zones: frozenset[str] = frozenset()
     if before:
-        zones.update(_auto_extract(before))
+        extracted_before = _auto_extract(before)
+        zones.update(extracted_before)
+        auto_zones = frozenset(extracted_before.keys())
 
     for idx, m in enumerate(markers):
         zone_name = m.group(1)
@@ -338,7 +347,7 @@ def parse_markdown_zones(md_path: Path) -> ParsedMarkdown:
         if raw_params.strip():
             params[zone_name] = _parse_zone_params(raw_params)
 
-    return ParsedMarkdown(zones=zones, params=params)
+    return ParsedMarkdown(zones=zones, params=params, auto_zones=auto_zones)
 
 
 # ── HTML rendering from chunks ────────────────────────────────────────────────
@@ -438,24 +447,71 @@ def chunks_to_html(chunks: Sequence[Chunk], base_step: int) -> tuple[str, int]:
     return "".join(parts), step
 
 
+# ── Zone routing ─────────────────────────────────────────────────────────────
+
+
+def _reroute_zones(
+    zones: _ZoneChunks,
+    auto_zones: frozenset[str],
+    available_zones: set[str],
+    default_zone: str,
+) -> _ZoneChunks:
+    """Reroute auto-extracted zones to the layout's declared default zone.
+
+    Auto-extracted zones ("title", "subtitle", "content") are displaced when
+    their corresponding SVG zone (zone-title etc.) is absent from the layout.
+    Displaced chunks are prepended to the default zone in order.
+
+    Raises ValueError when displaced or unrouted content exists but no
+    inkflow:default-zone was declared on the layout SVG root.
+    """
+    result = dict(zones)
+    displaced: list[Chunk] = []
+
+    for name in ("title", "subtitle", "content"):
+        if name in auto_zones and f"zone-{name}" not in available_zones:
+            chunks = result.pop(name, None)
+            if chunks:
+                displaced.extend(chunks)
+
+    if displaced:
+        if not default_zone:
+            msg = (
+                "No inkflow:default-zone declared on this layout. "
+                + "Unrouted content has nowhere to go.\n"
+                + 'Add inkflow:default-zone="<zone>" to the SVG root element.'
+            )
+            raise ValueError(msg)
+        result[default_zone] = displaced + result.get(default_zone, [])
+
+    return result
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
 def build_slide_content(
     content_path: Path | None,
     extra: dict[str, ZoneContent],
+    available_zones: set[str] | None = None,
+    default_zone: str = "",
 ) -> SlideContent:
     zones: _ZoneChunks = {}
     zone_params: _ZoneParams = {}
+    auto_zones: frozenset[str] = frozenset()
     if content_path is not None:
         parsed = parse_markdown_zones(content_path)
         zones = parsed.zones
         zone_params = parsed.params
+        auto_zones = parsed.auto_zones
 
     notes_chunks = zones.pop("notes", None)
     notes_html = ""
     if notes_chunks:
         notes_html, _ = chunks_to_html(notes_chunks, 0)
+
+    if available_zones is not None:
+        zones = _reroute_zones(zones, auto_zones, available_zones, default_zone)
 
     content: dict[str, TextBox | Media] = {}
     base_step = 0

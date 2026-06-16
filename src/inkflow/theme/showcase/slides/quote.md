@@ -1,5 +1,3 @@
-::quote::
-
 > Some quote
 
 ::attribution::

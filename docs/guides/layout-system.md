@@ -37,14 +37,66 @@ Alignment CSS variables set on a non-rect zone id work the same as on a rect:
 
 | ID | Pipeline behaviour |
 |---|---|
-| `zone-title` | Receives the leading `# H1` from Markdown auto-extraction |
-| `zone-subtitle` | Receives the `## H2` immediately after the title |
-| `zone-content` | Default content zone (everything not routed elsewhere) |
+| `zone-title` | Receives the leading `# H1` from Markdown auto-extraction (when the zone exists) |
+| `zone-subtitle` | Receives the `## H2` immediately after the title (when the zone exists) |
 | `zone-slide-number` | `<text>` element. Replaced with the current slide number |
 | `zone-slide-total` | `<text>` element. Replaced with the total slide count |
 
 Any `zone-*` name beyond these is valid.
-Name it to match what your Markdown files use (`zone-left`, `zone-right`, `zone-media`, etc.).
+Name it to match what your Markdown files use (`zone-content`, `zone-left`, `zone-right`, `zone-media`, etc.).
+
+### Default zone
+
+The **default zone** receives all unrouted Markdown content — everything not claimed
+by an explicit `::zone-name::` marker or by `zone-title` / `zone-subtitle` auto-extraction.
+
+Layouts declare their default zone with the `inkflow:default-zone` attribute:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkflow="urn:inkflow"
+     inkflow:parent="builtin:default"
+     inkflow:default-zone="content"
+     viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect id="zone-content" x="120" y="200" width="1680" height="720"/>
+</svg>
+```
+
+When the layout contains `zone-content`, that zone is the implicit default and
+the attribute is not needed.
+Set `inkflow:default-zone` only when you want a different zone to be the default
+(e.g. `zone-quote`, `zone-left`).
+
+Layouts that have no text content zone at all — like `cover.svg` (media + title/subtitle)
+or `section.svg` (title/subtitle only) — do not need the attribute.
+
+If a slide's Markdown contains unrouted content and the layout has no `inkflow:default-zone`,
+the pipeline raises an error and shows a red overlay in the browser.
+
+#### Auto-extraction fall-through
+
+When `zone-title` or `zone-subtitle` are **absent** from a layout, any leading
+`# H1` / `## H2` auto-extracted from the Markdown falls through to the default zone
+as rendered HTML, rather than being silently discarded.
+
+```markdown
+# This is a Quote
+And this is the attribution line.
+```
+
+On the `quote` layout (`inkflow:default-zone="quote"`, no `zone-title`),
+both lines above land in `zone-quote`.
+On the `default` layout (`inkflow:default-zone="content"`, has `zone-title`),
+`# H1` still routes to `zone-title` as usual.
+
+To route content to a specific zone regardless of the default, use an explicit marker:
+
+```markdown
+::quote::
+This text always goes to zone-quote.
+::attribution::
+— Author name
+```
 
 ## Layout inheritance
 
@@ -170,7 +222,8 @@ Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediat
 1. Create `layouts/my-layout.svg` in your project directory.
 2. Set `inkflow:parent` to point at your base theme or another layout.
 3. Add `<rect id="zone-*">` elements where you want content (or any supported shape — see [Non-rectangular zones](#non-rectangular-zones)).
-4. Reference it in `deck.py`:
+4. Set `inkflow:default-zone` to the zone that should receive unrouted Markdown text.
+5. Reference it in `deck.py`:
 
 ```python
 Slide("my-layout", md="slides/03-custom.md")
@@ -180,11 +233,38 @@ Slide("my-layout", md="slides/03-custom.md")
 
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg"
-     xmlns:inkflow="https://inkflow.dev/ns"
+     xmlns:inkflow="urn:inkflow"
      inkflow:parent="builtin:default"
+     inkflow:default-zone="content"
      viewBox="0 0 1920 1080" width="1920" height="1080">
 
-  <!-- Override the default content zone with a narrower column -->
+  <!-- Narrower content column; unrouted Markdown goes here -->
   <rect id="zone-content" x="300" y="200" width="1320" height="720"/>
 </svg>
+```
+
+### Two-column layout example
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkflow="urn:inkflow"
+     inkflow:parent="builtin:default"
+     inkflow:default-zone="left"
+     viewBox="0 0 1920 1080" width="1920" height="1080">
+
+  <!-- Unrouted content goes left; use ::right:: to route to the right column -->
+  <rect id="zone-left"  x="80"   y="200" width="840" height="720"/>
+  <rect id="zone-right" x="1000" y="200" width="840" height="720"/>
+</svg>
+```
+
+In Markdown, unmarked text goes to `zone-left` automatically:
+
+```markdown
+# Two Columns
+
+Left column content here.
+
+::right::
+Right column content here.
 ```

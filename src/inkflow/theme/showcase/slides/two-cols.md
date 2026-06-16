@@ -1,7 +1,5 @@
 # `two-cols`
 
-::left::
-
 ## Left column
 
 - Independent content
