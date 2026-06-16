@@ -311,10 +311,11 @@
     font-weight: 700;
     line-height: 1.1;
 }
-.layout-cover #zone-subtitle .inkflow-content {
+.layout-cover #zone-subtitle .inkflow-content,
+.layout-cover #zone-subtitle .inkflow-content h2 {
     color: var(--inkflow-text-muted);
     font-style: italic;
-    font-size: 0.95em;
+    font-size: 1.25em;
 }
 
 /* section ------------------------------------------------------------------ */
