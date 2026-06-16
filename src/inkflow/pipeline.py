@@ -14,7 +14,7 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.layout import resolve_chain, resolve_parent_path
+from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.manifest import (
     Animation,
     Deck,
@@ -233,7 +233,19 @@ def process_slide(
 
     if slide.md is not None or slide.zones:
         content_path = resolve_content_src(slide.md, project_dir) if slide.md else None
-        result = build_slide_content(content_path, slide.zones)
+        _root = etree.fromstring(svg_str.encode())
+        _zone_ids = {
+            eid
+            for el in _root.iter()
+            if (eid := el.get("id")) is not None and eid.startswith("zone-")
+        }
+        _default_zone = resolve_default_zone(_root)
+        result = build_slide_content(
+            content_path,
+            slide.zones,
+            available_zones=_zone_ids,
+            default_zone=_default_zone,
+        )
         if result.content:
             svg_str = substitute_content(svg_str, result.content, font_size, dark_mode)
 
