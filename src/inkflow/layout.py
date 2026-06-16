@@ -368,9 +368,21 @@ class LayoutInfo:
     default_zone: str
 
 
-def resolve_default_zone(root: etree._Element) -> str:  # pyright: ignore[reportPrivateUsage]
-    """Return the inkflow:default-zone value from an SVG root, or '' if absent."""
-    return root.get(INKFLOW_DEFAULT_ZONE) or ""
+def resolve_default_zone(
+    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    available_zone_ids: set[str] | None = None,
+) -> str:
+    """Return the effective default zone for a layout SVG.
+
+    Checks inkflow:default-zone first; falls back to "content" when zone-content
+    is present in the layout, so the 80% case requires no attribute at all.
+    """
+    declared = root.get(INKFLOW_DEFAULT_ZONE)
+    if declared:
+        return declared
+    if available_zone_ids and "zone-content" in available_zone_ids:
+        return "content"
+    return ""
 
 
 def discover_layouts(
@@ -433,5 +445,5 @@ def layout_zones(
     return LayoutInfo(
         zones=content_zones,
         numbered=numbered,
-        default_zone=resolve_default_zone(root),
+        default_zone=resolve_default_zone(root, all_zone_ids),
     )

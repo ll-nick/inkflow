@@ -239,7 +239,7 @@ def process_slide(
             for el in _root.iter()
             if (eid := el.get("id")) is not None and eid.startswith("zone-")
         }
-        _default_zone = resolve_default_zone(_root)
+        _default_zone = resolve_default_zone(_root, _zone_ids)
         result = build_slide_content(
             content_path,
             slide.zones,

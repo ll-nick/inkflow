@@ -304,12 +304,21 @@ class TestLayoutZones:
         assert "extra" in info.zones
         assert "title" in info.zones  # inherited from base
 
-    def test_default_zone_returned(self, tmp_path: Path) -> None:
+    def test_default_zone_explicit_attribute(self, tmp_path: Path) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _DEFAULT_ZONE_SVG)
         info = layout_zones(layout, tmp_path, None)
         assert info.default_zone == "quote"
 
-    def test_default_zone_empty_when_absent(self, tmp_path: Path) -> None:
+    def test_default_zone_implicit_when_zone_content_present(
+        self, tmp_path: Path
+    ) -> None:
         layout = _write_svg(tmp_path / "layout.svg", _ZONE_SVG)
+        info = layout_zones(layout, tmp_path, None)
+        assert info.default_zone == "content"
+
+    def test_default_zone_empty_when_no_zone_content_and_no_attribute(
+        self, tmp_path: Path
+    ) -> None:
+        layout = _write_svg(tmp_path / "layout.svg", _NO_ZONE_SVG)
         info = layout_zones(layout, tmp_path, None)
         assert info.default_zone == ""

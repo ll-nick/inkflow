@@ -158,7 +158,7 @@ def verify_slide(
 
     all_ids = {eid for el in root.iter() if (eid := el.get("id")) is not None}
     zone_ids = {eid for eid in all_ids if eid.startswith("zone-")}
-    default_zone = resolve_default_zone(root)
+    default_zone = resolve_default_zone(root, zone_ids)
 
     issues += _check_media(slide, project_dir)
     issues += _check_zones(slide, project_dir, zone_ids)
