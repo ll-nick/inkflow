@@ -5,6 +5,7 @@ import contextlib
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 
@@ -732,6 +733,15 @@ def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
 # ── layouts ───────────────────────────────────────────────────────────────────
 
 
+@dataclass
+class _LayoutRow:
+    name: str
+    parent: str
+    zones: list[str]
+    numbered: bool
+    default_zone: str
+
+
 @main.command("layouts")
 @_deck_option
 @_no_deck_option
@@ -745,16 +755,22 @@ def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
         deck_obj, project_dir = _deck_context(deck_path)
         theme = deck_obj.theme
 
-    groups: dict[str, list[tuple[str, str, list[str], bool]]] = {}
+    groups: dict[str, list[_LayoutRow]] = {}
     for source_label, layout_path in discover_layouts(project_dir, theme):
         try:
             chain = resolve_chain(layout_path, project_dir, theme)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
         parent_str = " → ".join(p.stem for p in chain) if chain else "—"
-        zones, numbered = layout_zones(layout_path, project_dir, theme)
+        info = layout_zones(layout_path, project_dir, theme)
         groups.setdefault(source_label, []).append(
-            (layout_path.stem, parent_str, zones, numbered)
+            _LayoutRow(
+                layout_path.stem,
+                parent_str,
+                info.zones,
+                info.numbered,
+                info.default_zone,
+            )
         )
 
     source_styles = [
@@ -786,12 +802,19 @@ def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
         table.add_column("ZONES", min_width=20)
         table.add_column("#", justify="center", min_width=1)
 
-        for name, parent_str, zones, numbered in rows:
+        for row in rows:
+            zone_parts = [
+                f"[bold underline {color}]{z}[/bold underline {color}]"
+                if z == row.default_zone
+                else f"[{color}]{z}[/{color}]"
+                for z in row.zones
+            ]
+            zones_cell = ", ".join(zone_parts) if zone_parts else "[dim]—[/dim]"
             table.add_row(
-                name,
-                parent_str,
-                f"[{color}]{', '.join(zones)}[/{color}]" if zones else "[dim]—[/dim]",
-                f"[{color}]✓[/{color}]" if numbered else "",
+                row.name,
+                row.parent,
+                zones_cell,
+                f"[{color}]✓[/{color}]" if row.numbered else "",
             )
 
         console.print(table)
