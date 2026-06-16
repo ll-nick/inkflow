@@ -64,3 +64,4 @@ nav:
     - Manifest: reference/manifest.md
     - CLI: reference/cli.md
   - Demo: demo/index.md
+  - Theme showcase: showcase/index.md
