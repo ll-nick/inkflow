@@ -307,27 +307,41 @@ def _fmt_pos(base: int, offset_pct: float) -> str:
     return f"calc({base}% {sign} {abs(offset_pct):.6g}%)"
 
 
+def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+    suffix = Path(src).suffix.lower()
+    if suffix in _VIDEO_SUFFIXES:
+        el = etree.Element(
+            f"{{{ns.XHTML}}}video",
+            {"src": src, "controls": ""},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    else:
+        el = etree.Element(
+            f"{{{ns.XHTML}}}img",
+            {"src": src},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    el.set("style", style)
+    return el
+
+
 def _replace_with_media(
     el: etree._Element,  # pyright: ignore[reportPrivateUsage]
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    src: str,
     zone_id: str,
-    fit: str,
-    align: str,
-    x: float,
-    y: float,
+    dark_mode: bool,
+    item: Media,
 ) -> None:
     geom = _zone_geometry(el)
     rect = geom.rect
 
-    base_x, base_y = _ALIGN_MAP.get(align, (50, 50))
-    x_pct = x / float(rect.width) * 100
-    y_pct = y / float(rect.height) * 100
-    style = (
+    base_x, base_y = _ALIGN_MAP.get(item.align, (50, 50))
+    x_pct = item.x / float(rect.width) * 100
+    y_pct = item.y / float(rect.height) * 100
+    base_style = (
         f"width:100%;height:100%;"
-        f"object-fit:{fit};"
+        f"object-fit:{item.fit};"
         f"object-position:{_fmt_pos(base_x, x_pct)} {_fmt_pos(base_y, y_pct)};"
-        f"display:block;"
     )
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
@@ -335,28 +349,19 @@ def _replace_with_media(
     if geom.clip_shape is not None:
         fo.set("clip-path", _add_clip_path(root, zone_id, geom.clip_shape))
 
-    suffix = Path(src).suffix.lower()
-    if suffix in _VIDEO_SUFFIXES:
-        media_el = etree.Element(
-            f"{{{ns.XHTML}}}video",
-            {"src": src, "controls": ""},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
-    elif _is_url(src):
-        media_el = etree.Element(
-            f"{{{ns.XHTML}}}img",
-            {"src": src},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
+    if item.alt_src is None:
+        fo.append(_make_media_element(item.src, base_style + "display:block;"))
     else:
-        media_el = etree.Element(
-            f"{{{ns.XHTML}}}img",
-            {"src": src},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
+        # display is managed by CSS via [data-inkflow-theme] selectors
+        primary_theme = "dark" if dark_mode else "light"
+        alt_theme = "light" if dark_mode else "dark"
+        primary_el = _make_media_element(item.src, base_style)
+        primary_el.set("data-inkflow-theme", primary_theme)
+        alt_el = _make_media_element(item.alt_src, base_style)
+        alt_el.set("data-inkflow-theme", alt_theme)
+        fo.append(primary_el)
+        fo.append(alt_el)
 
-    media_el.set("style", style)
-    fo.append(media_el)
     _swap_zone(el, fo, rect, zone_id)
 
 
@@ -364,6 +369,7 @@ def substitute_content(
     svg_str: str,
     content: dict[str, TextBox | Media],
     font_size: int = 36,
+    dark_mode: bool = True,
 ) -> str:
     root = etree.fromstring(svg_str.encode())
 
@@ -384,16 +390,7 @@ def substitute_content(
                 padding=item.padding,
             )
         else:
-            _replace_with_media(
-                el,
-                root,
-                item.src,
-                zone_id,
-                item.fit,
-                item.align,
-                item.x,
-                item.y,
-            )
+            _replace_with_media(el, root, zone_id, dark_mode, item)
 
     return etree.tostring(root, encoding="unicode")
 
