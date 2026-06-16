@@ -72,11 +72,14 @@ def _check_zones(slide: Slide, project_dir: Path, zone_ids: set[str]) -> list[Is
     if slide.md is not None:
         md_path = resolve_content_src(slide.md, project_dir)
         if md_path.exists():
-            for zone_name in parse_markdown_zones(md_path).zones:
+            parsed = parse_markdown_zones(md_path)
+            for zone_name in parsed.zones:
                 if zone_name == "notes":
                     continue
                 zone_full = f"zone-{zone_name}"
                 if zone_full not in zone_ids:
+                    if zone_name in parsed.auto_zones:
+                        continue
                     issues.append(
                         ("error", f"zone #{zone_full} (from markdown) not in layout")
                     )
