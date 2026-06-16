@@ -39,6 +39,9 @@ jobs:
       - name: Build demo deck
         run: uv run inkflow build demo/deck.py
 
+      - name: Build theme showcase deck
+        run: uv run inkflow build src/inkflow/theme/showcase/deck.py
+
       - name: Build init deck
         run: |
           uv run inkflow init /tmp/test-init

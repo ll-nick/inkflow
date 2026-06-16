@@ -50,15 +50,16 @@ def _check_media(slide: Slide, project_dir: Path) -> list[Issue]:
     issues: list[Issue] = []
     for _key, content in slide.zones.items():
         if isinstance(content, Media):
-            if content.src.startswith(("http://", "https://", "//")):
-                continue
-            media_p = (
-                Path(content.src)
-                if Path(content.src).is_absolute()
-                else project_dir / content.src
-            )
-            if not media_p.exists():
-                issues.append(("error", f"media not found: {content.src}"))
+            for src_field in filter(None, [content.src, content.alt_src]):
+                if src_field.startswith(("http://", "https://", "//")):
+                    continue
+                media_p = (
+                    Path(src_field)
+                    if Path(src_field).is_absolute()
+                    else project_dir / src_field
+                )
+                if not media_p.exists():
+                    issues.append(("error", f"media not found: {src_field}"))
     return issues
 
 

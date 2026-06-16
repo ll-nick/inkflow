@@ -8,14 +8,10 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Align, Media, TextBox, VAlign
+from inkflow.manifest import Media, TextBox
 from inkflow.svg import ensure_defs
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
-
-
-def _is_url(src: str) -> bool:
-    return src.startswith(("http://", "https://", "//"))
 
 
 _ALIGN_MAP: dict[str, tuple[int, int]] = {
@@ -252,12 +248,9 @@ def _swap_zone(
 
 def _replace_with_foreignobject(
     el: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    html: str,
     zone_id: str,
     font_size: int,
-    align: Align | None = None,
-    valign: VAlign | None = None,
-    padding: float | None = None,
+    item: TextBox,
 ) -> None:
     rect = _zone_geometry(el).rect
 
@@ -266,14 +259,14 @@ def _replace_with_foreignobject(
     fo.set("font-size", str(font_size))  # SVG user units; cascades into HTML via em
 
     wrapper_style_parts: list[str] = []
-    if valign is not None:
-        wrapper_style_parts.append(f"justify-content:{_VALIGN_CSS[valign]}")
-    if padding is not None:
-        wrapper_style_parts.append(f"padding:{padding:g}px")
+    if item.valign is not None:
+        wrapper_style_parts.append(f"justify-content:{_VALIGN_CSS[item.valign]}")
+    if item.padding is not None:
+        wrapper_style_parts.append(f"padding:{item.padding:g}px")
 
     content_style_parts: list[str] = []
-    if align is not None:
-        content_style_parts.append(f"text-align:{align}")
+    if item.align is not None:
+        content_style_parts.append(f"text-align:{item.align}")
 
     # Use XHTML as default namespace so lxml serialises <div>, <p>, <ul>
     # without a prefix — required for the browser's HTML parser to recognise
@@ -292,6 +285,7 @@ def _replace_with_foreignobject(
         content_attrs["style"] = ";".join(content_style_parts)
     content_div = etree.SubElement(wrapper, f"{{{ns.XHTML}}}div", content_attrs)
 
+    html = item.text or ""
     try:
         fragment = etree.fromstring(f"<div xmlns='{ns.XHTML}'>{html}</div>")
         content_div.text = fragment.text
@@ -311,27 +305,41 @@ def _fmt_pos(base: int, offset_pct: float) -> str:
     return f"calc({base}% {sign} {abs(offset_pct):.6g}%)"
 
 
+def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+    suffix = Path(src).suffix.lower()
+    if suffix in _VIDEO_SUFFIXES:
+        el = etree.Element(
+            f"{{{ns.XHTML}}}video",
+            {"src": src, "controls": ""},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    else:
+        el = etree.Element(
+            f"{{{ns.XHTML}}}img",
+            {"src": src},
+            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+        )
+    el.set("style", style)
+    return el
+
+
 def _replace_with_media(
     el: etree._Element,  # pyright: ignore[reportPrivateUsage]
     root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    src: str,
     zone_id: str,
-    fit: str,
-    align: str,
-    x: float,
-    y: float,
+    dark_mode: bool,
+    item: Media,
 ) -> None:
     geom = _zone_geometry(el)
     rect = geom.rect
 
-    base_x, base_y = _ALIGN_MAP.get(align, (50, 50))
-    x_pct = x / float(rect.width) * 100
-    y_pct = y / float(rect.height) * 100
-    style = (
+    base_x, base_y = _ALIGN_MAP.get(item.align, (50, 50))
+    x_pct = item.x / float(rect.width) * 100
+    y_pct = item.y / float(rect.height) * 100
+    base_style = (
         f"width:100%;height:100%;"
-        f"object-fit:{fit};"
+        f"object-fit:{item.fit};"
         f"object-position:{_fmt_pos(base_x, x_pct)} {_fmt_pos(base_y, y_pct)};"
-        f"display:block;"
     )
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
@@ -339,28 +347,19 @@ def _replace_with_media(
     if geom.clip_shape is not None:
         fo.set("clip-path", _add_clip_path(root, zone_id, geom.clip_shape))
 
-    suffix = Path(src).suffix.lower()
-    if suffix in _VIDEO_SUFFIXES:
-        media_el = etree.Element(
-            f"{{{ns.XHTML}}}video",
-            {"src": src, "controls": ""},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
-    elif _is_url(src):
-        media_el = etree.Element(
-            f"{{{ns.XHTML}}}img",
-            {"src": src},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
+    if item.alt_src is None:
+        fo.append(_make_media_element(item.src, base_style + "display:block;"))
     else:
-        media_el = etree.Element(
-            f"{{{ns.XHTML}}}img",
-            {"src": src},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
+        # display is managed by CSS via [data-inkflow-theme] selectors
+        primary_theme = "dark" if dark_mode else "light"
+        alt_theme = "light" if dark_mode else "dark"
+        primary_el = _make_media_element(item.src, base_style)
+        primary_el.set("data-inkflow-theme", primary_theme)
+        alt_el = _make_media_element(item.alt_src, base_style)
+        alt_el.set("data-inkflow-theme", alt_theme)
+        fo.append(primary_el)
+        fo.append(alt_el)
 
-    media_el.set("style", style)
-    fo.append(media_el)
     _swap_zone(el, fo, rect, zone_id)
 
 
@@ -368,6 +367,7 @@ def substitute_content(
     svg_str: str,
     content: dict[str, TextBox | Media],
     font_size: int = 36,
+    dark_mode: bool = True,
 ) -> str:
     root = etree.fromstring(svg_str.encode())
 
@@ -378,26 +378,9 @@ def substitute_content(
             continue
 
         if isinstance(item, TextBox):
-            _replace_with_foreignobject(
-                el,
-                item.text or "",
-                zone_id,
-                font_size,
-                align=item.align,
-                valign=item.valign,
-                padding=item.padding,
-            )
+            _replace_with_foreignobject(el, zone_id, font_size, item)
         else:
-            _replace_with_media(
-                el,
-                root,
-                item.src,
-                zone_id,
-                item.fit,
-                item.align,
-                item.x,
-                item.y,
-            )
+            _replace_with_media(el, root, zone_id, dark_mode, item)
 
     return etree.tostring(root, encoding="unicode")
 

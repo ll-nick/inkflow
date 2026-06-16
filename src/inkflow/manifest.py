@@ -70,6 +70,7 @@ class TextBox:
 @dataclass
 class Media:
     src: str
+    alt_src: str | None = None
     fit: str = "contain"
     align: str = "center"
     x: float = 0.0

@@ -133,3 +133,14 @@ body {
 #ws-dot.connected {
     background: var(--green);
 }
+
+/* ── Media zone theme-swap ────────────────────────────────────────────────── */
+[data-inkflow-theme] {
+    display: block;
+}
+:root:not([data-theme="light"]) [data-inkflow-theme="light"] {
+    display: none;
+}
+:root[data-theme="light"] [data-inkflow-theme="dark"] {
+    display: none;
+}

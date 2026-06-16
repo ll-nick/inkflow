@@ -220,6 +220,7 @@ def process_slide(
     total_slides: int,
     deck_style: str = "",
     font_size: int = 36,
+    dark_mode: bool = True,
 ) -> str:
     src = resolve_slide_src(slide.src, project_dir, theme)
 
@@ -234,7 +235,7 @@ def process_slide(
         content_path = resolve_content_src(slide.md, project_dir) if slide.md else None
         result = build_slide_content(content_path, slide.zones)
         if result.content:
-            svg_str = substitute_content(svg_str, result.content, font_size)
+            svg_str = substitute_content(svg_str, result.content, font_size, dark_mode)
 
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
@@ -266,6 +267,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             total,
             deck.style,
             slide.font_size if slide.font_size is not None else deck.font_size,
+            dark_mode=deck.dark_mode,
         )
         results.append({"svg": svg, "title": title, "notes": notes})
     return results
