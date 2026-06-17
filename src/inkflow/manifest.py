@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import StrEnum, auto
 from pathlib import Path
+# ── Shared enum base ──────────────────────────────────────────────────────────
 
+
+class _KebabStrEnum(StrEnum):
+    @staticmethod
+    def _generate_next_value_(  # pyright: ignore[reportImplicitOverride]
+        name: str, start: int, count: int, last_values: list[str]
+    ) -> str:
+        return name.lower().replace("_", "-")
 # ── Animation ────────────────────────────────────────────────────────────────
 
 
