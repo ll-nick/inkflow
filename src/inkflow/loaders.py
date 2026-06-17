@@ -32,11 +32,11 @@ def _cascade(filename: str, deck: Deck | None, project_dir: Path | None) -> str:
     return "\n".join(parts)
 
 
-def load_styles(deck: Deck | None, project_dir: Path | None) -> str:
+def load_deck_styles(deck: Deck | None, project_dir: Path | None) -> str:
     """Return concatenated CSS in cascade order: builtin → theme → project."""
     return _cascade("styles.css", deck, project_dir)
 
 
-def load_scripts(deck: Deck | None, project_dir: Path | None) -> str:
+def load_deck_scripts(deck: Deck | None, project_dir: Path | None) -> str:
     """Return concatenated JS in cascade order: builtin → theme → project."""
     return _cascade("scripts.js", deck, project_dir)

@@ -513,7 +513,7 @@ def sync_cmd(
                 if s.md is None
             ]
 
-    css = loaders.load_styles(deck_obj, project_dir)
+    css = loaders.load_deck_styles(deck_obj, project_dir)
     tokens = colors.extract_tokens(css, dark_mode)
     preview_css = colors.build_preview_style(tokens)
 
@@ -571,9 +571,8 @@ def colorize_cmd(
     """
     deck_obj, project_dir = _resolve_deck_or_none(deck_path, no_deck)
     dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
-    hex_map = colors.hex_to_class_map(
-        colors.extract_tokens(loaders.load_styles(deck_obj, project_dir), dark_mode)
-    )
+    deck_styles = loaders.load_deck_styles(deck_obj, project_dir)
+    hex_map = colors.hex_to_class_map(colors.extract_tokens(deck_styles, dark_mode))
 
     errors = False
     for f in files:
@@ -639,7 +638,7 @@ def palette_cmd(
     deck_obj, project_dir = _resolve_deck_or_none(deck_path, no_deck)
     dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
     tokens = colors.extract_tokens(
-        loaders.load_styles(deck_obj, project_dir), dark_mode
+        loaders.load_deck_styles(deck_obj, project_dir), dark_mode
     )
 
     theme_label: str | None = deck_obj.theme if deck_obj else None
@@ -695,7 +694,7 @@ def verify_cmd(
             if resolve_slide_src(s.src, project_dir, theme) in resolved_files
         ]
 
-    css = loaders.load_styles(deck_obj, project_dir)
+    css = loaders.load_deck_styles(deck_obj, project_dir)
     preview_css = colors.build_preview_style(
         colors.extract_tokens(css, deck_obj.mode == ColorMode.DARK)
     )

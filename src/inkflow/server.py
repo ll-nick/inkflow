@@ -27,7 +27,7 @@ from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
 from inkflow.fonts import embed_fonts_css
-from inkflow.loaders import load_scripts, load_styles
+from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.manifest import ColorMode, Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.tui import LiveUI
@@ -90,7 +90,7 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
         project_dir = deck_path.parent
         slides = await asyncio.to_thread(process_deck, deck, project_dir)
         transitions = resolve_transitions(deck)
-        styles_css = await asyncio.to_thread(load_styles, deck, project_dir)
+        styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
         if deck.embed_fonts:
             font_css, font_warnings = await asyncio.to_thread(
                 embed_fonts_css, slides, project_dir
@@ -99,7 +99,7 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
             font_css, font_warnings = "", []
         if font_css:
             styles_css = (font_css + "\n" + styles_css).strip()
-        scripts_js = await asyncio.to_thread(load_scripts, deck, project_dir)
+        scripts_js = await asyncio.to_thread(load_deck_scripts, deck, project_dir)
         _state["slides"] = slides
         _state["transitions"] = transitions
         _state["styles_css"] = styles_css
