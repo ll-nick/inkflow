@@ -279,7 +279,22 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 
             await writer.drain()
         except Exception:
-            pass
+            # TODO: add logging on top of server response errors
+            body = traceback.format_exc().encode()
+            try:
+                header = (
+                    b"HTTP/1.1 500 Internal Server Error\r\n"
+                    + b"Content-Type: text/plain; charset=utf-8\r\n"
+                    + b"Cache-Control: no-store\r\n"
+                    + b"Connection: close\r\n"
+                    + b"Content-Length: "
+                    + str(len(body)).encode()
+                    + b"\r\n\r\n"
+                )
+                writer.write(header + body)
+                await writer.drain()
+            except Exception:
+                pass
         finally:
             writer.close()
             with contextlib.suppress(Exception):
