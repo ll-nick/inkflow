@@ -15,8 +15,8 @@ def main() -> Deck:
     return Deck(
         transition=transitions.Crossfade(),   # default transition for all slides
         theme="./my-theme",                   # path to theme directory
-        dark_mode=True,                       # data-theme="dark" on <html>
-        style="",                             # CSS injected into every slide
+        mode=ColorMode.DARK,                  # data-theme attribute on <html>
+        style="styles.css",                   # CSS file injected into every slide
         font_size=36,                         # base font size for zone content (px)
         slides=[...],
     )
@@ -27,10 +27,16 @@ def main() -> Deck:
 | `slides` | `list[Slide]` | `[]` | The slide list |
 | `transition` | `Transition \| None` | `None` | Default transition. `Cut` if unset |
 | `theme` | `str \| None` | `None` | Path to theme directory |
-| `dark_mode` | `bool` | `True` | Sets `data-theme` on `<html>` |
-| `style` | `str` | `""` | CSS string injected into every slide |
+| `mode` | `ColorMode` | `ColorMode.DARK` | Sets `data-theme` on `<html>` |
+| `style` | `Content` | `None` | CSS injected into every slide. A bare `str` is a file path; `Inline(...)` is a literal CSS string |
 | `font_size` | `int` | `36` | Base font size for zone content (px) |
 | `embed_fonts` | `bool` | `True` | Auto-discover and embed fonts used in slides. See [Font embedding](../guides/fonts.md) |
+
+**Deck → Slide inheritance rules:**
+
+- `transition`, `font_size` — **override**: a `Slide` value replaces the `Deck` default. `None` on the slide means "inherit from deck."
+- `style` / `extra_style` — **additive**: `Deck.style` is emitted first; `Slide.extra_style` is appended. The slide CSS wins on equal-specificity rules via cascade order. Set `Slide.extra_style` to `None` (the default) to add nothing.
+- `theme`, `mode`, `embed_fonts` — deck-only; no per-slide override.
 
 ---
 
@@ -44,7 +50,7 @@ Slide(
     "slides/01-title.svg",
     animations=[animations.FadeIn("#headline", step=1)],
     transition=transitions.Crossfade(),
-    style="",
+    extra_style=Inline("#headline { fill: hotpink; }"),
 )
 
 # Layout-backed slide with Markdown content
@@ -58,18 +64,53 @@ Slide(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `src` | `str` | required | SVG file path, or bare layout name (e.g. `"default"`) |
-| `md` | `str \| None` | `None` | Path to `.md` file, relative to `deck.py`. Makes `src` resolve as a layout name |
+| `md` | `Content` | `None` | Path to `.md` file, or `Inline("# heading\n\nbody")` for inline Markdown. Makes `src` resolve as a layout name |
 | `zones` | `dict[str, str \| Media \| TextBox]` | `{}` | Per-zone overrides. Keys are zone names without the `zone-` prefix. `str` values are rendered as inline Markdown; `TextBox` values give explicit alignment/padding control; `Media` values inject an image or video |
 | `animations` | `list[Animation]` | `[]` | Animation declarations |
 | `transition` | `Transition \| None` | `None` | Overrides deck-level transition |
-| `style` | `str` | `""` | CSS string injected into this slide |
+| `extra_style` | `Content` | `None` | CSS appended to the deck style for this slide. A bare `str` is a file path; `Inline(...)` is a literal CSS string |
 | `title` | `str \| None` | `None` | Optional slide title. Auto-inferred from filename or leading `# heading` |
-| `notes` | `str \| Path \| None` | `None` | Speaker notes. A `str` is used as-is. A `Path` to a `.md` file is rendered as Markdown; other suffixes are read as raw HTML. Concatenated with any `::notes::` marker in the Markdown file |
+| `notes` | `Content` | `None` | Speaker notes rendered as Markdown. A bare `str` is a file path; `Inline("...")` is literal content. Concatenated with any `::notes::` marker in the Markdown file |
 | `font_size` | `int \| None` | `None` | Per-slide font size override (px). Inherits from `Deck.font_size` when `None` |
 | `visible` | `bool` | `True` | When `False`, the slide is excluded from the presentation entirely |
 
 **`step_count`** (property): the highest `step` value across all animations.
 This is the number of keypresses before advancing.
+
+---
+
+## `Inline`
+
+A string subclass that marks a value as literal content rather than a file path.
+
+```python
+from inkflow import Inline
+
+# notes from a file (bare str = path)
+notes="slides/04-notes.md"
+
+# notes as inline content (Inline = literal)
+notes=Inline("Welcome the audience.\n\nPress `p` for presenter view.")
+
+# CSS inline vs from file
+extra_style=Inline("#headline { fill: hotpink; }")
+extra_style="slides/overrides.css"
+```
+
+`Inline` is a subclass of `str`, so `isinstance(Inline("x"), str)` is `True` and it
+compares equal to its content. The distinction only matters at pipeline resolution time.
+
+---
+
+## `Content`
+
+Type alias used for fields that accept either a file path or literal content:
+
+```python
+Content = str | Inline | None
+```
+
+Used by `Slide.md`, `Slide.notes`, `Slide.extra_style`, and `Deck.style`.
 
 ---
 
@@ -80,18 +121,19 @@ A media asset (image or video) for injection into a zone.
 ```python
 Media(
     src="assets/screenshot.png",
-    fit="contain",    # CSS object-fit
-    align="center",   # CSS object-position
-    x=0.0,            # horizontal offset (px)
-    y=0.0,            # vertical offset (px)
+    fit=MediaFit.CONTAIN,   # CSS object-fit
+    align=MediaAlign.CENTER, # object-position
+    x=0.0,                  # horizontal offset (px)
+    y=0.0,                  # vertical offset (px)
 )
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `src` | `str` | required | Path to image or video file, or a URL |
-| `fit` | `str` | `"contain"` | `"contain"` or `"cover"` |
-| `align` | `str` | `"center"` | CSS `object-position` value |
+| `alt_src` | `str \| None` | `None` | Alternative source for the other color mode |
+| `fit` | `MediaFit` | `MediaFit.CONTAIN` | CSS `object-fit` value |
+| `align` | `MediaAlign` | `MediaAlign.CENTER` | CSS `object-position` preset |
 | `x` | `float` | `0.0` | Horizontal offset in pixels |
 | `y` | `float` | `0.0` | Vertical offset in pixels |
 
@@ -152,6 +194,64 @@ Vertical alignment of the content block inside a `TextBox` zone.
 
 ---
 
+## `Direction`
+
+Direction for animations and transitions that move along an axis.
+
+| Value | CSS class / wire value |
+|---|---|
+| `Direction.LEFT` | `"left"` |
+| `Direction.RIGHT` | `"right"` |
+| `Direction.UP` | `"up"` |
+| `Direction.DOWN` | `"down"` |
+
+Used by `SlideIn`, `SlideOut`, `Push`, `Cover`, and `Wipe`.
+
+---
+
+## `MediaFit`
+
+CSS `object-fit` preset for `Media`.
+
+| Value | CSS value |
+|---|---|
+| `MediaFit.CONTAIN` | `"contain"` |
+| `MediaFit.COVER` | `"cover"` |
+| `MediaFit.FILL` | `"fill"` |
+| `MediaFit.NONE` | `"none"` |
+| `MediaFit.SCALE_DOWN` | `"scale-down"` |
+
+---
+
+## `MediaAlign`
+
+`object-position` preset for `Media`. Maps to a percentage position pair.
+
+| Value | Position |
+|---|---|
+| `MediaAlign.CENTER` | 50% 50% |
+| `MediaAlign.TOP` | 50% 0% |
+| `MediaAlign.BOTTOM` | 50% 100% |
+| `MediaAlign.LEFT` | 0% 50% |
+| `MediaAlign.RIGHT` | 100% 50% |
+| `MediaAlign.TOP_LEFT` | 0% 0% |
+| `MediaAlign.TOP_RIGHT` | 100% 0% |
+| `MediaAlign.BOTTOM_LEFT` | 0% 100% |
+| `MediaAlign.BOTTOM_RIGHT` | 100% 100% |
+
+---
+
+## `ColorMode`
+
+Color mode for the presentation. Controls the `data-theme` attribute on `<html>`.
+
+| Value | Effect |
+|---|---|
+| `ColorMode.DARK` | `data-theme=""` (dark theme CSS active) |
+| `ColorMode.LIGHT` | `data-theme="light"` (light theme CSS active) |
+
+---
+
 ## `ZoneContent`
 
 Type alias for the values accepted in `Slide.zones`:
@@ -169,11 +269,11 @@ ZoneContent = str | Media | TextBox
 Animation types live in the `inkflow.animations` namespace:
 
 ```python
-from inkflow import animations
+from inkflow import animations, Direction
 
 Slide("slides/01.svg", animations=[
     animations.FadeIn("#headline", step=1),
-    animations.SlideIn("#box", step=2, direction="left", duration=0.6),
+    animations.SlideIn("#box", step=2, direction=Direction.LEFT, duration=0.6),
 ])
 ```
 
@@ -199,8 +299,8 @@ animation's built-in CSS default is used, so you only set what you want to overr
 | `FadeIn` | — | Element starts hidden, fades in on its step |
 | `FadeOut` | — | Element starts visible, fades out on its step |
 | `Bounce` | — | Appears with a scale-pulse bounce |
-| `SlideIn` | `direction` (`"left"`/`"right"`/`"up"`/`"down"`), `distance` (user units) | Slides in from an edge while fading |
-| `SlideOut` | `direction`, `distance` | Slides out toward an edge while fading |
+| `SlideIn` | `direction: Direction` (default `LEFT`), `distance` (user units) | Slides in from an edge while fading |
+| `SlideOut` | `direction: Direction`, `distance` | Slides out toward an edge while fading |
 | `ZoomIn` | `scale` (starting scale, e.g. `0.6`) | Scales up into place |
 | `ZoomOut` | `scale` (ending scale) | Scales down out of place |
 | `Highlight` | `color` (CSS color), `passes` (pulse count) | Pulses a glow without hiding the element |
@@ -262,9 +362,9 @@ presenter reads `data-step` from the DOM regardless of whether the element is li
 Transition types live in the `inkflow.transitions` namespace:
 
 ```python
-from inkflow import transitions
+from inkflow import transitions, Direction
 
-Slide("slides/01.svg", transition=transitions.Push(direction="right"))
+Slide("slides/01.svg", transition=transitions.Push(direction=Direction.RIGHT))
 ```
 
 ### Shared parameters
@@ -284,20 +384,20 @@ Every transition type takes these:
 |---|---|---|
 | `Cut` | — | Instant switch, no animation |
 | `Crossfade` | — | Outgoing dissolves into incoming |
-| `Push` | `direction` | Both slides move — outgoing exits, incoming enters from the opposite edge |
-| `Slide` | `direction` | Incoming covers the outgoing slide, which stays put |
+| `Push` | `direction: Direction` | Both slides move — outgoing exits, incoming enters from the opposite edge |
+| `Cover` | `direction: Direction` | Incoming slide covers the outgoing one, which stays put |
 | `Zoom` | — | Outgoing scales out, incoming scales in |
 | `Fade` | `color` | Outgoing fades to a solid colour, then incoming fades in from it |
-| `Wipe` | `direction` | Incoming is progressively revealed from one edge over the outgoing slide |
+| `Wipe` | `direction: Direction` | Incoming is progressively revealed from one edge over the outgoing slide |
 | `Morph` | — | Matching SVG elements interpolate by ID; unmatched content crossfades |
 
-`direction` accepts `"left"`, `"right"`, `"up"`, or `"down"`. Default is `"left"` for all directional types.
+`direction` defaults to `Direction.LEFT` for all directional types.
 
 ```python
-transitions.Push(direction="right", easing="ease-in-out")
-transitions.Slide(duration=0.6, direction="up")
+transitions.Push(direction=Direction.RIGHT, easing="ease-in-out")
+transitions.Cover(duration=0.6, direction=Direction.UP)
 transitions.Fade(color="#1a1a2e")
-transitions.Wipe(direction="right", duration=0.7)
+transitions.Wipe(direction=Direction.RIGHT, duration=0.7)
 transitions.Morph(duration=1.2)
 ```
 
