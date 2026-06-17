@@ -10,7 +10,7 @@ from inkflow.animations import (
     ZoomIn,
     ZoomOut,
 )
-from inkflow.manifest import Animation
+from inkflow.manifest import Animation, Direction
 
 
 def test_shared_params_default_none() -> None:
@@ -37,10 +37,10 @@ def test_shared_params_stored() -> None:
 
 def test_slide_in_defaults_and_fields() -> None:
     s = SlideIn("#a")
-    assert s.direction == "left"
+    assert s.direction == Direction.LEFT
     assert s.distance is None
-    s2 = SlideIn("#a", direction="right", distance=120)
-    assert (s2.direction, s2.distance) == ("right", 120)
+    s2 = SlideIn("#a", direction=Direction.RIGHT, distance=120)
+    assert (s2.direction, s2.distance) == (Direction.RIGHT, 120)
 
 
 def test_slide_out_defaults() -> None:

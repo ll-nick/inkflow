@@ -15,13 +15,9 @@ from inkflow.content import (
     substitute_zone_numbers,
 )
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
-from inkflow.manifest import (
-    Animation,
-    Deck,
-    Slide,
-    Transition,
-)
-from inkflow.markdown import build_slide_content, markdown_to_html, parse_markdown_zones
+from inkflow.loaders import load_md, load_notes, load_style
+from inkflow.manifest import Animation, ColorMode, Deck, Slide, Transition
+from inkflow.markdown import build_slide_content, parse_markdown_zones
 from inkflow.svg import compose_with_ancestors
 
 # ── Slide wire format ────────────────────────────────────────────────────────
@@ -40,25 +36,16 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
     if slide.title:
         return slide.title
     if slide.md is not None:
-        content_path = resolve_content_src(slide.md, project_dir)
-        zones = parse_markdown_zones(content_path).zones
-        chunks = zones.get("title", [])
-        if chunks and isinstance(chunks[0], str):
-            return chunks[0].lstrip("#").strip()
+        md_text = load_md(slide.md, project_dir)
+        if md_text is not None:
+            zones = parse_markdown_zones(md_text).zones
+            chunks = zones.get("title", [])
+            if chunks and isinstance(chunks[0], str):
+                return chunks[0].lstrip("#").strip()
         return f"Slide {slide_num}"
     stem = Path(slide.src).stem
     stem = re.sub(r"^\d+-", "", stem)
     return stem.replace("-", " ").replace("_", " ").title()
-
-
-def _resolve_notes(notes: str | Path | None, project_dir: Path) -> str:
-    if notes is None:
-        return ""
-    if isinstance(notes, Path):
-        resolved = notes if notes.is_absolute() else project_dir / notes
-        text = resolved.read_text(encoding="utf-8")
-        return markdown_to_html(text) if resolved.suffix == ".md" else text
-    return markdown_to_html(notes)
 
 
 def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> Path:
@@ -80,22 +67,6 @@ def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> 
         if slides_candidate.exists():
             return slides_candidate
     return resolve_parent_path(src, project_dir, project_dir, theme)
-
-
-def resolve_content_src(src: str, project_dir: Path) -> Path:
-    """Resolve a slide Markdown content path to an absolute Path.
-
-    Bare single-part names are looked up in slides/ with a .md suffix.
-    """
-    p = Path(src)
-    if p.is_absolute():
-        return p if p.suffix else p.with_suffix(".md")
-    if len(p.parts) == 1:
-        name = p.stem if p.suffix else src
-        return project_dir / "slides" / (name + ".md")
-    if not p.suffix:
-        p = p.with_suffix(".md")
-    return (project_dir / p).resolve()
 
 
 # ── Animation classes ─────────────────────────────────────────────────────────
@@ -220,7 +191,7 @@ def process_slide(
     total_slides: int,
     deck_style: str = "",
     font_size: int = 36,
-    dark_mode: bool = True,
+    mode: ColorMode = ColorMode.DARK,
 ) -> str:
     src = resolve_slide_src(slide.src, project_dir, theme)
 
@@ -232,7 +203,7 @@ def process_slide(
     svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
 
     if slide.md is not None or slide.zones:
-        content_path = resolve_content_src(slide.md, project_dir) if slide.md else None
+        md_text = load_md(slide.md, project_dir) if slide.md is not None else None
         _root = etree.fromstring(svg_str.encode())
         _zone_ids = {
             eid
@@ -241,17 +212,20 @@ def process_slide(
         }
         _default_zone = resolve_default_zone(_root, _zone_ids)
         result = build_slide_content(
-            content_path,
+            md_text,
             slide.zones,
             available_zones=_zone_ids,
             default_zone=_default_zone,
         )
         if result.content:
-            svg_str = substitute_content(svg_str, result.content, font_size, dark_mode)
+            svg_str = substitute_content(
+                svg_str, result.content, font_size, mode == ColorMode.DARK
+            )
 
     if slide.animations:
         svg_str = annotate_svg(svg_str, slide.animations)
-    combined_css = "\n".join(filter(None, [deck_style, slide.style]))
+    slide_style_css = load_style(slide.extra_style, project_dir)
+    combined_css = "\n".join(filter(None, [deck_style, slide_style_css]))
     if combined_css:
         svg_str = inject_style(svg_str, combined_css)
     svg_str = remove_unreferenced_zones(svg_str)
@@ -262,14 +236,15 @@ def process_slide(
 def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
     total = len(visible_slides)
+    deck_style_css = load_style(deck.style, project_dir)
     results: list[SlideData] = []
     for i, slide in enumerate(visible_slides):
         title = _infer_slide_title(slide, i + 1, project_dir)
-        explicit_notes = _resolve_notes(slide.notes, project_dir)
+        explicit_notes = load_notes(slide.notes, project_dir)
         md_notes = ""
         if slide.md is not None:
-            content_path = resolve_content_src(slide.md, project_dir)
-            md_notes = build_slide_content(content_path, slide.zones).notes
+            md_text = load_md(slide.md, project_dir)
+            md_notes = build_slide_content(md_text, slide.zones).notes
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         svg = process_slide(
             slide,
@@ -277,9 +252,9 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             deck.theme,
             i + 1,
             total,
-            deck.style,
+            deck_style_css,
             slide.font_size if slide.font_size is not None else deck.font_size,
-            dark_mode=deck.dark_mode,
+            mode=deck.mode,
         )
         results.append({"svg": svg, "title": title, "notes": notes})
     return results

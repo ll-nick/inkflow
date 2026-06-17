@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from inkflow.manifest import Transition
+from inkflow.manifest import Direction, Transition
 
 
 @dataclass
@@ -42,14 +42,14 @@ class Morph(Transition):
 class Push(Transition):
     """Both slides move — outgoing exits, incoming enters from the opposite edge."""
 
-    direction: str = "left"  # left | right | up | down
+    direction: Direction = Direction.LEFT
 
 
 @dataclass
-class Slide(Transition):
+class Cover(Transition):
     """Incoming slide covers the outgoing one, which stays in place."""
 
-    direction: str = "left"  # left | right | up | down
+    direction: Direction = Direction.LEFT
 
 
 @dataclass
@@ -68,4 +68,4 @@ class Fade(Transition):
 class Wipe(Transition):
     """Incoming slide is progressively revealed from one edge."""
 
-    direction: str = "left"  # left | right | up | down
+    direction: Direction = Direction.LEFT

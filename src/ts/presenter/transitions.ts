@@ -173,7 +173,7 @@ registerTransition(
 );
 
 registerTransition(
-    "slide",
+    "cover",
     cssTransition((oldLayer, _newLayer, t, done) => {
         const dir = t.direction ?? "left";
         const axis = dirAxis(dir);

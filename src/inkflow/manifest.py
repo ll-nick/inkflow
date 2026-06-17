@@ -1,10 +1,49 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
-from pathlib import Path
+from enum import StrEnum, auto
+from typing import TypeAlias
+
+# ── Shared enum base ──────────────────────────────────────────────────────────
+
+
+class _KebabStrEnum(StrEnum):
+    @staticmethod
+    def _generate_next_value_(  # pyright: ignore[reportImplicitOverride]
+        name: str, start: int, count: int, last_values: list[str]
+    ) -> str:
+        return name.lower().replace("_", "-")
+
+
+# ── Content marker ────────────────────────────────────────────────────────────
+
+
+class Inline(str):
+    """Marks a string as literal content rather than a file path.
+
+    Fields typed as ``Content`` interpret a bare ``str`` as a file path to read.
+    Wrapping the value in ``Inline(...)`` signals that the string itself is the
+    content — rendered as Markdown for ``notes``/``md``, or used as CSS for
+    ``style``/``extra_style``.
+
+    .. code-block:: python
+
+        Slide("content", notes=Inline("Talk through the diagram."))
+        Slide("content", md=Inline("# Quick slide\\n\\nNo .md file needed."))
+        Deck(style=Inline("rect { fill: red; }"))
+    """
+
+
+Content: TypeAlias = "str | Inline | None"
 
 # ── Animation ────────────────────────────────────────────────────────────────
+
+
+class Direction(_KebabStrEnum):
+    LEFT = auto()
+    RIGHT = auto()
+    UP = auto()
+    DOWN = auto()
 
 
 @dataclass
@@ -14,7 +53,8 @@ class Animation:
     Concrete types live in ``inkflow.animations`` and subclass this, adding only
     their own fields. The shared timing params are ``kw_only`` so they stay out of
     the positional argument order, leaving the natural positional slots to each
-    subclass's own fields (e.g. ``SlideIn("#box", "right")`` sets ``direction``).
+    subclass's own fields (e.g. ``SlideIn("#box", Direction.RIGHT)`` sets
+    ``direction``).
 
     A value of ``None`` means "emit no CSS custom property" so the stylesheet's
     ``var(--anim-…, default)`` fallback wins. The CSS is the single source of
@@ -46,17 +86,42 @@ class Transition:
 # ── Content types ─────────────────────────────────────────────────────────────
 
 
-class Align(StrEnum):
-    LEFT = "left"
-    CENTER = "center"
-    RIGHT = "right"
-    JUSTIFY = "justify"
+class Align(_KebabStrEnum):
+    LEFT = auto()
+    CENTER = auto()
+    RIGHT = auto()
+    JUSTIFY = auto()
 
 
-class VAlign(StrEnum):
-    TOP = "top"
-    CENTER = "center"
-    BOTTOM = "bottom"
+class VAlign(_KebabStrEnum):
+    TOP = auto()
+    CENTER = auto()
+    BOTTOM = auto()
+
+
+class MediaFit(_KebabStrEnum):
+    CONTAIN = auto()
+    COVER = auto()
+    FILL = auto()
+    NONE = auto()
+    SCALE_DOWN = auto()
+
+
+class MediaAlign(_KebabStrEnum):
+    CENTER = auto()
+    TOP = auto()
+    BOTTOM = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    TOP_LEFT = auto()
+    TOP_RIGHT = auto()
+    BOTTOM_LEFT = auto()
+    BOTTOM_RIGHT = auto()
+
+
+class ColorMode(_KebabStrEnum):
+    DARK = auto()
+    LIGHT = auto()
 
 
 @dataclass
@@ -71,8 +136,8 @@ class TextBox:
 class Media:
     src: str
     alt_src: str | None = None
-    fit: str = "contain"
-    align: str = "center"
+    fit: MediaFit = MediaFit.CONTAIN
+    align: MediaAlign = MediaAlign.CENTER
     x: float = 0.0
     y: float = 0.0
 
@@ -86,15 +151,15 @@ ZoneContent = str | Media | TextBox
 @dataclass
 class Slide:
     src: str  # SVG path or bare layout name
-    md: str | None = None  # .md file path
+    md: Content = None  # .md file path, or Inline("...") for inline markdown
     zones: dict[str, ZoneContent] = field(
         default_factory=dict
     )  # per-zone overrides; str = inline markdown
     animations: list[Animation] = field(default_factory=list)
     transition: Transition | None = None
-    style: str = ""
+    extra_style: Content = None  # CSS string or path; appended to Deck.style
     title: str | None = None
-    notes: str | Path | None = None
+    notes: Content = None  # speaker notes: Inline("...") or path to .md file
     visible: bool = True
     font_size: int | None = None
 
@@ -103,29 +168,12 @@ class Slide:
         return max((a.step for a in self.animations), default=0)
 
 
+@dataclass
 class Deck:
-    slides: list[Slide]
-    transition: Transition | None
-    theme: str | None
-    dark_mode: bool
-    style: str
-    font_size: int
-    embed_fonts: bool
-
-    def __init__(
-        self,
-        slides: list[Slide] | None = None,
-        transition: Transition | None = None,
-        theme: str | None = None,
-        dark_mode: bool = True,
-        style: str = "",
-        font_size: int = 36,
-        embed_fonts: bool = True,
-    ) -> None:
-        self.slides = list(slides) if slides is not None else []
-        self.transition = transition
-        self.theme = theme
-        self.dark_mode = dark_mode
-        self.style = style
-        self.font_size = font_size
-        self.embed_fonts = embed_fonts
+    slides: list[Slide] = field(default_factory=list)
+    transition: Transition | None = None
+    theme: str | None = None
+    mode: ColorMode = ColorMode.DARK
+    style: Content = None  # CSS applied to every slide; Inline("...") or path
+    font_size: int = 36
+    embed_fonts: bool = True

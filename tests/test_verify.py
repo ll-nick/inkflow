@@ -60,7 +60,7 @@ class TestVerifyFiles:
 
     def test_missing_notes_path_is_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
-        slide = Slide(str(src), notes=Path("notes/missing.md"))
+        slide = Slide(str(src), notes="notes/missing.md")
         issues = verify_slide(slide, tmp_path, None, "")
         assert any("notes file not found" in msg for _, msg in issues)
 

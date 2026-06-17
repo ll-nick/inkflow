@@ -8,7 +8,7 @@ Set a default transition for the whole deck on the `Deck` object,
 and override per slide as needed:
 
 ```python
-from inkflow import Deck, Slide, transitions
+from inkflow import Deck, Direction, Slide, transitions
 
 def main() -> Deck:
     return Deck(
@@ -59,27 +59,27 @@ Both slides move together — the outgoing slide exits in one direction while th
 enters from the opposite edge.
 
 ```python
-transitions.Push()                    # default: left, 0.5s
-transitions.Push(direction="right")   # slides move right
-transitions.Push(direction="up", duration=0.4)
+transitions.Push()                                    # default: left, 0.5s
+transitions.Push(direction=Direction.RIGHT)           # slides move right
+transitions.Push(direction=Direction.UP, duration=0.4)
 ```
 
 | Parameter | Default | Description |
 |---|---|---|
-| `direction` | `"left"` | Direction the slides travel: `"left"`, `"right"`, `"up"`, `"down"` |
+| `direction` | `Direction.LEFT` | Direction the slides travel |
 
-## Slide
+## Cover
 
 The incoming slide covers the outgoing one, which stays fixed in place.
 
 ```python
-transitions.Slide()                    # default: left, 0.5s
-transitions.Slide(direction="up")
+transitions.Cover()                              # default: left, 0.5s
+transitions.Cover(direction=Direction.UP)
 ```
 
 | Parameter | Default | Description |
 |---|---|---|
-| `direction` | `"left"` | Direction the incoming slide enters from |
+| `direction` | `Direction.LEFT` | Direction the incoming slide enters from |
 
 ## Zoom
 
@@ -110,14 +110,14 @@ transitions.Fade(color="#ffffff", duration=0.8)
 The incoming slide is progressively revealed from one edge, sliding over the outgoing slide.
 
 ```python
-transitions.Wipe()                    # default: left-to-right reveal, 0.5s
-transitions.Wipe(direction="right")   # reveal from right
-transitions.Wipe(direction="up", duration=0.7)
+transitions.Wipe()                                    # default: left-to-right reveal, 0.5s
+transitions.Wipe(direction=Direction.RIGHT)           # reveal from right
+transitions.Wipe(direction=Direction.UP, duration=0.7)
 ```
 
 | Parameter | Default | Description |
 |---|---|---|
-| `direction` | `"left"` | Edge the incoming slide enters from |
+| `direction` | `Direction.LEFT` | Edge the incoming slide enters from |
 
 ## Morph
 

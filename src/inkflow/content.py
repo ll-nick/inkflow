@@ -333,7 +333,7 @@ def _replace_with_media(
     geom = _zone_geometry(el)
     rect = geom.rect
 
-    base_x, base_y = _ALIGN_MAP.get(item.align, (50, 50))
+    base_x, base_y = _ALIGN_MAP[item.align]
     x_pct = item.x / float(rect.width) * 100
     y_pct = item.y / float(rect.height) * 100
     base_style = (
