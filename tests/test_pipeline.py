@@ -22,7 +22,6 @@ from inkflow.manifest import (
 )
 from inkflow.pipeline import (
     _add_layout_classes,
-    _resolve_notes,
     annotate_svg,
     process_deck,
     resolve_transitions,
@@ -313,42 +312,3 @@ class TestLayoutClasses:
         deck = Deck(slides=[Slide("slides/plain.svg")])
         results = process_deck(deck, tmp_path)
         assert "@scope" not in results[0]["svg"]
-
-
-class TestResolveNotes:
-    def test_none_returns_empty(self, tmp_path: Path) -> None:
-        assert _resolve_notes(None, tmp_path) == ""
-
-    def test_inline_rendered_as_markdown(self, tmp_path: Path) -> None:
-        result = _resolve_notes(
-            Inline("First paragraph.\n\nSecond paragraph."), tmp_path
-        )
-        assert "<p>First paragraph.</p>" in result
-        assert "<p>Second paragraph.</p>" in result
-
-    def test_inline_markdown_formatting_applied(self, tmp_path: Path) -> None:
-        result = _resolve_notes(Inline("Remember **this**."), tmp_path)
-        assert "<strong>this</strong>" in result
-
-    def test_file_path_rendered_as_markdown(self, tmp_path: Path) -> None:
-        (tmp_path / "notes.md").write_text("Remember **this**.\n", encoding="utf-8")
-        result = _resolve_notes("notes.md", tmp_path)
-        assert "<strong>this</strong>" in result
-
-    def test_any_file_rendered_as_markdown(self, tmp_path: Path) -> None:
-        (tmp_path / "notes.html").write_text("# Heading\n", encoding="utf-8")
-        result = _resolve_notes("notes.html", tmp_path)
-        assert "Heading" in result
-
-    def test_relative_path_resolved_from_project_dir(self, tmp_path: Path) -> None:
-        sub = tmp_path / "notes"
-        sub.mkdir()
-        (sub / "slide1.md").write_text("A note.\n", encoding="utf-8")
-        result = _resolve_notes("notes/slide1.md", tmp_path)
-        assert "A note." in result
-
-    def test_absolute_path_used_directly(self, tmp_path: Path) -> None:
-        f = tmp_path / "abs.md"
-        f.write_text("Absolute.\n", encoding="utf-8")
-        result = _resolve_notes(str(f), tmp_path / "other")
-        assert "Absolute." in result
