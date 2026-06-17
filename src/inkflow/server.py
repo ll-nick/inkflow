@@ -17,6 +17,7 @@ import webbrowser
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TypedDict, cast
+from urllib.parse import unquote
 
 from rich.console import Console
 from rich.live import Live
@@ -224,6 +225,22 @@ _MIME_TYPES = {
 _SERVED_SUFFIXES = set(_MIME_TYPES)
 
 
+def _resolve_asset(project_dir: Path, request_path: str) -> Path | None:
+    decoded = unquote(request_path)
+    candidate = project_dir / decoded.lstrip("/")
+    # Collapse .. without following symlinks — blocks traversal while allowing
+    # symlinks inside project_dir that point outside it.
+    normalized = Path(os.path.normpath(candidate))
+    if not normalized.is_relative_to(project_dir):
+        return None
+    if normalized.suffix.lower() not in _SERVED_SUFFIXES:
+        return None
+    resolved = candidate.resolve()
+    if not resolved.is_file():
+        return None
+    return resolved
+
+
 def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamHandler:
     async def handler(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -235,10 +252,9 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
             request_path = parts[1] if len(parts) >= 2 else "/"
 
             if project_dir is not None and request_path != "/":
-                asset_path = project_dir / request_path.lstrip("/")
-                suffix = asset_path.suffix.lower()
-                if asset_path.is_file() and suffix in _SERVED_SUFFIXES:
-                    mime = _MIME_TYPES[suffix]
+                asset_path = _resolve_asset(project_dir, request_path)
+                if asset_path is not None:
+                    mime = _MIME_TYPES[asset_path.suffix.lower()]
                     body = asset_path.read_bytes()
                     header = (
                         b"HTTP/1.1 200 OK\r\n"
@@ -267,7 +283,22 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 
             await writer.drain()
         except Exception:
-            pass
+            # TODO: add logging on top of server response errors
+            body = traceback.format_exc().encode()
+            try:
+                header = (
+                    b"HTTP/1.1 500 Internal Server Error\r\n"
+                    + b"Content-Type: text/plain; charset=utf-8\r\n"
+                    + b"Cache-Control: no-store\r\n"
+                    + b"Connection: close\r\n"
+                    + b"Content-Length: "
+                    + str(len(body)).encode()
+                    + b"\r\n\r\n"
+                )
+                writer.write(header + body)
+                await writer.drain()
+            except Exception:
+                pass
         finally:
             writer.close()
             with contextlib.suppress(Exception):
@@ -281,9 +312,8 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 
 async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
     async for _changes in awatch(str(deck_path.parent)):
-        if not lock.locked():  # skip if a rebuild is already in progress
-            async with lock:
-                await rebuild(deck_path, ui)
+        async with lock:
+            await rebuild(deck_path, ui)
 
 
 # ── Keyboard handler ──────────────────────────────────────────────────────────

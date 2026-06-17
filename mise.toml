@@ -37,5 +37,14 @@ run = ["uv run inkflow build demo/deck.py --output docs/demo/presentation", "uv 
 [tasks.test-js]
 run = "npx vitest run"
 
+[tasks.fix-py]
+run = ["uv run ruff check --fix", "uv run ruff format"]
+
+[tasks.fix-js]
+run = "npx biome check --write ."
+
+[tasks.fix]
+run = ["uv run ruff check --fix", "uv run ruff format", "npx biome check --write ."]
+
 [tasks.check]
 depends = ["lint-py", "fmt-py", "typecheck-py", "test", "lint-js", "typecheck-js", "test-js"]
