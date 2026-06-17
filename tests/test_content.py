@@ -11,7 +11,7 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.manifest import Align, Media, TextBox, VAlign
+from inkflow.manifest import Align, Media, MediaAlign, MediaFit, TextBox, VAlign
 
 _NUMBER_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg">
@@ -104,7 +104,7 @@ class TestSubstituteContent:
 
     def test_media_cover_fit(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, {"zone-image": Media("photo.png", fit="cover")}
+            _ZONE_SVG, {"zone-image": Media("photo.png", fit=MediaFit.COVER)}
         )
         assert "object-fit:cover" in result
 
@@ -114,7 +114,7 @@ class TestSubstituteContent:
 
     def test_media_align_top(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, {"zone-image": Media("photo.png", align="top")}
+            _ZONE_SVG, {"zone-image": Media("photo.png", align=MediaAlign.TOP)}
         )
         assert "object-position:50% 0%" in result
 

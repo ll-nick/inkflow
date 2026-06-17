@@ -9,7 +9,7 @@ from pathlib import Path
 
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_scripts, load_styles
-from inkflow.manifest import Deck, Media
+from inkflow.manifest import ColorMode, Deck, Media
 from inkflow.pipeline import process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
 
@@ -36,7 +36,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> list[str]:
         "transitions": transitions,
         "styles_css": styles_css,
         "scripts_js": scripts_js,
-        "dark_mode": deck.dark_mode,
+        "mode": deck.mode,
         "ws_clients": set(),
         "error": None,
         "position": {"slideIndex": 0, "step": 0},
@@ -110,7 +110,7 @@ def build_pdf(
 
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")
-    data_theme = "" if deck.dark_mode else "light"
+    data_theme = "" if deck.mode == ColorMode.DARK else "light"
     slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
     html = (
         template.replace("/* __STYLES__ */", styles_css)

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from inkflow.manifest import Animation
+from inkflow.manifest import Animation, Direction
 
 
 @dataclass
@@ -40,7 +40,7 @@ class Bounce(Animation):
 class SlideIn(Animation):
     """Element slides in from an edge, fading as it arrives."""
 
-    direction: str = "left"  # left | right | up | down
+    direction: Direction = Direction.LEFT
     distance: float | None = None  # SVG user units
 
 
@@ -48,7 +48,7 @@ class SlideIn(Animation):
 class SlideOut(Animation):
     """Element slides out toward an edge, fading as it leaves."""
 
-    direction: str = "left"  # left | right | up | down
+    direction: Direction = Direction.LEFT
     distance: float | None = None  # SVG user units
 
 

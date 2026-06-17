@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import cast
 
 from inkflow.loaders import load_styles
-from inkflow.manifest import Deck
+from inkflow.manifest import ColorMode, Deck
 from inkflow.server import (
     State,
     _resolve_asset,  # pyright: ignore[reportPrivateUsage]
@@ -19,7 +19,7 @@ _EMPTY_STATE: State = {
     "error": None,
     "styles_css": "",
     "scripts_js": "",
-    "dark_mode": True,
+    "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
 }
 
@@ -72,13 +72,13 @@ def test_build_html_styles_css_embedded() -> None:
 
 
 def test_build_html_dark_mode() -> None:
-    dark = build_html(_state(dark_mode=True), ws_port=7778).decode()
-    light = build_html(_state(dark_mode=False), ws_port=7778).decode()
+    dark = build_html(_state(mode=ColorMode.DARK), ws_port=7778).decode()
+    light = build_html(_state(mode=ColorMode.LIGHT), ws_port=7778).decode()
     assert dark != light
 
 
 def test_build_html_light_mode_data_theme() -> None:
-    html = build_html(_state(dark_mode=False), ws_port=7778).decode()
+    html = build_html(_state(mode=ColorMode.LIGHT), ws_port=7778).decode()
     assert "light" in html
 
 
