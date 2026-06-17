@@ -1,4 +1,13 @@
 {
+    "permissions": {
+        "allow": [
+            "Bash(mise run *)"
+        ],
+        "ask": [
+            "Edit(mise.toml)",
+            "Write(mise.toml)"
+        ]
+    },
     "hooks": {
         "PostToolUse": [
             {
