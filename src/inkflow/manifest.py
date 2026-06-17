@@ -15,6 +15,13 @@ class _KebabStrEnum(StrEnum):
 # ── Animation ────────────────────────────────────────────────────────────────
 
 
+class Direction(_KebabStrEnum):
+    LEFT = auto()
+    RIGHT = auto()
+    UP = auto()
+    DOWN = auto()
+
+
 @dataclass
 class Animation:
     """Data-only base for every animation type.
@@ -22,7 +29,8 @@ class Animation:
     Concrete types live in ``inkflow.animations`` and subclass this, adding only
     their own fields. The shared timing params are ``kw_only`` so they stay out of
     the positional argument order, leaving the natural positional slots to each
-    subclass's own fields (e.g. ``SlideIn("#box", "right")`` sets ``direction``).
+    subclass's own fields (e.g. ``SlideIn("#box", Direction.RIGHT)`` sets
+    ``direction``).
 
     A value of ``None`` means "emit no CSS custom property" so the stylesheet's
     ``var(--anim-…, default)`` fallback wins. The CSS is the single source of
@@ -54,17 +62,42 @@ class Transition:
 # ── Content types ─────────────────────────────────────────────────────────────
 
 
-class Align(StrEnum):
-    LEFT = "left"
-    CENTER = "center"
-    RIGHT = "right"
-    JUSTIFY = "justify"
+class Align(_KebabStrEnum):
+    LEFT = auto()
+    CENTER = auto()
+    RIGHT = auto()
+    JUSTIFY = auto()
 
 
-class VAlign(StrEnum):
-    TOP = "top"
-    CENTER = "center"
-    BOTTOM = "bottom"
+class VAlign(_KebabStrEnum):
+    TOP = auto()
+    CENTER = auto()
+    BOTTOM = auto()
+
+
+class MediaFit(_KebabStrEnum):
+    CONTAIN = auto()
+    COVER = auto()
+    FILL = auto()
+    NONE = auto()
+    SCALE_DOWN = auto()
+
+
+class MediaAlign(_KebabStrEnum):
+    CENTER = auto()
+    TOP = auto()
+    BOTTOM = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    TOP_LEFT = auto()
+    TOP_RIGHT = auto()
+    BOTTOM_LEFT = auto()
+    BOTTOM_RIGHT = auto()
+
+
+class ColorMode(_KebabStrEnum):
+    DARK = auto()
+    LIGHT = auto()
 
 
 @dataclass
@@ -79,8 +112,8 @@ class TextBox:
 class Media:
     src: str
     alt_src: str | None = None
-    fit: str = "contain"
-    align: str = "center"
+    fit: MediaFit = MediaFit.CONTAIN
+    align: MediaAlign = MediaAlign.CENTER
     x: float = 0.0
     y: float = 0.0
 
