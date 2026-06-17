@@ -227,14 +227,18 @@ _SERVED_SUFFIXES = set(_MIME_TYPES)
 
 def _resolve_asset(project_dir: Path, request_path: str) -> Path | None:
     decoded = unquote(request_path)
-    candidate = (project_dir / decoded.lstrip("/")).resolve()
-    if not candidate.is_relative_to(project_dir.resolve()):
+    candidate = project_dir / decoded.lstrip("/")
+    # Collapse .. without following symlinks — blocks traversal while allowing
+    # symlinks inside project_dir that point outside it.
+    normalized = Path(os.path.normpath(candidate))
+    if not normalized.is_relative_to(project_dir):
         return None
-    if candidate.suffix.lower() not in _SERVED_SUFFIXES:
+    if normalized.suffix.lower() not in _SERVED_SUFFIXES:
         return None
-    if not candidate.is_file():
+    resolved = candidate.resolve()
+    if not resolved.is_file():
         return None
-    return candidate
+    return resolved
 
 
 def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamHandler:

@@ -6,7 +6,11 @@ from typing import cast
 
 from inkflow.loaders import load_styles
 from inkflow.manifest import Deck
-from inkflow.server import State, build_html
+from inkflow.server import (
+    State,
+    _resolve_asset,  # pyright: ignore[reportPrivateUsage]
+    build_html,
+)
 
 _EMPTY_STATE: State = {
     "slides": [],
@@ -175,3 +179,16 @@ def test_resolve_asset_valid(tmp_path: Path) -> None:
     img.write_bytes(b"\x89PNG")
     result = _resolve_asset(tmp_path, "/slide.png")
     assert result == img
+
+
+def test_resolve_asset_symlink_outside_project(tmp_path: Path) -> None:
+    # A symlink inside project_dir that points outside it should be served.
+    outside = tmp_path / "shared"
+    outside.mkdir()
+    real_img = outside / "photo.png"
+    real_img.write_bytes(b"\x89PNG")
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "photo.png").symlink_to(real_img)
+    result = _resolve_asset(project, "/photo.png")
+    assert result == real_img.resolve()
