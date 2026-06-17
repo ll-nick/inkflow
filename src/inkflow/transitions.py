@@ -46,7 +46,7 @@ class Push(Transition):
 
 
 @dataclass
-class Slide(Transition):
+class Cover(Transition):
     """Incoming slide covers the outgoing one, which stays in place."""
 
     direction: Direction = Direction.LEFT
