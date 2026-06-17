@@ -308,9 +308,8 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 
 async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
     async for _changes in awatch(str(deck_path.parent)):
-        if not lock.locked():  # skip if a rebuild is already in progress
-            async with lock:
-                await rebuild(deck_path, ui)
+        async with lock:
+            await rebuild(deck_path, ui)
 
 
 # ── Keyboard handler ──────────────────────────────────────────────────────────
