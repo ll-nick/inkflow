@@ -148,3 +148,30 @@ def test_load_styles_ordering(tmp_path: Path) -> None:
     theme_pos = result.index("/* theme */")
     project_pos = result.index("/* project */")
     assert theme_pos < project_pos
+
+
+# ── _resolve_asset ────────────────────────────────────────────────────────────
+
+
+def test_resolve_asset_path_traversal(tmp_path: Path) -> None:
+    assert _resolve_asset(tmp_path, "/../etc/passwd.png") is None
+
+
+def test_resolve_asset_url_encoded_traversal(tmp_path: Path) -> None:
+    assert _resolve_asset(tmp_path, "/%2e%2e/etc/passwd.png") is None
+
+
+def test_resolve_asset_disallowed_suffix(tmp_path: Path) -> None:
+    (tmp_path / "secret.txt").write_bytes(b"secret")
+    assert _resolve_asset(tmp_path, "/secret.txt") is None
+
+
+def test_resolve_asset_missing_file(tmp_path: Path) -> None:
+    assert _resolve_asset(tmp_path, "/nonexistent.png") is None
+
+
+def test_resolve_asset_valid(tmp_path: Path) -> None:
+    img = tmp_path / "slide.png"
+    img.write_bytes(b"\x89PNG")
+    result = _resolve_asset(tmp_path, "/slide.png")
+    assert result == img

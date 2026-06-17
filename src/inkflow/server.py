@@ -17,6 +17,7 @@ import webbrowser
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TypedDict, cast
+from urllib.parse import unquote
 
 from rich.console import Console
 from rich.live import Live
@@ -224,6 +225,18 @@ _MIME_TYPES = {
 _SERVED_SUFFIXES = set(_MIME_TYPES)
 
 
+def _resolve_asset(project_dir: Path, request_path: str) -> Path | None:
+    decoded = unquote(request_path)
+    candidate = (project_dir / decoded.lstrip("/")).resolve()
+    if not candidate.is_relative_to(project_dir.resolve()):
+        return None
+    if candidate.suffix.lower() not in _SERVED_SUFFIXES:
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate
+
+
 def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamHandler:
     async def handler(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -235,10 +248,9 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
             request_path = parts[1] if len(parts) >= 2 else "/"
 
             if project_dir is not None and request_path != "/":
-                asset_path = project_dir / request_path.lstrip("/")
-                suffix = asset_path.suffix.lower()
-                if asset_path.is_file() and suffix in _SERVED_SUFFIXES:
-                    mime = _MIME_TYPES[suffix]
+                asset_path = _resolve_asset(project_dir, request_path)
+                if asset_path is not None:
+                    mime = _MIME_TYPES[asset_path.suffix.lower()]
                     body = asset_path.read_bytes()
                     header = (
                         b"HTTP/1.1 200 OK\r\n"
