@@ -144,29 +144,12 @@ class Slide:
         return max((a.step for a in self.animations), default=0)
 
 
+@dataclass
 class Deck:
-    slides: list[Slide]
-    transition: Transition | None
-    theme: str | None
-    dark_mode: bool
-    style: str
-    font_size: int
-    embed_fonts: bool
-
-    def __init__(
-        self,
-        slides: list[Slide] | None = None,
-        transition: Transition | None = None,
-        theme: str | None = None,
-        dark_mode: bool = True,
-        style: str = "",
-        font_size: int = 36,
-        embed_fonts: bool = True,
-    ) -> None:
-        self.slides = list(slides) if slides is not None else []
-        self.transition = transition
-        self.theme = theme
-        self.dark_mode = dark_mode
-        self.style = style
-        self.font_size = font_size
-        self.embed_fonts = embed_fonts
+    slides: list[Slide] = field(default_factory=list)
+    transition: Transition | None = None
+    theme: str | None = None
+    mode: ColorMode = ColorMode.DARK
+    style: Content = None  # CSS applied to every slide; Inline("...") or path
+    font_size: int = 36
+    embed_fonts: bool = True
