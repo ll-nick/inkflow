@@ -28,7 +28,7 @@ from inkflow.layout import (
     resolve_parent_path,
     strip_parent,
 )
-from inkflow.manifest import Deck
+from inkflow.manifest import ColorMode, Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.server import serve as _serve
@@ -314,7 +314,7 @@ _mode_option = click.option(
     "color_mode",
     type=click.Choice(["dark", "light"]),
     default=None,
-    help="Color mode for preview style (default: deck dark_mode; dark with --no-deck).",
+    help="Color mode for preview style (default: deck mode; dark with --no-deck).",
 )
 
 
@@ -455,7 +455,9 @@ def _resolve_dark_mode(
 ) -> bool:
     if no_deck or deck_obj is None:
         return color_mode != "light"
-    return deck_obj.dark_mode if color_mode is None else color_mode == "dark"
+    return (
+        deck_obj.mode == ColorMode.DARK if color_mode is None else color_mode == "dark"
+    )
 
 
 @main.command("sync")
@@ -695,7 +697,7 @@ def verify_cmd(
 
     css = loaders.load_styles(deck_obj, project_dir)
     preview_css = colors.build_preview_style(
-        colors.extract_tokens(css, deck_obj.dark_mode)
+        colors.extract_tokens(css, deck_obj.mode == ColorMode.DARK)
     )
 
     has_error = has_warn = False
