@@ -3,8 +3,13 @@ from __future__ import annotations
 from inkflow.animations import Bounce, FadeIn, FadeOut
 from inkflow.manifest import (
     Align,
+    ColorMode,
     Deck,
+    Direction,
+    Inline,
     Media,
+    MediaAlign,
+    MediaFit,
     Slide,
     TextBox,
 )
@@ -39,7 +44,15 @@ def test_deck_defaults() -> None:
     deck = Deck()
     assert deck.slides == []
     assert deck.theme is None
-    assert deck.dark_mode is True
+    assert deck.mode == ColorMode.DARK
+
+
+def test_deck_mode_default() -> None:
+    assert Deck().mode == ColorMode.DARK
+
+
+def test_deck_is_dataclass() -> None:
+    assert "Deck(" in repr(Deck())
 
 
 def test_deck_custom_theme() -> None:
@@ -102,16 +115,16 @@ def test_textbox_defaults() -> None:
 def test_media_fields_defaults() -> None:
     m = Media("photo.png")
     assert m.src == "photo.png"
-    assert m.fit == "contain"
-    assert m.align == "center"
+    assert m.fit == MediaFit.CONTAIN
+    assert m.align == MediaAlign.CENTER
     assert m.x == 0.0
     assert m.y == 0.0
 
 
 def test_media_fields_custom() -> None:
-    m = Media("hero.jpg", fit="cover", align="top", x=10.0, y=-80.0)
-    assert m.fit == "cover"
-    assert m.align == "top"
+    m = Media("hero.jpg", fit=MediaFit.COVER, align=MediaAlign.TOP, x=10.0, y=-80.0)
+    assert m.fit == MediaFit.COVER
+    assert m.align == MediaAlign.TOP
     assert m.x == 10.0
     assert m.y == -80.0
 
@@ -120,20 +133,24 @@ def test_slide_zones_defaults_empty() -> None:
     assert Slide(src="x.svg").zones == {}
 
 
-def test_slide_style_defaults_empty() -> None:
-    assert Slide(src="x.svg").style == ""
+def test_slide_extra_style_default_none() -> None:
+    assert Slide(src="x.svg").extra_style is None
 
 
 def test_slide_md_defaults_none() -> None:
     assert Slide(src="x.svg").md is None
 
 
-def test_deck_style_defaults_empty() -> None:
-    assert Deck().style == ""
+def test_deck_style_defaults_none() -> None:
+    assert Deck().style is None
 
 
 def test_deck_style_stored() -> None:
-    assert Deck(style="body { color: red; }").style == "body { color: red; }"
+    assert Deck(style="styles.css").style == "styles.css"
+
+
+def test_deck_style_inline() -> None:
+    assert Deck(style=Inline("body { color: red; }")).style == "body { color: red; }"
 
 
 def test_deck_font_size_defaults() -> None:
@@ -150,7 +167,7 @@ def test_slide_md_field() -> None:
     assert s.md == "slides/05.md"
     assert s.animations == []
     assert s.transition is None
-    assert s.style == ""
+    assert s.extra_style is None
 
 
 def test_slide_animations_stored() -> None:
@@ -163,3 +180,44 @@ def test_slide_zones_stored() -> None:
     s = Slide("layout.svg", zones={"image": Media("photo.png"), "label": "hello"})
     assert isinstance(s.zones["image"], Media)
     assert s.zones["label"] == "hello"
+
+
+# ── New type tests ────────────────────────────────────────────────────────────
+
+
+def test_inline_is_str() -> None:
+    i = Inline("hello")
+    assert isinstance(i, str)
+    assert i == "hello"
+
+
+def test_direction_values() -> None:
+    assert Direction.LEFT == "left"
+    assert Direction.RIGHT == "right"
+    assert Direction.UP == "up"
+    assert Direction.DOWN == "down"
+
+
+def test_mediafit_values() -> None:
+    assert MediaFit.CONTAIN == "contain"
+    assert MediaFit.COVER == "cover"
+    assert MediaFit.FILL == "fill"
+    assert MediaFit.NONE == "none"
+    assert MediaFit.SCALE_DOWN == "scale-down"
+
+
+def test_mediaalign_values() -> None:
+    assert MediaAlign.CENTER == "center"
+    assert MediaAlign.TOP == "top"
+    assert MediaAlign.BOTTOM == "bottom"
+    assert MediaAlign.LEFT == "left"
+    assert MediaAlign.RIGHT == "right"
+    assert MediaAlign.TOP_LEFT == "top-left"
+    assert MediaAlign.TOP_RIGHT == "top-right"
+    assert MediaAlign.BOTTOM_LEFT == "bottom-left"
+    assert MediaAlign.BOTTOM_RIGHT == "bottom-right"
+
+
+def test_colormode_values() -> None:
+    assert ColorMode.DARK == "dark"
+    assert ColorMode.LIGHT == "light"
