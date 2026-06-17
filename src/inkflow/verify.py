@@ -6,9 +6,10 @@ from lxml import etree
 
 from inkflow.clean import clean_inkscape_svg
 from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
-from inkflow.manifest import Media, Slide
+from inkflow.loaders import load_md, resolve_content_src
+from inkflow.manifest import Inline, Media, Slide
 from inkflow.markdown import build_slide_content, parse_markdown_zones
-from inkflow.pipeline import resolve_content_src, resolve_slide_src
+from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import compose_with_ancestors
 
 Issue = tuple[str, str]  # (level, message) — level is "error" or "warn"
@@ -33,14 +34,14 @@ def composed_svg_ids(
 
 def _check_files(slide: Slide, project_dir: Path) -> list[Issue]:
     issues: list[Issue] = []
-    if slide.md is not None:
+    if slide.md is not None and not isinstance(slide.md, Inline):
         md_path = resolve_content_src(slide.md, project_dir)
         if not md_path.exists():
             issues.append(("error", f"markdown not found: {slide.md}"))
-    if isinstance(slide.notes, Path):
-        notes_path = (
-            slide.notes if slide.notes.is_absolute() else project_dir / slide.notes
-        )
+    if slide.notes is not None and not isinstance(slide.notes, Inline):
+        notes_path = Path(slide.notes)
+        if not notes_path.is_absolute():
+            notes_path = project_dir / notes_path
         if not notes_path.exists():
             issues.append(("error", f"notes file not found: {slide.notes}"))
     return issues
@@ -70,9 +71,12 @@ def _check_zones(slide: Slide, project_dir: Path, zone_ids: set[str]) -> list[Is
         if zone_full not in zone_ids:
             issues.append(("error", f"zone #{zone_full} not found in layout"))
     if slide.md is not None:
-        md_path = resolve_content_src(slide.md, project_dir)
-        if md_path.exists():
-            parsed = parse_markdown_zones(md_path)
+        try:
+            md_text = load_md(slide.md, project_dir)
+        except (FileNotFoundError, OSError):
+            md_text = None
+        if md_text is not None:
+            parsed = parse_markdown_zones(md_text)
             for zone_name in parsed.zones:
                 if zone_name == "notes":
                     continue
@@ -110,12 +114,15 @@ def _check_default_zone(
 ) -> list[Issue]:
     if slide.md is None:
         return []
-    content_path = resolve_content_src(slide.md, project_dir)
-    if not content_path.exists():
+    try:
+        md_text = load_md(slide.md, project_dir)
+    except (FileNotFoundError, OSError):
+        return []
+    if md_text is None:
         return []
     try:
         build_slide_content(
-            content_path,
+            md_text,
             slide.zones,
             available_zones=zone_ids,
             default_zone=default_zone,

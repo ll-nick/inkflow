@@ -4,7 +4,6 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TypeAlias, TypedDict, cast
 
 from latex2mathml.converter import convert as _latex_to_mathml
@@ -312,8 +311,8 @@ def _auto_extract(text: str) -> _ZoneChunks:
     return zones
 
 
-def parse_markdown_zones(md_path: Path) -> ParsedMarkdown:
-    text = md_path.read_text(encoding="utf-8")
+def parse_markdown_zones(source: str) -> ParsedMarkdown:
+    text = source
 
     markers = list(_ZONE_PATTERN.finditer(text))
     if not markers:
@@ -491,7 +490,7 @@ def _reroute_zones(
 
 
 def build_slide_content(
-    content_path: Path | None,
+    content: str | None,
     extra: dict[str, ZoneContent],
     available_zones: set[str] | None = None,
     default_zone: str = "",
@@ -499,8 +498,8 @@ def build_slide_content(
     zones: _ZoneChunks = {}
     zone_params: _ZoneParams = {}
     auto_zones: frozenset[str] = frozenset()
-    if content_path is not None:
-        parsed = parse_markdown_zones(content_path)
+    if content is not None:
+        parsed = parse_markdown_zones(content)
         zones = parsed.zones
         zone_params = parsed.params
         auto_zones = parsed.auto_zones
@@ -513,13 +512,13 @@ def build_slide_content(
     if available_zones is not None:
         zones = _reroute_zones(zones, auto_zones, available_zones, default_zone)
 
-    content: dict[str, TextBox | Media] = {}
+    result: dict[str, TextBox | Media] = {}
     base_step = 0
 
     for zone_name, chunks in zones.items():
         html, base_step = chunks_to_html(chunks, base_step)
         p = zone_params.get(zone_name, {})
-        content[f"zone-{zone_name}"] = TextBox(
+        result[f"zone-{zone_name}"] = TextBox(
             text=html,
             align=Align(p["align"]) if "align" in p else None,
             valign=VAlign(p["valign"]) if "valign" in p else None,
@@ -528,8 +527,8 @@ def build_slide_content(
 
     for key, val in extra.items():
         if isinstance(val, str):
-            content[f"zone-{key}"] = TextBox(text=markdown_to_html(val))
+            result[f"zone-{key}"] = TextBox(text=markdown_to_html(val))
         else:
-            content[f"zone-{key}"] = val
+            result[f"zone-{key}"] = val
 
-    return SlideContent(content=content, notes=notes_html)
+    return SlideContent(content=result, notes=notes_html)
