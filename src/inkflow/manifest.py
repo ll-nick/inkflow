@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from pathlib import Path
+from typing import TypeAlias
+
 # ── Shared enum base ──────────────────────────────────────────────────────────
 
 
@@ -12,6 +13,29 @@ class _KebabStrEnum(StrEnum):
         name: str, start: int, count: int, last_values: list[str]
     ) -> str:
         return name.lower().replace("_", "-")
+
+
+# ── Content marker ────────────────────────────────────────────────────────────
+
+
+class Inline(str):
+    """Marks a string as literal content rather than a file path.
+
+    Fields typed as ``Content`` interpret a bare ``str`` as a file path to read.
+    Wrapping the value in ``Inline(...)`` signals that the string itself is the
+    content — rendered as Markdown for ``notes``/``md``, or used as CSS for
+    ``style``/``extra_style``.
+
+    .. code-block:: python
+
+        Slide("content", notes=Inline("Talk through the diagram."))
+        Slide("content", md=Inline("# Quick slide\\n\\nNo .md file needed."))
+        Deck(style=Inline("rect { fill: red; }"))
+    """
+
+
+Content: TypeAlias = "str | Inline | None"
+
 # ── Animation ────────────────────────────────────────────────────────────────
 
 
@@ -127,15 +151,15 @@ ZoneContent = str | Media | TextBox
 @dataclass
 class Slide:
     src: str  # SVG path or bare layout name
-    md: str | None = None  # .md file path
+    md: Content = None  # .md file path, or Inline("...") for inline markdown
     zones: dict[str, ZoneContent] = field(
         default_factory=dict
     )  # per-zone overrides; str = inline markdown
     animations: list[Animation] = field(default_factory=list)
     transition: Transition | None = None
-    style: str = ""
+    extra_style: Content = None  # CSS string or path; appended to Deck.style
     title: str | None = None
-    notes: str | Path | None = None
+    notes: Content = None  # speaker notes: Inline("...") or path to .md file
     visible: bool = True
     font_size: int | None = None
 
