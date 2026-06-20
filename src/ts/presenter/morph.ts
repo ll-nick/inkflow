@@ -8,8 +8,7 @@ import {
     readInterpolatedAttributes,
 } from "../shared/morph-math";
 import type { TransitionData } from "../shared/types";
-
-const stage = document.getElementById("stage")!;
+import { ProgressDriver } from "./progress-driver";
 
 // Only leaf graphics are morphed; a <g> is never rendered as a thing, it just
 // contributes a transform to its descendants. Groups exist for editing/matching,
@@ -79,7 +78,7 @@ type Morph = BoxMorph | TextMorph | LineMorph;
 type AnimationTask =
     | { type: "morph"; morph: Morph }
     | { type: "fadeIn"; element: SVGGraphicsElement; targetOpacity: number }
-    | { type: "exit"; element: SVGGraphicsElement };
+    | { type: "exit"; element: SVGGraphicsElement; startOpacity: number };
 
 type MorphKind = Morph["kind"];
 
@@ -108,15 +107,16 @@ interface ChildSnapshot {
     element: Element;
     html: string;
     ids: Set<string>;
+    index: number; // original sibling position, used to keep exit ghosts in z-order
 }
 
 // ── geometry capture ─────────────────────────────────────────────────────────
 
-// All poses are measured in screen-pixel space via getScreenCTM(). Unlike
-// getCTM() — whose reference frame ("nearest viewport") differs between a child
-// (the root svg's viewBox space) and the root svg itself (its container) — every
-// element's getScreenCTM() shares the same screen origin, so child and parent
-// matrices compose: child.getScreenCTM() === parent.getScreenCTM() · ownTransform.
+// Poses are measured via getScreenCTM() rather than getCTM(). getCTM()'s
+// reference frame depends on where the nearest SVG viewport is in the tree, so a
+// child's getCTM() and the root's are not in the same space and cannot be
+// directly compared. getScreenCTM() always uses the screen origin, so every
+// element's pose is directly comparable regardless of nesting depth.
 function captureAbsolutePose(element: SVGGraphicsElement): AbsolutePose {
     const boundingBox = element.getBBox();
     const currentMatrix = element.getScreenCTM()!;
@@ -201,6 +201,8 @@ function leafKind(element: Element): MorphKind {
     return "box";
 }
 
+// The compensation transform is applied in the parent's local coordinate space so
+// it composes correctly with the parent's own transform.
 function parentScreenCTM(element: Element): DOMMatrix {
     const parent = element.parentElement;
     return parent instanceof SVGGraphicsElement
@@ -266,10 +268,11 @@ function collectIds(root: Element): Set<string> {
 }
 
 function snapshotTopLevelChildren(svg: Element): ChildSnapshot[] {
-    return Array.from(svg.children).map((child) => ({
+    return Array.from(svg.children).map((child, index) => ({
         element: child.cloneNode(true) as Element,
         html: child.outerHTML,
         ids: collectIds(child),
+        index,
     }));
 }
 
@@ -417,6 +420,9 @@ function buildCrossfadeTasks(
 ): AnimationTask[] {
     const oldHtml = new Set(oldChildren.map((child) => child.html));
     const newHtml = new Set(newChildren.map((child) => child.html));
+    // The new slide's own children, captured before any exit ghost is spliced in,
+    // so each ghost can be placed at its original sibling index and keep its depth.
+    const newChildElements = Array.from(svgRoot.children);
     const tasks: AnimationTask[] = [];
 
     for (const child of oldChildren) {
@@ -424,8 +430,21 @@ function buildCrossfadeTasks(
         if (newHtml.has(child.html)) continue;
         const clone = child.element;
         if (!(clone instanceof SVGGraphicsElement)) continue;
-        svgRoot.appendChild(clone);
-        tasks.push({ type: "exit", element: clone });
+        // Insert at the element's original depth rather than on top, so an exiting
+        // background fades out behind the new content instead of covering it (which
+        // would make the persisting content flash away and back).
+        svgRoot.insertBefore(clone, newChildElements[child.index] ?? null);
+        // Fade from the element's current opacity, not a hard 1: when a morph is
+        // reversed mid-flight the snapshotted element is already partly faded, and
+        // snapping it back to full opacity would flash.
+        const startOpacity = parseFloat(
+            clone.style.opacity || clone.getAttribute("opacity") || "1",
+        );
+        tasks.push({
+            type: "exit",
+            element: clone,
+            startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1,
+        });
     }
     for (const child of newChildren) {
         if (containsMatchedId(child.ids, matchedIds)) continue;
@@ -454,10 +473,11 @@ function buildTasks(
     // Snapshot the new top-level children before the morph loop mutates any
     // transforms, so identical-content detection compares pristine markup.
     const newChildren: ChildSnapshot[] = Array.from(svgRoot.children).map(
-        (child) => ({
+        (child, index) => ({
             element: child,
             html: child.outerHTML,
             ids: collectIds(child),
+            index,
         }),
     );
 
@@ -588,7 +608,9 @@ function tickTasks(tasks: AnimationTask[], rawProgress: number): void {
             );
         } else {
             const exitProgress = easeInOut(Math.min(rawProgress / 0.7, 1));
-            task.element.style.opacity = String(1 - exitProgress);
+            task.element.style.opacity = String(
+                task.startOpacity * (1 - exitProgress),
+            );
         }
     }
 }
@@ -647,43 +669,84 @@ function finalizeTasks(tasks: AnimationTask[]): void {
     }
 }
 
-function runMorphLoop(
-    tasks: AnimationTask[],
-    durationMs: number,
-    then: (() => void) | null,
-): void {
-    const t0 = performance.now();
-    function frame(now: number): void {
-        const rawProgress = Math.min((now - t0) / durationMs, 1);
-        tickTasks(tasks, rawProgress);
-        if (rawProgress < 1) {
-            requestAnimationFrame(frame);
-            return;
-        }
-        finalizeTasks(tasks);
-        if (then) then();
-    }
-    requestAnimationFrame(frame);
-}
+// MorphTransition implements the Transition interface from transitions.ts using
+// structural typing — no import needed since TypeScript checks compatibility at
+// the registerTransition() call site.
+export class MorphTransition {
+    private oldLeaves: LeafSnapshotSet = { ids: new Set(), leaves: [] };
+    private oldChildren: ChildSnapshot[] = [];
+    private tasks: AnimationTask[] = [];
+    private readonly driver = new ProgressDriver();
+    private stage!: HTMLElement;
+    private oldHtml = "";
 
-export function morphToNextSlide(
-    swap: () => void,
-    transition: TransitionData,
-    then: (() => void) | null,
-): void {
-    const beforeSvg = stage.querySelector("svg");
-    const oldLeaves: LeafSnapshotSet = beforeSvg
-        ? snapshotLeaves(beforeSvg)
-        : { ids: new Set(), leaves: [] };
-    const oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
-
-    swap();
-    const svgRoot = stage.querySelector("svg");
-    if (!svgRoot) {
-        if (then) then();
-        return;
+    // Snapshot the outgoing slide before swap() replaces the DOM, and keep its
+    // markup so a full reversal can restore the real previous slide.
+    prepare({ stage }: { stage: HTMLElement }): void {
+        this.stage = stage;
+        this.oldHtml = stage.innerHTML;
+        const beforeSvg = stage.querySelector("svg");
+        this.oldLeaves = beforeSvg
+            ? snapshotLeaves(beforeSvg)
+            : { ids: new Set(), leaves: [] };
+        this.oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
     }
 
-    const tasks = buildTasks(svgRoot, oldLeaves, oldChildren);
-    runMorphLoop(tasks, transition.duration * 1000, then);
+    async start({
+        stage,
+        params,
+        signal,
+    }: {
+        stage: HTMLElement;
+        params: TransitionData;
+        signal: AbortSignal;
+    }): Promise<void> {
+        if (params.duration <= 0) return;
+
+        const svgRoot = stage.querySelector("svg") as SVGSVGElement | null;
+        if (!svgRoot) return;
+
+        this.tasks = buildTasks(svgRoot, this.oldLeaves, this.oldChildren);
+        await this.driver.animateTo(1, params.duration, signal, (progress) =>
+            tickTasks(this.tasks, progress),
+        );
+        if (!signal.aborted) this.settle();
+    }
+
+    // Reverse direction mid-flight by retargeting the progress: the same tasks run
+    // backward, so every property retraces its exact path. No re-snapshot of the
+    // intermediate DOM, hence no colour or corner-radius jump and no crossfade
+    // darkening across repeated reversals.
+    async reverse({
+        params,
+        signal,
+    }: {
+        stage: HTMLElement;
+        params: TransitionData;
+        signal: AbortSignal;
+    }): Promise<void> {
+        const target = this.driver.heading === 1 ? 0 : 1;
+        await this.driver.animateTo(
+            target,
+            params.duration,
+            signal,
+            (progress) => tickTasks(this.tasks, progress),
+        );
+        if (!signal.aborted) this.settle();
+    }
+
+    cancel(_ctx: { stage: HTMLElement; params: TransitionData }): void {
+        // Superseded by a non-reverse transition; the framework swaps the new slide
+        // in next, so just remove the reconstructed exit ghosts.
+        for (const task of this.tasks)
+            if (task.type === "exit") task.element.remove();
+    }
+
+    // progress 1 → the new slide is fully formed; snap it to its natural state.
+    // progress 0 → reversed all the way back; the morphed elements only *look* like
+    // the previous slide, so restore the real one.
+    private settle(): void {
+        if (this.driver.value >= 1) finalizeTasks(this.tasks);
+        else this.stage.innerHTML = this.oldHtml;
+    }
 }
