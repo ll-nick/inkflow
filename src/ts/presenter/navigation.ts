@@ -1,7 +1,7 @@
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
 import { applyCurrentStep, maxStep } from "./status";
-import { inflightDirection, loadSlide, snapInflight } from "./transitions";
+import { CUT, inflightDirection, loadSlide, snapInflight } from "./transitions";
 import { sendNav, sendSnap } from "./websocket";
 
 export function advance(): void {
@@ -85,15 +85,15 @@ export function prevSlide(): void {
 export function gotoFirst(): void {
     state.slideIndex = 0;
     state.step = 0;
-    loadSlide();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
 }
 
 export function gotoLast(): void {
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
-    loadSlide();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
 }

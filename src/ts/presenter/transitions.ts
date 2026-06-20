@@ -61,6 +61,11 @@ export type Render = (
     params: TransitionData,
 ) => void;
 
+// An instant switch. Used for non-sequential jumps (picker, overview, first/last)
+// where no transition should play — locally and, by sending it over the wire, on
+// other connected screens too.
+export const CUT: TransitionData = { type: "cut", duration: 0 };
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 const registry = new Map<string, TransitionFactory>();
@@ -445,8 +450,8 @@ export function loadSlide(
     then: (() => void) | null = null,
     transition: TransitionData | null = null,
 ): void {
-    const params: TransitionData = transition ??
-        state.transitions[state.slideIndex] ?? { type: "cut", duration: 0 };
+    const params: TransitionData =
+        transition ?? state.transitions[state.slideIndex] ?? CUT;
 
     // Reconcile the visual + status with whatever content is now in the stage:
     // land the current step and sync the status bar + URL. swap() runs this after

@@ -2,7 +2,7 @@ import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { maxStep } from "./status";
-import { loadSlide } from "./transitions";
+import { CUT, loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
 
 const overview = document.getElementById("overview")!;
@@ -73,11 +73,12 @@ export function overviewSetActive(i: number): void {
 export function overviewCommit(): void {
     state.slideIndex = state._overviewActive;
     closeOverview();
-    // Jump straight to the slide's final step (build animations complete).
+    // Jump straight to the slide's final step (build animations complete). CUT
+    // both locally and over the wire so other screens snap too.
     state.step = maxStep();
-    loadSlide(null, { type: "cut", duration: 0 });
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
 }
 
 function computeStageFlip(): { s: number; ox: number; oy: number } | null {
