@@ -29,6 +29,7 @@ class Flip(Transition):
     """3D card-flip effect defined in this deck, not in inkflow itself."""
 
     axis: str = "horizontal"  # "horizontal" (rotateY) or "vertical" (rotateX)
+    perspective: int = 1200  # viewer distance in px; smaller = more dramatic 3D
 
 
 def main() -> Deck:

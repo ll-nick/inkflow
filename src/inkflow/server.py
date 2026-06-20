@@ -173,10 +173,17 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
                     si = int(cast(int, msg.get("slideIndex", 0)))
                     st = int(cast(int, msg.get("step", 0)))
                     _state["position"] = {"slideIndex": si, "step": st}
-                    await broadcast(
-                        json.dumps({"type": "position", "slideIndex": si, "step": st}),
-                        sender=websocket,
-                    )
+                    position_msg: dict[str, object] = {
+                        "type": "position",
+                        "slideIndex": si,
+                        "step": st,
+                    }
+                    nav_transition = msg.get("transition")
+                    if nav_transition:
+                        position_msg["transition"] = nav_transition
+                    if msg.get("snap"):
+                        position_msg["snap"] = True
+                    await broadcast(json.dumps(position_msg), sender=websocket)
         finally:
             _state["ws_clients"].discard(websocket)
             ui.refresh()

@@ -1,10 +1,17 @@
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
-import { applyCurrentStep, applyCurrentStepInstant, maxStep } from "./status";
-import { loadSlide } from "./transitions";
-import { sendNav } from "./websocket";
+import { applyCurrentStep, maxStep } from "./status";
+import { CUT, inflightDirection, loadSlide, snapInflight } from "./transitions";
+import { sendNav, sendSnap } from "./websocket";
 
 export function advance(): void {
+    // A forward slide transition still animating: snap it to its end instead of
+    // playing the next step. The following forward press does the normal action.
+    if (inflightDirection() === "forward") {
+        snapInflight();
+        sendSnap();
+        return;
+    }
     if (state.step < maxStep()) {
         state.step++;
         applyCurrentStep();
@@ -20,6 +27,13 @@ export function advance(): void {
 }
 
 export function retreat(): void {
+    // A backward slide transition still animating: snap it to its end. The next
+    // back press then undoes the slide's last build animation.
+    if (inflightDirection() === "backward") {
+        snapInflight();
+        sendSnap();
+        return;
+    }
     if (state.step > 0) {
         state.step--;
         applyCurrentStep();
@@ -28,16 +42,17 @@ export function retreat(): void {
     } else if (state.slideIndex > 0) {
         const t = state.transitions[state.slideIndex];
         state.slideIndex--;
-        // Entering an earlier slide from ahead: jump straight to its final step
-        // inside the content swap (before the transition paints the fresh
-        // elements) so its build animations show as already-complete instead of
-        // replaying. Subsequent step-by-step retreats then animate in reverse.
-        loadSlide(null, t ? { ...t, reverse: true } : null, () => {
-            state.step = maxStep();
-            applyCurrentStepInstant();
-            sendNav();
-        });
+        // Entering an earlier slide from ahead: land on its final step. maxStep is
+        // derived from slide data, so this is correct synchronously even while a
+        // transition is mid-flight — a key pressed during the animation then reads
+        // the right step instead of mistaking it for 0 and skipping a slide.
+        // loadSlide applies this step to the fresh content without replaying the
+        // build animations; subsequent retreats animate in reverse.
+        state.step = maxStep();
+        const tReversed = t ? { ...t, reverse: true } : null;
+        loadSlide(null, tReversed);
         renderPv();
+        sendNav(tReversed);
         return;
     }
     sendNav();
@@ -57,13 +72,12 @@ export function prevSlide(): void {
     if (state.slideIndex > 0) {
         const t = state.transitions[state.slideIndex];
         state.slideIndex--;
-        // Jumping back a whole slide enters it from ahead, so land on its final
-        // step shown statically (same as a step-by-step retreat across the edge).
-        loadSlide(null, t ? { ...t, reverse: true } : null, () => {
-            state.step = maxStep();
-            applyCurrentStepInstant();
-        });
+        state.step = maxStep();
+        const tReversed = t ? { ...t, reverse: true } : null;
+        loadSlide(null, tReversed);
         renderPv();
+        sendNav(tReversed);
+        return;
     }
     sendNav();
 }
@@ -71,15 +85,15 @@ export function prevSlide(): void {
 export function gotoFirst(): void {
     state.slideIndex = 0;
     state.step = 0;
-    loadSlide();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
 }
 
 export function gotoLast(): void {
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
-    loadSlide();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
 }

@@ -5,7 +5,6 @@ export const state = {
     transitions: [] as TransitionData[],
     slideIndex: 0,
     step: 0,
-    _maxStepCache: null as number | null,
     _pickerMatches: [] as number[],
     _pickerActive: 0,
     _overviewActive: 0,

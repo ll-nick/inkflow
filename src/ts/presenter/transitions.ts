@@ -1,35 +1,133 @@
+import { cubicBezierEasing } from "../shared/easing";
 import type { TransitionData } from "../shared/types";
-import { morphToNextSlide } from "./morph";
+import { MorphTransition } from "./morph";
+import { ProgressDriver } from "./progress-driver";
 import { state } from "./state";
 import { applyCurrentStepInstant, updateStatus } from "./status";
 
 const stage = document.getElementById("stage")!;
 
-// ── Registry ──────────────────────────────────────────────────────────────────
+// ── Transition interface ───────────────────────────────────────────────────────
 
-export type TransitionHandler = (
-    swap: () => void,
-    t: TransitionData,
-    then: (() => void) | null,
+// The low-level contract the framework drives. Most built-ins (and custom
+// transitions) are written as a one-function `Render` and wrapped by
+// `ProgressTransition` via registerProgressTransition() — see below. `cut` and
+// `morph` implement this interface directly. The framework instantiates a fresh
+// transition per invocation (via the registry factory) so instance state lives on
+// `this` with no globals.
+//
+// Lifecycle (all methods receive named context objects — no positional args):
+//   prepare   optional; called while the outgoing DOM is still live, before the
+//             framework swaps in the new slide. Capture anything the animation
+//             needs from the old slide here. Store results on `this`.
+//   start     required, async. The framework has already swapped the new slide
+//             into the stage by the time this runs, so it only animates. The
+//             framework aborts `signal` when the transition is superseded.
+//   cancel    optional; called when the framework aborts the transition to let it
+//             clean up any DOM it owns. The framework always fires `then`.
+//   reverse   optional; called instead of cancel+restart when the user reverses
+//             direction mid-flight into the same transition type. Receives a fresh
+//             signal. Implement only for transitions that can smoothly un-play.
+
+export interface Transition {
+    prepare?(ctx: { stage: HTMLElement; params: TransitionData }): void;
+    start(ctx: {
+        stage: HTMLElement;
+        params: TransitionData;
+        signal: AbortSignal;
+    }): Promise<void>;
+    cancel?(ctx: { stage: HTMLElement; params: TransitionData }): void;
+    reverse?(ctx: {
+        stage: HTMLElement;
+        params: TransitionData;
+        signal: AbortSignal;
+    }): Promise<void>;
+}
+
+export type TransitionFactory = () => Transition;
+
+// The layers handed to a Render each frame. `oldLayer` sits on top of `newLayer`.
+export interface RenderContext {
+    stage: HTMLElement;
+    oldLayer: HTMLElement;
+    newLayer: HTMLElement;
+}
+
+// A progress-driven transition: paint the two layers for a given eased progress
+// (0 = old slide shown, 1 = new shown). Pure per-frame styling, no lifecycle.
+export type Render = (
+    context: RenderContext,
+    progress: number,
+    params: TransitionData,
 ) => void;
 
-const registry = new Map<string, TransitionHandler>();
+// An instant switch. Used for non-sequential jumps (picker, overview, first/last)
+// where no transition should play — locally and, by sending it over the wire, on
+// other connected screens too.
+export const CUT: TransitionData = { type: "cut", duration: 0 };
+
+// ── Registry ──────────────────────────────────────────────────────────────────
+
+const registry = new Map<string, TransitionFactory>();
 
 export function registerTransition(
     name: string,
-    handler: TransitionHandler,
+    factory: TransitionFactory,
 ): void {
-    registry.set(name, handler);
+    registry.set(name, factory);
 }
 
-// ── Layer helper ────────────────────────────────────────────────────────────
+// ── In-flight state ───────────────────────────────────────────────────────────
 
-// A transition layer is an absolutely-positioned div the size of the stage that
-// holds one slide's content. Both the outgoing and incoming slides go in a layer
-// so handlers only ever transform plain divs — a percentage transform on a raw
-// <svg> root resolves against its viewBox (user units), not the CSS box, so the
-// svg must never be transformed directly. Reading computed padding at call time
-// handles the fullscreen case (padding: 0).
+let liveInstance: Transition | null = null;
+let liveController: AbortController | null = null;
+let liveParams: TransitionData | null = null;
+let liveSettle: ((callThen: boolean) => void) | null = null;
+
+// Abort the in-flight transition, clean up its DOM, and call its `then` if
+// callThen is true. Safe to call when nothing is in flight.
+function cancelInflight(callThen: boolean): void {
+    if (!liveController) return;
+    const ctrl = liveController;
+    const inst = liveInstance;
+    const params = liveParams!;
+    const settle = liveSettle!;
+    liveController = null;
+    liveInstance = null;
+    liveParams = null;
+    liveSettle = null;
+    ctrl.abort();
+    inst?.cancel?.({ stage, params });
+    settle(callThen);
+}
+
+// The direction of the currently animating slide transition (forward navigation
+// vs backward), or null if none is in flight. Navigation reads this to snap an
+// in-flight transition to its end on a same-direction press.
+export function inflightDirection(): "forward" | "backward" | null {
+    if (!liveParams) return null;
+    return liveParams.reverse ? "backward" : "forward";
+}
+
+// Finish the in-flight transition immediately: stop its animation, fire its
+// callback, and render the destination slide cleanly at the current step. The
+// state (slideIndex, step) is already settled, so this only collapses the visual.
+// Re-rendering covers transitions whose cancel() leaves the DOM mid-animation
+// (morph's soft-cancel); for layer transitions it just repaints identical content.
+export function snapInflight(): void {
+    cancelInflight(true);
+    stage.innerHTML = state.slides.length
+        ? state.slides[state.slideIndex].svg
+        : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    applyCurrentStepInstant();
+    updateStatus();
+}
+
+// ── Layer helpers ─────────────────────────────────────────────────────────────
+
+// A transition layer is an absolutely-positioned div the size of the stage.
+// Wrapping slide content in a div avoids transforming the SVG element directly
+// (percentage CSS transforms on an SVG resolve in user units, not CSS pixels).
 function makeLayer(): HTMLDivElement {
     const layer = document.createElement("div");
     layer.style.cssText =
@@ -46,52 +144,6 @@ function sizeLayerChild(layer: HTMLDivElement): void {
     }
 }
 
-// Shared setup for all CSS-based transitions:
-//   1. Capture the current stage HTML, then swap() in the new slide.
-//   2. Wrap the new slide in `newLayer` and the old slide in `oldLayer` (on top).
-//   3. Call animate(oldLayer, newLayer, t, done) — the handler drives the divs.
-//   4. done() unwraps the new slide back into the stage and removes both layers.
-function cssTransition(
-    animate: (
-        oldLayer: HTMLDivElement,
-        newLayer: HTMLDivElement,
-        t: TransitionData,
-        done: () => void,
-    ) => void,
-): TransitionHandler {
-    return (swap, t, then) => {
-        if (t.duration <= 0) {
-            swap();
-            then?.();
-            return;
-        }
-
-        const oldHTML = stage.innerHTML;
-        swap();
-
-        // Move the freshly-swapped new content into its own layer div.
-        const newLayer = makeLayer();
-        while (stage.firstChild) newLayer.appendChild(stage.firstChild);
-        sizeLayerChild(newLayer);
-        stage.appendChild(newLayer);
-
-        // Clone of the outgoing slide, layered on top.
-        const oldLayer = makeLayer();
-        oldLayer.innerHTML = oldHTML;
-        sizeLayerChild(oldLayer);
-        stage.appendChild(oldLayer);
-
-        animate(oldLayer, newLayer, t, () => {
-            // Unwrap: return the new content to the stage, drop both layers.
-            while (newLayer.firstChild)
-                stage.insertBefore(newLayer.firstChild, newLayer);
-            newLayer.remove();
-            oldLayer.remove();
-            then?.();
-        });
-    };
-}
-
 // ── Direction helpers ─────────────────────────────────────────────────────────
 
 type Axis = "X" | "Y";
@@ -100,8 +152,8 @@ function dirAxis(dir: string): Axis {
     return dir === "up" || dir === "down" ? "Y" : "X";
 }
 
-// Sign for the incoming slide's start offset: it enters from the opposite edge.
-// "left" → new enters from the right (+100%), "up" → new enters from the bottom (+100%).
+// Sign for the incoming slide's start offset: enters from the opposite edge.
+// "left" → new enters from the right (+100%); "up" → new from the bottom (+100%).
 function incomingSign(dir: string): 1 | -1 {
     return dir === "left" || dir === "up" ? 1 : -1;
 }
@@ -117,216 +169,399 @@ function flipDir(dir: string): string {
     );
 }
 
-// Force a synchronous style/layout flush. Called between writing a transition's
-// "from" value and its "to" value so the browser registers two distinct states
-// and animates between them, instead of coalescing both writes into one paint.
-// Without this the transition only fires if some other code happened to flush
-// styles in between — fragile, and broken by an instant step applied on swap.
-function reflow(): void {
-    void stage.offsetHeight;
+// ── Progress-driven host ──────────────────────────────────────────────────────
+
+// Wraps a Render into a full Transition. It owns the layer lifecycle, composes a
+// ProgressDriver, applies the easing curve, and re-glides the layers on reverse.
+// The entire animation state is the driver's single progress value, so any number
+// of mid-flight direction changes (reverse, reverse-of-a-reverse, …) compose
+// without snapshotting.
+class ProgressTransition implements Transition {
+    private oldLayer!: HTMLDivElement;
+    private newLayer!: HTMLDivElement;
+    private outgoingHtml = "";
+    private stageStyleText = "";
+    private settled = false;
+    private readonly driver = new ProgressDriver();
+    private ease: (progress: number) => number = (progress) => progress;
+    // Captured at start() and used for every frame, including reverse(). The
+    // geometry must not change when direction flips — the progress value alone
+    // carries the reversal — so reverse()'s own (direction-flipped) params are
+    // ignored for painting.
+    private startParams!: TransitionData;
+
+    constructor(
+        private readonly render: Render,
+        private readonly defaultEasing?: string,
+    ) {}
+
+    prepare(): void {
+        this.outgoingHtml = stage.innerHTML;
+        // Snapshot so teardown can restore any stage-level style a render sets
+        // (fade's background, flip's perspective) without knowing which.
+        this.stageStyleText = stage.style.cssText;
+    }
+
+    async start({
+        params,
+        signal,
+    }: {
+        stage: HTMLElement;
+        params: TransitionData;
+        signal: AbortSignal;
+    }): Promise<void> {
+        if (params.duration <= 0) return;
+        this.startParams = params;
+        this.buildLayers();
+        this.ease = cubicBezierEasing(params.easing ?? this.defaultEasing);
+        this.paint(0);
+        await this.driver.animateTo(1, params.duration, signal, (value) =>
+            this.paint(value),
+        );
+        if (!signal.aborted) this.settle();
+    }
+
+    async reverse({
+        signal,
+    }: {
+        stage: HTMLElement;
+        params: TransitionData;
+        signal: AbortSignal;
+    }): Promise<void> {
+        // Only the progress direction changes; the geometry stays as the forward
+        // play established it. Driving the same render with the original params
+        // (via paint) makes the layers retrace their path instead of re-flipping.
+        const target = this.driver.heading === 1 ? 0 : 1;
+        await this.driver.animateTo(
+            target,
+            this.startParams.duration,
+            signal,
+            (value) => this.paint(value),
+        );
+        if (!signal.aborted) this.settle();
+    }
+
+    cancel(): void {
+        this.teardown(this.newLayer);
+    }
+
+    private paint(value: number): void {
+        this.render(
+            { stage, oldLayer: this.oldLayer, newLayer: this.newLayer },
+            this.ease(value),
+            this.startParams,
+        );
+    }
+
+    private buildLayers(): void {
+        this.settled = false;
+        const newLayer = makeLayer();
+        while (stage.firstChild) newLayer.appendChild(stage.firstChild);
+        sizeLayerChild(newLayer);
+        stage.appendChild(newLayer);
+        this.newLayer = newLayer;
+
+        const oldLayer = makeLayer();
+        oldLayer.innerHTML = this.outgoingHtml;
+        sizeLayerChild(oldLayer);
+        stage.appendChild(oldLayer);
+        this.oldLayer = oldLayer;
+    }
+
+    private settle(): void {
+        this.teardown(this.driver.value >= 1 ? this.newLayer : this.oldLayer);
+    }
+
+    // Replace the stage's content with just the shown slide, dropping both layers
+    // and anything else a render added (the fade colour backdrop) in one step, and
+    // restore the stage's pre-transition inline style. Idempotent; skipped when no
+    // layers were built (duration 0), where the slide is already in place.
+    private teardown(shownLayer: HTMLDivElement | undefined): void {
+        if (this.settled) return;
+        this.settled = true;
+        if (shownLayer) stage.replaceChildren(...shownLayer.children);
+        stage.style.cssText = this.stageStyleText;
+    }
 }
 
-// ── Built-in handlers ─────────────────────────────────────────────────────────
+// Register a progress-driven transition by its per-frame render. `options.easing`
+// is the default timing curve used when a slide does not specify `params.easing`.
+export function registerProgressTransition(
+    name: string,
+    render: Render,
+    options?: { easing?: string },
+): void {
+    registerTransition(
+        name,
+        () => new ProgressTransition(render, options?.easing),
+    );
+}
 
-registerTransition("cut", (swap, _t, then) => {
-    swap();
-    then?.();
-});
+// ── Built-in transitions ──────────────────────────────────────────────────────
 
-registerTransition(
-    "crossfade",
-    cssTransition((oldLayer, _newLayer, t, done) => {
-        const easing = t.easing ?? "ease";
-        oldLayer.style.transition = `opacity ${t.duration}s ${easing}`;
-        reflow();
-        requestAnimationFrame(() => {
-            oldLayer.style.opacity = "0";
-            setTimeout(done, t.duration * 1000);
-        });
-    }),
-);
+// `cut` is instant: the framework already swapped the new slide in, so there is
+// nothing to animate.
+class CutTransition implements Transition {
+    async start(): Promise<void> {}
+}
 
-registerTransition(
-    "push",
-    cssTransition((oldLayer, newLayer, t, done) => {
-        const dir = t.reverse
-            ? flipDir(t.direction ?? "left")
-            : (t.direction ?? "left");
-        const axis = dirAxis(dir);
-        const sign = incomingSign(dir);
-        const easing = t.easing ?? "ease-in-out";
-        const ms = t.duration * 1000;
+// progress 0 → old shown, 1 → new shown. `progress` arrives already eased.
 
-        // Both layers move together: outgoing exits in the travel direction while
-        // incoming enters from the opposite edge.
-        oldLayer.style.transition = `transform ${t.duration}s ${easing}`;
-        newLayer.style.transform = `translate${axis}(${sign * 100}%)`;
-        newLayer.style.transition = `transform ${t.duration}s ${easing}`;
+const crossfadeRender: Render = ({ oldLayer }, progress) => {
+    oldLayer.style.opacity = String(1 - progress);
+};
 
-        reflow();
-        requestAnimationFrame(() => {
-            oldLayer.style.transform = `translate${axis}(${-sign * 100}%)`;
-            newLayer.style.transform = `translate${axis}(0)`;
-            setTimeout(done, ms);
-        });
-    }),
-);
+const pushRender: Render = ({ oldLayer, newLayer }, progress, params) => {
+    const direction = params.reverse
+        ? flipDir(params.direction ?? "left")
+        : (params.direction ?? "left");
+    const axis = dirAxis(direction);
+    const sign = incomingSign(direction);
+    oldLayer.style.transform = `translate${axis}(${-progress * 100 * sign}%)`;
+    newLayer.style.transform = `translate${axis}(${(1 - progress) * 100 * sign}%)`;
+};
 
-registerTransition(
-    "cover",
-    cssTransition((oldLayer, _newLayer, t, done) => {
-        const dir = t.direction ?? "left";
-        const axis = dirAxis(dir);
-        const sign = incomingSign(dir);
-        const easing = t.easing ?? "ease-in-out";
-        const ms = t.duration * 1000;
+const coverRender: Render = ({ oldLayer }, progress, params) => {
+    // The old slide slides off, revealing the static new slide underneath.
+    const direction = params.direction ?? "left";
+    const axis = dirAxis(direction);
+    const sign = incomingSign(direction);
+    const exitSign = params.reverse ? sign : -sign;
+    oldLayer.style.transform = `translate${axis}(${exitSign * 100 * progress}%)`;
+};
 
-        // Old slides away, revealing the new one (which stays put) underneath.
-        // Reverse: exits the opposite way to visually undo the forward motion.
-        const exitPct = t.reverse ? sign * 100 : -sign * 100;
-        oldLayer.style.transition = `transform ${t.duration}s ${easing}`;
-
-        reflow();
-        requestAnimationFrame(() => {
-            oldLayer.style.transform = `translate${axis}(${exitPct}%)`;
-            setTimeout(done, ms);
-        });
-    }),
-);
-
-registerTransition(
-    "zoom",
-    cssTransition((oldLayer, newLayer, t, done) => {
-        const easing = t.easing ?? "ease-in-out";
-        const ms = t.duration * 1000;
-
-        oldLayer.style.transformOrigin = "center";
-        oldLayer.style.transition = `opacity ${t.duration}s ${easing}, transform ${t.duration}s ${easing}`;
-        newLayer.style.opacity = "0";
-        newLayer.style.transform = "scale(0.95)";
-        newLayer.style.transformOrigin = "center";
-        newLayer.style.transition = `opacity ${t.duration}s ${easing}, transform ${t.duration}s ${easing}`;
-
-        reflow();
-        requestAnimationFrame(() => {
-            oldLayer.style.opacity = "0";
-            oldLayer.style.transform = "scale(1.05)";
-            newLayer.style.opacity = "1";
-            newLayer.style.transform = "scale(1)";
-            setTimeout(done, ms);
-        });
-    }),
-);
-
-registerTransition(
-    "fade",
-    cssTransition((oldLayer, newLayer, t, done) => {
-        const color = t.color ?? "#000000";
-        const easing = t.easing ?? "ease";
-        const half = t.duration / 2;
-        const halfMs = half * 1000;
-
-        // Show the midpoint colour behind both slides.
-        stage.style.backgroundColor = color;
-
-        oldLayer.style.transition = `opacity ${half}s ${easing}`;
-        newLayer.style.opacity = "0";
-
-        reflow();
-        requestAnimationFrame(() => {
-            oldLayer.style.opacity = "0";
-            setTimeout(() => {
-                // Old layer faded out; now fade the new one in.
-                newLayer.style.transition = `opacity ${half}s ${easing}`;
-                reflow();
-                requestAnimationFrame(() => {
-                    newLayer.style.opacity = "1";
-                    setTimeout(() => {
-                        stage.style.backgroundColor = "";
-                        done();
-                    }, halfMs);
-                });
-            }, halfMs);
-        });
-    }),
-);
-
-registerTransition(
-    "wipe",
-    cssTransition((oldLayer, _newLayer, t, done) => {
-        const dir = t.direction ?? "left";
-        const easing = t.easing ?? "ease-in-out";
-        const ms = t.duration * 1000;
-
-        // Old layer is clipped away, revealing the new one underneath.
-        // exitClip[d] = the clip-path that fully hides the old layer edge-first from d.
-        // Reverse: flip the effective direction so the wipe goes the other way.
-        const effectiveDir = t.reverse ? flipDir(dir) : dir;
-        const exitClip =
-            (
-                {
-                    left: "inset(0 0 0 100%)",
-                    right: "inset(0 100% 0 0)",
-                    up: "inset(0 0 100% 0)",
-                    down: "inset(100% 0 0 0)",
-                } as Record<string, string>
-            )[effectiveDir] ?? "inset(0 0 0 100%)";
-
-        oldLayer.style.clipPath = "inset(0)";
-        oldLayer.style.transition = `clip-path ${t.duration}s ${easing}`;
-
-        reflow();
-        requestAnimationFrame(() => {
-            oldLayer.style.clipPath = exitClip;
-            setTimeout(done, ms);
-        });
-    }),
-);
-
-registerTransition("morph", (swap, transition, then) => {
-    if (transition.duration <= 0 || !state.slides.length) {
-        swap();
-        then?.();
-        return;
+const zoomRender: Render = ({ oldLayer, newLayer }, progress, params) => {
+    // A zoom dissolve. Forward (zoom in): the new slide grows into place from
+    // smaller while fading in, as the old slide keeps zooming past the viewer.
+    // Backward (zoom out): the new slide settles in from larger while the old
+    // shrinks away — the visual opposite, so the two directions read differently.
+    // `amount` is how far the slides scale past 1 (from the Zoom dataclass).
+    const amount = params.amount ?? 0.6;
+    oldLayer.style.transformOrigin = "center";
+    newLayer.style.transformOrigin = "center";
+    oldLayer.style.opacity = String(1 - progress);
+    newLayer.style.opacity = String(progress);
+    if (params.reverse) {
+        oldLayer.style.transform = `scale(${1 - amount * progress})`;
+        newLayer.style.transform = `scale(${1 + amount - amount * progress})`;
+    } else {
+        oldLayer.style.transform = `scale(${1 + amount * progress})`;
+        newLayer.style.transform = `scale(${1 - amount + amount * progress})`;
     }
-    morphToNextSlide(swap, transition, then);
-});
+};
+
+// A constant colour backdrop the fade dips through. It is an SVG that copies the
+// slide's viewBox/preserveAspectRatio, so it letterboxes exactly like the slide —
+// the colour fills the slide area while the bars stay black. A plain rect would
+// instead flood the whole stage, bars included.
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function makeFadeBackdrop(
+    slideSvg: SVGSVGElement | null,
+    color: string,
+): HTMLDivElement {
+    const layer = makeLayer();
+    layer.dataset.fadeBackdrop = "1";
+    const viewBox = slideSvg?.getAttribute("viewBox") ?? "0 0 1920 1080";
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute(
+        "preserveAspectRatio",
+        slideSvg?.getAttribute("preserveAspectRatio") ?? "xMidYMid meet",
+    );
+    const [, , width, height] = viewBox.split(/[\s,]+/).map(Number);
+    const rect = document.createElementNS(SVG_NS, "rect");
+    rect.setAttribute("width", String(width || 0));
+    rect.setAttribute("height", String(height || 0));
+    rect.setAttribute("fill", color);
+    svg.appendChild(rect);
+    layer.appendChild(svg);
+    sizeLayerChild(layer);
+    return layer;
+}
+
+const fadeRender: Render = (
+    { stage: stageElement, oldLayer, newLayer },
+    progress,
+    params,
+) => {
+    // Place the colour backdrop behind both slides once, then fade the old slide
+    // out over the first half and the new slide in over the second. The midpoint
+    // shows the backdrop colour; the host's teardown removes it.
+    const existing = newLayer.previousElementSibling;
+    if (
+        !(existing instanceof HTMLElement) ||
+        existing.dataset.fadeBackdrop !== "1"
+    ) {
+        const backdrop = makeFadeBackdrop(
+            newLayer.querySelector("svg"),
+            params.color ?? "#000000",
+        );
+        stageElement.insertBefore(backdrop, newLayer);
+    }
+    oldLayer.style.opacity = String(Math.max(0, 1 - progress * 2));
+    newLayer.style.opacity = String(Math.max(0, progress * 2 - 1));
+};
+
+const WIPE_CLIP: Record<string, (percent: number) => string> = {
+    left: (percent) => `inset(0 0 0 ${percent}%)`,
+    right: (percent) => `inset(0 ${percent}% 0 0)`,
+    up: (percent) => `inset(0 0 ${percent}% 0)`,
+    down: (percent) => `inset(${percent}% 0 0 0)`,
+};
+
+const wipeRender: Render = ({ oldLayer }, progress, params) => {
+    const direction = params.reverse
+        ? flipDir(params.direction ?? "left")
+        : (params.direction ?? "left");
+    const clip = WIPE_CLIP[direction] ?? WIPE_CLIP.left;
+    oldLayer.style.clipPath = clip(progress * 100);
+};
+
+// ── Register built-ins ────────────────────────────────────────────────────────
+
+registerTransition("cut", () => new CutTransition());
+registerProgressTransition("crossfade", crossfadeRender, { easing: "ease" });
+registerProgressTransition("push", pushRender, { easing: "ease-in-out" });
+registerProgressTransition("cover", coverRender, { easing: "ease-in-out" });
+registerProgressTransition("zoom", zoomRender, { easing: "ease-in-out" });
+registerProgressTransition("fade", fadeRender, { easing: "ease" });
+registerProgressTransition("wipe", wipeRender, { easing: "ease-in-out" });
+registerTransition("morph", () => new MorphTransition());
 
 // ── loadSlide ─────────────────────────────────────────────────────────────────
 
 // Replace stage content with the current slide. Does NOT call applyCurrentStep()
 // — elements start in their pre-transition state so the next advance() triggers
-// a real animated transition. Optional `then` runs after the content is swapped.
-// Pass `transition` to override the destination slide's declared transition (used
-// when navigating backward so the outgoing slide's transition plays in reverse).
-// `onSwap` runs synchronously right after the new content is in the DOM but before
-// the transition animates — i.e. before the browser paints the fresh elements.
-// Applying a step here lands it without animation (no painted "from" state to
-// transition from), which is how backward navigation shows a slide already built.
+// a real animated transition.
+//
+// `then` runs after the transition completes (or on cancellation). It always
+// runs exactly once so lifecycle callbacks (_syncingFromServer, sendNav) are
+// never left dangling even during rapid navigation.
+//
+// Callers set state.step before calling (maxStep is data-derived, so it is known
+// without the DOM); the step is then applied to the fresh content automatically.
+//
+// When the new transition is the exact reverse of the in-flight one (same type,
+// opposite direction), and the in-flight handler implements reverse(), the
+// framework calls reverse() on the existing instance instead of cancel+restart,
+// giving smooth mid-flight direction change without a visible snap.
 export function loadSlide(
     then: (() => void) | null = null,
     transition: TransitionData | null = null,
-    onSwap: (() => void) | null = null,
 ): void {
-    const swap = () => {
-        stage.innerHTML = state.slides.length
-            ? state.slides[state.slideIndex].svg
-            : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
-        state._maxStepCache = null;
-        onSwap?.();
+    const params: TransitionData =
+        transition ?? state.transitions[state.slideIndex] ?? CUT;
+
+    // Reconcile the visual + status with whatever content is now in the stage:
+    // land the current step and sync the status bar + URL. swap() runs this after
+    // writing fresh innerHTML; the reverse() path runs it after reverse() restores
+    // the destination DOM, so both routes leave the DOM, the step, and the URL
+    // consistent. (maxStep is data-derived, so it needs no cache invalidation here.)
+    const settleContent = () => {
         applyCurrentStepInstant();
         updateStatus();
     };
 
-    const t = transition ??
-        state.transitions[state.slideIndex] ?? { type: "cut", duration: 0 };
-    const handler = registry.get(t.type);
-    if (handler) {
-        handler(swap, t, then);
+    const swap = () => {
+        stage.innerHTML = state.slides.length
+            ? state.slides[state.slideIndex].svg
+            : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+        settleContent();
+    };
+
+    // Smooth reversal: same transition type, opposite direction, handler has reverse().
+    const canReverse =
+        liveInstance?.reverse != null &&
+        liveParams != null &&
+        liveParams.type === params.type &&
+        Boolean(liveParams.reverse) !== Boolean(params.reverse);
+
+    if (canReverse) {
+        const inst = liveInstance!;
+        const ctrl = liveController!;
+        const prevSettle = liveSettle!;
+
+        // Abort the forward signal. Do NOT call cancel() — layers must survive
+        // for the reverse animation to run on the same instance.
+        ctrl.abort();
+        liveController = null;
+        liveInstance = null;
+        liveParams = null;
+        liveSettle = null;
+        prevSettle(true); // forward then always fires (typically null)
+
+        const newCtrl = new AbortController();
+        let done = false;
+        const settle = (callThen: boolean) => {
+            if (done) return;
+            done = true;
+            if (liveController === newCtrl) {
+                liveController = null;
+                liveInstance = null;
+                liveParams = null;
+                liveSettle = null;
+            }
+            if (callThen) then?.();
+        };
+
+        liveController = newCtrl;
+        liveInstance = inst;
+        liveParams = params;
+        liveSettle = settle;
+
+        inst.reverse!({ stage, params, signal: newCtrl.signal })
+            .then(() => {
+                // reverse() restored the destination DOM into the stage but never
+                // went through swap(), so run the same settle sequence here to
+                // re-apply the step and sync the status bar + URL with the
+                // destination slide.
+                if (!newCtrl.signal.aborted) settleContent();
+                settle(true);
+            })
+            .catch(() => settle(false));
+
         return;
     }
 
-    // Unknown transition type — fall back to instant swap.
+    // Standard path: cancel in-flight (calls its then), start fresh.
+    cancelInflight(true);
+
+    const makeTransition = registry.get(params.type);
+    if (!makeTransition) {
+        // Unknown transition type — fall back to instant swap.
+        swap();
+        then?.();
+        return;
+    }
+
+    const inst = makeTransition();
+    inst.prepare?.({ stage, params });
+
+    const ctrl = new AbortController();
+    let done = false;
+    const settle = (callThen: boolean) => {
+        if (done) return;
+        done = true;
+        if (liveController === ctrl) {
+            liveController = null;
+            liveInstance = null;
+            liveParams = null;
+            liveSettle = null;
+        }
+        if (callThen) then?.();
+    };
+
+    liveController = ctrl;
+    liveInstance = inst;
+    liveParams = params;
+    liveSettle = settle;
+
+    // The framework owns the swap: prepare() has captured whatever the outgoing
+    // DOM was needed for, so the new slide goes in now and start() only animates.
     swap();
-    then?.();
+
+    inst.start({ stage, params, signal: ctrl.signal })
+        .then(() => settle(true))
+        .catch(() => settle(false));
 }

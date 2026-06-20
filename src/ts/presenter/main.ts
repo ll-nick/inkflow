@@ -1,7 +1,11 @@
 import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { readURL } from "./status";
-import { loadSlide, registerTransition } from "./transitions";
+import {
+    loadSlide,
+    registerProgressTransition,
+    registerTransition,
+} from "./transitions";
 import { showError } from "./ui";
 import { connectWS } from "./websocket";
 import "./keyboard";
@@ -17,7 +21,7 @@ state.slides = INITIAL_SLIDES;
 state.transitions = INITIAL_TRANSITIONS;
 
 // ── Public API ──
-window.inkflow = { registerTransition };
+window.inkflow = { registerTransition, registerProgressTransition };
 
 // ── Boot ──
 readURL();

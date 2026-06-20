@@ -54,7 +54,13 @@ class Cover(Transition):
 
 @dataclass
 class Zoom(Transition):
-    """Outgoing slide scales out while the incoming one scales in."""
+    """Outgoing slide scales out while the incoming one scales in.
+
+    ``amount`` is how far the slides scale past their normal size: 0.6 zooms the
+    incoming slide in from 0.4x and the outgoing slide out to 1.6x.
+    """
+
+    amount: float = 0.6
 
 
 @dataclass

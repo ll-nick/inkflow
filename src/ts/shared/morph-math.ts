@@ -105,7 +105,20 @@ export function readInterpolatedAttributes(
     element: Element,
 ): Record<string, string> {
     const result: Record<string, string> = {};
+    const inlineStyle =
+        element instanceof SVGElement || element instanceof HTMLElement
+            ? element.style
+            : null;
     for (const attribute of INTERPOLATED_ATTRIBUTES) {
+        // Prefer an inline style value. A morph in flight writes the live
+        // (intermediate) colour/opacity there via style.setProperty, while the
+        // attribute still holds the original target. Reading the attribute first
+        // would snapshot the end value and make a mid-flight reversal jump.
+        const styleValue = inlineStyle?.getPropertyValue(attribute).trim();
+        if (styleValue && styleValue !== "none") {
+            result[attribute] = styleValue;
+            continue;
+        }
         const directValue = element.getAttribute(attribute);
         if (directValue !== null && directValue !== "none") {
             result[attribute] = directValue;

@@ -12,10 +12,25 @@ const stepInfo = document.getElementById("step-info")!;
 const mhudSlideInfo = document.getElementById("mhud-slide-info")!;
 const mhudStepRing = document.getElementById("mhud-step-ring")!;
 
+// maxStep is a pure function of the current slide's markup (its data-step and
+// code-highlight attributes), so it is derived from the slide data rather than the
+// live stage DOM. During a transition the stage briefly holds two slides at once
+// (as layers), which would corrupt a DOM-based count; reading the data keeps the
+// value correct mid-flight and lets navigation settle the step synchronously.
+// Cached until the slide index or the slide set changes.
+let maxStepSlides: typeof state.slides | null = null;
+let maxStepIndex = -1;
+let maxStepValue = 0;
+
 export function maxStep(): number {
-    if (state._maxStepCache !== null) return state._maxStepCache;
-    state._maxStepCache = computeMaxStep(stage);
-    return state._maxStepCache;
+    if (maxStepSlides === state.slides && maxStepIndex === state.slideIndex)
+        return maxStepValue;
+    const scratch = document.createElement("div");
+    scratch.innerHTML = state.slides[state.slideIndex]?.svg ?? "";
+    maxStepValue = computeMaxStep(scratch);
+    maxStepSlides = state.slides;
+    maxStepIndex = state.slideIndex;
+    return maxStepValue;
 }
 
 // Toggle .active on already-loaded SVG elements — triggers CSS transitions.

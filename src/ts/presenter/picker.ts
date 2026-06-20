@@ -1,7 +1,7 @@
-import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
 import { renderPv } from "./pv";
 import { state } from "./state";
-import { loadSlide } from "./transitions";
+import { maxStep } from "./status";
+import { CUT, loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
 
 const picker = document.getElementById("picker")!;
@@ -72,17 +72,15 @@ function pickerMoveCursor(delta: number): void {
 
 function pickerCommit(): void {
     if (!state._pickerMatches.length) return;
-    const stage = document.getElementById("stage")!;
     state.slideIndex = state._pickerMatches[state._pickerActive];
-    state.step = 0;
     closePicker();
-    loadSlide(null, { type: "cut", duration: 0 }, () => {
-        const maxSt = computeMaxStep(stage);
-        applyStepInstant(stage, maxSt);
-        state.step = maxSt;
-    });
+    // Jump straight to the picked slide's final step (build animations complete).
+    // CUT both locally and over the wire so other screens snap too rather than
+    // animating the slide's own transition.
+    state.step = maxStep();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
 }
 
 pickerInput.addEventListener("input", () => filterPicker(pickerInput.value));

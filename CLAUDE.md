@@ -51,9 +51,10 @@ src/
     theme/            built-in theme: main.svg, layouts/*.svg, styles.css
   ts/                 TypeScript source
     globals.d.ts      ambient declarations for Python-injected globals (__SLIDES_JSON__ etc.)
-    shared/           types, step logic, step-ring SVG builder
-    presenter/        main presenter modules — navigation, transitions, overview, picker,
-                      websocket, status bar, keyboard, and pv.ts (presenter panel sidebar)
+    shared/           types, step logic, step-ring SVG builder, cubic-bezier easing
+    presenter/        main presenter modules — navigation, transitions (progress-driven
+                      via progress-driver.ts), overview, picker, websocket, status bar,
+                      keyboard, and pv.ts (presenter panel sidebar)
   css/                CSS source
     shared/           theme variables, animation keyframes
     presenter/        presenter partials including pv.css (sidebar panel)
