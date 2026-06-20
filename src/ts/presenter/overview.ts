@@ -1,6 +1,7 @@
 import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
 import { renderPv } from "./pv";
 import { state } from "./state";
+import { maxStep } from "./status";
 import { loadSlide } from "./transitions";
 import { sendNav } from "./websocket";
 
@@ -71,13 +72,10 @@ export function overviewSetActive(i: number): void {
 
 export function overviewCommit(): void {
     state.slideIndex = state._overviewActive;
-    state.step = 0;
     closeOverview();
-    loadSlide(null, { type: "cut", duration: 0 }, () => {
-        const maxSt = computeMaxStep(stage);
-        applyStepInstant(stage, maxSt);
-        state.step = maxSt;
-    });
+    // Jump straight to the slide's final step (build animations complete).
+    state.step = maxStep();
+    loadSlide(null, { type: "cut", duration: 0 });
     renderPv();
     sendNav();
 }
