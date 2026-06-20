@@ -26,8 +26,9 @@ window.inkflow.registerProgressTransition(
             newAngle = sign * 90 * (1 - (progress - 0.5) / 0.5);
         }
 
-        // Perspective on the stage makes the rotation read as 3D.
-        context.stage.style.perspective = "1200px";
+        // Perspective on the stage makes the rotation read as 3D. The distance
+        // comes from the Flip dataclass (smaller = more dramatic foreshortening).
+        context.stage.style.perspective = `${params.perspective ?? 1200}px`;
         context.oldLayer.style.transform = `rotate${axis}(${oldAngle}deg)`;
         context.newLayer.style.transform = `rotate${axis}(${newAngle}deg)`;
     },

@@ -19,6 +19,7 @@ class Flip(Transition):
     """Custom 3D card flip; JS handler registered in scripts.js."""
 
     axis: str = "horizontal"
+    perspective: int = 1200  # viewer distance in px; smaller = more dramatic 3D
 
 
 # Long durations on purpose: this deck exists to eyeball each transition in
