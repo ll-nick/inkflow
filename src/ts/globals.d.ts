@@ -1,4 +1,4 @@
-import type { TransitionHandler } from "./presenter/transitions";
+import type { Render, TransitionFactory } from "./presenter/transitions";
 import type { SlideData, TransitionData } from "./shared/types";
 
 declare global {
@@ -9,7 +9,12 @@ declare global {
 
     interface Window {
         inkflow: {
-            registerTransition(name: string, handler: TransitionHandler): void;
+            registerTransition(name: string, factory: TransitionFactory): void;
+            registerProgressTransition(
+                name: string,
+                render: Render,
+                options?: { easing?: string },
+            ): void;
         };
     }
 }
