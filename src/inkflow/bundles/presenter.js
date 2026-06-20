@@ -30,7 +30,6 @@
     transitions: [],
     slideIndex: 0,
     step: 0,
-    _maxStepCache: null,
     _pickerMatches: [],
     _pickerActive: 0,
     _overviewActive: 0,
@@ -39,95 +38,6 @@
     _syncingFromServer: false,
     _laserMode: false
   };
-
-  // src/ts/presenter/pv.ts
-  var pvPanel = document.getElementById("pv");
-  var pvClock = document.getElementById("pv-clock");
-  var pvElapsed = document.getElementById("pv-elapsed");
-  var pvSlideInfo = document.getElementById("pv-slide-info");
-  var pvStepRing = document.getElementById("pv-step-ring");
-  var pvNextInner = document.getElementById("pv-next-inner");
-  var pvNotes = document.getElementById("pv-notes");
-  var _startTime = Date.now();
-  function _pad2(n) {
-    return String(n).padStart(2, "0");
-  }
-  function updatePvClock() {
-    const now = /* @__PURE__ */ new Date();
-    pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
-    const secs = Math.floor((Date.now() - _startTime) / 1e3);
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor(secs % 3600 / 60);
-    const s = secs % 60;
-    pvElapsed.textContent = h > 0 ? `${_pad2(h)}:${_pad2(m)}:${_pad2(s)}` : `${_pad2(m)}:${_pad2(s)}`;
-  }
-  function _pvMaxStep() {
-    return state._maxStepCache ?? 0;
-  }
-  function updatePvInfo() {
-    const total = state.slides.length;
-    pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "\u2013"}</span> / ${total || "\u2013"}`;
-    pvStepRing.innerHTML = buildStepRing(state.step, _pvMaxStep());
-  }
-  function _scalePvNext() {
-    const svg = pvNextInner.querySelector("svg");
-    if (!svg) return;
-    const vb = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(parseFloat);
-    if (vb.length < 4) return;
-    const vbW = vb[2];
-    const vbH = vb[3];
-    svg.setAttribute("width", String(vbW));
-    svg.setAttribute("height", String(vbH));
-    svg.style.width = `${vbW}px`;
-    svg.style.height = `${vbH}px`;
-    const scale = Math.min(
-      pvNextInner.clientWidth / vbW,
-      pvNextInner.clientHeight / vbH
-    );
-    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
-    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
-    svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-  }
-  function renderPvNext() {
-    const curMax = _pvMaxStep();
-    let previewSvg = null;
-    let revealStep = 0;
-    if (state.step < curMax) {
-      previewSvg = state.slides[state.slideIndex]?.svg ?? null;
-      revealStep = state.step + 1;
-    } else if (state.slideIndex + 1 < state.slides.length) {
-      previewSvg = state.slides[state.slideIndex + 1].svg;
-    }
-    if (previewSvg === null) {
-      pvNextInner.innerHTML = '<div id="pv-next-empty">END</div>';
-      return;
-    }
-    pvNextInner.innerHTML = previewSvg;
-    const svg = pvNextInner.querySelector("svg");
-    if (svg) {
-      svg.querySelectorAll("[data-step]").forEach((el) => {
-        el.classList.toggle(
-          "active",
-          +(el.getAttribute("data-step") ?? "0") <= revealStep
-        );
-      });
-    }
-    requestAnimationFrame(_scalePvNext);
-  }
-  function renderPvNotes() {
-    pvNotes.innerHTML = state.slides[state.slideIndex]?.notes ?? "";
-    pvNotes.scrollTop = 0;
-  }
-  function renderPv() {
-    updatePvInfo();
-    renderPvNext();
-    renderPvNotes();
-  }
-  function togglePv() {
-    document.body.classList.toggle("pv-open");
-    pvPanel.addEventListener("transitionend", _scalePvNext, { once: true });
-  }
-  window.addEventListener("resize", _scalePvNext);
 
   // src/ts/shared/step.ts
   function maxStep(root) {
@@ -189,10 +99,18 @@
   var stepInfo = document.getElementById("step-info");
   var mhudSlideInfo = document.getElementById("mhud-slide-info");
   var mhudStepRing = document.getElementById("mhud-step-ring");
+  var maxStepSlides = null;
+  var maxStepIndex = -1;
+  var maxStepValue = 0;
   function maxStep2() {
-    if (state._maxStepCache !== null) return state._maxStepCache;
-    state._maxStepCache = maxStep(stage);
-    return state._maxStepCache;
+    if (maxStepSlides === state.slides && maxStepIndex === state.slideIndex)
+      return maxStepValue;
+    const scratch = document.createElement("div");
+    scratch.innerHTML = state.slides[state.slideIndex]?.svg ?? "";
+    maxStepValue = maxStep(scratch);
+    maxStepSlides = state.slides;
+    maxStepIndex = state.slideIndex;
+    return maxStepValue;
   }
   function applyCurrentStep() {
     applyStep(stage, state.step);
@@ -236,6 +154,157 @@
     mhudSlideInfo.innerHTML = infoHtml;
     mhudStepRing.innerHTML = ringHtml;
     syncURL();
+  }
+
+  // src/ts/presenter/pv.ts
+  var pvPanel = document.getElementById("pv");
+  var pvClock = document.getElementById("pv-clock");
+  var pvElapsed = document.getElementById("pv-elapsed");
+  var pvSlideInfo = document.getElementById("pv-slide-info");
+  var pvStepRing = document.getElementById("pv-step-ring");
+  var pvNextInner = document.getElementById("pv-next-inner");
+  var pvNotes = document.getElementById("pv-notes");
+  var _startTime = Date.now();
+  function _pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+  function updatePvClock() {
+    const now = /* @__PURE__ */ new Date();
+    pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
+    const secs = Math.floor((Date.now() - _startTime) / 1e3);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor(secs % 3600 / 60);
+    const s = secs % 60;
+    pvElapsed.textContent = h > 0 ? `${_pad2(h)}:${_pad2(m)}:${_pad2(s)}` : `${_pad2(m)}:${_pad2(s)}`;
+  }
+  function updatePvInfo() {
+    const total = state.slides.length;
+    pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "\u2013"}</span> / ${total || "\u2013"}`;
+    pvStepRing.innerHTML = buildStepRing(state.step, maxStep2());
+  }
+  function _scalePvNext() {
+    const svg = pvNextInner.querySelector("svg");
+    if (!svg) return;
+    const vb = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(parseFloat);
+    if (vb.length < 4) return;
+    const vbW = vb[2];
+    const vbH = vb[3];
+    svg.setAttribute("width", String(vbW));
+    svg.setAttribute("height", String(vbH));
+    svg.style.width = `${vbW}px`;
+    svg.style.height = `${vbH}px`;
+    const scale = Math.min(
+      pvNextInner.clientWidth / vbW,
+      pvNextInner.clientHeight / vbH
+    );
+    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
+    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
+    svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+  function renderPvNext() {
+    const curMax = maxStep2();
+    let previewSvg = null;
+    let revealStep = 0;
+    if (state.step < curMax) {
+      previewSvg = state.slides[state.slideIndex]?.svg ?? null;
+      revealStep = state.step + 1;
+    } else if (state.slideIndex + 1 < state.slides.length) {
+      previewSvg = state.slides[state.slideIndex + 1].svg;
+    }
+    if (previewSvg === null) {
+      pvNextInner.innerHTML = '<div id="pv-next-empty">END</div>';
+      return;
+    }
+    pvNextInner.innerHTML = previewSvg;
+    const svg = pvNextInner.querySelector("svg");
+    if (svg) {
+      svg.querySelectorAll("[data-step]").forEach((el) => {
+        el.classList.toggle(
+          "active",
+          +(el.getAttribute("data-step") ?? "0") <= revealStep
+        );
+      });
+    }
+    requestAnimationFrame(_scalePvNext);
+  }
+  function renderPvNotes() {
+    pvNotes.innerHTML = state.slides[state.slideIndex]?.notes ?? "";
+    pvNotes.scrollTop = 0;
+  }
+  function renderPv() {
+    updatePvInfo();
+    renderPvNext();
+    renderPvNotes();
+  }
+  function togglePv() {
+    document.body.classList.toggle("pv-open");
+    pvPanel.addEventListener("transitionend", _scalePvNext, { once: true });
+  }
+  window.addEventListener("resize", _scalePvNext);
+
+  // src/ts/shared/easing.ts
+  var NAMED_CURVES = {
+    linear: [0, 0, 1, 1],
+    ease: [0.25, 0.1, 0.25, 1],
+    "ease-in": [0.42, 0, 1, 1],
+    "ease-out": [0, 0, 0.58, 1],
+    "ease-in-out": [0.42, 0, 0.58, 1]
+  };
+  var CUBIC_BEZIER_PATTERN = /^cubic-bezier\(\s*([\d.+-]+)\s*,\s*([\d.+-]+)\s*,\s*([\d.+-]+)\s*,\s*([\d.+-]+)\s*\)$/;
+  function parseControlPoints(spec) {
+    if (!spec) return null;
+    const trimmed = spec.trim();
+    if (trimmed in NAMED_CURVES) return NAMED_CURVES[trimmed];
+    const match = CUBIC_BEZIER_PATTERN.exec(trimmed);
+    if (!match) return null;
+    const points = [match[1], match[2], match[3], match[4]].map(Number);
+    return points.every(Number.isFinite) ? points : null;
+  }
+  var identity = (progress) => progress;
+  function makeCubicBezier(points) {
+    const [x1, y1, x2, y2] = points;
+    const cx = 3 * x1;
+    const bx = 3 * (x2 - x1) - cx;
+    const ax = 1 - cx - bx;
+    const cy = 3 * y1;
+    const by = 3 * (y2 - y1) - cy;
+    const ay = 1 - cy - by;
+    const sampleX = (t) => ((ax * t + bx) * t + cx) * t;
+    const sampleY = (t) => ((ay * t + by) * t + cy) * t;
+    const sampleSlopeX = (t) => (3 * ax * t + 2 * bx) * t + cx;
+    const solveForT = (x) => {
+      let t = x;
+      for (let iteration = 0; iteration < 8; iteration++) {
+        const error = sampleX(t) - x;
+        if (Math.abs(error) < 1e-6) return t;
+        const slope = sampleSlopeX(t);
+        if (Math.abs(slope) < 1e-6) break;
+        t -= error / slope;
+      }
+      let lower = 0;
+      let upper = 1;
+      t = x;
+      while (lower < upper) {
+        const value = sampleX(t);
+        if (Math.abs(value - x) < 1e-6) return t;
+        if (x > value) lower = t;
+        else upper = t;
+        t = (lower + upper) / 2;
+      }
+      return t;
+    };
+    return (progress) => {
+      if (progress <= 0) return 0;
+      if (progress >= 1) return 1;
+      return sampleY(solveForT(progress));
+    };
+  }
+  function cubicBezierEasing(spec) {
+    const points = parseControlPoints(spec);
+    if (!points) return identity;
+    const [x1, y1, x2, y2] = points;
+    if (x1 === 0 && y1 === 0 && x2 === 1 && y2 === 1) return identity;
+    return makeCubicBezier(points);
   }
 
   // src/ts/shared/morph-math.ts
@@ -294,7 +363,13 @@
   }
   function readInterpolatedAttributes(element) {
     const result = {};
+    const inlineStyle = element instanceof SVGElement || element instanceof HTMLElement ? element.style : null;
     for (const attribute of INTERPOLATED_ATTRIBUTES) {
+      const styleValue = inlineStyle?.getPropertyValue(attribute).trim();
+      if (styleValue && styleValue !== "none") {
+        result[attribute] = styleValue;
+        continue;
+      }
       const directValue = element.getAttribute(attribute);
       if (directValue !== null && directValue !== "none") {
         result[attribute] = directValue;
@@ -337,8 +412,42 @@
     return new DOMMatrix().translate(pivotX + localDeltaX, pivotY + localDeltaY).scale(compensationScaleX, compensationScaleY).rotate(rotationDeltaDegrees).translate(-pivotX, -pivotY);
   }
 
+  // src/ts/presenter/progress-driver.ts
+  var ProgressDriver = class {
+    value = 0;
+    // The end the most recent animateTo is travelling toward. Callers read this to
+    // decide which way a reversal should go.
+    heading = 1;
+    animateTo(target, durationSeconds, signal, onFrame) {
+      this.heading = target;
+      const ratePerMillisecond = 1 / (durationSeconds * 1e3);
+      return new Promise((resolve) => {
+        let lastTimestamp = null;
+        const step = (timestamp) => {
+          if (signal.aborted) {
+            resolve();
+            return;
+          }
+          if (lastTimestamp === null) lastTimestamp = timestamp;
+          const direction = target >= this.value ? 1 : -1;
+          this.value += direction * ratePerMillisecond * (timestamp - lastTimestamp);
+          lastTimestamp = timestamp;
+          const reachedTarget = direction === 1 && this.value >= target || direction === -1 && this.value <= target;
+          if (reachedTarget) {
+            this.value = target;
+            onFrame(this.value);
+            resolve();
+            return;
+          }
+          onFrame(this.value);
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+    }
+  };
+
   // src/ts/presenter/morph.ts
-  var stage2 = document.getElementById("stage");
   var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
   var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
   function captureAbsolutePose(element) {
@@ -468,10 +577,11 @@
     return ids;
   }
   function snapshotTopLevelChildren(svg) {
-    return Array.from(svg.children).map((child) => ({
+    return Array.from(svg.children).map((child, index) => ({
       element: child.cloneNode(true),
       html: child.outerHTML,
-      ids: collectIds(child)
+      ids: collectIds(child),
+      index
     }));
   }
   function nearestMatchedId(ancestorIds, matchedIds) {
@@ -574,14 +684,22 @@
   function buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds) {
     const oldHtml = new Set(oldChildren.map((child) => child.html));
     const newHtml = new Set(newChildren.map((child) => child.html));
+    const newChildElements = Array.from(svgRoot.children);
     const tasks = [];
     for (const child of oldChildren) {
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (newHtml.has(child.html)) continue;
       const clone = child.element;
       if (!(clone instanceof SVGGraphicsElement)) continue;
-      svgRoot.appendChild(clone);
-      tasks.push({ type: "exit", element: clone });
+      svgRoot.insertBefore(clone, newChildElements[child.index] ?? null);
+      const startOpacity = parseFloat(
+        clone.style.opacity || clone.getAttribute("opacity") || "1"
+      );
+      tasks.push({
+        type: "exit",
+        element: clone,
+        startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1
+      });
     }
     for (const child of newChildren) {
       if (containsMatchedId(child.ids, matchedIds)) continue;
@@ -602,10 +720,11 @@
     const matchedIds = /* @__PURE__ */ new Set();
     for (const id of oldLeaves.ids) if (newIds.has(id)) matchedIds.add(id);
     const newChildren = Array.from(svgRoot.children).map(
-      (child) => ({
+      (child, index) => ({
         element: child,
         html: child.outerHTML,
-        ids: collectIds(child)
+        ids: collectIds(child),
+        index
       })
     );
     return [
@@ -710,7 +829,9 @@
         );
       } else {
         const exitProgress = easeInOut(Math.min(rawProgress / 0.7, 1));
-        task.element.style.opacity = String(1 - exitProgress);
+        task.element.style.opacity = String(
+          task.startOpacity * (1 - exitProgress)
+        );
       }
     }
   }
@@ -759,44 +880,108 @@
       else task.element.style.opacity = "";
     }
   }
-  function runMorphLoop(tasks, durationMs, then) {
-    const t0 = performance.now();
-    function frame(now) {
-      const rawProgress = Math.min((now - t0) / durationMs, 1);
-      tickTasks(tasks, rawProgress);
-      if (rawProgress < 1) {
-        requestAnimationFrame(frame);
-        return;
-      }
-      finalizeTasks(tasks);
-      if (then) then();
+  var MorphTransition = class {
+    oldLeaves = { ids: /* @__PURE__ */ new Set(), leaves: [] };
+    oldChildren = [];
+    tasks = [];
+    driver = new ProgressDriver();
+    stage;
+    oldHtml = "";
+    // Snapshot the outgoing slide before swap() replaces the DOM, and keep its
+    // markup so a full reversal can restore the real previous slide.
+    prepare({ stage: stage4 }) {
+      this.stage = stage4;
+      this.oldHtml = stage4.innerHTML;
+      const beforeSvg = stage4.querySelector("svg");
+      this.oldLeaves = beforeSvg ? snapshotLeaves(beforeSvg) : { ids: /* @__PURE__ */ new Set(), leaves: [] };
+      this.oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
     }
-    requestAnimationFrame(frame);
-  }
-  function morphToNextSlide(swap, transition, then) {
-    const beforeSvg = stage2.querySelector("svg");
-    const oldLeaves = beforeSvg ? snapshotLeaves(beforeSvg) : { ids: /* @__PURE__ */ new Set(), leaves: [] };
-    const oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
-    swap();
-    const svgRoot = stage2.querySelector("svg");
-    if (!svgRoot) {
-      if (then) then();
-      return;
+    async start({
+      stage: stage4,
+      params,
+      signal
+    }) {
+      if (params.duration <= 0) return;
+      const svgRoot = stage4.querySelector("svg");
+      if (!svgRoot) return;
+      this.tasks = buildTasks(svgRoot, this.oldLeaves, this.oldChildren);
+      await this.driver.animateTo(
+        1,
+        params.duration,
+        signal,
+        (progress) => tickTasks(this.tasks, progress)
+      );
+      if (!signal.aborted) this.settle();
     }
-    const tasks = buildTasks(svgRoot, oldLeaves, oldChildren);
-    runMorphLoop(tasks, transition.duration * 1e3, then);
-  }
+    // Reverse direction mid-flight by retargeting the progress: the same tasks run
+    // backward, so every property retraces its exact path. No re-snapshot of the
+    // intermediate DOM, hence no colour or corner-radius jump and no crossfade
+    // darkening across repeated reversals.
+    async reverse({
+      params,
+      signal
+    }) {
+      const target = this.driver.heading === 1 ? 0 : 1;
+      await this.driver.animateTo(
+        target,
+        params.duration,
+        signal,
+        (progress) => tickTasks(this.tasks, progress)
+      );
+      if (!signal.aborted) this.settle();
+    }
+    cancel(_ctx) {
+      for (const task of this.tasks)
+        if (task.type === "exit") task.element.remove();
+    }
+    // progress 1 → the new slide is fully formed; snap it to its natural state.
+    // progress 0 → reversed all the way back; the morphed elements only *look* like
+    // the previous slide, so restore the real one.
+    settle() {
+      if (this.driver.value >= 1) finalizeTasks(this.tasks);
+      else this.stage.innerHTML = this.oldHtml;
+    }
+  };
 
   // src/ts/presenter/transitions.ts
-  var stage3 = document.getElementById("stage");
+  var stage2 = document.getElementById("stage");
+  var CUT = { type: "cut", duration: 0 };
   var registry = /* @__PURE__ */ new Map();
-  function registerTransition(name, handler) {
-    registry.set(name, handler);
+  function registerTransition(name, factory) {
+    registry.set(name, factory);
+  }
+  var liveInstance = null;
+  var liveController = null;
+  var liveParams = null;
+  var liveSettle = null;
+  function cancelInflight(callThen) {
+    if (!liveController) return;
+    const ctrl = liveController;
+    const inst = liveInstance;
+    const params = liveParams;
+    const settle = liveSettle;
+    liveController = null;
+    liveInstance = null;
+    liveParams = null;
+    liveSettle = null;
+    ctrl.abort();
+    inst?.cancel?.({ stage: stage2, params });
+    settle(callThen);
+  }
+  function inflightDirection() {
+    if (!liveParams) return null;
+    return liveParams.reverse ? "backward" : "forward";
+  }
+  function snapInflight() {
+    cancelInflight(true);
+    stage2.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    applyCurrentStepInstant();
+    updateStatus();
   }
   function makeLayer() {
     const layer = document.createElement("div");
     layer.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
-    layer.style.padding = getComputedStyle(stage3).padding;
+    layer.style.padding = getComputedStyle(stage2).padding;
     return layer;
   }
   function sizeLayerChild(layer) {
@@ -805,32 +990,6 @@
       child.style.width = "100%";
       child.style.height = "100%";
     }
-  }
-  function cssTransition(animate) {
-    return (swap, t, then) => {
-      if (t.duration <= 0) {
-        swap();
-        then?.();
-        return;
-      }
-      const oldHTML = stage3.innerHTML;
-      swap();
-      const newLayer = makeLayer();
-      while (stage3.firstChild) newLayer.appendChild(stage3.firstChild);
-      sizeLayerChild(newLayer);
-      stage3.appendChild(newLayer);
-      const oldLayer = makeLayer();
-      oldLayer.innerHTML = oldHTML;
-      sizeLayerChild(oldLayer);
-      stage3.appendChild(oldLayer);
-      animate(oldLayer, newLayer, t, () => {
-        while (newLayer.firstChild)
-          stage3.insertBefore(newLayer.firstChild, newLayer);
-        newLayer.remove();
-        oldLayer.remove();
-        then?.();
-      });
-    };
   }
   function dirAxis(dir) {
     return dir === "up" || dir === "down" ? "Y" : "X";
@@ -841,155 +1000,260 @@
   function flipDir(dir) {
     return { left: "right", right: "left", up: "down", down: "up" }[dir] ?? dir;
   }
-  function reflow() {
-    void stage3.offsetHeight;
+  var ProgressTransition = class {
+    constructor(render, defaultEasing) {
+      this.render = render;
+      this.defaultEasing = defaultEasing;
+    }
+    render;
+    defaultEasing;
+    oldLayer;
+    newLayer;
+    outgoingHtml = "";
+    stageStyleText = "";
+    settled = false;
+    driver = new ProgressDriver();
+    ease = (progress) => progress;
+    // Captured at start() and used for every frame, including reverse(). The
+    // geometry must not change when direction flips — the progress value alone
+    // carries the reversal — so reverse()'s own (direction-flipped) params are
+    // ignored for painting.
+    startParams;
+    prepare() {
+      this.outgoingHtml = stage2.innerHTML;
+      this.stageStyleText = stage2.style.cssText;
+    }
+    async start({
+      params,
+      signal
+    }) {
+      if (params.duration <= 0) return;
+      this.startParams = params;
+      this.buildLayers();
+      this.ease = cubicBezierEasing(params.easing ?? this.defaultEasing);
+      this.paint(0);
+      await this.driver.animateTo(
+        1,
+        params.duration,
+        signal,
+        (value) => this.paint(value)
+      );
+      if (!signal.aborted) this.settle();
+    }
+    async reverse({
+      signal
+    }) {
+      const target = this.driver.heading === 1 ? 0 : 1;
+      await this.driver.animateTo(
+        target,
+        this.startParams.duration,
+        signal,
+        (value) => this.paint(value)
+      );
+      if (!signal.aborted) this.settle();
+    }
+    cancel() {
+      this.teardown(this.newLayer);
+    }
+    paint(value) {
+      this.render(
+        { stage: stage2, oldLayer: this.oldLayer, newLayer: this.newLayer },
+        this.ease(value),
+        this.startParams
+      );
+    }
+    buildLayers() {
+      this.settled = false;
+      const newLayer = makeLayer();
+      while (stage2.firstChild) newLayer.appendChild(stage2.firstChild);
+      sizeLayerChild(newLayer);
+      stage2.appendChild(newLayer);
+      this.newLayer = newLayer;
+      const oldLayer = makeLayer();
+      oldLayer.innerHTML = this.outgoingHtml;
+      sizeLayerChild(oldLayer);
+      stage2.appendChild(oldLayer);
+      this.oldLayer = oldLayer;
+    }
+    settle() {
+      this.teardown(this.driver.value >= 1 ? this.newLayer : this.oldLayer);
+    }
+    // Replace the stage's content with just the shown slide, dropping both layers
+    // and anything else a render added (the fade colour backdrop) in one step, and
+    // restore the stage's pre-transition inline style. Idempotent; skipped when no
+    // layers were built (duration 0), where the slide is already in place.
+    teardown(shownLayer) {
+      if (this.settled) return;
+      this.settled = true;
+      if (shownLayer) stage2.replaceChildren(...shownLayer.children);
+      stage2.style.cssText = this.stageStyleText;
+    }
+  };
+  function registerProgressTransition(name, render, options) {
+    registerTransition(
+      name,
+      () => new ProgressTransition(render, options?.easing)
+    );
   }
-  registerTransition("cut", (swap, _t, then) => {
-    swap();
-    then?.();
-  });
-  registerTransition(
-    "crossfade",
-    cssTransition((oldLayer, _newLayer, t, done) => {
-      const easing = t.easing ?? "ease";
-      oldLayer.style.transition = `opacity ${t.duration}s ${easing}`;
-      reflow();
-      requestAnimationFrame(() => {
-        oldLayer.style.opacity = "0";
-        setTimeout(done, t.duration * 1e3);
-      });
-    })
-  );
-  registerTransition(
-    "push",
-    cssTransition((oldLayer, newLayer, t, done) => {
-      const dir = t.reverse ? flipDir(t.direction ?? "left") : t.direction ?? "left";
-      const axis = dirAxis(dir);
-      const sign = incomingSign(dir);
-      const easing = t.easing ?? "ease-in-out";
-      const ms = t.duration * 1e3;
-      oldLayer.style.transition = `transform ${t.duration}s ${easing}`;
-      newLayer.style.transform = `translate${axis}(${sign * 100}%)`;
-      newLayer.style.transition = `transform ${t.duration}s ${easing}`;
-      reflow();
-      requestAnimationFrame(() => {
-        oldLayer.style.transform = `translate${axis}(${-sign * 100}%)`;
-        newLayer.style.transform = `translate${axis}(0)`;
-        setTimeout(done, ms);
-      });
-    })
-  );
-  registerTransition(
-    "cover",
-    cssTransition((oldLayer, _newLayer, t, done) => {
-      const dir = t.direction ?? "left";
-      const axis = dirAxis(dir);
-      const sign = incomingSign(dir);
-      const easing = t.easing ?? "ease-in-out";
-      const ms = t.duration * 1e3;
-      const exitPct = t.reverse ? sign * 100 : -sign * 100;
-      oldLayer.style.transition = `transform ${t.duration}s ${easing}`;
-      reflow();
-      requestAnimationFrame(() => {
-        oldLayer.style.transform = `translate${axis}(${exitPct}%)`;
-        setTimeout(done, ms);
-      });
-    })
-  );
-  registerTransition(
-    "zoom",
-    cssTransition((oldLayer, newLayer, t, done) => {
-      const easing = t.easing ?? "ease-in-out";
-      const ms = t.duration * 1e3;
-      oldLayer.style.transformOrigin = "center";
-      oldLayer.style.transition = `opacity ${t.duration}s ${easing}, transform ${t.duration}s ${easing}`;
-      newLayer.style.opacity = "0";
-      newLayer.style.transform = "scale(0.95)";
-      newLayer.style.transformOrigin = "center";
-      newLayer.style.transition = `opacity ${t.duration}s ${easing}, transform ${t.duration}s ${easing}`;
-      reflow();
-      requestAnimationFrame(() => {
-        oldLayer.style.opacity = "0";
-        oldLayer.style.transform = "scale(1.05)";
-        newLayer.style.opacity = "1";
-        newLayer.style.transform = "scale(1)";
-        setTimeout(done, ms);
-      });
-    })
-  );
-  registerTransition(
-    "fade",
-    cssTransition((oldLayer, newLayer, t, done) => {
-      const color = t.color ?? "#000000";
-      const easing = t.easing ?? "ease";
-      const half = t.duration / 2;
-      const halfMs = half * 1e3;
-      stage3.style.backgroundColor = color;
-      oldLayer.style.transition = `opacity ${half}s ${easing}`;
-      newLayer.style.opacity = "0";
-      reflow();
-      requestAnimationFrame(() => {
-        oldLayer.style.opacity = "0";
-        setTimeout(() => {
-          newLayer.style.transition = `opacity ${half}s ${easing}`;
-          reflow();
-          requestAnimationFrame(() => {
-            newLayer.style.opacity = "1";
-            setTimeout(() => {
-              stage3.style.backgroundColor = "";
-              done();
-            }, halfMs);
-          });
-        }, halfMs);
-      });
-    })
-  );
-  registerTransition(
-    "wipe",
-    cssTransition((oldLayer, _newLayer, t, done) => {
-      const dir = t.direction ?? "left";
-      const easing = t.easing ?? "ease-in-out";
-      const ms = t.duration * 1e3;
-      const effectiveDir = t.reverse ? flipDir(dir) : dir;
-      const exitClip = {
-        left: "inset(0 0 0 100%)",
-        right: "inset(0 100% 0 0)",
-        up: "inset(0 0 100% 0)",
-        down: "inset(100% 0 0 0)"
-      }[effectiveDir] ?? "inset(0 0 0 100%)";
-      oldLayer.style.clipPath = "inset(0)";
-      oldLayer.style.transition = `clip-path ${t.duration}s ${easing}`;
-      reflow();
-      requestAnimationFrame(() => {
-        oldLayer.style.clipPath = exitClip;
-        setTimeout(done, ms);
-      });
-    })
-  );
-  registerTransition("morph", (swap, transition, then) => {
-    if (transition.duration <= 0 || !state.slides.length) {
+  var CutTransition = class {
+    async start() {
+    }
+  };
+  var crossfadeRender = ({ oldLayer }, progress) => {
+    oldLayer.style.opacity = String(1 - progress);
+  };
+  var pushRender = ({ oldLayer, newLayer }, progress, params) => {
+    const direction = params.reverse ? flipDir(params.direction ?? "left") : params.direction ?? "left";
+    const axis = dirAxis(direction);
+    const sign = incomingSign(direction);
+    oldLayer.style.transform = `translate${axis}(${-progress * 100 * sign}%)`;
+    newLayer.style.transform = `translate${axis}(${(1 - progress) * 100 * sign}%)`;
+  };
+  var coverRender = ({ oldLayer }, progress, params) => {
+    const direction = params.direction ?? "left";
+    const axis = dirAxis(direction);
+    const sign = incomingSign(direction);
+    const exitSign = params.reverse ? sign : -sign;
+    oldLayer.style.transform = `translate${axis}(${exitSign * 100 * progress}%)`;
+  };
+  var zoomRender = ({ oldLayer, newLayer }, progress, params) => {
+    const amount = params.amount ?? 0.6;
+    oldLayer.style.transformOrigin = "center";
+    newLayer.style.transformOrigin = "center";
+    oldLayer.style.opacity = String(1 - progress);
+    newLayer.style.opacity = String(progress);
+    if (params.reverse) {
+      oldLayer.style.transform = `scale(${1 - amount * progress})`;
+      newLayer.style.transform = `scale(${1 + amount - amount * progress})`;
+    } else {
+      oldLayer.style.transform = `scale(${1 + amount * progress})`;
+      newLayer.style.transform = `scale(${1 - amount + amount * progress})`;
+    }
+  };
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function makeFadeBackdrop(slideSvg, color) {
+    const layer = makeLayer();
+    layer.dataset.fadeBackdrop = "1";
+    const viewBox = slideSvg?.getAttribute("viewBox") ?? "0 0 1920 1080";
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute(
+      "preserveAspectRatio",
+      slideSvg?.getAttribute("preserveAspectRatio") ?? "xMidYMid meet"
+    );
+    const [, , width, height] = viewBox.split(/[\s,]+/).map(Number);
+    const rect = document.createElementNS(SVG_NS, "rect");
+    rect.setAttribute("width", String(width || 0));
+    rect.setAttribute("height", String(height || 0));
+    rect.setAttribute("fill", color);
+    svg.appendChild(rect);
+    layer.appendChild(svg);
+    sizeLayerChild(layer);
+    return layer;
+  }
+  var fadeRender = ({ stage: stageElement, oldLayer, newLayer }, progress, params) => {
+    const existing = newLayer.previousElementSibling;
+    if (!(existing instanceof HTMLElement) || existing.dataset.fadeBackdrop !== "1") {
+      const backdrop = makeFadeBackdrop(
+        newLayer.querySelector("svg"),
+        params.color ?? "#000000"
+      );
+      stageElement.insertBefore(backdrop, newLayer);
+    }
+    oldLayer.style.opacity = String(Math.max(0, 1 - progress * 2));
+    newLayer.style.opacity = String(Math.max(0, progress * 2 - 1));
+  };
+  var WIPE_CLIP = {
+    left: (percent) => `inset(0 0 0 ${percent}%)`,
+    right: (percent) => `inset(0 ${percent}% 0 0)`,
+    up: (percent) => `inset(0 0 ${percent}% 0)`,
+    down: (percent) => `inset(${percent}% 0 0 0)`
+  };
+  var wipeRender = ({ oldLayer }, progress, params) => {
+    const direction = params.reverse ? flipDir(params.direction ?? "left") : params.direction ?? "left";
+    const clip = WIPE_CLIP[direction] ?? WIPE_CLIP.left;
+    oldLayer.style.clipPath = clip(progress * 100);
+  };
+  registerTransition("cut", () => new CutTransition());
+  registerProgressTransition("crossfade", crossfadeRender, { easing: "ease" });
+  registerProgressTransition("push", pushRender, { easing: "ease-in-out" });
+  registerProgressTransition("cover", coverRender, { easing: "ease-in-out" });
+  registerProgressTransition("zoom", zoomRender, { easing: "ease-in-out" });
+  registerProgressTransition("fade", fadeRender, { easing: "ease" });
+  registerProgressTransition("wipe", wipeRender, { easing: "ease-in-out" });
+  registerTransition("morph", () => new MorphTransition());
+  function loadSlide(then = null, transition = null) {
+    const params = transition ?? state.transitions[state.slideIndex] ?? CUT;
+    const settleContent = () => {
+      applyCurrentStepInstant();
+      updateStatus();
+    };
+    const swap = () => {
+      stage2.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+      settleContent();
+    };
+    const canReverse = liveInstance?.reverse != null && liveParams != null && liveParams.type === params.type && Boolean(liveParams.reverse) !== Boolean(params.reverse);
+    if (canReverse) {
+      const inst2 = liveInstance;
+      const ctrl2 = liveController;
+      const prevSettle = liveSettle;
+      ctrl2.abort();
+      liveController = null;
+      liveInstance = null;
+      liveParams = null;
+      liveSettle = null;
+      prevSettle(true);
+      const newCtrl = new AbortController();
+      let done2 = false;
+      const settle2 = (callThen) => {
+        if (done2) return;
+        done2 = true;
+        if (liveController === newCtrl) {
+          liveController = null;
+          liveInstance = null;
+          liveParams = null;
+          liveSettle = null;
+        }
+        if (callThen) then?.();
+      };
+      liveController = newCtrl;
+      liveInstance = inst2;
+      liveParams = params;
+      liveSettle = settle2;
+      inst2.reverse({ stage: stage2, params, signal: newCtrl.signal }).then(() => {
+        if (!newCtrl.signal.aborted) settleContent();
+        settle2(true);
+      }).catch(() => settle2(false));
+      return;
+    }
+    cancelInflight(true);
+    const makeTransition = registry.get(params.type);
+    if (!makeTransition) {
       swap();
       then?.();
       return;
     }
-    morphToNextSlide(swap, transition, then);
-  });
-  function loadSlide(then = null, transition = null, onSwap = null) {
-    const swap = () => {
-      stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
-      state._maxStepCache = null;
-      onSwap?.();
-      applyCurrentStepInstant();
-      updateStatus();
+    const inst = makeTransition();
+    inst.prepare?.({ stage: stage2, params });
+    const ctrl = new AbortController();
+    let done = false;
+    const settle = (callThen) => {
+      if (done) return;
+      done = true;
+      if (liveController === ctrl) {
+        liveController = null;
+        liveInstance = null;
+        liveParams = null;
+        liveSettle = null;
+      }
+      if (callThen) then?.();
     };
-    const t = transition ?? state.transitions[state.slideIndex] ?? { type: "cut", duration: 0 };
-    const handler = registry.get(t.type);
-    if (handler) {
-      handler(swap, t, then);
-      return;
-    }
+    liveController = ctrl;
+    liveInstance = inst;
+    liveParams = params;
+    liveSettle = settle;
     swap();
-    then?.();
+    inst.start({ stage: stage2, params, signal: ctrl.signal }).then(() => settle(true)).catch(() => settle(false));
   }
 
   // src/ts/presenter/ui.ts
@@ -1093,14 +1357,27 @@
   var wsDot = document.getElementById("ws-dot");
   var overviewEl = document.getElementById("overview");
   var overviewGridEl = document.getElementById("overview-grid");
-  function sendNav() {
+  function sendNav(transition) {
     if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer)
       return;
     state.ws.send(
       JSON.stringify({
         type: "nav",
         slideIndex: state.slideIndex,
-        step: state.step
+        step: state.step,
+        ...transition ? { transition } : {}
+      })
+    );
+  }
+  function sendSnap() {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer)
+      return;
+    state.ws.send(
+      JSON.stringify({
+        type: "nav",
+        slideIndex: state.slideIndex,
+        step: state.step,
+        snap: true
       })
     );
   }
@@ -1131,6 +1408,10 @@
       } else if (msg.type === "error") {
         showError(msg.message);
       } else if (msg.type === "position") {
+        if (msg.snap) {
+          snapInflight();
+          return;
+        }
         const newIndex = Math.min(
           Math.max(0, msg.slideIndex | 0),
           Math.max(0, state.slides.length - 1)
@@ -1143,7 +1424,7 @@
         loadSlide(() => {
           if (state.step > 0) applyCurrentStep();
           state._syncingFromServer = false;
-        });
+        }, msg.transition ?? null);
         renderPv();
       }
     };
@@ -1156,7 +1437,7 @@
   }
 
   // src/ts/presenter/laser.ts
-  var SVG_NS = "http://www.w3.org/2000/svg";
+  var SVG_NS2 = "http://www.w3.org/2000/svg";
   var stageWrap = document.getElementById("stage-wrap");
   var overlay = document.getElementById(
     "laser-overlay"
@@ -1199,7 +1480,7 @@
     stageWrap.setPointerCapture(e.pointerId);
     const x = e.clientX - stageRect.left;
     const y = e.clientY - stageRect.top;
-    currentPath = document.createElementNS(SVG_NS, "path");
+    currentPath = document.createElementNS(SVG_NS2, "path");
     currentPoints = [`M ${x} ${y}`];
     currentPath.classList.add("laser-trail");
     overlay.appendChild(currentPath);
@@ -1229,6 +1510,11 @@
 
   // src/ts/presenter/navigation.ts
   function advance() {
+    if (inflightDirection() === "forward") {
+      snapInflight();
+      sendSnap();
+      return;
+    }
     if (state.step < maxStep2()) {
       state.step++;
       applyCurrentStep();
@@ -1243,6 +1529,11 @@
     sendNav();
   }
   function retreat() {
+    if (inflightDirection() === "backward") {
+      snapInflight();
+      sendSnap();
+      return;
+    }
     if (state.step > 0) {
       state.step--;
       applyCurrentStep();
@@ -1251,12 +1542,11 @@
     } else if (state.slideIndex > 0) {
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
-      loadSlide(null, t ? { ...t, reverse: true } : null, () => {
-        state.step = maxStep2();
-        applyCurrentStepInstant();
-        sendNav();
-      });
+      state.step = maxStep2();
+      const tReversed = t ? { ...t, reverse: true } : null;
+      loadSlide(null, tReversed);
       renderPv();
+      sendNav(tReversed);
       return;
     }
     sendNav();
@@ -1274,33 +1564,34 @@
     if (state.slideIndex > 0) {
       const t = state.transitions[state.slideIndex];
       state.slideIndex--;
-      loadSlide(null, t ? { ...t, reverse: true } : null, () => {
-        state.step = maxStep2();
-        applyCurrentStepInstant();
-      });
+      state.step = maxStep2();
+      const tReversed = t ? { ...t, reverse: true } : null;
+      loadSlide(null, tReversed);
       renderPv();
+      sendNav(tReversed);
+      return;
     }
     sendNav();
   }
   function gotoFirst() {
     state.slideIndex = 0;
     state.step = 0;
-    loadSlide();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
   }
   function gotoLast() {
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
-    loadSlide();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
   }
 
   // src/ts/presenter/overview.ts
   var overview = document.getElementById("overview");
   var overviewGrid = document.getElementById("overview-grid");
-  var stage4 = document.getElementById("stage");
+  var stage3 = document.getElementById("stage");
   function firstSlideViewBox() {
     const svg = state.slides[0]?.svg ?? "";
     const m = svg.match(/viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"/);
@@ -1351,15 +1642,11 @@
   }
   function overviewCommit() {
     state.slideIndex = state._overviewActive;
-    state.step = 0;
     closeOverview();
-    loadSlide(null, { type: "cut", duration: 0 }, () => {
-      const maxSt = maxStep(stage4);
-      applyStepInstant(stage4, maxSt);
-      state.step = maxSt;
-    });
+    state.step = maxStep2();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
   }
   function computeStageFlip() {
     const activeCell = overviewGrid.children[state._overviewActive];
@@ -1368,8 +1655,8 @@
     const el = thumb ?? activeCell;
     const gr = overviewGrid.getBoundingClientRect();
     const cr = el.getBoundingClientRect();
-    const sr = stage4.getBoundingClientRect();
-    const sp = parseFloat(getComputedStyle(stage4).paddingLeft) || 0;
+    const sr = stage3.getBoundingClientRect();
+    const sp = parseFloat(getComputedStyle(stage3).paddingLeft) || 0;
     const s = Math.min(
       (sr.width - 2 * sp) / cr.width,
       (sr.height - 2 * sp) / cr.height
@@ -1554,17 +1841,12 @@
   }
   function pickerCommit() {
     if (!state._pickerMatches.length) return;
-    const stage5 = document.getElementById("stage");
     state.slideIndex = state._pickerMatches[state._pickerActive];
-    state.step = 0;
     closePicker();
-    loadSlide(null, { type: "cut", duration: 0 }, () => {
-      const maxSt = maxStep(stage5);
-      applyStepInstant(stage5, maxSt);
-      state.step = maxSt;
-    });
+    state.step = maxStep2();
+    loadSlide(null, CUT);
     renderPv();
-    sendNav();
+    sendNav(CUT);
   }
   pickerInput.addEventListener("input", () => filterPicker(pickerInput.value));
   pickerInput.addEventListener("keydown", (e) => {
@@ -1743,7 +2025,7 @@
   var INITIAL_ERROR = __ERROR_JSON__;
   state.slides = INITIAL_SLIDES;
   state.transitions = INITIAL_TRANSITIONS;
-  window.inkflow = { registerTransition };
+  window.inkflow = { registerTransition, registerProgressTransition };
   readURL();
   loadSlide();
   renderPv();
