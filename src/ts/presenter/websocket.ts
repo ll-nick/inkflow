@@ -1,8 +1,8 @@
-import type { WsMessage } from "../shared/types";
+import type { TransitionData, WsMessage } from "../shared/types";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { applyCurrentStep } from "./status";
-import { loadSlide } from "./transitions";
+import { loadSlide, snapInflight } from "./transitions";
 import { hideError, showError } from "./ui";
 
 const wsDot = document.getElementById("ws-dot")!;
@@ -10,7 +10,7 @@ const wsDot = document.getElementById("ws-dot")!;
 const overviewEl = document.getElementById("overview")!;
 const overviewGridEl = document.getElementById("overview-grid")!;
 
-export function sendNav(): void {
+export function sendNav(transition?: TransitionData | null): void {
     if (
         !state.ws ||
         state.ws.readyState !== WebSocket.OPEN ||
@@ -22,6 +22,27 @@ export function sendNav(): void {
             type: "nav",
             slideIndex: state.slideIndex,
             step: state.step,
+            ...(transition ? { transition } : {}),
+        }),
+    );
+}
+
+// Tell other connected screens to snap their in-flight transition to its end,
+// matching a local same-direction-press snap. Position is unchanged, so this is a
+// separate signal rather than a normal nav.
+export function sendSnap(): void {
+    if (
+        !state.ws ||
+        state.ws.readyState !== WebSocket.OPEN ||
+        state._syncingFromServer
+    )
+        return;
+    state.ws.send(
+        JSON.stringify({
+            type: "nav",
+            slideIndex: state.slideIndex,
+            step: state.step,
+            snap: true,
         }),
     );
 }
@@ -55,6 +76,12 @@ export function connectWS(wsPort: number | null): void {
         } else if (msg.type === "error") {
             showError(msg.message);
         } else if (msg.type === "position") {
+            if (msg.snap) {
+                // Another screen snapped its transition; match it. Position is
+                // already in sync, so just collapse our in-flight transition.
+                snapInflight();
+                return;
+            }
             const newIndex = Math.min(
                 Math.max(0, msg.slideIndex | 0),
                 Math.max(0, state.slides.length - 1),
@@ -67,7 +94,7 @@ export function connectWS(wsPort: number | null): void {
             loadSlide(() => {
                 if (state.step > 0) applyCurrentStep();
                 state._syncingFromServer = false;
-            });
+            }, msg.transition ?? null);
             renderPv();
         }
     };
