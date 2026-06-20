@@ -386,7 +386,7 @@ Every transition type takes these:
 | `Crossfade` | — | Outgoing dissolves into incoming |
 | `Push` | `direction: Direction` | Both slides move — outgoing exits, incoming enters from the opposite edge |
 | `Cover` | `direction: Direction` | Incoming slide covers the outgoing one, which stays put |
-| `Zoom` | — | Outgoing scales out, incoming scales in |
+| `Zoom` | `amount` | Outgoing scales out, incoming scales in |
 | `Fade` | `color` | Outgoing fades to a solid colour, then incoming fades in from it |
 | `Wipe` | `direction: Direction` | Incoming is progressively revealed from one edge over the outgoing slide |
 | `Morph` | — | Matching SVG elements interpolate by ID; unmatched content crossfades |
@@ -409,8 +409,7 @@ Every type defaults to `0.5 s`, except `Cut` which is `0.0 s` (instant).
 Define a custom transition by subclassing it in `deck.py` — the type name becomes the JS
 handler key automatically (`MyWarp` → `"my-warp"`). It inherits the animating `0.5 s`
 `duration` default, so it works without overriding anything. Register the matching JS
-handler via `window.inkflow.registerTransition(name, handler)` (e.g. from a `<script>` tag
-or custom JS file):
+handler from a `scripts.js` file next to `deck.py` (loaded automatically):
 
 ```python
 # deck.py
@@ -422,11 +421,29 @@ class MyWarp(Transition):
     intensity: float = 1.0   # serialized as {"intensity": 1.0} in TransitionData
 ```
 
+Most transitions are a single render function: given the two layers and a progress
+value (`0` = old slide shown, `1` = new shown), paint that frame. The framework owns
+the `requestAnimationFrame` loop, the easing, and mid-flight reversal — reversing
+direction is automatic, the render never has to handle it.
+
 ```js
-// custom.js loaded after the presenter bundle
-window.inkflow.registerTransition("my-warp", (swap, t, then) => {
-    // t.duration, t.intensity, t.easing available here
-    swap();
-    then?.();
-});
+// scripts.js, loaded after the presenter bundle
+window.inkflow.registerProgressTransition(
+    "my-warp",
+    (context, progress, params) => {
+        // context = { stage, oldLayer, newLayer }; params has duration, intensity, easing.
+        context.oldLayer.style.opacity = String(1 - progress);
+        context.newLayer.style.transform = `scale(${1 + params.intensity * (1 - progress)})`;
+    },
+    { easing: "ease-in-out" }, // optional default curve used when params.easing is unset
+);
 ```
+
+`progress` arrives already eased. The same render plays forward and, re-targeted,
+backward, so a transition reversed mid-flight picks up smoothly from its current
+frame with no extra code.
+
+For full control there is a lower-level escape hatch,
+`window.inkflow.registerTransition(name, factory)`, where `factory` returns an object
+with a required async `start` and optional `prepare` / `cancel` / `reverse` methods.
+This is how the built-in `cut` and `morph` are implemented.

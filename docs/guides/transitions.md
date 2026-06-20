@@ -83,17 +83,24 @@ transitions.Cover(direction=Direction.UP)
 
 ## Zoom
 
-The outgoing slide scales out to nothing while the incoming slide scales in from nothing.
+The incoming slide scales into place while the outgoing slide keeps zooming past.
+`amount` controls how far they scale past their normal size.
 
 ```python
 transitions.Zoom()
-transitions.Zoom(duration=0.6, easing="ease-in-out")
+transitions.Zoom(amount=0.4)                 # gentler
+transitions.Zoom(amount=0.6, duration=0.6, easing="ease-in-out")
 ```
+
+| Parameter | Default | Description |
+|---|---|---|
+| `amount` | `0.6` | How far the slides scale past 1 (0.6 → 0.4x in, 1.6x out) |
 
 ## Fade
 
 The outgoing slide fades to a solid colour, then the incoming slide fades in from it.
-Useful for dramatic scene changes.
+Useful for dramatic scene changes. The colour fills the slide area only — the
+letterbox bars around the slide stay black throughout.
 
 ```python
 transitions.Fade()                          # fades through black
