@@ -277,6 +277,21 @@
     margin: 0.5em 0;
     color: var(--inkflow-text-muted);
 }
+.inkflow-content table {
+    border-collapse: collapse;
+    margin: 0.5em 0;
+}
+.inkflow-content th,
+.inkflow-content td {
+    border: 2px solid var(--inkflow-border);
+    padding: 0.3em 0.7em;
+    text-align: left;
+}
+.inkflow-content th {
+    background: var(--inkflow-surface);
+    color: var(--inkflow-heading);
+    font-weight: 600;
+}
 
 /* ── Per-layout zone alignment and typography ─────────────────────────────── */
 

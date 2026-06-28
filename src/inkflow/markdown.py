@@ -9,7 +9,11 @@ from typing import TypeAlias, TypedDict, cast
 from latex2mathml.converter import convert as _latex_to_mathml
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
+from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
+from mdit_py_plugins.deflist import deflist_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.footnote import footnote_plugin
+from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight as _py_highlight
 from pygments.formatters import HtmlFormatter as _HtmlFormatter
 from pygments.lexers import (
@@ -98,7 +102,16 @@ def _math_to_mathml(content: str, options: _MathOpts) -> str:
     return _latex_to_mathml(content, display=display)
 
 
-_md = MarkdownIt().use(dollarmath_plugin, renderer=_math_to_mathml)
+_md = (
+    MarkdownIt()
+    .enable(["table", "strikethrough"])
+    .use(dollarmath_plugin, renderer=_math_to_mathml)
+    .use(tasklists_plugin)
+    .use(footnote_plugin)
+    .use(deflist_plugin)
+    .use(attrs_plugin)
+    .use(attrs_block_plugin)
+)
 
 # ── Fence info / highlight-spec parsing ───────────────────────────────────────
 
