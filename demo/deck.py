@@ -74,19 +74,19 @@ def main() -> Deck:
                 transition=transitions.Cut(),
                 animations=[
                     animations.SlideIn(
-                        "#box-svg", step=1, direction=Direction.UP, distance=300
+                        "#box-svg", step=1, direction=Direction.LEFT, distance=300
                     ),
                     animations.FadeIn("#arrow-svg", step=2),
-                    animations.ZoomIn("#box-deck", step=3, scale=0.6),
+                    animations.ZoomIn("#box-deck", step=2, scale=0.6),
                     animations.SlideIn(
-                        "#box-md", step=4, direction=Direction.DOWN, distance=300
+                        "#box-md", step=3, direction=Direction.DOWN, distance=300
                     ),
-                    animations.FadeIn("#arrow-md", step=4),
-                    animations.FadeIn("#arrow-render", step=5),
+                    animations.FadeIn("#arrow-md", step=3),
+                    animations.FadeIn("#arrow-render", step=4),
                     animations.SlideIn(
-                        "#box-browser", step=6, direction=Direction.RIGHT, distance=500
+                        "#box-browser", step=4, direction=Direction.RIGHT, distance=500
                     ),
-                    animations.FadeIn("#inherit", step=7),
+                    animations.FadeIn("#inherit", step=5),
                 ],
                 notes=notes_how,
             ),
