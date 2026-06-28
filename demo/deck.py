@@ -51,8 +51,8 @@ def main() -> Deck:
                 "slides/01-title.svg",
                 zones={
                     "media": Media(
-                        src="assets/cover-dark.png",
-                        alt_src="assets/cover-light.png",
+                        src="assets/cover-dark.webp",
+                        alt_src="assets/cover-light.webp",
                         fit=MediaFit.COVER,
                     )
                 },
