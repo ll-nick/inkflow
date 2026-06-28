@@ -278,6 +278,9 @@
     color: var(--inkflow-text-muted);
 }
 .inkflow-content table {
+    /* inline-table so the zone's text-align (left/center/right) positions the
+       table the same way it positions prose — see content.py align handling. */
+    display: inline-table;
     border-collapse: collapse;
     margin: 0.5em 0;
 }
