@@ -62,10 +62,10 @@ def main() -> Deck:
                 md="02-features.md",
                 transition=transitions.Crossfade(),
             ),
-            # The pitch, in two columns.
+            # The web interface, introduced early so viewers know the keys to try live.
             Slide(
-                "two-cols",
-                md="slides/03-why.md",
+                "content",
+                md="slides/09-interface.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
             # Architecture diagram, revealed step by step.
@@ -124,12 +124,6 @@ def main() -> Deck:
                 md="slides/08-markdown.md",
                 zones={"media": Media("assets/demo.jpg", fit=MediaFit.COVER)},
                 transition=transitions.Push(direction=Direction.LEFT),
-            ),
-            # The web interface — keys to try live.
-            Slide(
-                "content",
-                md="slides/09-interface.md",
-                transition=transitions.Crossfade(),
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(

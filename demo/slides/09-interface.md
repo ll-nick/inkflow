@@ -1,14 +1,15 @@
-# Try the interface
+# The Interface
 
-Press these keys right now:
+::content align=center::
 
 | Key | Does |
 |---|---|
-| `?` | **show every shortcut** |
+| `?` | open the help overlay |
 | `o` | overview of all slides |
 | `p` | presenter view with notes |
 | `t` | toggle light / dark |
 | `g` | jump to a slide |
 | `.` | laser pointer and freehand draw |
 
-Open this same page in two windows — they stay in sync over WebSocket.
+\
+Open this same page in two windows and they stay in sync over WebSocket.
