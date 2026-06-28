@@ -62,6 +62,31 @@ Useful for catching `deck.py` errors immediately during authoring.
 
 ---
 
+## Layout
+
+**Composable layout components (worth considering, not committed)**
+
+Today you cannot slip a shared element (a footer logo, a watermark, branding) *underneath*
+the built-in content layouts without recreating every layout you want to use locally. Each
+built-in hard-codes `inkflow:parent="./numbered"`, and the chain is a fixed single-parent
+line you can't edit, so the only way to compose is to shadow the layouts and re-point their
+parent. The demo deck hits exactly this: it re-implements `content` / `media-right` /
+`two-cols` just to insert a `footer` layer.
+
+Two possible shapes:
+- **Multi-parent** — let `inkflow:parent` hold a list, so a slide composes `builtin:default`
+  + a local `footer` without shadowing. `inkflow:parent` holding a list is a
+  backward-compatible superset of holding one ref.
+- **Deck-level overlay** — a `Deck(overlay=...)` layer composited onto every slide.
+
+Either forces two semantic decisions: layer **z-order**, and **zone-name collisions** when
+two components define the same `zone-*`. The real implementation cost is the
+authoring-preview machinery (`inject_layout_layers`, `is_layout_current`, `_chain_refs`,
+`strip_parent` in `src/inkflow/layout.py`), which assumes a 1:1 linear layer-to-parent map —
+not the serve/build composite path, which already consumes a flat ancestor list.
+
+---
+
 ## Theme
 
 **Named theme support**
