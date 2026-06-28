@@ -65,7 +65,7 @@ def main() -> Deck:
             # The web interface, introduced early so viewers know the keys to try live.
             Slide(
                 "content",
-                md="slides/09-interface.md",
+                md="slides/03-interface.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
             # Architecture diagram, revealed step by step.
@@ -128,7 +128,7 @@ def main() -> Deck:
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(
                 "content",
-                md="slides/10-end.md",
+                md="slides/09-end.md",
                 transition=Flip(duration=0.8),
             ),
         ]
