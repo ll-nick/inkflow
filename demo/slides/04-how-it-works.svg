@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="local:footer" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="d40175e7"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="local:footer" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg13">
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="d40175e7"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
 </g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="builtin:numbered" inkflow:layout-hash="2b667c1b"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
   <text id="zone-slide-total" x="1831.1567" y="1034.5802" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">99</text>
   <text id="text1" x="1816.5184" y="1032.2501" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">/</text>
@@ -11,7 +12,11 @@
       </g>
     </g>
   </g>
-</g><defs><style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
+</g><defs id="defs5">
+    <marker style="overflow:visible" id="ConcaveTriangle" refX="0" refY="0" orient="auto-start-reverse" markerWidth="1" markerHeight="1" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid">
+      <path transform="scale(0.7)" d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z" style="fill:context-stroke;fill-rule:evenodd;stroke:none" id="path7"/>
+    </marker>
+    <style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
 .inkflow-stroke-bg { stroke: #1e1e2e; }
 .inkflow-fill-surface { fill: #313244; }
 .inkflow-stroke-surface { stroke: #313244; }
@@ -46,7 +51,57 @@
 .inkflow-fill-pink { fill: #f5c2e7; }
 .inkflow-stroke-pink { stroke: #f5c2e7; }
 .inkflow-fill-grey { fill: #6c7086; }
-.inkflow-stroke-grey { stroke: #6c7086; }</style></defs><rect id="zone-title" x="80" y="60" width="1760" height="120"/>
-  <rect id="zone-content" x="80" y="220" width="838.99011" height="780"/>
-  <rect id="zone-media" x="1001.0099" y="220" width="838.99011" height="780"/>
+.inkflow-stroke-grey { stroke: #6c7086; }</style></defs>
+  <!-- Authoring flow, revealed step by step from deck.py (see animations).
+       Spine: Draw SVG -> deck.py -> Browser. Markdown + media inject into deck.py's
+       layout zones from below. The pipeline work rides the deck.py -> browser arrow.
+       Final beat: the opt-in parent-layout callout pointing at the footer logo. -->
+  <text id="hiw-title" x="80" y="150" font-family="sans-serif" font-size="64" font-weight="bold" class="inkflow-fill-text">How it works</text>
+  <!-- Draw SVG (top input) -->
+  <g id="box-svg">
+    <rect x="520" y="235" width="360" height="145" rx="16" class="inkflow-fill-surface inkflow-stroke-border" stroke-width="2" id="rect-svg"/>
+    <text x="700" y="305" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" class="inkflow-fill-text" id="text-svg">Draw SVG</text>
+    <text x="700" y="350" text-anchor="middle" font-family="sans-serif" font-size="24" class="inkflow-fill-text-muted" id="text-svg-sub">in any editor</text>
+  </g>
+  <!-- arrow: Draw SVG -> deck.py -->
+  <g id="arrow-svg">
+    <line x1="700" y1="382" x2="700" y2="424" class="inkflow-stroke-accent" stroke-width="6" id="line-svg"/>
+    <polygon points="700,444 688,420 712,420" class="inkflow-fill-accent" id="poly-svg"/>
+  </g>
+  <!-- deck.py (the hub) -->
+  <g id="box-deck">
+    <rect x="510" y="445" width="380" height="170" rx="16" class="inkflow-fill-surface inkflow-stroke-accent" stroke-width="3" id="rect-deck"/>
+    <text x="700" y="520" text-anchor="middle" font-family="monospace" font-size="46" class="inkflow-fill-text" id="text-deck">deck.py</text>
+    <text x="700" y="565" text-anchor="middle" font-family="sans-serif" font-size="24" class="inkflow-fill-text-muted" id="text-deck-sub">declare your deck</text>
+  </g>
+  <!-- arrow: Markdown + media -> deck.py -->
+  <g id="arrow-md">
+    <line x1="700" y1="686" x2="700" y2="650" class="inkflow-stroke-accent" stroke-width="6" id="line-md"/>
+    <polygon points="700,622 688,646 712,646" class="inkflow-fill-accent" id="poly-md"/>
+    <text x="745" y="676" font-family="sans-serif" font-size="26" class="inkflow-fill-text-muted" id="text-md-label">inject into layout zones</text>
+  </g>
+  <!-- Markdown + media (bottom input) -->
+  <g id="box-md">
+    <rect x="520" y="690" width="360" height="145" rx="16" class="inkflow-fill-surface inkflow-stroke-border" stroke-width="2" id="rect-md"/>
+    <text x="700" y="760" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" class="inkflow-fill-text" id="text-md">Markdown + media</text>
+    <text x="700" y="805" text-anchor="middle" font-family="sans-serif" font-size="24" class="inkflow-fill-text-muted" id="text-md-sub">content and assets</text>
+  </g>
+  <!-- arrow: deck.py -> Browser, carrying the pipeline work -->
+  <g id="arrow-render">
+    <line x1="890" y1="530" x2="1280" y2="530" class="inkflow-stroke-accent" stroke-width="6" id="line-render"/>
+    <polygon points="1300,530 1276,518 1276,542" class="inkflow-fill-accent" id="poly-render"/>
+    <text x="1085" y="505" text-anchor="middle" font-family="sans-serif" font-size="24" class="inkflow-fill-text-muted" id="text-render-label">clean · annotate · render</text>
+  </g>
+  <!-- Browser -->
+  <g id="box-browser">
+    <rect x="1300" y="445" width="380" height="170" rx="16" class="inkflow-fill-surface inkflow-stroke-border" stroke-width="2" id="rect-browser"/>
+    <text x="1490" y="520" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" class="inkflow-fill-text" id="text-browser">Browser</text>
+    <text x="1490" y="565" text-anchor="middle" font-family="sans-serif" font-size="24" class="inkflow-fill-text-muted" id="text-browser-sub">present your deck</text>
+  </g>
+  <!-- opt-in parent-layout callout pointing at the footer logo (bottom-left) -->
+  <g id="inherit">
+    <text x="225" y="905" font-family="sans-serif" font-size="30" class="inkflow-fill-text" id="text-inherit-1">Slides can opt into a shared parent layout,</text>
+    <text x="225" y="947" font-family="sans-serif" font-size="26" class="inkflow-fill-text-muted" id="text-inherit-2">like master slides, only optional. That corner mark lives in one place.</text>
+    <path d="M 255 956 C 210 1005, 200 985, 158 982" fill="none" stroke-width="3" id="path-inherit" style="marker-end:url(#ConcaveTriangle);stroke:#89b4fa"/>
+  </g>
 </svg>

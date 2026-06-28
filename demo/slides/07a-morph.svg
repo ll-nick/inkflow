@@ -46,7 +46,13 @@
 .inkflow-fill-pink { fill: #f5c2e7; }
 .inkflow-stroke-pink { stroke: #f5c2e7; }
 .inkflow-fill-grey { fill: #6c7086; }
-.inkflow-stroke-grey { stroke: #6c7086; }</style></defs><rect id="zone-title" x="80" y="60" width="1760" height="120"/>
-  <rect id="zone-content" x="80" y="220" width="838.99011" height="780"/>
-  <rect id="zone-media" x="1001.0099" y="220" width="838.99011" height="780"/>
+.inkflow-stroke-grey { stroke: #6c7086; }</style></defs><!-- Morph "before" state. Shapes share ids with 07b-morph.svg; the Morph
+       transition interpolates their geometry and colour between the two. -->
+  <text id="morph-title" x="80" y="150" font-family="sans-serif" font-size="64" font-weight="bold" class="inkflow-fill-text">Morph</text>
+
+  <rect id="morph-box" x="240" y="360" width="300" height="200" rx="20" fill="#cba6f7"/>
+  <circle id="morph-circle" cx="1500" cy="320" r="90" fill="#94e2d5"/>
+  <rect id="morph-bar" x="300" y="720" width="900" height="40" rx="20" fill="#89b4fa"/>
+
+  <text id="morph-caption" x="960" y="980" text-anchor="middle" font-family="monospace" font-size="32" class="inkflow-fill-text-muted">transition=transitions.Morph()</text>
 </svg>

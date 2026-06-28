@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="./numbered" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="d40175e7"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
-</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="7a1c55ec"><defs/><text id="zone-slide-number" x="1820" y="1055" class="inkflow-fill-text-muted" text-anchor="end" font-size="28px" font-family="sans-serif">99</text>
-  <text id="zone-slide-total" x="1860" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">99</text>
-  <text id="text1" x="1832.489" y="1055" class="inkflow-fill-text-muted" font-size="28px" font-family="sans-serif">/</text>
+</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="2b667c1b"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
+  <text id="zone-slide-total" x="1831.1567" y="1034.5802" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">99</text>
+  <text id="text1" x="1816.5184" y="1032.2501" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">/</text>
 </g><defs>
     <style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
 .inkflow-stroke-bg { stroke: #1e1e2e; }
