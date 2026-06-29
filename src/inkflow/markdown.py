@@ -414,7 +414,7 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
 
 
 def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
-    """Wrap each top-level <p> and each <li> in a stepped fade-in div."""
+    """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped fade-in div."""
     from lxml import etree
 
     wrapped = f"<div>{html}</div>"
@@ -435,6 +435,29 @@ def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
                 child.remove(li)
                 wrapper.append(li)
                 child.insert(idx, wrapper)
+        elif tag == "dl":
+            # Group each <dt> with its following <dd> elements as one step unit.
+            groups: list[list[etree._Element]] = []  # pyright: ignore[reportPrivateUsage]
+            current: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+            for el in list(child):
+                if el.tag == "dt":
+                    if current:
+                        groups.append(current)
+                    current = [el]
+                elif el.tag == "dd":
+                    current.append(el)
+            if current:
+                groups.append(current)
+            for el in list(child):
+                child.remove(el)
+            for group in groups:
+                step += 1
+                wrapper = etree.Element("div")
+                wrapper.set("class", "anim-fade-in")
+                wrapper.set("data-step", str(step))
+                for el in group:
+                    wrapper.append(el)
+                child.append(wrapper)
         elif tag == "p":
             step += 1
             wrapper = etree.Element("div")

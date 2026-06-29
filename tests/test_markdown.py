@@ -284,6 +284,27 @@ class TestStepsWrapContent:
         assert "Heading" in result
         assert step == 0
 
+    def test_deflist_each_dt_dd_group_wrapped(self) -> None:
+        html = "<dl><dt>Term 1</dt><dd>Def 1</dd><dt>Term 2</dt><dd>Def 2</dd></dl>"
+        result, step = steps_wrap_content(html, 0)
+        assert 'data-step="1"' in result
+        assert 'data-step="2"' in result
+        assert step == 2
+        assert "Term 1" in result
+        assert "Def 1" in result
+
+    def test_deflist_dt_with_multiple_dd_is_one_step(self) -> None:
+        html = "<dl><dt>Term</dt><dd>First</dd><dd>Second</dd></dl>"
+        result, step = steps_wrap_content(html, 0)
+        assert 'data-step="1"' in result
+        assert 'data-step="2"' not in result
+        assert step == 1
+
+    def test_deflist_mixed_with_paragraph(self) -> None:
+        html = "<p>Intro</p><dl><dt>A</dt><dd>a</dd><dt>B</dt><dd>b</dd></dl>"
+        _, step = steps_wrap_content(html, 0)
+        assert step == 3
+
 
 class TestBuildSlideContent:
     def test_plain_markdown_becomes_textbox(self, tmp_path: Path) -> None:
