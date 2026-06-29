@@ -76,13 +76,17 @@ def main() -> Deck:
                     animations.SlideIn(
                         "#box-svg", step=1, direction=Direction.LEFT, distance=300
                     ),
-                    animations.FadeIn("#arrow-svg", step=2),
+                    animations.ZoomIn("#arrow-svg", step=2, scale=0.6),
                     animations.ZoomIn("#box-deck", step=2, scale=0.6),
                     animations.SlideIn(
                         "#box-md", step=3, direction=Direction.DOWN, distance=300
                     ),
-                    animations.FadeIn("#arrow-md", step=3),
-                    animations.FadeIn("#arrow-render", step=4),
+                    animations.SlideIn(
+                        "#arrow-md", step=3, direction=Direction.DOWN, distance=300
+                    ),
+                    animations.SlideIn(
+                        "#arrow-render", step=4, direction=Direction.RIGHT, distance=500
+                    ),
                     animations.SlideIn(
                         "#box-browser", step=4, direction=Direction.RIGHT, distance=500
                     ),
