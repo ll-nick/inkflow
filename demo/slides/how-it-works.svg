@@ -65,10 +65,10 @@
        layout zones from below. The pipeline work rides the deck.py -> browser arrow.
        Final beat: the opt-in parent-layout callout pointing at the footer logo. -->
   <!-- Draw SVG (top input) -->
-  <g id="box-svg" transform="translate(-431.01137,87.50203)" style="stroke:#89b4fa">
-    <rect x="520.04059" y="235.04057" width="357.91885" height="157.91885" rx="15.907504" class="inkflow-fill-surface inkflow-stroke-border" stroke-width="2.08115" id="rect-svg" style="stroke:#89b4fa"/>
+  <g id="box-svg" transform="translate(-431.01137,87.50203)" class="inkflow-stroke-blue">
+    <rect x="520.04059" y="235.04057" width="357.91885" height="157.91885" rx="15.907504" class="inkflow-fill-surface inkflow-stroke-border inkflow-stroke-blue" stroke-width="2.08115" id="rect-svg"/>
     <g id="g11" transform="translate(1.5258789e-5,-1.1523437)">
-      <text x="698.67773" y="305" text-anchor="middle" font-family="sans-serif" font-size="40px" font-weight="bold" class="inkflow-fill-text" id="text-svg" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-anchor:middle;fill:#cdd6f4;stroke:none">Draw SVG</text>
+      <text x="698.67773" y="305" text-anchor="middle" font-family="sans-serif" font-size="40px" font-weight="bold" class="inkflow-fill-text inkflow-fill-code-text" id="text-svg" style="font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 40px; font-family: sans-serif; -inkscape-font-specification: 'sans-serif, Normal'; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: normal; font-variant-east-asian: normal; text-anchor: middle; stroke: none">Draw SVG</text>
       <text x="697.86914" y="350" text-anchor="middle" font-family="sans-serif" font-size="24px" class="inkflow-fill-text-muted" id="text-svg-sub" style="stroke:none">in any editor</text>
     </g>
   </g>
@@ -77,35 +77,35 @@
   <g id="box-deck" transform="translate(260.98843,-111.15556)">
     <rect x="509.8985" y="434.05609" width="357.203" height="157.203" rx="15.040126" class="inkflow-fill-surface inkflow-stroke-accent" stroke-width="2.797" id="rect-deck"/>
     <g id="g12" transform="translate(-12.126953,-14.863892)">
-      <text x="700" y="520" text-anchor="middle" font-family="monospace" font-size="46px" class="inkflow-fill-text" id="text-deck" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:46px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-anchor:middle;fill:#cdd6f4;stroke:none">deck.py</text>
+      <text x="700" y="520" text-anchor="middle" font-family="monospace" font-size="46px" class="inkflow-fill-text inkflow-fill-code-text" id="text-deck" style="font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 46px; font-family: sans-serif; -inkscape-font-specification: 'sans-serif, Normal'; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: normal; font-variant-east-asian: normal; text-anchor: middle; stroke: none">deck.py</text>
       <text x="700" y="565" text-anchor="middle" font-family="sans-serif" font-size="24px" class="inkflow-fill-text-muted" id="text-deck-sub">declare your deck</text>
     </g>
   </g>
   <!-- arrow: Markdown + media -> deck.py -->
   <!-- Markdown + media (bottom input) -->
-  <g id="box-md" transform="translate(-232.51929,-46.503858)" style="stroke:#89b4fa">
-    <rect x="470.60757" y="690.04059" width="407.35187" height="157.91885" rx="18.104527" class="inkflow-fill-surface inkflow-stroke-border" stroke-width="2.22022" id="rect-md" style="stroke:#89b4fa"/>
+  <g id="box-md" transform="translate(-232.51929,-46.503858)" class="inkflow-stroke-blue">
+    <rect x="470.60757" y="690.04059" width="407.35187" height="157.91885" rx="18.104527" class="inkflow-fill-surface inkflow-stroke-border inkflow-stroke-blue" stroke-width="2.22022" id="rect-md"/>
     <g id="g14" transform="translate(-25.841003,0.06022644)">
-      <text x="700" y="760" text-anchor="middle" font-family="sans-serif" font-size="34px" font-weight="bold" class="inkflow-fill-text" id="text-md" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:34px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-anchor:middle;fill:#cdd6f4;stroke:none">Markdown and media</text>
-      <text xml:space="preserve" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-decoration-color:#000000;writing-mode:lr-tb;direction:ltr;fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-miterlimit:3;stroke-dasharray:none" x="537.05225" y="798.71942" id="text-md-sub"><tspan id="tspan14" x="537.05225" y="798.71942" style="font-size:24px;fill:#a6adc8">edit separately, inject later</tspan></text>
+      <text x="700" y="760" text-anchor="middle" font-family="sans-serif" font-size="34px" font-weight="bold" class="inkflow-fill-text inkflow-fill-code-text" id="text-md" style="font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 34px; font-family: sans-serif; -inkscape-font-specification: 'sans-serif, Normal'; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: normal; font-variant-east-asian: normal; text-anchor: middle; stroke: none">Markdown and media</text>
+      <text xml:space="preserve" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-decoration-color:#000000;writing-mode:lr-tb;direction:ltr;fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-miterlimit:3;stroke-dasharray:none" x="537.05225" y="798.71942" id="text-md-sub"><tspan id="tspan14" x="537.05225" y="798.71942" style="font-size: 24px" class="inkflow-fill-text-muted">edit separately, inject later</tspan></text>
     </g>
   </g>
   <!-- arrow: deck.py -> Browser, carrying the pipeline work -->
   <!-- Browser -->
   <g id="box-browser" transform="translate(151.98822,-122.49797)">
-    <rect x="1299.9363" y="444.93628" width="358.12744" height="158.12744" rx="15.07905" class="inkflow-fill-surface inkflow-stroke-border" stroke-width="1.87256" id="rect-browser" style="stroke:#89b4fa"/>
+    <rect x="1299.9363" y="444.93628" width="358.12744" height="158.12744" rx="15.07905" class="inkflow-fill-surface inkflow-stroke-border inkflow-stroke-blue" stroke-width="1.87256" id="rect-browser"/>
     <g id="g13" transform="translate(-12.054688,-6.4160156)">
-      <text x="1490" y="520" text-anchor="middle" font-family="sans-serif" font-size="40px" font-weight="bold" class="inkflow-fill-text" id="text-browser" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-anchor:middle;fill:#cdd6f4;stroke:none">Browser</text>
+      <text x="1490" y="520" text-anchor="middle" font-family="sans-serif" font-size="40px" font-weight="bold" class="inkflow-fill-text inkflow-fill-code-text" id="text-browser" style="font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 40px; font-family: sans-serif; -inkscape-font-specification: 'sans-serif, Normal'; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: normal; font-variant-east-asian: normal; text-anchor: middle; stroke: none">Browser</text>
       <text x="1490" y="565" text-anchor="middle" font-family="sans-serif" font-size="24px" class="inkflow-fill-text-muted" id="text-browser-sub">present your deck</text>
     </g>
   </g>
   <!-- opt-in parent-layout callout pointing at the footer logo (bottom-left) -->
   <g id="inherit">
-    <text xml:space="preserve" style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:34px;line-height:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-decoration-color:#000000;writing-mode:lr-tb;direction:ltr;fill:#11111b;stroke:none;stroke-width:8;stroke-linecap:round" x="262.69492" y="918.80078" id="text-inherit"><tspan x="262.69492" y="918.80078" id="tspan6" style="fill:#cdd6f4">Reuse elements across slides.</tspan></text>
-    <path d="m 248.89553,908.32698 c -71.7434,0.16423 -99.76613,8.07038 -109.20895,48.96444" fill="none" stroke-width="3" id="path-inherit" style="stroke:#89b4fa;marker-end:url(#ConcaveTriangle)"/>
+    <text xml:space="preserve" style="font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 34px; line-height: normal; font-family: sans-serif; -inkscape-font-specification: 'sans-serif, Normal'; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: normal; font-variant-east-asian: normal; text-decoration-color: #000000; writing-mode: lr-tb; direction: ltr; stroke: none; stroke-width: 8; stroke-linecap: round" x="262.69492" y="918.80078" id="text-inherit" class="inkflow-fill-accent-fg"><tspan x="262.69492" y="918.80078" id="tspan6" class="inkflow-fill-text inkflow-fill-code-text">Reuse elements across slides.</tspan></text>
+    <path d="m 248.89553,908.32698 c -71.7434,0.16423 -99.76613,8.07038 -109.20895,48.96444" fill="none" stroke-width="3" id="path-inherit" style="marker-end: url(#ConcaveTriangle)" class="inkflow-stroke-blue"/>
   </g>
-  <path style="fill:none;stroke:#89b4fa;stroke-width:4;stroke-linecap:round;stroke-miterlimit:3;stroke-dasharray:none;marker-end:url(#marker11)" d="m 446.9481,401.50202 317.93883,10e-6" id="arrow-svg"/>
-  <path style="fill:none;stroke:#89b4fa;stroke-width:4;stroke-linecap:round;stroke-miterlimit:3;stroke-dasharray:none;marker-end:url(#marker11)" d="m 1130.0899,401.50203 h 315.8346" id="arrow-render"/>
+  <path style="fill: none; stroke-width: 4; stroke-linecap: round; stroke-miterlimit: 3; stroke-dasharray: none; marker-end: url(#marker11)" d="m 446.9481,401.50202 317.93883,10e-6" id="arrow-svg" class="inkflow-stroke-blue"/>
+  <path style="fill: none; stroke-width: 4; stroke-linecap: round; stroke-miterlimit: 3; stroke-dasharray: none; marker-end: url(#marker11)" d="m 1130.0899,401.50203 h 315.8346" id="arrow-render" class="inkflow-stroke-blue"/>
   <!-- arrow: Markdown and media -> deck.py (top-level so it is not hidden with #inherit) -->
-  <path style="fill:none;stroke:#89b4fa;stroke-width:4;stroke-linecap:round;stroke-dasharray:none;marker-end:url(#marker9)" d="m 647.48071,715.99614 c 118.6785,4.0618 208.90999,-45.72788 244.04255,-75.98609 40.78743,-35.12851 57.96517,-103.90652 57.96517,-153.90652" id="arrow-md"/>
+  <path style="fill: none; stroke-width: 4; stroke-linecap: round; stroke-dasharray: none; marker-end: url(#marker9)" d="m 647.48071,715.99614 c 118.6785,4.0618 208.90999,-45.72788 244.04255,-75.98609 40.78743,-35.12851 57.96517,-103.90652 57.96517,-153.90652" id="arrow-md" class="inkflow-stroke-blue"/>
 </svg>

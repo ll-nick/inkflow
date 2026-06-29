@@ -1,5 +1,5 @@
 <svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg2">
-  <rect style="fill:#181825;stroke:#89b4fa;stroke-width:8;stroke-linecap:round" id="zone-media" width="1920" height="1080" x="0" y="0" inkscape:label="bg-image"/>
+  <rect style="stroke-width: 8; stroke-linecap: round" id="zone-media" width="1920" height="1080" x="0" y="0" inkscape:label="bg-image" class="inkflow-fill-code-bg inkflow-stroke-blue"/>
   <defs id="defs2">
     <style id="demo-preview">.inkflow-demo-logo-mark { fill: #ffffff; }
 .inkflow-demo-logo-flow { fill: #89b4fa; }</style>
@@ -62,6 +62,6 @@
       </g>
     </svg>
     <text id="tagline" x="960.22461" y="660" text-anchor="middle" font-family="sans-serif" font-size="46px" class="inkflow-fill-accent"><tspan id="tspan6" x="960.22461" y="660">Beautiful slides from SVG.</tspan><tspan id="tspan7" x="960.22461" y="717.5">Your editor, your style.</tspan></text>
-    <text id="hint" x="960.40283" y="850" text-anchor="middle" font-family="monospace" font-size="30px" class="inkflow-fill-text-muted">Press <tspan style="font-size:42.6667px;fill:#cdd6f4" id="tspan5">→</tspan> to begin</text>
+    <text id="hint" x="960.40283" y="850" text-anchor="middle" font-family="monospace" font-size="30px" class="inkflow-fill-text-muted">Press <tspan style="font-size: 42.6667px" id="tspan5" class="inkflow-fill-text inkflow-fill-code-text">→</tspan> to begin</text>
   </g>
 </svg>
