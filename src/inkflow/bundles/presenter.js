@@ -1402,8 +1402,8 @@
           state.slideIndex,
           Math.max(0, state.slides.length - 1)
         );
-        state.step = 0;
-        loadSlide();
+        state.step = Math.min(state.step, maxStep2());
+        loadSlide(null, CUT);
         renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
