@@ -51,19 +51,20 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
 def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> Path:
     """Resolve a Slide.src string to an absolute Path.
 
-    Bare single-part names (no prefix, no separator, no extension) are checked
-    against slides/<name>.svg first; if not found, the 3-level layout search
-    runs (project layouts/ → theme layouts/ → builtin layouts/).
-    Everything else delegates directly to resolve_parent_path.
+    Single-part names (no directory separator, no scheme prefix) are checked
+    against slides/ first: bare names get .svg appended, names that already
+    carry an extension are tried as-is. If the slides/ candidate does not
+    exist, the 3-level layout search runs (project layouts/ → theme layouts/
+    → builtin layouts/). Everything else delegates directly to resolve_parent_path.
     """
     p = Path(src)
     if (
         not p.is_absolute()
         and len(p.parts) == 1
-        and not p.suffix
         and not src.startswith(("local:", "theme:", "builtin:", "./", "../"))
     ):
-        slides_candidate = project_dir / "slides" / (src + ".svg")
+        name = src if p.suffix else src + ".svg"
+        slides_candidate = project_dir / "slides" / name
         if slides_candidate.exists():
             return slides_candidate
     return resolve_parent_path(src, project_dir, project_dir, theme)

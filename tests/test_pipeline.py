@@ -24,6 +24,7 @@ from inkflow.pipeline import (
     _add_layout_classes,
     annotate_svg,
     process_deck,
+    resolve_slide_src,
     resolve_transitions,
 )
 from inkflow.transitions import Crossfade, Cut, Morph
@@ -34,6 +35,34 @@ _PLAIN_SVG = textwrap.dedent("""\
       <circle id="dot" cx="75" cy="25" r="10"/>
     </svg>
 """)
+
+
+class TestResolveSlideSource:
+    def _make_slide(self, tmp_path: Path, name: str) -> Path:
+        p = tmp_path / "slides" / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(_PLAIN_SVG, encoding="utf-8")
+        return p
+
+    def test_bare_name_finds_slides_svg(self, tmp_path: Path) -> None:
+        expected = self._make_slide(tmp_path, "title.svg")
+        assert resolve_slide_src("title", tmp_path) == expected
+
+    def test_svg_filename_finds_slides_svg(self, tmp_path: Path) -> None:
+        expected = self._make_slide(tmp_path, "01-title.svg")
+        assert resolve_slide_src("01-title.svg", tmp_path) == expected
+
+    def test_explicit_slides_prefix_still_works(self, tmp_path: Path) -> None:
+        expected = self._make_slide(tmp_path, "01-title.svg")
+        assert resolve_slide_src("slides/01-title.svg", tmp_path) == expected
+
+    def test_bare_name_not_in_slides_falls_through_to_layout(
+        self, tmp_path: Path
+    ) -> None:
+        layout = tmp_path / "layouts" / "content.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_PLAIN_SVG, encoding="utf-8")
+        assert resolve_slide_src("content", tmp_path) == layout
 
 
 class TestAnnotateSvg:
