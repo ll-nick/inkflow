@@ -22,6 +22,8 @@ from inkflow.manifest import (
 )
 from inkflow.pipeline import (
     _add_layout_classes,
+    _deduplicate_ids,
+    _infer_slide_id,
     annotate_svg,
     process_deck,
     resolve_slide_src,
@@ -341,3 +343,57 @@ class TestLayoutClasses:
         deck = Deck(slides=[Slide("slides/plain.svg")])
         results = process_deck(deck, tmp_path)
         assert "@scope" not in results[0]["svg"]
+
+
+class TestSlideId:
+    def test_infer_slide_id_explicit(self) -> None:
+        slide = Slide("cover", id="my-cover")
+        assert _infer_slide_id(slide) == "my-cover"
+
+    def test_infer_slide_id_from_md_stem(self) -> None:
+        slide = Slide("default", md="slides/08-markdown.md")
+        assert _infer_slide_id(slide) == "08-markdown"
+
+    def test_infer_slide_id_from_md_stem_no_numeric_strip(self) -> None:
+        slide = Slide("default", md="slides/01-intro.md")
+        assert _infer_slide_id(slide) == "01-intro"
+
+    def test_infer_slide_id_inline_md_falls_back_to_src(self) -> None:
+        slide = Slide("cover", md=Inline("# Hello"))
+        assert _infer_slide_id(slide) == "cover"
+
+    def test_infer_slide_id_from_src_stem(self) -> None:
+        slide = Slide("slides/01-title.svg")
+        assert _infer_slide_id(slide) == "01-title"
+
+    def test_infer_slide_id_bare_name(self) -> None:
+        slide = Slide("cover")
+        assert _infer_slide_id(slide) == "cover"
+
+    def test_deduplicate_ids_no_collision(self) -> None:
+        assert _deduplicate_ids(["a", "b", "c"]) == ["a", "b", "c"]
+
+    def test_deduplicate_ids_collision(self) -> None:
+        assert _deduplicate_ids(["a", "a", "b", "a"]) == ["a", "a-2", "b", "a-3"]
+
+    def test_process_deck_includes_id(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide = tmp_path / "slides" / "plain.svg"
+        slide.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(slides=[Slide("slides/plain.svg")])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["id"] == "plain"
+
+    def test_process_deck_id_collision_resolved(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        for name in ("plain.svg", "plain2.svg"):
+            (tmp_path / "slides" / name).write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(
+            slides=[
+                Slide("slides/plain.svg", id="plain"),
+                Slide("slides/plain2.svg", id="plain"),
+            ]
+        )
+        results = process_deck(deck, tmp_path)
+        assert results[0]["id"] == "plain"
+        assert results[1]["id"] == "plain-2"

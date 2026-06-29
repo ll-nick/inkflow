@@ -221,3 +221,11 @@ def test_mediaalign_values() -> None:
 def test_colormode_values() -> None:
     assert ColorMode.DARK == "dark"
     assert ColorMode.LIGHT == "light"
+
+
+def test_slide_id_default_is_none() -> None:
+    assert Slide(src="cover").id is None
+
+
+def test_slide_id_explicit() -> None:
+    assert Slide(src="cover", id="my-cover").id == "my-cover"

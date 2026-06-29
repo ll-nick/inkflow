@@ -16,7 +16,7 @@ from inkflow.content import (
 )
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
-from inkflow.manifest import Animation, ColorMode, Deck, Slide, Transition
+from inkflow.manifest import Animation, ColorMode, Deck, Inline, Slide, Transition
 from inkflow.markdown import build_slide_content, parse_markdown_zones
 from inkflow.svg import compose_with_ancestors
 
@@ -24,6 +24,7 @@ from inkflow.svg import compose_with_ancestors
 
 
 class SlideData(TypedDict):
+    id: str
     svg: str
     title: str
     notes: str
@@ -32,7 +33,29 @@ class SlideData(TypedDict):
 # ── Path conventions ─────────────────────────────────────────────────────────
 
 
-def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
+def _infer_slide_id(slide: Slide) -> str:
+    if slide.id:
+        return slide.id
+    if slide.md is not None and not isinstance(slide.md, Inline):
+        return Path(slide.md).stem
+    src = Path(slide.src)
+    return src.stem if src.suffix else slide.src.replace("/", "-").replace(":", "-")
+
+
+def _deduplicate_ids(raw_ids: list[str]) -> list[str]:
+    seen: dict[str, int] = {}
+    result: list[str] = []
+    for raw in raw_ids:
+        if raw not in seen:
+            seen[raw] = 1
+            result.append(raw)
+        else:
+            seen[raw] += 1
+            result.append(f"{raw}-{seen[raw]}")
+    return result
+
+
+def _infer_slide_title(slide: Slide, slide_id: str, project_dir: Path) -> str:
     if slide.title:
         return slide.title
     if slide.md is not None:
@@ -42,9 +65,7 @@ def _infer_slide_title(slide: Slide, slide_num: int, project_dir: Path) -> str:
             chunks = zones.get("title", [])
             if chunks and isinstance(chunks[0], str):
                 return chunks[0].lstrip("#").strip()
-        return f"Slide {slide_num}"
-    stem = Path(slide.src).stem
-    stem = re.sub(r"^\d+-", "", stem)
+    stem = re.sub(r"^\d+-", "", slide_id)
     return stem.replace("-", " ").replace("_", " ").title()
 
 
@@ -238,9 +259,11 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
     total = len(visible_slides)
     deck_style_css = load_style(deck.style, project_dir)
+    raw_ids = [_infer_slide_id(s) for s in visible_slides]
+    slide_ids = _deduplicate_ids(raw_ids)
     results: list[SlideData] = []
-    for i, slide in enumerate(visible_slides):
-        title = _infer_slide_title(slide, i + 1, project_dir)
+    for i, (slide, slide_id) in enumerate(zip(visible_slides, slide_ids, strict=True)):
+        title = _infer_slide_title(slide, slide_id, project_dir)
         explicit_notes = load_notes(slide.notes, project_dir)
         md_notes = ""
         if slide.md is not None:
@@ -257,5 +280,5 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             slide.font_size if slide.font_size is not None else deck.font_size,
             mode=deck.mode,
         )
-        results.append({"svg": svg, "title": title, "notes": notes})
+        results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
     return results

@@ -64,6 +64,7 @@ Slide(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `src` | `str` | required | SVG file path, or bare layout name (e.g. `"default"`) |
+| `id` | `str \| None` | `None` | Stable identifier for this slide. Auto-inferred from the `.md` filename stem (e.g. `"08-markdown"`) or the `src` stem if not set. Must be unique across the deck; collisions are resolved by appending `-2`, `-3`, etc. Set explicitly for stable cross-slide links |
 | `md` | `Content` | `None` | Path to `.md` file, or `Inline("# heading\n\nbody")` for inline Markdown. Makes `src` resolve as a layout name |
 | `zones` | `dict[str, str \| Media \| TextBox]` | `{}` | Per-zone overrides. Keys are zone names without the `zone-` prefix. `str` values are rendered as inline Markdown; `TextBox` values give explicit alignment/padding control; `Media` values inject an image or video |
 | `animations` | `list[Animation]` | `[]` | Animation declarations |
