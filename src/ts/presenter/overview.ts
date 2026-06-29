@@ -71,6 +71,7 @@ export function overviewSetActive(i: number): void {
 }
 
 export function overviewCommit(): void {
+    history.pushState(null, "", window.location.href);
     state.slideIndex = state._overviewActive;
     closeOverview();
     // Jump straight to the slide's final step (build animations complete). CUT

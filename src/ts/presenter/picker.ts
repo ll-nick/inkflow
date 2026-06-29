@@ -72,6 +72,7 @@ function pickerMoveCursor(delta: number): void {
 
 function pickerCommit(): void {
     if (!state._pickerMatches.length) return;
+    history.pushState(null, "", window.location.href);
     state.slideIndex = state._pickerMatches[state._pickerActive];
     closePicker();
     // Jump straight to the picked slide's final step (build animations complete).

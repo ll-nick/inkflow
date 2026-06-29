@@ -2,6 +2,7 @@ import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { readURL } from "./status";
 import {
+    CUT,
     loadSlide,
     registerProgressTransition,
     registerTransition,
@@ -24,6 +25,11 @@ state.transitions = INITIAL_TRANSITIONS;
 window.inkflow = { registerTransition, registerProgressTransition };
 
 // ── Boot ──
+window.addEventListener("popstate", () => {
+    readURL();
+    loadSlide(null, CUT);
+    renderPv();
+});
 readURL();
 loadSlide();
 renderPv();
