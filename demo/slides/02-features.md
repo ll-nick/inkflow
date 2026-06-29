@@ -10,7 +10,7 @@ Reuse layouts and fill them with Markdown - including math and highlighted code
 Custom themes and layouts live in packages you can share and reuse
 
 **📦 Portable**  
-Share a single HTML file, all you need is a browser
+Export to plain HTML, all you need is a browser
 
 **🧩 Expandable**  
 Add your own animations, transitions, or even custom interactive widgets
