@@ -102,6 +102,12 @@ def main() -> Deck:
                 md="slides/deckpy.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
+            # Markdown + math, full width with room to breathe.
+            Slide(
+                "content",
+                md="slides/markdown.md",
+                transition=transitions.Push(direction=Direction.LEFT),
+            ),
             # Animation variety, one step per click; Flicker is the custom type above.
             Slide(
                 "slides/animations.svg",
@@ -123,12 +129,6 @@ def main() -> Deck:
                 "slides/morph.svg",
                 transition=transitions.Morph(duration=1.5),
                 notes=notes_morph,
-            ),
-            # Markdown + math, full width with room to breathe.
-            Slide(
-                "content",
-                md="slides/markdown.md",
-                transition=transitions.Push(direction=Direction.LEFT),
             ),
             # Media injection: an image zone (swap the path for .mp4 for video).
             Slide(
