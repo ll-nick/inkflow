@@ -1509,6 +1509,16 @@
   }
 
   // src/ts/presenter/navigation.ts
+  function gotoId(id) {
+    const idx = state.slides.findIndex((s) => s.id === id);
+    if (idx < 0) return false;
+    state.slideIndex = idx;
+    state.step = 0;
+    loadSlide(null, CUT);
+    renderPv();
+    sendNav(CUT);
+    return true;
+  }
   function advance() {
     if (inflightDirection() === "forward") {
       snapInflight();
@@ -1880,6 +1890,12 @@
   var stageEl = document.getElementById("stage");
   var isCoarse = () => window.matchMedia("(pointer: coarse)").matches;
   stageEl.addEventListener("click", (e) => {
+    const slideLink = e.target.closest?.("[data-inkflow-slide]");
+    if (slideLink) {
+      gotoId(slideLink.getAttribute("data-inkflow-slide") ?? "");
+      return;
+    }
+    if (e.target.closest?.("a[href]")) return;
     if (isCoarse()) {
       const ratio = e.clientX / window.innerWidth;
       if (ratio < 0.2) retreat();

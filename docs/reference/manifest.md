@@ -78,6 +78,15 @@ Slide(
 **`step_count`** (property): the highest `step` value across all animations.
 This is the number of keypresses before advancing.
 
+**Cross-slide links**: Markdown content can link to another slide by id using the `slide:` scheme:
+
+```markdown
+See [the overview](slide:02-overview) for context.
+```
+
+Clicking the link in the presenter jumps directly to the target slide (using a cut transition).
+The target id must match a `Slide.id` in the deck; unresolved ids are silently ignored.
+
 ---
 
 ## `Inline`

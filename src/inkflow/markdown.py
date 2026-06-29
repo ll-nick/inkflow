@@ -8,7 +8,9 @@ from typing import TypeAlias, TypedDict, cast
 
 from latex2mathml.converter import convert as _latex_to_mathml
 from markdown_it import MarkdownIt
+from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
+from markdown_it.utils import EnvType, OptionsDict
 from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
 from mdit_py_plugins.deflist import deflist_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
@@ -113,6 +115,7 @@ _md = (
     .use(attrs_block_plugin)
 )
 
+
 # ── Fence info / highlight-spec parsing ───────────────────────────────────────
 
 
@@ -216,6 +219,26 @@ def _fence_renderer(
 
 
 _md.add_render_rule("fence", _fence_renderer)
+
+
+def _render_link_open(
+    renderer: object, tokens: object, idx: int, options: object, env: object
+) -> str:
+
+    token = cast(Token, cast(list[object], tokens)[idx])
+    href = str(token.attrGet("href") or "")
+    if href.startswith("slide:"):
+        slide_id = href[len("slide:") :]
+        return f'<a data-inkflow-slide="{slide_id}" title="Go to slide: {slide_id}">'
+    return cast(RendererHTML, renderer).renderToken(
+        cast(Sequence[Token], tokens),
+        idx,
+        cast(OptionsDict, options),
+        cast(EnvType, env),
+    )
+
+
+_md.add_render_rule("link_open", _render_link_open)
 
 
 def _render_md_with_steps(md: str, base_step: int) -> tuple[str, int]:

@@ -2,6 +2,7 @@ import { toggleLaser } from "./laser";
 import {
     advance,
     gotoFirst,
+    gotoId,
     gotoLast,
     nextSlide,
     prevSlide,
@@ -29,6 +30,12 @@ import {
 const stageEl = document.getElementById("stage")!;
 const isCoarse = () => window.matchMedia("(pointer: coarse)").matches;
 stageEl.addEventListener("click", (e) => {
+    const slideLink = (e.target as Element).closest?.("[data-inkflow-slide]");
+    if (slideLink) {
+        gotoId(slideLink.getAttribute("data-inkflow-slide") ?? "");
+        return;
+    }
+    if ((e.target as Element).closest?.("a[href]")) return;
     if (isCoarse()) {
         const ratio = e.clientX / window.innerWidth;
         if (ratio < 0.2) retreat();

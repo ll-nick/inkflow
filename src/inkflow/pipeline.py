@@ -280,5 +280,6 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
             slide.font_size if slide.font_size is not None else deck.font_size,
             mode=deck.mode,
         )
+
         results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
     return results

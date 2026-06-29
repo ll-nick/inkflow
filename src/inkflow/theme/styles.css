@@ -253,6 +253,13 @@
 .inkflow-content a:hover {
     opacity: 0.8;
 }
+.inkflow-wrapper [data-inkflow-slide] {
+    color: var(--inkflow-link);
+    cursor: pointer;
+}
+.inkflow-wrapper [data-inkflow-slide]:hover {
+    color: var(--inkflow-accent);
+}
 .inkflow-content code {
     font-family: monospace;
     background: var(--inkflow-code-bg);
