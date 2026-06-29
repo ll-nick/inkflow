@@ -1,17 +1,18 @@
-# A deck is just Python
+# Declaring a Slide Deck
 
-```python {1|3|4-5|6-9|all}
-from inkflow import Deck, Slide, animations, transitions
-
-deck = Deck(slides=[
-    Slide("slides/01-title.svg"),
-    Slide("slides/02-overview.svg", transition=transitions.Crossfade()),
-    Slide("slides/04-diagram.svg", animations=[
-        animations.FadeIn("#box-deck", step=1),
-        animations.ZoomIn("#box-pipeline", step=2),
-    ]),
-])
+```python {1-2|3-4|5-6|7-8|9-13|all}
+# A deck is just a python script that returns a Deck object
+def main() -> Deck:
+    # A deck is a list of slides
+    return Deck(slides=[ 
+        # A slide can just be an SVG file you drew
+        Slide("01-title.svg"), 
+        # Or a layout injected with Markdown content
+        Slide("builtin:content", md="02-overview.md"),
+        # This is how you define the transition and animations for a slide
+        Slide("slides/04-diagram.svg",
+              transition=transitions.Crossfade(),
+              animations=[animations.FadeIn("#box-deck", step=1)]
+        ),
+    ])
 ```
-
-No YAML, no proprietary format — you get autocomplete and real loops for free.
-Press `→` to step through the highlights.
