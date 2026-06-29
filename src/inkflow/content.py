@@ -293,6 +293,19 @@ def _replace_with_foreignobject(
             content_div.append(child)
     except etree.XMLSyntaxError:
         content_div.text = html
+
+    # Drop <hr class="footnotes-sep"> (CSS border-top on the section replaces it)
+    # and hoist <section class="footnotes"> to wrapper so margin-top:auto anchors
+    # it to the bottom of the zone regardless of content height.
+    for child in list(content_div):
+        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        cls = (child.get("class") or "").split()
+        if tag == "hr" and "footnotes-sep" in cls:
+            content_div.remove(child)
+        elif tag == "section" and "footnotes" in cls:
+            content_div.remove(child)
+            wrapper.append(child)
+
     fo.append(wrapper)
 
     _swap_zone(el, fo, rect, zone_id)

@@ -295,6 +295,32 @@
     color: var(--inkflow-heading);
     font-weight: 600;
 }
+.inkflow-content .footnote-ref a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Footnote block is hoisted to .inkflow-wrapper level by content.py */
+.inkflow-wrapper .footnotes {
+    margin-top: auto;
+    margin-bottom: 1.5em;
+    padding-top: 0.5em;
+    border-top: 1px solid var(--inkflow-border);
+    font-size: 0.72em;
+    color: var(--inkflow-text-muted);
+}
+.inkflow-wrapper .footnotes ol {
+    padding-left: 1.5em;
+    margin: 0;
+}
+.inkflow-wrapper .footnotes p {
+    margin: 0;
+}
+.inkflow-wrapper .footnote-backref {
+    color: var(--inkflow-accent);
+    text-decoration: none;
+    margin-left: 0.2em;
+}
 
 /* ── Per-layout zone alignment and typography ─────────────────────────────── */
 
