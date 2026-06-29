@@ -48,7 +48,7 @@ def main() -> Deck:
     return Deck(
         slides=[
             Slide(
-                "slides/01-title.svg",
+                "slides/title.svg",
                 zones={
                     "media": Media(
                         src="assets/cover-dark.webp",
@@ -59,18 +59,18 @@ def main() -> Deck:
             ),
             Slide(
                 "content",
-                md="02-features.md",
+                md="features.md",
                 transition=transitions.Crossfade(),
             ),
             # The web interface, introduced early so viewers know the keys to try live.
             Slide(
                 "content",
-                md="slides/03-interface.md",
+                md="slides/interface.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
             # Architecture diagram, revealed step by step.
             Slide(
-                "slides/04-how-it-works.svg",
+                "slides/how-it-works.svg",
                 zones={"title": "# How it works"},
                 transition=transitions.Cut(),
                 animations=[
@@ -99,12 +99,12 @@ def main() -> Deck:
             Slide(
                 "content",
                 id="deck-py",
-                md="slides/05-deckpy.md",
+                md="slides/deckpy.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
             # Animation variety, one step per click; Flicker is the custom type above.
             Slide(
-                "slides/06-animations.svg",
+                "slides/animations.svg",
                 transition=transitions.Crossfade(),
                 animations=[
                     animations.FadeIn("#shape-fade", step=1),
@@ -118,29 +118,28 @@ def main() -> Deck:
                 ],
             ),
             # Morph: matching ids interpolate between these two slides.
-            Slide("slides/07a-morph.svg", transition=transitions.Zoom()),
             Slide(
-                "slides/07b-morph.svg",
-                transition=transitions.Morph(duration=1.4),
+                "slides/morph.svg",
+                transition=transitions.Morph(duration=1.5),
                 notes=notes_morph,
             ),
             # Markdown + math, full width with room to breathe.
             Slide(
                 "content",
-                md="slides/08-markdown.md",
+                md="slides/markdown.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
             # Media injection: an image zone (swap the path for .mp4 for video).
             Slide(
                 "media-right",
-                md="slides/09-media.md",
+                md="slides/media.md",
                 zones={"media": Media("assets/demo.jpg", fit=MediaFit.COVER)},
                 transition=transitions.Crossfade(),
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(
                 "content",
-                md="slides/10-end.md",
+                md="slides/end.md",
                 transition=Flip(duration=0.8),
             ),
         ]
