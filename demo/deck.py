@@ -118,17 +118,23 @@ def main() -> Deck:
                 transition=transitions.Morph(duration=1.4),
                 notes=notes_morph,
             ),
-            # Markdown power: math + an image zone (swap the path for .mp4 for video).
+            # Markdown + math, full width with room to breathe.
+            Slide(
+                "content",
+                md="slides/08-markdown.md",
+                transition=transitions.Push(direction=Direction.LEFT),
+            ),
+            # Media injection: an image zone (swap the path for .mp4 for video).
             Slide(
                 "media-right",
-                md="slides/08-markdown.md",
+                md="slides/09-media.md",
                 zones={"media": Media("assets/demo.jpg", fit=MediaFit.COVER)},
-                transition=transitions.Push(direction=Direction.LEFT),
+                transition=transitions.Crossfade(),
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(
                 "content",
-                md="slides/09-end.md",
+                md="slides/10-end.md",
                 transition=Flip(duration=0.8),
             ),
         ]
