@@ -140,8 +140,14 @@ def main() -> Deck:
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(
                 "content",
-                md="slides/end.md",
+                md="slides/hackable.md",
                 transition=Flip(duration=0.8),
+            ),
+            Slide(
+                "center",
+                font_size=50,
+                md="slides/end.md",
+                transition=transitions.Crossfade(),
             ),
         ]
     )
