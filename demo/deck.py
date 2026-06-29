@@ -71,6 +71,7 @@ def main() -> Deck:
             # Architecture diagram, revealed step by step.
             Slide(
                 "slides/04-how-it-works.svg",
+                zones={"title": "# How it works"},
                 transition=transitions.Cut(),
                 animations=[
                     animations.SlideIn(
