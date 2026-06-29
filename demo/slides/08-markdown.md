@@ -1,11 +1,24 @@
-# Markdown
+# Markdown Slides
 
-Author slides in plain **Markdown**:  _italic_, **bold**, `code`, [links](https://github.com/ll-nick/inkflow). [^1]
+Fill predefined content zones using plain **Markdown**.  
+You've already seen a few things you can do, here are some more:
 
-## Math
+::step::
+
+**Math**  
+KaTeX renders inline ($e^{i\pi} + 1 = 0$) or as a block:
 
 $$\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$$
 
-Inline works too: $a^2 + b^2 = c^2$.
+::step::
 
-[^1]: Did I mention code highlighting?
+**Step reveals**  
+`::step::` markers split content into steps that appear on the next click.  
+Just like this one did.
+
+::step::
+
+**Highlighted code blocks**  
+Remember those [from earlier](slide:deck-py)? [^1]
+
+[^1]: And did I mention cross-slide links and footnotes?

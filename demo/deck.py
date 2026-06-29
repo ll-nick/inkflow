@@ -98,6 +98,7 @@ def main() -> Deck:
             # deck.py shown as line-stepped, syntax-highlighted code (self-referential).
             Slide(
                 "content",
+                id="deck-py",
                 md="slides/05-deckpy.md",
                 transition=transitions.Push(direction=Direction.LEFT),
             ),
