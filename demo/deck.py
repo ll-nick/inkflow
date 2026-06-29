@@ -105,6 +105,7 @@ def main() -> Deck:
             # Animation variety, one step per click; Flicker is the custom type above.
             Slide(
                 "slides/animations.svg",
+                zones={"title": "# Animations"},
                 transition=transitions.Crossfade(),
                 animations=[
                     animations.FadeIn("#shape-fade", step=1),

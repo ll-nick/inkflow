@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="local:footer" viewBox="0 0 1920 1080" width="1920" height="1080"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="d40175e7"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="local:content" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg12">
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="d40175e7"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
 </g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="builtin:numbered" inkflow:layout-hash="2b667c1b"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
   <text id="zone-slide-total" x="1831.1567" y="1034.5802" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">99</text>
   <text id="text1" x="1816.5184" y="1032.2501" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">/</text>
@@ -11,77 +12,42 @@
       </g>
     </g>
   </g>
-</g><defs><style id="inkflow-preview">.inkflow-fill-bg { fill: #1e1e2e; }
-.inkflow-stroke-bg { stroke: #1e1e2e; }
-.inkflow-fill-surface { fill: #313244; }
-.inkflow-stroke-surface { stroke: #313244; }
-.inkflow-fill-border { fill: #585b70; }
-.inkflow-stroke-border { stroke: #585b70; }
-.inkflow-fill-text { fill: #cdd6f4; }
-.inkflow-stroke-text { stroke: #cdd6f4; }
-.inkflow-fill-text-muted { fill: #a6adc8; }
-.inkflow-stroke-text-muted { stroke: #a6adc8; }
-.inkflow-fill-accent { fill: #cba6f7; }
-.inkflow-stroke-accent { stroke: #cba6f7; }
-.inkflow-fill-accent-fg { fill: #11111b; }
-.inkflow-stroke-accent-fg { stroke: #11111b; }
-.inkflow-fill-code-bg { fill: #181825; }
-.inkflow-stroke-code-bg { stroke: #181825; }
-.inkflow-fill-code-text { fill: #cdd6f4; }
-.inkflow-stroke-code-text { stroke: #cdd6f4; }
-.inkflow-fill-red { fill: #f38ba8; }
-.inkflow-stroke-red { stroke: #f38ba8; }
-.inkflow-fill-orange { fill: #fab387; }
-.inkflow-stroke-orange { stroke: #fab387; }
-.inkflow-fill-yellow { fill: #f9e2af; }
-.inkflow-stroke-yellow { stroke: #f9e2af; }
-.inkflow-fill-green { fill: #a6e3a1; }
-.inkflow-stroke-green { stroke: #a6e3a1; }
-.inkflow-fill-teal { fill: #94e2d5; }
-.inkflow-stroke-teal { stroke: #94e2d5; }
-.inkflow-fill-blue { fill: #89b4fa; }
-.inkflow-stroke-blue { stroke: #89b4fa; }
-.inkflow-fill-purple { fill: #cba6f7; }
-.inkflow-stroke-purple { stroke: #cba6f7; }
-.inkflow-fill-pink { fill: #f5c2e7; }
-.inkflow-stroke-pink { stroke: #f5c2e7; }
-.inkflow-fill-grey { fill: #6c7086; }
-.inkflow-stroke-grey { stroke: #6c7086; }</style></defs><!-- Each shape animates by its id, one step per click. The animation type is
+</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:content__" sodipodi:insensitive="true" inkflow:layout-src="local:content" inkflow:layout-hash="30764380"><defs/><rect id="zone-title" x="80" y="60" width="1760" height="120"/>
+  <rect id="zone-content" x="80" y="220" width="1760" height="780"/>
+</g><defs id="defs5">
+    </defs>
+  <!-- Each shape animates by its id, one step per click. The animation type is
        declared in deck.py; Flicker is a custom type defined in this deck. -->
-
-  <text id="anim-title" x="80" y="150" font-family="sans-serif" font-size="64" font-weight="bold" class="inkflow-fill-text">Animations &amp; steps</text>
-
   <!-- FadeIn -->
-  <g>
+  <g id="g6">
     <rect id="shape-fade" x="150" y="360" width="200" height="200" rx="20" class="inkflow-fill-blue"/>
-    <text x="250" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">FadeIn</text>
+    <text x="250" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text5">FadeIn</text>
   </g>
   <!-- SlideIn -->
-  <g>
+  <g id="g7">
     <rect id="shape-slide" x="436" y="360" width="200" height="200" rx="20" class="inkflow-fill-green"/>
-    <text x="536" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">SlideIn</text>
+    <text x="536" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text6">SlideIn</text>
   </g>
   <!-- ZoomIn -->
-  <g>
+  <g id="g8">
     <rect id="shape-zoom" x="722" y="360" width="200" height="200" rx="20" class="inkflow-fill-yellow"/>
-    <text x="822" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">ZoomIn</text>
+    <text x="822" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text7">ZoomIn</text>
   </g>
   <!-- Bounce -->
-  <g>
+  <g id="g9">
     <rect id="shape-bounce" x="1008" y="360" width="200" height="200" rx="20" class="inkflow-fill-pink"/>
-    <text x="1108" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">Bounce</text>
+    <text x="1108" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text8">Bounce</text>
   </g>
   <!-- Highlight (already visible, pulses) -->
-  <g>
+  <g id="g10">
     <rect id="shape-highlight" x="1294" y="360" width="200" height="200" rx="20" class="inkflow-fill-teal"/>
-    <text x="1394" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">Highlight</text>
+    <text x="1394" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text9">Highlight</text>
   </g>
   <!-- Flicker (custom type defined in deck.py) -->
-  <g>
+  <g id="g11">
     <rect id="shape-flicker" x="1580" y="360" width="200" height="200" rx="20" class="inkflow-fill-purple"/>
-    <text x="1680" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">Flicker</text>
+    <text x="1680" y="630" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text10">Flicker</text>
   </g>
-
-  <text x="960" y="840" text-anchor="middle" font-family="sans-serif" font-size="38" class="inkflow-fill-text">Animate any element by its id — one step per click.</text>
-  <text x="960" y="900" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted">animations=[ animations.FadeIn("#shape-fade", step=1), ... ]</text>
+  <text x="960" y="840" text-anchor="middle" font-family="sans-serif" font-size="38" class="inkflow-fill-text" id="text11">Animate any element by its id — one step per click.</text>
+  <text x="960" y="900" text-anchor="middle" font-family="monospace" font-size="28" class="inkflow-fill-text-muted" id="text12">animations=[ animations.FadeIn("#shape-fade", step=1), ... ]</text>
 </svg>
