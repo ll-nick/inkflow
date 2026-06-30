@@ -11,5 +11,9 @@
 | `t` | toggle light / dark mode |
 | `.` | toggle laser pointer |
 
-\
+<br/>
+<br/>
+
 Open this same page in two windows and they stay in sync over WebSocket.
+
+Across this presentation, the notes section of the presenter view contains some more details.
