@@ -131,12 +131,21 @@ def main() -> Deck:
                 transition=transitions.Morph(duration=1.5),
                 notes=notes_morph,
             ),
-            # Media injection: an image zone (swap the path for .mp4 for video).
+            # Media: image and video injection, light/dark mode
             Slide(
-                "media-right",
-                md="slides/media.md",
-                zones={"media": Media("assets/demo.jpg", fit=MediaFit.COVER)},
+                "slides/media.svg",
+                zones={
+                    "title": "# Media",
+                    "image": Media(
+                        src="assets/cover-dark.webp",
+                        alt_src="assets/cover-light.webp",
+                        fit=MediaFit.COVER,
+                        y=-100,
+                    ),
+                    "video": Media("assets/logo.mp4", fit=MediaFit.COVER),
+                },
                 transition=transitions.Crossfade(),
+                animations=[animations.FadeIn("#video-section", step=1)],
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(
