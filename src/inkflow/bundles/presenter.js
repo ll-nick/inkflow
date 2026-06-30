@@ -648,6 +648,8 @@
         return null;
       if (snapshot.clone.innerHTML !== element.innerHTML) return null;
       const bTo = new DOMMatrix().translate(captured.bbox.x, captured.bbox.y).scale(captured.bbox.width, captured.bbox.height);
+      element.style.setProperty("transform-box", "view-box");
+      element.style.setProperty("transform-origin", "0 0");
       return {
         kind: "box",
         element,
@@ -736,12 +738,20 @@
     for (const id of ids) if (matchedIds.has(id)) return true;
     return false;
   }
+  var NON_RENDERING_TAGS = /* @__PURE__ */ new Set([
+    "defs",
+    "style",
+    "metadata",
+    "title",
+    "desc"
+  ]);
   function buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds) {
     const oldHtml = new Set(oldChildren.map((child) => child.html));
     const newHtml = new Set(newChildren.map((child) => child.html));
     const newChildElements = Array.from(svgRoot.children);
     const tasks = [];
     for (const child of oldChildren) {
+      if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (newHtml.has(child.html)) continue;
       const clone = child.element;
@@ -757,6 +767,7 @@
       });
     }
     for (const child of newChildren) {
+      if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (oldHtml.has(child.html)) continue;
       const element = child.element;
@@ -768,6 +779,31 @@
         targetOpacity: parseFloat(element.getAttribute("opacity") ?? "1")
       });
     }
+    return tasks;
+  }
+  function matchedContainingChildIds(children, matchedIds) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const child of children)
+      if (containsMatchedId(child.ids, matchedIds))
+        for (const id of child.ids) ids.add(id);
+    return ids;
+  }
+  function buildOrphanTasks(svgRoot, oldLeaves, oldChildren, newChildren, matchedIds) {
+    const oldScope = matchedContainingChildIds(oldChildren, matchedIds);
+    const newScope = matchedContainingChildIds(newChildren, matchedIds);
+    const isOrphan = (ancestorIds, scope) => !nearestMatchedId(ancestorIds, matchedIds) && ancestorIds.some((id) => scope.has(id));
+    const newLeaves = Array.from(
+      svgRoot.querySelectorAll(LEAF_SELECTOR)
+    ).filter((el) => el.getScreenCTM());
+    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
+    const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
+    const tasks = [];
+    for (const leaf of oldLeaves.leaves)
+      if (isOrphan(leaf.ancestorIds, oldScope) && !newHtml.has(leaf.clone.outerHTML))
+        tasks.push(buildLeafExit(leaf, svgRoot));
+    for (const el of newLeaves)
+      if (isOrphan(ancestorIdChain(el), newScope) && !oldHtml.has(el.outerHTML))
+        tasks.push(buildLeafEnter(el));
     return tasks;
   }
   function buildTasks(svgRoot, oldLeaves, oldChildren) {
@@ -782,8 +818,16 @@
         index
       })
     );
+    const orphanTasks = buildOrphanTasks(
+      svgRoot,
+      oldLeaves,
+      oldChildren,
+      newChildren,
+      matchedIds
+    );
     return [
       ...buildLeafTasks(svgRoot, oldLeaves, matchedIds),
+      ...orphanTasks,
       ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds)
     ];
   }
@@ -928,6 +972,8 @@
     if (morph.originalTransform)
       morph.element.setAttribute("transform", morph.originalTransform);
     else morph.element.removeAttribute("transform");
+    morph.element.style.removeProperty("transform-box");
+    morph.element.style.removeProperty("transform-origin");
     if (morph.toLengths.rx !== void 0)
       morph.element.setAttribute("rx", String(morph.toLengths.rx));
     if (morph.toLengths.ry !== void 0)
@@ -944,7 +990,11 @@
     for (const task of tasks) {
       if (task.type === "morph") finalizeMorph(task.morph);
       else if (task.type === "exit") task.element.remove();
-      else task.element.style.opacity = "";
+      else {
+        task.element.style.opacity = "";
+        if (task.element.getAttribute("style") === "")
+          task.element.removeAttribute("style");
+      }
     }
   }
   var MorphTransition = class {

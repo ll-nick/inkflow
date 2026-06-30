@@ -383,6 +383,17 @@ function createLeafMorph(
         const bTo = new DOMMatrix()
             .translate(captured.bbox.x, captured.bbox.y)
             .scale(captured.bbox.width, captured.bbox.height);
+        // The morph drives the `transform` attribute in SVG user space, about the
+        // viewBox origin (0,0). Once that attribute maps to the CSS `transform`
+        // property, `transform-box` and `transform-origin` apply to it — and an
+        // animation class may set both (zoom uses `fill-box` + `center`), which
+        // re-bases the morph matrix about the element's bbox centre and offsets it
+        // every frame (largest at frame 0, where the matrix is furthest from
+        // identity). Pin the classic SVG reference frame for the morph; finalize
+        // restores the class values. The animated scale is 1 at this step, so the
+        // class's own effect is unchanged.
+        element.style.setProperty("transform-box", "view-box");
+        element.style.setProperty("transform-origin", "0 0");
         return {
             kind: "box",
             element,
@@ -503,6 +514,18 @@ function containsMatchedId(ids: Set<string>, matchedIds: Set<string>): boolean {
     return false;
 }
 
+// Definition/metadata nodes never paint, so crossfading them is invisible work.
+// They also tend to carry slide-specific generated ids (defs5 vs defs6), so they
+// would crossfade on every morph for no visual gain. (In SVG2 SVGDefsElement is an
+// SVGGraphicsElement, so the instanceof guard below does not exclude them.)
+const NON_RENDERING_TAGS = new Set([
+    "defs",
+    "style",
+    "metadata",
+    "title",
+    "desc",
+]);
+
 // Crossfade unmatched content: old-only fades out, new-only fades in. A top-level
 // child is skipped if it carries a matched id (its leaves morph) or is
 // byte-identical across slides (static chrome — leaving it untouched avoids flicker).
@@ -520,6 +543,7 @@ function buildCrossfadeTasks(
     const tasks: AnimationTask[] = [];
 
     for (const child of oldChildren) {
+        if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
         if (containsMatchedId(child.ids, matchedIds)) continue;
         if (newHtml.has(child.html)) continue;
         const clone = child.element;
@@ -541,6 +565,7 @@ function buildCrossfadeTasks(
         });
     }
     for (const child of newChildren) {
+        if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
         if (containsMatchedId(child.ids, matchedIds)) continue;
         if (oldHtml.has(child.html)) continue;
         const element = child.element;
@@ -552,6 +577,62 @@ function buildCrossfadeTasks(
             targetOpacity: parseFloat(element.getAttribute("opacity") ?? "1"),
         });
     }
+    return tasks;
+}
+
+// The union of every id under each top-level child that carries a matched id.
+// Such a child is *not* crossfaded whole (buildCrossfadeTasks skips it), so its
+// own unscoped leaves are the ones that need individual orphan handling.
+function matchedContainingChildIds(
+    children: ChildSnapshot[],
+    matchedIds: Set<string>,
+): Set<string> {
+    const ids = new Set<string>();
+    for (const child of children)
+        if (containsMatchedId(child.ids, matchedIds))
+            for (const id of child.ids) ids.add(id);
+    return ids;
+}
+
+// Crossfade "orphan" leaves: leaves with no matched-ancestor scope that live
+// inside a top-level child which *does* carry a matched id. Group ids are often
+// auto-generated and offset between slides (animations g7–g12 vs morph g6–g11), so
+// a label whose stable-id sibling shape matches can still sit in a group id that
+// exists in only one slide. Such a leaf is paired by nobody (no scope) and skipped
+// by the whole-child crossfade (its group holds a matched id), so without this it
+// would snap in/out. Leaves byte-identical across slides are left untouched.
+function buildOrphanTasks(
+    svgRoot: SVGSVGElement,
+    oldLeaves: LeafSnapshotSet,
+    oldChildren: ChildSnapshot[],
+    newChildren: ChildSnapshot[],
+    matchedIds: Set<string>,
+): AnimationTask[] {
+    const oldScope = matchedContainingChildIds(oldChildren, matchedIds);
+    const newScope = matchedContainingChildIds(newChildren, matchedIds);
+    const isOrphan = (ancestorIds: string[], scope: Set<string>) =>
+        !nearestMatchedId(ancestorIds, matchedIds) &&
+        ancestorIds.some((id) => scope.has(id));
+
+    const newLeaves = Array.from(
+        svgRoot.querySelectorAll<SVGGraphicsElement>(LEAF_SELECTOR),
+    ).filter((el) => el.getScreenCTM());
+    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
+    const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
+
+    const tasks: AnimationTask[] = [];
+    for (const leaf of oldLeaves.leaves)
+        if (
+            isOrphan(leaf.ancestorIds, oldScope) &&
+            !newHtml.has(leaf.clone.outerHTML)
+        )
+            tasks.push(buildLeafExit(leaf, svgRoot));
+    for (const el of newLeaves)
+        if (
+            isOrphan(ancestorIdChain(el), newScope) &&
+            !oldHtml.has(el.outerHTML)
+        )
+            tasks.push(buildLeafEnter(el));
     return tasks;
 }
 
@@ -575,8 +656,18 @@ function buildTasks(
         }),
     );
 
+    // Orphans first: it reads new-leaf markup, so run it before buildLeafTasks
+    // seeds morph transforms onto matched leaves.
+    const orphanTasks = buildOrphanTasks(
+        svgRoot,
+        oldLeaves,
+        oldChildren,
+        newChildren,
+        matchedIds,
+    );
     return [
         ...buildLeafTasks(svgRoot, oldLeaves, matchedIds),
+        ...orphanTasks,
         ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds),
     ];
 }
@@ -761,6 +852,11 @@ function finalizeMorph(morph: Morph): void {
     if (morph.originalTransform)
         morph.element.setAttribute("transform", morph.originalTransform);
     else morph.element.removeAttribute("transform");
+    // Release the reference-frame pin so an animation class's transform-box /
+    // transform-origin (zoom's fill-box + center) govern the element again if it
+    // later animates.
+    morph.element.style.removeProperty("transform-box");
+    morph.element.style.removeProperty("transform-origin");
     // Restore the new slide's natural lengths; drop ry if we only added it to hold
     // the corner uniform (the new element had none of its own).
     if (morph.toLengths.rx !== undefined)
@@ -780,7 +876,18 @@ function finalizeTasks(tasks: AnimationTask[]): void {
     for (const task of tasks) {
         if (task.type === "morph") finalizeMorph(task.morph);
         else if (task.type === "exit") task.element.remove();
-        else task.element.style.opacity = "";
+        else {
+            // Clear the fade-in opacity, then drop a now-empty style attribute.
+            // The crossfade decides a child is unchanged chrome by exact outerHTML
+            // equality; a leftover style="" would make a pristine element fail that
+            // check on the next navigation, so unchanged content (the background
+            // group, defs) would crossfade — and each crossfade leaves another
+            // style="", perpetuating the flicker. Restoring the byte-identical
+            // markup keeps the equality check honest.
+            task.element.style.opacity = "";
+            if (task.element.getAttribute("style") === "")
+                task.element.removeAttribute("style");
+        }
     }
 }
 
