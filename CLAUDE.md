@@ -27,20 +27,34 @@ SVG source files should be kept clean (no Inkscape metadata) in the repository. 
 ```
 src/
   inkflow/
-    __init__.py       exports: Deck, Slide, MarkdownSlide, Media, TextBox,
-                               Cut, Crossfade, Morph, Animation, Transition,, Align, VAlign
-                               and the `animations` namespace
-    manifest.py       dataclasses for the deck DSL; Animation/Transition base + protocol
-                               Deck params: transition, theme, dark_mode, style, font_size, embed_fonts
+    __init__.py       exports: Deck, Slide, Media, TextBox, Animation, Transition,
+                               Align, VAlign, Direction, Inline, Content, ZoneContent,
+                               ColorMode, MediaFit, MediaAlign
+                               and the `animations` and `transitions` namespaces
+    manifest.py       dataclasses for the deck DSL; Animation/Transition base + enums
+                               Deck params: slides, transition, theme, mode: ColorMode,
+                               style, font_size, embed_fonts
+                               Slide params: src, id, md, zones, animations, transition,
+                               extra_style, title, notes, visible, font_size
     animations.py     concrete animation types (FadeIn, FadeOut, Bounce, SlideIn/Out,
                                ZoomIn/Out, Highlight) subclassing manifest.Animation
-    pipeline.py       SVG cleaning (lxml) + animation annotation + layout inlining
+    transitions.py    concrete transition types (Cut, Crossfade, Morph, Push, Cover,
+                               Zoom, Fade, Wipe) subclassing manifest.Transition
+    pipeline.py       animation annotation + layout inlining
     content.py        TextBox / Media injection into zone rects, with alignment support
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
     markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing, zone param extraction
     server.py         HTTP server, WebSocket server, file watcher, build pipeline
     export.py         static HTML export (inkflow build) and PDF export (inkflow export)
-    cli.py            CLI entry point
+    cli.py            CLI entry point (serve, build, export, init, clean, sync, verify,
+                               colorize, palette, layouts, add, parent, setup-git, completion)
+    clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
+    colors.py         CSS color token extraction, hex→class mapping, SVG colorization, GPL palette
+    git_setup.py      git hook + SVG diff driver setup
+    init.py           project scaffolding (inkflow init)
+    loaders.py        deck style / script loading helpers
+    svg.py            SVG namespace utilities
+    verify.py         slide authoring checks (inkflow verify)
     ns.py             XML namespace constants
     tui.py            terminal UI (Rich)
     presenter.html    shell template — inlined with CSS/JS at serve time
@@ -59,7 +73,7 @@ src/
     shared/           theme variables, animation keyframes
     presenter/        presenter partials including pv.css (sidebar panel)
 demo/
-  deck.py             7-slide demo deck (SVG slides + MarkdownSlides)
+  deck.py             11-slide demo deck (SVG slides + Markdown via md=)
   slides/             source SVGs and Markdown content files
 mise.toml             task runner + tool versions (replaces poethepoet)
 package.json          JS devDependencies: biome, esbuild, typescript
@@ -85,7 +99,7 @@ Step advances within a slide must NOT re-render `stage.innerHTML` — that would
 Subsequent `applyStep()` calls only toggle `.active` on existing DOM elements, triggering CSS transitions.
 
 **`deck.py` is a Python module, not YAML/TOML.**
-Loaded via `importlib.util.spec_from_file_location`. Must define a module-level `deck` variable of type `Deck`.
+Loaded via `importlib.util.spec_from_file_location`. Must define a `main() -> Deck` function.
 
 **Morph transition uses a rAF loop over SVG attributes, not CSS transforms.**
 CSS `transform: translate(Xpx)` on SVG elements is interpreted in SVG user units, not CSS viewport pixels — FLIP-based approaches produce a coordinate gap proportional to the viewBox scale.
@@ -121,7 +135,7 @@ to only the codepoints present in the slides (via `fonttools`), typically 10–3
 Unresolvable fonts produce a yellow TUI warning and fall back to system rendering.
 Opt out per-deck: `Deck(embed_fonts=False)`.
 
-**MarkdownSlide content injection uses `<foreignObject>`.**
+**Markdown content injection (`md=`) uses `<foreignObject>`.**
 Markdown is rendered to HTML via `markdown-it-py`.
 Zone `<rect>` elements in the layout SVG are replaced with `<foreignObject>` of the same geometry containing the rendered HTML.
 Typography and color come from the CSS cascade (`theme/styles.css` + per-deck/per-slide `style=`) injected into the `<foreignObject>` HTML head.
