@@ -6,7 +6,7 @@ You've already seen a few things you can do, here are some more:
 ::step::
 
 Math
-: KaTeX renders inline ($e^{i\pi} + 1 = 0$) or as a block:
+: LaTeX renders inline ($e^{i\pi} + 1 = 0$) or as a block:
 
 $$\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$$
 
