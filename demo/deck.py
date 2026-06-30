@@ -4,7 +4,6 @@ from inkflow import (
     Animation,
     Deck,
     Direction,
-    Inline,
     Media,
     MediaFit,
     Slide,
@@ -32,19 +31,6 @@ class Flip(Transition):
 
 
 def main() -> Deck:
-    notes_how = Inline(
-        "Top to bottom on the left, then out to the right. You draw each slide in any "
-        + "SVG editor. `deck.py` sits at the core, where you declare the deck: its "
-        + "order, transitions and animations. Markdown and media inject into the "
-        + "layout zones from below. inkflow cleans, annotates and renders all of it "
-        + "into the browser. Last, the corner mark: a slide can opt into a shared "
-        + "parent layout, like master slides in PowerPoint, but it is never required."
-    )
-    notes_morph = Inline(
-        "Morph matches elements by `id` and interpolates geometry and colour in SVG "
-        + "user units. The box moves, resizes and recolours; the circle scales; the "
-        + "bar grows. A single transition covers every change at once."
-    )
     return Deck(
         slides=[
             Slide(
@@ -56,17 +42,20 @@ def main() -> Deck:
                         fit=MediaFit.COVER,
                     )
                 },
+                notes="notes/title.md",
             ),
             Slide(
                 "content",
                 md="features.md",
                 transition=transitions.Crossfade(),
+                notes="notes/features.md",
             ),
             # The web interface, introduced early so viewers know the keys to try live.
             Slide(
                 "content",
                 md="interface.md",
                 transition=transitions.Push(direction=Direction.LEFT),
+                notes="notes/interface.md",
             ),
             # Architecture diagram, revealed step by step.
             Slide(
@@ -93,7 +82,7 @@ def main() -> Deck:
                     ),
                     animations.FadeIn("#inherit", step=5),
                 ],
-                notes=notes_how,
+                notes="notes/how-it-works.md",
             ),
             # deck.py shown as line-stepped, syntax-highlighted code (self-referential).
             Slide(
@@ -101,12 +90,14 @@ def main() -> Deck:
                 id="deck-py",
                 md="deckpy.md",
                 transition=transitions.Push(direction=Direction.LEFT),
+                notes="notes/deckpy.md",
             ),
             # Markdown + math, full width with room to breathe.
             Slide(
                 "content",
                 md="markdown.md",
                 transition=transitions.Push(direction=Direction.LEFT),
+                notes="notes/markdown.md",
             ),
             # Animation variety, one step per click; Flicker is the custom type above.
             Slide(
@@ -123,13 +114,14 @@ def main() -> Deck:
                     animations.Highlight("#shape-highlight", step=5),
                     Flicker("#shape-flicker", step=6, delay=0.1),
                 ],
+                notes="notes/animations.md",
             ),
             # Morph: matching ids interpolate between these two slides.
             Slide(
                 "morph.svg",
                 zones={"title": "# I like to morph it, morph it!"},
                 transition=transitions.Morph(duration=1.5),
-                notes=notes_morph,
+                notes="notes/morph.md",
             ),
             # Media: image and video injection, light/dark mode
             Slide(
@@ -146,18 +138,21 @@ def main() -> Deck:
                 },
                 transition=transitions.Crossfade(),
                 animations=[animations.FadeIn("#video-section", step=1)],
+                notes="notes/media.md",
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(
                 "content",
                 md="hackable.md",
                 transition=Flip(duration=0.8),
+                notes="notes/hackable.md",
             ),
             Slide(
                 "center",
                 font_size=50,
                 md="end.md",
                 transition=transitions.Crossfade(),
+                notes="notes/end.md",
             ),
         ]
     )
