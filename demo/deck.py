@@ -4,7 +4,6 @@ from inkflow import (
     Animation,
     Deck,
     Direction,
-    Inline,
     Media,
     MediaFit,
     Slide,
@@ -15,15 +14,14 @@ from inkflow import (
 
 
 # Custom animation: subclass Animation, write matching CSS in styles.css.
-# The CSS class is derived from the type name: Flicker → anim-flicker.
+# The CSS class is derived from the type name: Flicker -> anim-flicker.
 @dataclass
 class Flicker(Animation):
     """Neon-light flicker-on effect defined in this deck, not in inkflow itself."""
 
 
-# Custom transition: subclass Transition, register matching JS handler in scripts.js.
-# The type name becomes the handler key: Flip → "flip".
-# Extra fields are serialized into TransitionData and available as t.axis in JS.
+# Custom transition: subclass Transition, register a matching JS handler in scripts.js.
+# The type name becomes the handler key: Flip -> "flip".
 @dataclass
 class Flip(Transition):
     """3D card-flip effect defined in this deck, not in inkflow itself."""
@@ -33,104 +31,128 @@ class Flip(Transition):
 
 
 def main() -> Deck:
-    notes_title = Inline(
-        "Welcome the audience. Mention that every slide in this deck is a "
-        + "plain SVG file edited in Inkscape — no proprietary format, no "
-        + "lock-in. Open the presenter view (press `p`) to see these notes."
-    )
-    notes_diagram = Inline(
-        "Walk through the pipeline left-to-right, one click per box:\n\n"
-        + "1. **deck.py** — Python manifest listing slides and animations.\n"
-        + "2. **arrow** — load step.\n"
-        + "3. **pipeline** — strips editor metadata, annotates animations.\n"
-        + "4. **arrow** — serve step.\n"
-        + "5. **browser** — live-reloads over WebSocket on every file save."
-    )
-    notes_crossfade = Inline(
-        "Push slides both slides horizontally — the new one enters as the "
-        + "old one exits. Direction controls which way the new slide enters."
-    )
     return Deck(
         slides=[
             Slide(
-                "slides/01-title.svg",
-                animations=[
-                    # Highlight pulses an already-visible element to draw the eye.
-                    animations.Highlight("#headline", step=1),
-                    # Flicker is a custom type defined above. CSS in styles.css.
-                    Flicker("#byline", step=2, delay=0.1),
-                ],
-                notes=notes_title,
+                "title.svg",
+                zones={
+                    "media": Media(
+                        src="assets/cover-dark.webp",
+                        alt_src="assets/cover-light.webp",
+                        fit=MediaFit.COVER,
+                    )
+                },
+                notes="notes/title.md",
             ),
             Slide(
-                "slides/02-diagram.svg",
+                "content",
+                md="features.md",
+                transition=transitions.Crossfade(),
+                notes="notes/features.md",
+            ),
+            # The web interface, introduced early so viewers know the keys to try live.
+            Slide(
+                "content",
+                md="interface.md",
+                transition=transitions.Push(direction=Direction.LEFT),
+                notes="notes/interface.md",
+            ),
+            # Architecture diagram, revealed step by step.
+            Slide(
+                "how-it-works.svg",
+                zones={"title": "# How it works"},
                 transition=transitions.Cut(),
                 animations=[
-                    # A mix of the new parameterised animation types.
                     animations.SlideIn(
-                        "#box-deck",
-                        step=1,
-                        direction=Direction.LEFT,
-                        distance=600,
-                        duration=0.6,
+                        "#box-svg", step=1, direction=Direction.LEFT, distance=300
                     ),
-                    animations.FadeIn("#arrow-1", step=2, delay=0.1),
-                    animations.ZoomIn("#box-pipeline", step=3, scale=0.6),
-                    animations.FadeIn("#arrow-2", step=4, delay=0.1),
+                    animations.ZoomIn("#arrow-svg", step=2, scale=0.6),
+                    animations.ZoomIn("#box-deck", step=2, scale=0.6),
                     animations.SlideIn(
-                        "#box-browser", step=5, direction=Direction.RIGHT, duration=0.6
+                        "#box-md", step=3, direction=Direction.DOWN, distance=300
                     ),
+                    animations.SlideIn(
+                        "#arrow-md", step=3, direction=Direction.DOWN, distance=300
+                    ),
+                    animations.SlideIn(
+                        "#arrow-render", step=4, direction=Direction.RIGHT, distance=500
+                    ),
+                    animations.SlideIn(
+                        "#box-browser", step=4, direction=Direction.RIGHT, distance=500
+                    ),
+                    animations.FadeIn("#inherit", step=5),
                 ],
-                notes=notes_diagram,
+                notes="notes/how-it-works.md",
             ),
+            # deck.py shown as line-stepped, syntax-highlighted code (self-referential).
             Slide(
-                "slides/03-crossfade.svg",
+                "content",
+                id="deck-py",
+                md="deckpy.md",
                 transition=transitions.Push(direction=Direction.LEFT),
-                notes=notes_crossfade,
+                notes="notes/deckpy.md",
             ),
+            # Markdown + math, full width with room to breathe.
             Slide(
-                "slides/04-morph.svg",
-                transition=transitions.Morph(duration=1.8),
-                notes="slides/04-notes.md",
+                "content",
+                md="markdown.md",
+                transition=transitions.Push(direction=Direction.LEFT),
+                notes="notes/markdown.md",
             ),
+            # Animation variety, one step per click; Flicker is the custom type above.
             Slide(
-                "layouts/content.svg",
-                md="slides/05-invisible.md",
-                visible=False,
+                "animations.svg",
+                zones={"title": "# Animations"},
+                transition=transitions.Crossfade(),
+                animations=[
+                    animations.FadeIn("#shape-fade", step=1),
+                    animations.SlideIn(
+                        "#shape-slide", step=2, direction=Direction.DOWN
+                    ),
+                    animations.ZoomIn("#shape-zoom", step=3, scale=0.4),
+                    animations.Bounce("#shape-bounce", step=4),
+                    animations.Highlight("#shape-highlight", step=5),
+                    Flicker("#shape-flicker", step=6, delay=0.1),
+                ],
+                notes="notes/animations.md",
             ),
+            # Morph: matching ids interpolate between these two slides.
             Slide(
-                "layouts/content.svg",
-                md="slides/06-markdown.md",
+                "morph.svg",
+                zones={"title": "# I like to morph it, morph it!"},
+                transition=transitions.Morph(duration=1.5),
+                notes="notes/morph.md",
             ),
+            # Media: image and video injection, light/dark mode
             Slide(
-                "layouts/media-right.svg",
-                md="slides/07-image.md",
-                zones={"media": Media("assets/demo.jpg", fit=MediaFit.COVER)},
-            ),
-            Slide(
-                "layouts/media-right.svg",
-                md="slides/08-video.md",
-                zones={"media": Media("assets/demo.mp4")},
-                notes=Inline(
-                    "Notes can also be added both in markdown and in `deck.py`."
-                ),
-            ),
-            Slide(
-                "layouts/content.svg",
-                md="slides/09-math.md",
-            ),
-            Slide(
-                "layouts/content.svg",
-                md="slides/10-code.md",
-            ),
-            Slide(
-                "slides/10-clips.svg",
-                transition=Flip(duration=0.8),
+                "media.svg",
                 zones={
-                    "left": Media("assets/demo.jpg", fit=MediaFit.COVER),
-                    "center": Media("assets/demo.jpg", fit=MediaFit.COVER),
-                    "right": Media("assets/demo.mp4", fit=MediaFit.COVER),
+                    "title": "# Media",
+                    "image": Media(
+                        src="assets/cover-dark.webp",
+                        alt_src="assets/cover-light.webp",
+                        fit=MediaFit.COVER,
+                        y=-100,
+                    ),
+                    "video": Media("assets/logo.mp4", fit=MediaFit.COVER),
                 },
+                transition=transitions.Crossfade(),
+                animations=[animations.FadeIn("#video-section", step=1)],
+                notes="notes/media.md",
+            ),
+            # Close. Arrives via the custom Flip transition it then name-checks.
+            Slide(
+                "content",
+                md="hackable.md",
+                transition=Flip(duration=0.8),
+                notes="notes/hackable.md",
+            ),
+            Slide(
+                "center",
+                font_size=50,
+                md="end.md",
+                transition=transitions.Crossfade(),
+                notes="notes/end.md",
             ),
         ]
     )

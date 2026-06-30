@@ -8,8 +8,14 @@ from typing import TypeAlias, TypedDict, cast
 
 from latex2mathml.converter import convert as _latex_to_mathml
 from markdown_it import MarkdownIt
+from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
+from markdown_it.utils import EnvType, OptionsDict
+from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
+from mdit_py_plugins.deflist import deflist_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.footnote import footnote_plugin
+from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight as _py_highlight
 from pygments.formatters import HtmlFormatter as _HtmlFormatter
 from pygments.lexers import (
@@ -98,7 +104,17 @@ def _math_to_mathml(content: str, options: _MathOpts) -> str:
     return _latex_to_mathml(content, display=display)
 
 
-_md = MarkdownIt().use(dollarmath_plugin, renderer=_math_to_mathml)
+_md = (
+    MarkdownIt(options_update={"html": True})
+    .enable(["table", "strikethrough"])
+    .use(dollarmath_plugin, renderer=_math_to_mathml)
+    .use(tasklists_plugin)
+    .use(footnote_plugin)
+    .use(deflist_plugin)
+    .use(attrs_plugin)
+    .use(attrs_block_plugin)
+)
+
 
 # ── Fence info / highlight-spec parsing ───────────────────────────────────────
 
@@ -203,6 +219,26 @@ def _fence_renderer(
 
 
 _md.add_render_rule("fence", _fence_renderer)
+
+
+def _render_link_open(
+    renderer: object, tokens: object, idx: int, options: object, env: object
+) -> str:
+
+    token = cast(Token, cast(list[object], tokens)[idx])
+    href = str(token.attrGet("href") or "")
+    if href.startswith("slide:"):
+        slide_id = href[len("slide:") :]
+        return f'<a data-inkflow-slide="{slide_id}" title="Go to slide: {slide_id}">'
+    return cast(RendererHTML, renderer).renderToken(
+        cast(Sequence[Token], tokens),
+        idx,
+        cast(OptionsDict, options),
+        cast(EnvType, env),
+    )
+
+
+_md.add_render_rule("link_open", _render_link_open)
 
 
 def _render_md_with_steps(md: str, base_step: int) -> tuple[str, int]:
@@ -378,7 +414,7 @@ def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
 
 
 def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
-    """Wrap each top-level <p> and each <li> in a stepped fade-in div."""
+    """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped fade-in div."""
     from lxml import etree
 
     wrapped = f"<div>{html}</div>"
@@ -399,6 +435,29 @@ def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
                 child.remove(li)
                 wrapper.append(li)
                 child.insert(idx, wrapper)
+        elif tag == "dl":
+            # Group each <dt> with its following <dd> elements as one step unit.
+            groups: list[list[etree._Element]] = []  # pyright: ignore[reportPrivateUsage]
+            current: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+            for el in list(child):
+                if el.tag == "dt":
+                    if current:
+                        groups.append(current)
+                    current = [el]
+                elif el.tag == "dd":
+                    current.append(el)
+            if current:
+                groups.append(current)
+            for el in list(child):
+                child.remove(el)
+            for group in groups:
+                step += 1
+                wrapper = etree.Element("div")
+                wrapper.set("class", "anim-fade-in")
+                wrapper.set("data-step", str(step))
+                for el in group:
+                    wrapper.append(el)
+                child.append(wrapper)
         elif tag == "p":
             step += 1
             wrapper = etree.Element("div")

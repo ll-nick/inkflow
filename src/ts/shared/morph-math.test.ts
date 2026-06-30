@@ -1,40 +1,24 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
-import type { AbsolutePose } from "./morph-math";
 import {
-    buildCompensationMatrix,
+    decomposeAffine,
     easeInOut,
+    interpolateAffine,
     interpolateAttribute,
     interpolateColorAttribute,
     interpolateNumericAttribute,
+    matrixScaleX,
+    matrixScaleY,
     parseColorToRGB,
-    poseCenter,
+    recomposeAffine,
 } from "./morph-math";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function pose(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    rotation = 0,
-): AbsolutePose {
-    return { x, y, width, height, rotation };
-}
-
-// Apply a compensation matrix to the top-left and bottom-right corners of a pose.
-function applyToPose(
-    m: DOMMatrix,
-    p: AbsolutePose,
-): { topLeft: DOMPoint; bottomRight: DOMPoint } {
-    return {
-        topLeft: new DOMPoint(p.x, p.y).matrixTransform(m),
-        bottomRight: new DOMPoint(
-            p.x + p.width,
-            p.y + p.height,
-        ).matrixTransform(m),
-    };
+function expectMatrixClose(a: DOMMatrix, b: DOMMatrix, digits = 4): void {
+    for (const key of ["a", "b", "c", "d", "e", "f"] as const) {
+        expect(a[key]).toBeCloseTo(b[key], digits);
+    }
 }
 
 // ── easeInOut ────────────────────────────────────────────────────────────────
@@ -185,163 +169,104 @@ describe("interpolateAttribute", () => {
     });
 });
 
-// ── poseCenter ────────────────────────────────────────────────────────────────
+// ── decomposeAffine / recomposeAffine ─────────────────────────────────────────
 
-describe("poseCenter", () => {
-    test("unrotated pose → naive center", () => {
-        const c = poseCenter(pose(100, 100, 200, 100));
-        expect(c.x).toBeCloseTo(200, 6);
-        expect(c.y).toBeCloseTo(150, 6);
+describe("decomposeAffine / recomposeAffine", () => {
+    const roundTrip = (m: DOMMatrix) => recomposeAffine(decomposeAffine(m));
+
+    test("round-trips a pure translation", () => {
+        const m = new DOMMatrix().translate(123, -45);
+        expectMatrixClose(roundTrip(m), m);
     });
 
-    test("90°-rotated pose → center reached along rotated axes", () => {
-        // top-left corner at (100,100), rotated 90°: corners are
-        // (100,100),(100,300),(0,100),(0,300) → center (50,200).
-        const c = poseCenter(pose(100, 100, 200, 100, Math.PI / 2));
-        expect(c.x).toBeCloseTo(50, 6);
-        expect(c.y).toBeCloseTo(200, 6);
+    test("round-trips a pure rotation", () => {
+        const m = new DOMMatrix().rotate(37);
+        expectMatrixClose(roundTrip(m), m);
     });
 
-    test("rotated center differs from naive x+w/2, y+h/2", () => {
-        const p = pose(100, 100, 200, 100, Math.PI / 4);
-        const c = poseCenter(p);
-        expect(c.x).not.toBeCloseTo(p.x + p.width / 2, 3);
+    test("round-trips a non-uniform scale", () => {
+        const m = new DOMMatrix().scale(2.5, 0.4);
+        expectMatrixClose(roundTrip(m), m);
+    });
+
+    test("round-trips a sheared matrix", () => {
+        // skewX(tan=0.5) composed with a non-uniform scale: columns are neither
+        // orthogonal nor equal length — the case the old oriented-box model lost.
+        const m = new DOMMatrix([2, 0, 1, 3, 10, 20]);
+        expectMatrixClose(roundTrip(m), m);
+    });
+
+    test("round-trips a reflection (negative determinant)", () => {
+        const m = new DOMMatrix().scale(-1, 1).rotate(20);
+        expect(m.a * m.d - m.b * m.c).toBeLessThan(0);
+        expectMatrixClose(roundTrip(m), m);
+    });
+
+    test("round-trips a real Inkscape free-transform matrix", () => {
+        // The demo's shape-bounce parent transform.
+        const m = new DOMMatrix([
+            2.5210029, 1.0935916, -0.02840859, 0.06548893, -2360.9011,
+            -888.96294,
+        ]);
+        expectMatrixClose(roundTrip(m), m, 3);
     });
 });
 
-// ── buildCompensationMatrix ───────────────────────────────────────────────────
+// ── interpolateAffine ─────────────────────────────────────────────────────────
 
-describe("buildCompensationMatrix", () => {
-    const identity = new DOMMatrix();
+describe("interpolateAffine", () => {
+    const fromMatrix = new DOMMatrix().translate(100, 100).rotate(10).scale(1);
+    const toMatrix = new DOMMatrix()
+        .translate(400, 300)
+        .rotate(-30)
+        .scale(1.5, 0.6);
+    const from = decomposeAffine(fromMatrix);
+    const to = decomposeAffine(toMatrix);
 
-    test("returns null when easedProgress >= 1", () => {
-        expect(
-            buildCompensationMatrix(
-                pose(0, 0, 100, 100),
-                pose(200, 200, 100, 100),
-                identity,
-                1,
-            ),
-        ).toBeNull();
-        expect(
-            buildCompensationMatrix(
-                pose(0, 0, 100, 100),
-                pose(200, 200, 100, 100),
-                identity,
-                1.5,
-            ),
-        ).toBeNull();
+    test("t=0 reproduces the from frame", () => {
+        expectMatrixClose(interpolateAffine(from, to, 0), fromMatrix);
     });
 
-    test("t=0, same pose → identity matrix", () => {
-        const p = pose(100, 100, 200, 200);
-        const m = buildCompensationMatrix(p, p, identity, 0)!;
-        const pt = new DOMPoint(100, 100).matrixTransform(m);
-        expect(pt.x).toBeCloseTo(100, 3);
-        expect(pt.y).toBeCloseTo(100, 3);
+    test("t=1 reproduces the to frame", () => {
+        expectMatrixClose(interpolateAffine(from, to, 1), toMatrix);
     });
 
-    test("t=0, translation only → corners map fromPose → toPose in reverse", () => {
-        const from = pose(100, 100, 200, 200);
-        const to = pose(500, 500, 200, 200);
-        const m = buildCompensationMatrix(from, to, identity, 0)!;
-        const { topLeft, bottomRight } = applyToPose(m, to);
-        expect(topLeft.x).toBeCloseTo(from.x, 3);
-        expect(topLeft.y).toBeCloseTo(from.y, 3);
-        expect(bottomRight.x).toBeCloseTo(from.x + from.width, 3);
-        expect(bottomRight.y).toBeCloseTo(from.y + from.height, 3);
+    test("t=0.5 translation is the midpoint", () => {
+        const m = interpolateAffine(from, to, 0.5);
+        expect(m.e).toBeCloseTo(250, 4); // (100 + 400) / 2
+        expect(m.f).toBeCloseTo(200, 4); // (100 + 300) / 2
     });
 
-    test("t=0, translation + scale change → corners map correctly (the key invariant)", () => {
-        const from = pose(120, 200, 400, 300);
-        const to = pose(900, 600, 600, 200);
-        const m = buildCompensationMatrix(from, to, identity, 0)!;
-        const { topLeft, bottomRight } = applyToPose(m, to);
-        expect(topLeft.x).toBeCloseTo(from.x, 3);
-        expect(topLeft.y).toBeCloseTo(from.y, 3);
-        expect(bottomRight.x).toBeCloseTo(from.x + from.width, 3);
-        expect(bottomRight.y).toBeCloseTo(from.y + from.height, 3);
+    test("rotation interpolates along the shorter arc (170° → 190°, not via 0°)", () => {
+        const a = decomposeAffine(new DOMMatrix().rotate(170));
+        const b = decomposeAffine(new DOMMatrix().rotate(-170)); // 190°
+        const mid = interpolateAffine(a, b, 0.5);
+        // Shorter arc passes through 180° (a = cos180 = -1), not 0° (a = 1).
+        expect(mid.a).toBeCloseTo(-1, 4);
+        expect(mid.b).toBeCloseTo(0, 4);
+    });
+});
+
+// ── matrixScaleX / matrixScaleY ───────────────────────────────────────────────
+
+describe("matrixScaleX / matrixScaleY", () => {
+    test("reads a non-uniform scale", () => {
+        const m = new DOMMatrix().scale(3, 7);
+        expect(matrixScaleX(m)).toBeCloseTo(3, 6);
+        expect(matrixScaleY(m)).toBeCloseTo(7, 6);
     });
 
-    test("t=0.5 → center is at midpoint between fromPose and toPose centers", () => {
-        const from = pose(0, 0, 200, 200);
-        const to = pose(400, 400, 200, 200);
-        const m = buildCompensationMatrix(from, to, identity, 0.5)!;
-        // fromCenter=(100,100), toCenter=(500,500); midpoint=(300,300)
-        const center = new DOMPoint(to.x + 100, to.y + 100).matrixTransform(m);
-        expect(center.x).toBeCloseTo(300, 3);
-        expect(center.y).toBeCloseTo(300, 3);
+    test("is rotation-invariant", () => {
+        const m = new DOMMatrix().rotate(50).scale(3, 7);
+        expect(matrixScaleX(m)).toBeCloseTo(3, 6);
+        expect(matrixScaleY(m)).toBeCloseTo(7, 6);
     });
 
-    test("t=0.5 → visual size is midpoint between fromPose and toPose sizes", () => {
-        const from = pose(0, 0, 400, 300);
-        const to = pose(100, 100, 200, 100);
-        const m = buildCompensationMatrix(from, to, identity, 0.5)!;
-        // Width and height at midpoint
-        const tl = new DOMPoint(to.x, to.y).matrixTransform(m);
-        const tr = new DOMPoint(to.x + to.width, to.y).matrixTransform(m);
-        const bl = new DOMPoint(to.x, to.y + to.height).matrixTransform(m);
-        expect(Math.hypot(tr.x - tl.x, tr.y - tl.y)).toBeCloseTo(300, 3); // midpoint width
-        expect(Math.hypot(bl.x - tl.x, bl.y - tl.y)).toBeCloseTo(200, 3); // midpoint height
-    });
-
-    test("t=0, with scaled parentCTM → converts delta to parent-local space correctly", () => {
-        // parentCTM with 0.5x scale: viewport pixels = 0.5 * SVG user units.
-        // A viewport delta of -390px corresponds to -780 SVG units, not -390.
-        // Without applying parentCTMInverse the compensation would be off by 2x.
-        const parentCTM = new DOMMatrix().scale(0.5);
-        const parentCTMInverse = parentCTM.inverse();
-        // Poses in viewport pixels
-        const from = pose(60, 100, 200, 150);
-        const to = pose(450, 300, 300, 100);
-        const m = buildCompensationMatrix(from, to, parentCTM, 0)!;
-
-        // M operates in parent-local (SVG unit) space.
-        // Verify: M maps (parentCTMInverse * toPose_corner) → (parentCTMInverse * fromPose_corner)
-        const toTL_local = new DOMPoint(to.x, to.y).matrixTransform(
-            parentCTMInverse,
-        );
-        const fromTL_local = new DOMPoint(from.x, from.y).matrixTransform(
-            parentCTMInverse,
-        );
-        const result = toTL_local.matrixTransform(m);
-        expect(result.x).toBeCloseTo(fromTL_local.x, 3);
-        expect(result.y).toBeCloseTo(fromTL_local.y, 3);
-    });
-
-    test("t=0, rotation + translation → toPose center maps to fromPose center", () => {
-        // Both poses rotated, with a center delta. The matrix must move the
-        // (rotation-aware) toPose center onto the fromPose center. With the old
-        // naive x+w/2 center this fails for any nonzero rotation.
-        const from = pose(300, 300, 200, 100, Math.PI / 2);
-        const to = pose(100, 100, 200, 100, 0);
-        const m = buildCompensationMatrix(from, to, identity, 0)!;
-        const fromCenter = poseCenter(from);
-        const toCenter = poseCenter(to);
-        const mapped = new DOMPoint(toCenter.x, toCenter.y).matrixTransform(m);
-        expect(mapped.x).toBeCloseTo(fromCenter.x, 3);
-        expect(mapped.y).toBeCloseTo(fromCenter.y, 3);
-    });
-
-    test("t=0.5, rotated poses → center is midpoint of pose centers", () => {
-        const from = pose(300, 300, 200, 100, Math.PI / 2);
-        const to = pose(100, 100, 200, 100, 0);
-        const m = buildCompensationMatrix(from, to, identity, 0.5)!;
-        const fromCenter = poseCenter(from);
-        const toCenter = poseCenter(to);
-        const mapped = new DOMPoint(toCenter.x, toCenter.y).matrixTransform(m);
-        expect(mapped.x).toBeCloseTo((fromCenter.x + toCenter.x) / 2, 3);
-        expect(mapped.y).toBeCloseTo((fromCenter.y + toCenter.y) / 2, 3);
-    });
-
-    test("t=0, with rotation → element rotates to fromPose rotation", () => {
-        const angle = Math.PI / 4; // 45 degrees
-        const from = pose(100, 100, 200, 200, angle);
-        const to = pose(100, 100, 200, 200, 0);
-        const m = buildCompensationMatrix(from, to, identity, 0)!;
-        // The matrix should encode a 45-degree rotation
-        // For a rotation matrix R(θ): a=cos(θ), b=sin(θ)
-        expect(m.a).toBeCloseTo(Math.cos(angle), 3);
-        expect(m.b).toBeCloseTo(Math.sin(angle), 3);
+    test("scaleY removes shear (orthogonal component only)", () => {
+        // Column 2 is (1,3) with length √10 ≈ 3.16, but the shear-free y-scale is
+        // |det| / scaleX = 6 / 2 = 3.
+        const m = new DOMMatrix([2, 0, 1, 3, 0, 0]);
+        expect(matrixScaleX(m)).toBeCloseTo(2, 6);
+        expect(matrixScaleY(m)).toBeCloseTo(3, 6);
     });
 });

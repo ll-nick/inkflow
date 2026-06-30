@@ -318,16 +318,6 @@
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
   }
-  function poseCenter(pose) {
-    const cos = Math.cos(pose.rotation);
-    const sin = Math.sin(pose.rotation);
-    const halfWidth = pose.width / 2;
-    const halfHeight = pose.height / 2;
-    return {
-      x: pose.x + halfWidth * cos - halfHeight * sin,
-      y: pose.y + halfWidth * sin + halfHeight * cos
-    };
-  }
   function parseColorToRGB(colorString) {
     if (colorString.startsWith("#")) {
       const hexDigits = colorString.slice(1);
@@ -381,35 +371,68 @@
     }
     return result;
   }
-  function compensationScale(fromPose, toPose, easedProgress) {
-    const remainingProgress = 1 - easedProgress;
+  function decomposeAffine(m) {
+    let a = m.a;
+    let b = m.b;
+    let c = m.c;
+    let d = m.d;
+    const determinant = a * d - b * c;
+    let scaleX = Math.hypot(a, b);
+    if (scaleX !== 0) {
+      a /= scaleX;
+      b /= scaleX;
+    }
+    let skew = a * c + b * d;
+    c -= a * skew;
+    d -= b * skew;
+    const scaleY = Math.hypot(c, d);
+    if (scaleY !== 0) {
+      skew /= scaleY;
+    }
+    if (determinant < 0) {
+      scaleX = -scaleX;
+      a = -a;
+      b = -b;
+    }
     return {
-      x: toPose.width > 0 ? 1 + (fromPose.width / toPose.width - 1) * remainingProgress : 1,
-      y: toPose.height > 0 ? 1 + (fromPose.height / toPose.height - 1) * remainingProgress : 1
+      tx: m.e,
+      ty: m.f,
+      scaleX,
+      scaleY,
+      skew,
+      rotation: Math.atan2(b, a)
     };
   }
-  function buildCompensationMatrix(fromPose, toPose, parentCTM, easedProgress) {
-    if (easedProgress >= 1) return null;
-    const remainingProgress = 1 - easedProgress;
-    const parentCTMInverse = parentCTM.inverse();
-    const fromCenter = poseCenter(fromPose);
-    const toCenter = poseCenter(toPose);
-    const absoluteDeltaX = fromCenter.x - toCenter.x;
-    const absoluteDeltaY = fromCenter.y - toCenter.y;
-    const localDeltaX = (parentCTMInverse.a * absoluteDeltaX + parentCTMInverse.c * absoluteDeltaY) * remainingProgress;
-    const localDeltaY = (parentCTMInverse.b * absoluteDeltaX + parentCTMInverse.d * absoluteDeltaY) * remainingProgress;
-    const { x: compensationScaleX, y: compensationScaleY } = compensationScale(
-      fromPose,
-      toPose,
-      easedProgress
-    );
-    const rotationDeltaDegrees = (fromPose.rotation - toPose.rotation) * (180 / Math.PI) * remainingProgress;
-    const toPoseCenter = new DOMPoint(toCenter.x, toCenter.y).matrixTransform(
-      parentCTMInverse
-    );
-    const pivotX = toPoseCenter.x;
-    const pivotY = toPoseCenter.y;
-    return new DOMMatrix().translate(pivotX + localDeltaX, pivotY + localDeltaY).scale(compensationScaleX, compensationScaleY).rotate(rotationDeltaDegrees).translate(-pivotX, -pivotY);
+  function recomposeAffine(c) {
+    const skewMatrix = new DOMMatrix([1, 0, c.skew, 1, 0, 0]);
+    return new DOMMatrix().translate(c.tx, c.ty).rotate(c.rotation * 180 / Math.PI).multiply(skewMatrix).scale(c.scaleX, c.scaleY);
+  }
+  function lerp(from, to, t) {
+    return from + (to - from) * t;
+  }
+  function lerpAngle(from, to, t) {
+    let delta = to - from;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+    while (delta < -Math.PI) delta += 2 * Math.PI;
+    return from + delta * t;
+  }
+  function interpolateAffine(from, to, t) {
+    return recomposeAffine({
+      tx: lerp(from.tx, to.tx, t),
+      ty: lerp(from.ty, to.ty, t),
+      scaleX: lerp(from.scaleX, to.scaleX, t),
+      scaleY: lerp(from.scaleY, to.scaleY, t),
+      skew: lerp(from.skew, to.skew, t),
+      rotation: lerpAngle(from.rotation, to.rotation, t)
+    });
+  }
+  function matrixScaleX(m) {
+    return Math.hypot(m.a, m.b);
+  }
+  function matrixScaleY(m) {
+    const scaleX = Math.hypot(m.a, m.b);
+    if (scaleX === 0) return Math.hypot(m.c, m.d);
+    return Math.abs(m.a * m.d - m.b * m.c) / scaleX;
   }
 
   // src/ts/presenter/progress-driver.ts
@@ -450,26 +473,14 @@
   // src/ts/presenter/morph.ts
   var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
   var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
-  function captureAbsolutePose(element) {
-    const boundingBox = element.getBBox();
-    const currentMatrix = element.getScreenCTM();
-    const topLeft = new DOMPoint(boundingBox.x, boundingBox.y).matrixTransform(
-      currentMatrix
-    );
-    const topRight = new DOMPoint(
-      boundingBox.x + boundingBox.width,
-      boundingBox.y
-    ).matrixTransform(currentMatrix);
-    const bottomLeft = new DOMPoint(
-      boundingBox.x,
-      boundingBox.y + boundingBox.height
-    ).matrixTransform(currentMatrix);
+  function captureFrame(element) {
+    const bbox = element.getBBox();
+    const screenCTM = DOMMatrix.fromMatrix(element.getScreenCTM());
+    const frame = screenCTM.translate(bbox.x, bbox.y).scale(bbox.width, bbox.height);
     return {
-      x: topLeft.x,
-      y: topLeft.y,
-      width: Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y),
-      height: Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y),
-      rotation: Math.atan2(topRight.y - topLeft.y, topRight.x - topLeft.x)
+      comp: decomposeAffine(frame),
+      screenScale: { x: matrixScaleX(screenCTM), y: matrixScaleY(screenCTM) },
+      bbox
     };
   }
   function readLengthAttributes(element) {
@@ -535,28 +546,31 @@
     return ids;
   }
   function snapshotLeaf(element) {
-    const ancestorIds = ancestorIdChain(element);
-    const fromAttributes = readInterpolatedAttributes(element);
+    const common = {
+      ancestorIds: ancestorIdChain(element),
+      fromAttributes: readInterpolatedAttributes(element),
+      clone: element.cloneNode(true),
+      screenCTM: element.getScreenCTM() ?? new DOMMatrix()
+    };
     if (element instanceof SVGLineElement)
       return {
         kind: "line",
-        ancestorIds,
-        fromAttributes,
+        ...common,
         endpointsScreen: captureEndpointsScreen(element),
         strokeWidth: readLengthAttributes(element)["stroke-width"]
       };
     if (element instanceof SVGTextElement)
       return {
         kind: "text",
-        ancestorIds,
-        fromAttributes,
+        ...common,
         textPose: captureTextScreenPose(element)
       };
+    const captured = captureFrame(element);
     return {
       kind: "box",
-      ancestorIds,
-      fromAttributes,
-      pose: captureAbsolutePose(element),
+      ...common,
+      frame: captured.comp,
+      screenScale: captured.screenScale,
       lengths: readLengthAttributes(element)
     };
   }
@@ -628,22 +642,54 @@
         to: captureTextScreenPose(element)
       };
     }
-    if (snapshot.pose)
+    if (snapshot.frame && snapshot.screenScale) {
+      const captured = captureFrame(element);
+      if (captured.bbox.width === 0 || captured.bbox.height === 0)
+        return null;
+      if (snapshot.clone.innerHTML !== element.innerHTML) return null;
+      const bTo = new DOMMatrix().translate(captured.bbox.x, captured.bbox.y).scale(captured.bbox.width, captured.bbox.height);
+      element.style.setProperty("transform-box", "view-box");
+      element.style.setProperty("transform-origin", "0 0");
       return {
         kind: "box",
         element,
         fromAttributes,
         toAttributes,
-        parentCTM: parentScreenCTM(element),
         originalTransform: element.getAttribute("transform") ?? "",
-        fromPose: snapshot.pose,
-        toPose: captureAbsolutePose(element),
+        fromComp: snapshot.frame,
+        toComp: captured.comp,
+        parentInverse: parentScreenCTM(element).inverse(),
+        bToInverse: bTo.inverse(),
         fromLengths: snapshot.lengths ?? {},
-        toLengths: readLengthAttributes(element)
+        toLengths: readLengthAttributes(element),
+        fromScreenScale: snapshot.screenScale,
+        toScreenScale: captured.screenScale
       };
+    }
     return null;
   }
-  function buildLeafMorphTasks(svgRoot, oldLeaves, matchedIds) {
+  function buildLeafExit(snapshot, svgRoot) {
+    const ghost = snapshot.clone;
+    const placement = (svgRoot.getScreenCTM() ?? new DOMMatrix()).inverse().multiply(snapshot.screenCTM);
+    ghost.setAttribute("transform", matrixToSvgTransform(placement));
+    svgRoot.appendChild(ghost);
+    const startOpacity = parseFloat(snapshot.fromAttributes.opacity ?? "1");
+    return {
+      type: "exit",
+      element: ghost,
+      startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1
+    };
+  }
+  function buildLeafEnter(element) {
+    const target = parseFloat(element.getAttribute("opacity") ?? "1");
+    element.style.opacity = "0";
+    return {
+      type: "fadeIn",
+      element,
+      targetOpacity: Number.isFinite(target) ? target : 1
+    };
+  }
+  function buildLeafTasks(svgRoot, oldLeaves, matchedIds) {
     const oldByScope = /* @__PURE__ */ new Map();
     for (const leaf of oldLeaves.leaves) {
       const scope = nearestMatchedId(leaf.ancestorIds, matchedIds);
@@ -664,16 +710,27 @@
       );
     }
     const tasks = [];
-    for (const [scope, newElements] of newByScope) {
-      const oldList = oldByScope.get(scope);
-      if (!oldList) continue;
-      const count = Math.min(newElements.length, oldList.length);
-      for (let i = 0; i < count; i++) {
-        const morph = createLeafMorph(newElements[i], oldList[i]);
-        if (!morph) continue;
-        tickMorph(morph, 0);
-        tasks.push({ type: "morph", morph });
+    const scopes = /* @__PURE__ */ new Set([...oldByScope.keys(), ...newByScope.keys()]);
+    for (const scope of scopes) {
+      const oldList = oldByScope.get(scope) ?? [];
+      const newList = newByScope.get(scope) ?? [];
+      const paired = Math.min(oldList.length, newList.length);
+      for (let i = 0; i < paired; i++) {
+        const snapshot = oldList[i];
+        const element = newList[i];
+        const morph = leafKind(element) === snapshot.kind ? createLeafMorph(element, snapshot) : null;
+        if (morph) {
+          tickMorph(morph, 0);
+          tasks.push({ type: "morph", morph });
+        } else {
+          tasks.push(buildLeafExit(snapshot, svgRoot));
+          tasks.push(buildLeafEnter(element));
+        }
       }
+      for (let i = paired; i < oldList.length; i++)
+        tasks.push(buildLeafExit(oldList[i], svgRoot));
+      for (let i = paired; i < newList.length; i++)
+        tasks.push(buildLeafEnter(newList[i]));
     }
     return tasks;
   }
@@ -681,12 +738,20 @@
     for (const id of ids) if (matchedIds.has(id)) return true;
     return false;
   }
+  var NON_RENDERING_TAGS = /* @__PURE__ */ new Set([
+    "defs",
+    "style",
+    "metadata",
+    "title",
+    "desc"
+  ]);
   function buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds) {
     const oldHtml = new Set(oldChildren.map((child) => child.html));
     const newHtml = new Set(newChildren.map((child) => child.html));
     const newChildElements = Array.from(svgRoot.children);
     const tasks = [];
     for (const child of oldChildren) {
+      if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (newHtml.has(child.html)) continue;
       const clone = child.element;
@@ -702,6 +767,7 @@
       });
     }
     for (const child of newChildren) {
+      if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (oldHtml.has(child.html)) continue;
       const element = child.element;
@@ -713,6 +779,31 @@
         targetOpacity: parseFloat(element.getAttribute("opacity") ?? "1")
       });
     }
+    return tasks;
+  }
+  function matchedContainingChildIds(children, matchedIds) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const child of children)
+      if (containsMatchedId(child.ids, matchedIds))
+        for (const id of child.ids) ids.add(id);
+    return ids;
+  }
+  function buildOrphanTasks(svgRoot, oldLeaves, oldChildren, newChildren, matchedIds) {
+    const oldScope = matchedContainingChildIds(oldChildren, matchedIds);
+    const newScope = matchedContainingChildIds(newChildren, matchedIds);
+    const isOrphan = (ancestorIds, scope) => !nearestMatchedId(ancestorIds, matchedIds) && ancestorIds.some((id) => scope.has(id));
+    const newLeaves = Array.from(
+      svgRoot.querySelectorAll(LEAF_SELECTOR)
+    ).filter((el) => el.getScreenCTM());
+    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
+    const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
+    const tasks = [];
+    for (const leaf of oldLeaves.leaves)
+      if (isOrphan(leaf.ancestorIds, oldScope) && !newHtml.has(leaf.clone.outerHTML))
+        tasks.push(buildLeafExit(leaf, svgRoot));
+    for (const el of newLeaves)
+      if (isOrphan(ancestorIdChain(el), newScope) && !oldHtml.has(el.outerHTML))
+        tasks.push(buildLeafEnter(el));
     return tasks;
   }
   function buildTasks(svgRoot, oldLeaves, oldChildren) {
@@ -727,8 +818,16 @@
         index
       })
     );
+    const orphanTasks = buildOrphanTasks(
+      svgRoot,
+      oldLeaves,
+      oldChildren,
+      newChildren,
+      matchedIds
+    );
     return [
-      ...buildLeafMorphTasks(svgRoot, oldLeaves, matchedIds),
+      ...buildLeafTasks(svgRoot, oldLeaves, matchedIds),
+      ...orphanTasks,
       ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds)
     ];
   }
@@ -752,61 +851,73 @@
     }
   }
   function applyBox(morph, easedProgress) {
-    const compensation = buildCompensationMatrix(
-      morph.fromPose,
-      morph.toPose,
-      morph.parentCTM,
+    const frame = interpolateAffine(
+      morph.fromComp,
+      morph.toComp,
       easedProgress
     );
-    const prefix = compensation ? `${matrixToSvgTransform(compensation)} ` : "";
+    const localToScreen = frame.multiply(morph.bToInverse);
     morph.element.setAttribute(
       "transform",
-      `${prefix}${morph.originalTransform}`.trim()
+      matrixToSvgTransform(morph.parentInverse.multiply(localToScreen))
     );
-    const { x: csx, y: csy } = compensationScale(
-      morph.fromPose,
-      morph.toPose,
-      easedProgress
-    );
-    const uniformScale = Math.sqrt(Math.max(csx * csy, 1e-6));
-    const lerp = (from, to) => from + (to - from) * easedProgress;
+    const curScaleX = matrixScaleX(localToScreen);
+    const curScaleY = matrixScaleY(localToScreen);
+    const lerp2 = (from, to) => from + (to - from) * easedProgress;
     const rxFrom = morph.fromLengths.rx;
     const rxTo = morph.toLengths.rx;
     if (rxFrom !== void 0 && rxTo !== void 0) {
       const ryFrom = morph.fromLengths.ry ?? rxFrom;
       const ryTo = morph.toLengths.ry ?? rxTo;
-      morph.element.setAttribute("rx", String(lerp(rxFrom, rxTo) / csx));
-      morph.element.setAttribute("ry", String(lerp(ryFrom, ryTo) / csy));
+      const rxScreen = lerp2(
+        rxFrom * morph.fromScreenScale.x,
+        rxTo * morph.toScreenScale.x
+      );
+      const ryScreen = lerp2(
+        ryFrom * morph.fromScreenScale.y,
+        ryTo * morph.toScreenScale.y
+      );
+      morph.element.setAttribute("rx", String(rxScreen / curScaleX));
+      morph.element.setAttribute("ry", String(ryScreen / curScaleY));
     }
     const swFrom = morph.fromLengths["stroke-width"];
     const swTo = morph.toLengths["stroke-width"];
-    if (swFrom !== void 0 && swTo !== void 0)
+    if (swFrom !== void 0 && swTo !== void 0) {
+      const fromUniform = Math.sqrt(
+        morph.fromScreenScale.x * morph.fromScreenScale.y
+      );
+      const toUniform = Math.sqrt(
+        morph.toScreenScale.x * morph.toScreenScale.y
+      );
+      const curUniform = Math.sqrt(Math.max(curScaleX * curScaleY, 1e-6));
+      const swScreen = lerp2(swFrom * fromUniform, swTo * toUniform);
       morph.element.setAttribute(
         "stroke-width",
-        String(lerp(swFrom, swTo) / uniformScale)
+        String(swScreen / curUniform)
       );
+    }
   }
   function applyText(morph, easedProgress) {
-    const lerp = (from, to) => from + (to - from) * easedProgress;
+    const lerp2 = (from, to) => from + (to - from) * easedProgress;
     const target = new DOMMatrix().translate(
-      lerp(morph.from.anchorX, morph.to.anchorX),
-      lerp(morph.from.anchorY, morph.to.anchorY)
-    ).rotate(lerp(morph.from.rotation, morph.to.rotation) * 180 / Math.PI).scale(lerp(morph.from.scale, morph.to.scale)).translate(-morph.anchorLocalX, -morph.anchorLocalY);
+      lerp2(morph.from.anchorX, morph.to.anchorX),
+      lerp2(morph.from.anchorY, morph.to.anchorY)
+    ).rotate(lerp2(morph.from.rotation, morph.to.rotation) * 180 / Math.PI).scale(lerp2(morph.from.scale, morph.to.scale)).translate(-morph.anchorLocalX, -morph.anchorLocalY);
     const local = morph.parentCTM.inverse().multiply(target);
     morph.element.setAttribute("transform", matrixToSvgTransform(local));
-    morph.element.style.fontSize = `${lerp(morph.from.fontSize, morph.to.fontSize)}px`;
+    morph.element.style.fontSize = `${lerp2(morph.from.fontSize, morph.to.fontSize)}px`;
   }
   function applyLine(morph, easedProgress) {
-    const lerp = (from, to) => from + (to - from) * easedProgress;
+    const lerp2 = (from, to) => from + (to - from) * easedProgress;
     const element = morph.element;
-    element.setAttribute("x1", String(lerp(morph.from.x1, morph.to.x1)));
-    element.setAttribute("y1", String(lerp(morph.from.y1, morph.to.y1)));
-    element.setAttribute("x2", String(lerp(morph.from.x2, morph.to.x2)));
-    element.setAttribute("y2", String(lerp(morph.from.y2, morph.to.y2)));
+    element.setAttribute("x1", String(lerp2(morph.from.x1, morph.to.x1)));
+    element.setAttribute("y1", String(lerp2(morph.from.y1, morph.to.y1)));
+    element.setAttribute("x2", String(lerp2(morph.from.x2, morph.to.x2)));
+    element.setAttribute("y2", String(lerp2(morph.from.y2, morph.to.y2)));
     if (morph.fromStrokeWidth !== void 0 && morph.toStrokeWidth !== void 0)
       element.setAttribute(
         "stroke-width",
-        String(lerp(morph.fromStrokeWidth, morph.toStrokeWidth))
+        String(lerp2(morph.fromStrokeWidth, morph.toStrokeWidth))
       );
   }
   function tickMorph(morph, easedProgress) {
@@ -861,6 +972,8 @@
     if (morph.originalTransform)
       morph.element.setAttribute("transform", morph.originalTransform);
     else morph.element.removeAttribute("transform");
+    morph.element.style.removeProperty("transform-box");
+    morph.element.style.removeProperty("transform-origin");
     if (morph.toLengths.rx !== void 0)
       morph.element.setAttribute("rx", String(morph.toLengths.rx));
     if (morph.toLengths.ry !== void 0)
@@ -877,7 +990,11 @@
     for (const task of tasks) {
       if (task.type === "morph") finalizeMorph(task.morph);
       else if (task.type === "exit") task.element.remove();
-      else task.element.style.opacity = "";
+      else {
+        task.element.style.opacity = "";
+        if (task.element.getAttribute("style") === "")
+          task.element.removeAttribute("style");
+      }
     }
   }
   var MorphTransition = class {
@@ -1402,8 +1519,8 @@
           state.slideIndex,
           Math.max(0, state.slides.length - 1)
         );
-        state.step = 0;
-        loadSlide();
+        state.step = Math.min(state.step, maxStep2());
+        loadSlide(null, CUT);
         renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
@@ -1509,6 +1626,17 @@
   }
 
   // src/ts/presenter/navigation.ts
+  function gotoId(id) {
+    const idx = state.slides.findIndex((s) => s.id === id);
+    if (idx < 0) return false;
+    history.pushState(null, "", window.location.href);
+    state.slideIndex = idx;
+    state.step = 0;
+    loadSlide(null, CUT);
+    renderPv();
+    sendNav(CUT);
+    return true;
+  }
   function advance() {
     if (inflightDirection() === "forward") {
       snapInflight();
@@ -1574,6 +1702,7 @@
     sendNav();
   }
   function gotoFirst() {
+    history.pushState(null, "", window.location.href);
     state.slideIndex = 0;
     state.step = 0;
     loadSlide(null, CUT);
@@ -1581,6 +1710,7 @@
     sendNav(CUT);
   }
   function gotoLast() {
+    history.pushState(null, "", window.location.href);
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
     loadSlide(null, CUT);
@@ -1641,6 +1771,7 @@
     if (active) active.scrollIntoView({ block: "nearest" });
   }
   function overviewCommit() {
+    history.pushState(null, "", window.location.href);
     state.slideIndex = state._overviewActive;
     closeOverview();
     state.step = maxStep2();
@@ -1841,6 +1972,7 @@
   }
   function pickerCommit() {
     if (!state._pickerMatches.length) return;
+    history.pushState(null, "", window.location.href);
     state.slideIndex = state._pickerMatches[state._pickerActive];
     closePicker();
     state.step = maxStep2();
@@ -1880,6 +2012,12 @@
   var stageEl = document.getElementById("stage");
   var isCoarse = () => window.matchMedia("(pointer: coarse)").matches;
   stageEl.addEventListener("click", (e) => {
+    const slideLink = e.target.closest?.("[data-inkflow-slide]");
+    if (slideLink) {
+      gotoId(slideLink.getAttribute("data-inkflow-slide") ?? "");
+      return;
+    }
+    if (e.target.closest?.("a[href]")) return;
     if (isCoarse()) {
       const ratio = e.clientX / window.innerWidth;
       if (ratio < 0.2) retreat();
@@ -2026,6 +2164,11 @@
   state.slides = INITIAL_SLIDES;
   state.transitions = INITIAL_TRANSITIONS;
   window.inkflow = { registerTransition, registerProgressTransition };
+  window.addEventListener("popstate", () => {
+    readURL();
+    loadSlide(null, CUT);
+    renderPv();
+  });
   readURL();
   loadSlide();
   renderPv();

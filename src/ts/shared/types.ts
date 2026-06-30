@@ -1,4 +1,5 @@
 export interface SlideData {
+    id?: string;
     svg: string;
     title?: string;
     notes?: string;

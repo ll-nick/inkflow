@@ -217,6 +217,19 @@
     display: list-item;
     margin-bottom: 0.3em;
 }
+.inkflow-content dl {
+    margin-bottom: 0.5em;
+}
+.inkflow-content dt {
+    font-weight: 600;
+    color: var(--inkflow-accent);
+    margin-top: 0.4em;
+}
+.inkflow-content dd {
+    padding-left: 1.5em;
+    color: var(--inkflow-text-muted);
+    margin-bottom: 0.2em;
+}
 .inkflow-content h1 {
     font-size: 2em;
     font-weight: bold;
@@ -253,6 +266,13 @@
 .inkflow-content a:hover {
     opacity: 0.8;
 }
+.inkflow-wrapper [data-inkflow-slide] {
+    color: var(--inkflow-link);
+    cursor: pointer;
+}
+.inkflow-wrapper [data-inkflow-slide]:hover {
+    color: var(--inkflow-accent);
+}
 .inkflow-content code {
     font-family: monospace;
     background: var(--inkflow-code-bg);
@@ -276,6 +296,50 @@
     padding-left: 0.8em;
     margin: 0.5em 0;
     color: var(--inkflow-text-muted);
+}
+.inkflow-content table {
+    /* inline-table so the zone's text-align (left/center/right) positions the
+       table the same way it positions prose — see content.py align handling. */
+    display: inline-table;
+    border-collapse: collapse;
+    margin: 0.5em 0;
+}
+.inkflow-content th,
+.inkflow-content td {
+    border: 2px solid var(--inkflow-border);
+    padding: 0.3em 0.7em;
+    text-align: left;
+}
+.inkflow-content th {
+    background: var(--inkflow-surface);
+    color: var(--inkflow-heading);
+    font-weight: 600;
+}
+.inkflow-content .footnote-ref a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Footnote block is hoisted to .inkflow-wrapper level by content.py */
+.inkflow-wrapper .footnotes {
+    margin-top: auto;
+    margin-bottom: 1.5em;
+    padding-top: 0.5em;
+    border-top: 1px solid var(--inkflow-border);
+    font-size: 0.72em;
+    color: var(--inkflow-text-muted);
+}
+.inkflow-wrapper .footnotes ol {
+    padding-left: 1.5em;
+    margin: 0;
+}
+.inkflow-wrapper .footnotes p {
+    margin: 0;
+}
+.inkflow-wrapper .footnote-backref {
+    color: var(--inkflow-accent);
+    text-decoration: none;
+    margin-left: 0.2em;
 }
 
 /* ── Per-layout zone alignment and typography ─────────────────────────────── */

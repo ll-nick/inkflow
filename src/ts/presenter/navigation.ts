@@ -4,6 +4,18 @@ import { applyCurrentStep, maxStep } from "./status";
 import { CUT, inflightDirection, loadSlide, snapInflight } from "./transitions";
 import { sendNav, sendSnap } from "./websocket";
 
+export function gotoId(id: string): boolean {
+    const idx = state.slides.findIndex((s) => s.id === id);
+    if (idx < 0) return false;
+    history.pushState(null, "", window.location.href);
+    state.slideIndex = idx;
+    state.step = 0;
+    loadSlide(null, CUT);
+    renderPv();
+    sendNav(CUT);
+    return true;
+}
+
 export function advance(): void {
     // A forward slide transition still animating: snap it to its end instead of
     // playing the next step. The following forward press does the normal action.
@@ -83,6 +95,7 @@ export function prevSlide(): void {
 }
 
 export function gotoFirst(): void {
+    history.pushState(null, "", window.location.href);
     state.slideIndex = 0;
     state.step = 0;
     loadSlide(null, CUT);
@@ -91,6 +104,7 @@ export function gotoFirst(): void {
 }
 
 export function gotoLast(): void {
+    history.pushState(null, "", window.location.href);
     state.slideIndex = state.slides.length - 1;
     state.step = 0;
     loadSlide(null, CUT);

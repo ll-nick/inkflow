@@ -32,3 +32,16 @@
     animation: anim-flicker-in var(--anim-duration, 0.7s)
         var(--anim-easing, linear) var(--anim-delay, 0s) forwards;
 }
+
+/* Logo mark (icon + "ink" text). White on dark background, near-black on light. */
+.inkflow-demo-logo-mark {
+    fill: #ffffff;
+}
+[data-theme="light"] .inkflow-demo-logo-mark {
+    fill: #1e1e2e;
+}
+
+/* "flow" text — brand blue. --inkflow-blue auto-switches: #89b4fa → #1e66f5. */
+.inkflow-demo-logo-flow {
+    fill: var(--inkflow-blue);
+}

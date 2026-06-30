@@ -600,74 +600,74 @@ body.pv-open #pv {
 }
 .anim-bounce {
   opacity: 0;
-  transform: translateY(14px);
-  transition: opacity var(--anim-duration, 0.35s) var(--anim-easing, ease) var(--anim-delay, 0s), transform var(--anim-duration, 0.35s) var(--anim-easing, cubic-bezier(0.34, 1.56, 0.64, 1)) var(--anim-delay, 0s);
+  translate: 0 14px;
+  transition: opacity var(--anim-duration, 0.35s) var(--anim-easing, ease) var(--anim-delay, 0s), translate var(--anim-duration, 0.35s) var(--anim-easing, cubic-bezier(0.34, 1.56, 0.64, 1)) var(--anim-delay, 0s);
 }
 .anim-bounce.active {
   opacity: 1;
-  transform: translateY(0);
+  translate: 0 0;
 }
 .anim-slide-in {
   opacity: 0;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), transform var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), translate var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
 }
 .anim-slide-in.anim-from-left {
-  transform: translateX(calc(-1 * var(--anim-distance, 60px)));
+  translate: calc(-1 * var(--anim-distance, 60px)) 0;
 }
 .anim-slide-in.anim-from-right {
-  transform: translateX(var(--anim-distance, 60px));
+  translate: var(--anim-distance, 60px) 0;
 }
 .anim-slide-in.anim-from-up {
-  transform: translateY(calc(-1 * var(--anim-distance, 60px)));
+  translate: 0 calc(-1 * var(--anim-distance, 60px));
 }
 .anim-slide-in.anim-from-down {
-  transform: translateY(var(--anim-distance, 60px));
+  translate: 0 var(--anim-distance, 60px);
 }
 .anim-slide-in.active {
   opacity: 1;
-  transform: translate(0, 0);
+  translate: 0 0;
 }
 .anim-slide-out {
   opacity: 1;
-  transform: translate(0, 0);
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), transform var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  translate: 0 0;
+  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), translate var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
 }
 .anim-slide-out.active {
   opacity: 0;
 }
 .anim-slide-out.anim-from-left.active {
-  transform: translateX(calc(-1 * var(--anim-distance, 60px)));
+  translate: calc(-1 * var(--anim-distance, 60px)) 0;
 }
 .anim-slide-out.anim-from-right.active {
-  transform: translateX(var(--anim-distance, 60px));
+  translate: var(--anim-distance, 60px) 0;
 }
 .anim-slide-out.anim-from-up.active {
-  transform: translateY(calc(-1 * var(--anim-distance, 60px)));
+  translate: 0 calc(-1 * var(--anim-distance, 60px));
 }
 .anim-slide-out.anim-from-down.active {
-  transform: translateY(var(--anim-distance, 60px));
+  translate: 0 var(--anim-distance, 60px);
 }
 .anim-zoom-in {
   opacity: 0;
-  transform: scale(var(--anim-scale, 0.8));
+  scale: var(--anim-scale, 0.8);
   transform-box: fill-box;
   transform-origin: center;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), transform var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), scale var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
 }
 .anim-zoom-in.active {
   opacity: 1;
-  transform: scale(1);
+  scale: 1;
 }
 .anim-zoom-out {
   opacity: 1;
-  transform: scale(1);
+  scale: 1;
   transform-box: fill-box;
   transform-origin: center;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), transform var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), scale var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
 }
 .anim-zoom-out.active {
   opacity: 0;
-  transform: scale(var(--anim-scale, 0.8));
+  scale: var(--anim-scale, 0.8);
 }
 @keyframes anim-highlight-pulse {
   50% {

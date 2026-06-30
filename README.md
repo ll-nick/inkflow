@@ -8,11 +8,14 @@
 
 <p align="center"><strong>Beautiful slides from SVG. Your editor, your style.</strong></p>
 
+<p align="center">
+  <a href="https://ll-nick.github.io/inkflow/demo/presentation/">
+    <img src="docs/assets/demo-button.svg" alt="Try the live demo">
+  </a>
+</p>
+
 > **Early-stage software.**
-> The core pipeline works end-to-end:
-> animations, transitions, live reload, markdown slides, static export.
-> The API is not stable and key features are still missing.
-> Use at your own risk.
+> Expect bugs, missing features, and breaking changes.
 
 ## The idea
 
@@ -39,47 +42,52 @@ Your source files are SVG, Markdown, and Python: open formats, plain text, not t
 A deck is a plain Python file:
 
 ```python
-from inkflow import Deck, MarkdownSlide, Media, Slide, animations, transitions
+from inkflow import Deck, Media, MediaFit, Slide, animations, transitions
 
-deck = Deck()
-
-deck.slides = [
-    # SVG slide: draw freely in Inkscape, animate elements by id
-    Slide(
-        "slides/01-title.svg",
-        animations=[
-            animations.FadeIn("#headline", step=1),
-            animations.FadeIn("#subtitle", step=2),
-        ],
-    ),
-    Slide("slides/02-diagram.svg", transition=transitions.Crossfade(), animations=[
-        animations.Bounce("#box-a", step=1),
-        animations.Bounce("#box-b", step=2),
-    ]),
-    Slide("slides/03-chart.svg", transition=transitions.Morph(duration=0.7)),
-
-    # Markdown slide: write content in .md, render into a layout SVG
-    MarkdownSlide("layouts/content.svg", content="slides/04-notes.md"),
-    MarkdownSlide(
-        "layouts/media-right.svg",
-        content="slides/05-image.md",
-        media=Media("assets/photo.jpg", fit="cover"),
-    ),
-]
+def main() -> Deck:
+    return Deck(
+        slides=[
+            # SVG slide: draw freely in Inkscape, animate elements by id
+            Slide(
+                "title.svg",
+                animations=[
+                    animations.FadeIn("#headline", step=1),
+                    animations.FadeIn("#subtitle", step=2),
+                ],
+            ),
+            Slide(
+                "diagram.svg",
+                # Fill predefined content zones using Markdown
+                md="diagram.md",
+                # Set a transition for the whole slide, and multiple animations for individual elements
+                transition=transitions.Crossfade(),
+                animations=[
+                    animations.Bounce("#box-a", step=1),
+                    animations.Bounce("#box-b", step=2),
+                ],
+            ),
+            Slide(
+                # Reuse a built-in, theme or project-local layout
+                "media-right",
+                md="image.md",
+                # Fill a named zone with an image or a video
+                zones={"media": Media("assets/photo.jpg", fit=MediaFit.COVER)},
+            ),
+        ]
+    )
 ```
 
-Both slide types support injecting content into named SVG elements:
-`TextBox` to fill a text placeholder, `Media` to embed an image or video.
-`Slide` is SVG-first: the SVG carries the design, with optional content slots for dynamic parts.
-`MarkdownSlide` is layout-first: a template SVG defines the structure,
-a Markdown file provides the text, and named kwargs fill any additional slots.
-It is shorthand for the common case, built on the same injection mechanism.
+When you run `inkflow serve deck.py`, Inkflow reads the slides as defined in the Python file
+and processes them into a web-based presentation.
+It will inject the Markdown and media files into the SVGs, apply the transitions and animations, and serve the result to your browser.
 
 ## Quick start
 
 ```bash
 uv add inkflow # or: pip install inkflow
-inkflow serve deck.py
+inkflow init my-deck
+cd my-deck
+inkflow serve
 # press "o" in the tui to open http://localhost:7777 in your browser,
 # press ? in the presenter for keyboard shortcuts
 ```
@@ -95,29 +103,10 @@ uv run inkflow serve demo/deck.py
 No SVG editor is invoked at serve time. Inkscape or any other tool writes the files, Inkflow reads them.
 Saving a slide reloads the presenter automatically.
 
-## Commands
-
-| Command | Description |
-|---|---|
-| `inkflow serve deck.py` | Start the live-reload presenter |
-| `inkflow build deck.py` | Export a self-contained HTML directory for offline use |
-| `inkflow export deck.py` | Export a PDF via headless Chromium |
-
-## Architecture
-
-- **`deck.py`:** Python manifest. Gives you autocomplete and programmatic slide generation for free
-- **SVG pipeline:** lxml strips Inkscape editor metadata,
-  then annotates elements with CSS animation classes and `data-step` attributes based on the manifest
-- **Layout system:** `MarkdownSlide` injects Markdown content into layout SVGs.
-  Built-in theme layouts cover common slide types
-- **Local server:** asyncio HTTP server serves the presenter HTML with slides embedded as JSON.
-  A WebSocket server pushes live-reload signals when files change
-- **Browser presenter:** vanilla HTML/JS/CSS, no framework
-
 ## Acknowledgements
 
 [Slidev](https://sli.dev) is an excellent presentation tool and a direct inspiration for this project.
-It's built on Vue and is capable of making full use of your browser's features
+It's a Node.js project with a very different architecture and feature set,
 including many things Inkflow will never do.
 
 This project was built making heavy use of coding agents and would not have been possible without them.

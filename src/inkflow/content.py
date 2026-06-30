@@ -181,12 +181,14 @@ def _zone_geometry(
 ) -> _ZoneGeometry:
     tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
 
-    if tag == "rect":
-        return _ZoneGeometry(rect=_rect_geometry(el))
-
     shape_copy = copy.deepcopy(el)
     if "id" in shape_copy.attrib:
         del shape_copy.attrib["id"]
+    if "transform" in shape_copy.attrib:
+        del shape_copy.attrib["transform"]
+
+    if tag == "rect":
+        return _ZoneGeometry(rect=_rect_geometry(el), clip_shape=shape_copy)
 
     if tag in ("polygon", "polyline"):
         rect = _polygon_bbox(el.get("points", ""))
@@ -238,6 +240,9 @@ def _swap_zone(
     new_el.set("y", rect.y)
     new_el.set("width", rect.width)
     new_el.set("height", rect.height)
+    transform = old_el.get("transform")
+    if transform is not None:
+        new_el.set("transform", transform)
     parent = old_el.getparent()
     if parent is None:
         return
@@ -293,6 +298,19 @@ def _replace_with_foreignobject(
             content_div.append(child)
     except etree.XMLSyntaxError:
         content_div.text = html
+
+    # Drop <hr class="footnotes-sep"> (CSS border-top on the section replaces it)
+    # and hoist <section class="footnotes"> to wrapper so margin-top:auto anchors
+    # it to the bottom of the zone regardless of content height.
+    for child in list(content_div):
+        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        cls = (child.get("class") or "").split()
+        if tag == "hr" and "footnotes-sep" in cls:
+            content_div.remove(child)
+        elif tag == "section" and "footnotes" in cls:
+            content_div.remove(child)
+            wrapper.append(child)
+
     fo.append(wrapper)
 
     _swap_zone(el, fo, rect, zone_id)
@@ -313,6 +331,8 @@ def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ign
             {"src": src, "controls": ""},
             nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
         )
+        # prevent XML self-close: <video/> breaks HTML5 parsing
+        el.append(etree.Comment(""))
     else:
         el = etree.Element(
             f"{{{ns.XHTML}}}img",

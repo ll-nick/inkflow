@@ -1,8 +1,8 @@
 import type { TransitionData, WsMessage } from "../shared/types";
 import { renderPv } from "./pv";
 import { state } from "./state";
-import { applyCurrentStep } from "./status";
-import { loadSlide, snapInflight } from "./transitions";
+import { applyCurrentStep, maxStep } from "./status";
+import { CUT, loadSlide, snapInflight } from "./transitions";
 import { hideError, showError } from "./ui";
 
 const wsDot = document.getElementById("ws-dot")!;
@@ -70,8 +70,8 @@ export function connectWS(wsPort: number | null): void {
                 state.slideIndex,
                 Math.max(0, state.slides.length - 1),
             );
-            state.step = 0;
-            loadSlide();
+            state.step = Math.min(state.step, maxStep());
+            loadSlide(null, CUT);
             renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);

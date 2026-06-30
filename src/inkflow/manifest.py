@@ -151,6 +151,7 @@ ZoneContent = str | Media | TextBox
 @dataclass
 class Slide:
     src: str  # SVG path or bare layout name
+    id: str | None = None  # stable identifier; auto-inferred from md/src stem if unset
     md: Content = None  # .md file path, or Inline("...") for inline markdown
     zones: dict[str, ZoneContent] = field(
         default_factory=dict
