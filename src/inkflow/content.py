@@ -184,6 +184,8 @@ def _zone_geometry(
     shape_copy = copy.deepcopy(el)
     if "id" in shape_copy.attrib:
         del shape_copy.attrib["id"]
+    if "transform" in shape_copy.attrib:
+        del shape_copy.attrib["transform"]
 
     if tag == "rect":
         return _ZoneGeometry(rect=_rect_geometry(el), clip_shape=shape_copy)
@@ -238,6 +240,9 @@ def _swap_zone(
     new_el.set("y", rect.y)
     new_el.set("width", rect.width)
     new_el.set("height", rect.height)
+    transform = old_el.get("transform")
+    if transform is not None:
+        new_el.set("transform", transform)
     parent = old_el.getparent()
     if parent is None:
         return
