@@ -646,6 +646,7 @@
       const captured = captureFrame(element);
       if (captured.bbox.width === 0 || captured.bbox.height === 0)
         return null;
+      if (snapshot.clone.innerHTML !== element.innerHTML) return null;
       const bTo = new DOMMatrix().translate(captured.bbox.x, captured.bbox.y).scale(captured.bbox.width, captured.bbox.height);
       return {
         kind: "box",

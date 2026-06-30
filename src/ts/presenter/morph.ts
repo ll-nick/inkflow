@@ -373,6 +373,13 @@ function createLeafMorph(
         // A zero-area new box has no invertible bbox frame; skip it (snaps).
         if (captured.bbox.width === 0 || captured.bbox.height === 0)
             return null;
+        // A box whose inner content changed (a foreignObject title, injected
+        // markdown) cannot be geometry-morphed: the box has no way to tween HTML,
+        // so the new content would snap in at frame 0. Fall through to a crossfade
+        // instead, fading the old content out and the new in. Boxes with identical
+        // content (a plain shape, or an image moving across slides in an injected
+        // zone) keep the geometry morph.
+        if (snapshot.clone.innerHTML !== element.innerHTML) return null;
         const bTo = new DOMMatrix()
             .translate(captured.bbox.x, captured.bbox.y)
             .scale(captured.bbox.width, captured.bbox.height);
