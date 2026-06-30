@@ -83,11 +83,13 @@
     <rect id="shape-bounce" x="1008" y="360" width="200" height="200" rx="20" class="inkflow-fill-pink inkflow-fill-blue"/>
   </g>
   <!-- Highlight (already visible, pulses) -->
-  <g id="g11" transform="rotate(9.4304237,-1297.8012,-1759.9894)" class="inkflow-fill-orange">
+  <g id="g11" transform="rotate(9.4304237,-2138.3191,-5373.1461)" class="inkflow-fill-orange">
     <rect id="shape-highlight" x="1294" y="360" width="200" height="200" rx="20" class="inkflow-fill-teal inkflow-fill-orange"/>
   </g>
   <!-- Flicker (custom type defined in deck.py) -->
   <g id="g12" transform="translate(-1405.2127,229.03928)" class="inkflow-fill-red">
     <rect id="shape-flicker" x="1580" y="360" width="200" height="200" rx="100" class="inkflow-fill-purple inkflow-fill-red"/>
   </g>
+  <text x="958.28113" y="716.81445" text-anchor="middle" font-family="sans-serif" font-size="38px" class="inkflow-fill-text" id="text13">Match elements by id - Inkflow handles everything else</text>
+  <text x="961.15125" y="776.81445" text-anchor="middle" font-family="monospace" font-size="28px" class="inkflow-fill-text-muted" id="text14">transition=transitions.Morph(duration=1.5)</text>
 </svg>
