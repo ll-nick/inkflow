@@ -1,10 +1,12 @@
-import type { AbsolutePose } from "../shared/morph-math";
+import type { AffineComponents } from "../shared/morph-math";
 import {
-    buildCompensationMatrix,
-    compensationScale,
+    decomposeAffine,
     easeInOut,
     INTERPOLATED_ATTRIBUTES,
+    interpolateAffine,
     interpolateAttribute,
+    matrixScaleX,
+    matrixScaleY,
     readInterpolatedAttributes,
 } from "../shared/morph-math";
 import type { TransitionData } from "../shared/types";
@@ -37,23 +39,29 @@ interface TextScreenPose {
     fontSize: number; // px
 }
 
-// Each matched leaf morphs by its fully-resolved screen pose, interpolated against
-// its parent's *static* transform (groups are never animated). Three geometry
-// kinds: shapes via the bbox compensation matrix, text via its screen pose, lines
-// via their endpoints. Colours/opacities interpolate for all of them.
+// Each matched leaf morphs by its fully-resolved screen geometry, expressed
+// relative to its parent's *static* transform (groups are never animated). Three
+// geometry kinds: shapes via a full affine frame (unit square → screen), text via
+// its screen pose, lines via their endpoints. Colours/opacities interpolate for all.
 interface CommonMorph {
     element: SVGGraphicsElement;
     fromAttributes: Record<string, string>;
     toAttributes: Record<string, string>;
 }
+// A box morph reconstructs the element's transform each frame as
+// parent⁻¹ · M(p) · B_to⁻¹, where M(p) is the affine-interpolated frame, parent is
+// the (static) parent screen CTM, and B_to maps the unit square to the new bbox.
 interface BoxMorph extends CommonMorph {
     kind: "box";
-    parentCTM: DOMMatrix;
     originalTransform: string;
-    fromPose: AbsolutePose;
-    toPose: AbsolutePose;
+    fromComp: AffineComponents;
+    toComp: AffineComponents;
+    parentInverse: DOMMatrix; // parent screen CTM, inverted
+    bToInverse: DOMMatrix; // (unit square → new bbox), inverted
     fromLengths: Lengths;
     toLengths: Lengths;
+    fromScreenScale: { x: number; y: number }; // old/new leaf local→screen scale,
+    toScreenScale: { x: number; y: number }; // used to morph lengths in screen space
 }
 interface TextMorph extends CommonMorph {
     kind: "text";
@@ -88,7 +96,10 @@ interface LeafSnapshot {
     kind: MorphKind;
     ancestorIds: string[]; // nearest-first, includes the leaf's own id if any
     fromAttributes: Record<string, string>;
-    pose?: AbsolutePose;
+    clone: SVGGraphicsElement; // detached deep clone, re-rooted as an exit ghost
+    screenCTM: DOMMatrix; // old screen CTM, to place the ghost under the new root
+    frame?: AffineComponents; // box: decomposed unit-square→screen frame
+    screenScale?: { x: number; y: number }; // box: local→screen per-axis scale
     lengths?: Lengths;
     textPose?: TextScreenPose;
     endpointsScreen?: Endpoints; // screen coords (line)
@@ -112,31 +123,31 @@ interface ChildSnapshot {
 
 // ── geometry capture ─────────────────────────────────────────────────────────
 
-// Poses are measured via getScreenCTM() rather than getCTM(). getCTM()'s
+// Geometry is measured via getScreenCTM() rather than getCTM(). getCTM()'s
 // reference frame depends on where the nearest SVG viewport is in the tree, so a
 // child's getCTM() and the root's are not in the same space and cannot be
 // directly compared. getScreenCTM() always uses the screen origin, so every
-// element's pose is directly comparable regardless of nesting depth.
-function captureAbsolutePose(element: SVGGraphicsElement): AbsolutePose {
-    const boundingBox = element.getBBox();
-    const currentMatrix = element.getScreenCTM()!;
-    const topLeft = new DOMPoint(boundingBox.x, boundingBox.y).matrixTransform(
-        currentMatrix,
-    );
-    const topRight = new DOMPoint(
-        boundingBox.x + boundingBox.width,
-        boundingBox.y,
-    ).matrixTransform(currentMatrix);
-    const bottomLeft = new DOMPoint(
-        boundingBox.x,
-        boundingBox.y + boundingBox.height,
-    ).matrixTransform(currentMatrix);
+// element's frame is directly comparable regardless of nesting depth.
+interface CapturedFrame {
+    comp: AffineComponents;
+    screenScale: { x: number; y: number };
+    bbox: DOMRect;
+}
+
+// The affine map that takes the element's local unit square to the screen:
+// screenCTM · translate(bbox) · scale(bbox). Decomposed once here so the morph
+// loop only pays for recomposition. The per-axis screen scale is kept for length
+// (rx/ry/stroke-width) morphing.
+function captureFrame(element: SVGGraphicsElement): CapturedFrame {
+    const bbox = element.getBBox();
+    const screenCTM = element.getScreenCTM()!;
+    const frame = screenCTM
+        .translate(bbox.x, bbox.y)
+        .scale(bbox.width, bbox.height);
     return {
-        x: topLeft.x,
-        y: topLeft.y,
-        width: Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y),
-        height: Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y),
-        rotation: Math.atan2(topRight.y - topLeft.y, topRight.x - topLeft.x),
+        comp: decomposeAffine(frame),
+        screenScale: { x: matrixScaleX(screenCTM), y: matrixScaleY(screenCTM) },
+        bbox,
     };
 }
 
@@ -223,28 +234,33 @@ function ancestorIdChain(element: Element): string[] {
 }
 
 function snapshotLeaf(element: SVGGraphicsElement): LeafSnapshot {
-    const ancestorIds = ancestorIdChain(element);
-    const fromAttributes = readInterpolatedAttributes(element);
+    // Captured once for every leaf so any of them can be reconstructed as a
+    // fade-out ghost later, even those nested inside a matched group.
+    const common = {
+        ancestorIds: ancestorIdChain(element),
+        fromAttributes: readInterpolatedAttributes(element),
+        clone: element.cloneNode(true) as SVGGraphicsElement,
+        screenCTM: element.getScreenCTM() ?? new DOMMatrix(),
+    };
     if (element instanceof SVGLineElement)
         return {
             kind: "line",
-            ancestorIds,
-            fromAttributes,
+            ...common,
             endpointsScreen: captureEndpointsScreen(element),
             strokeWidth: readLengthAttributes(element)["stroke-width"],
         };
     if (element instanceof SVGTextElement)
         return {
             kind: "text",
-            ancestorIds,
-            fromAttributes,
+            ...common,
             textPose: captureTextScreenPose(element),
         };
+    const captured = captureFrame(element);
     return {
         kind: "box",
-        ancestorIds,
-        fromAttributes,
-        pose: captureAbsolutePose(element),
+        ...common,
+        frame: captured.comp,
+        screenScale: captured.screenScale,
         lengths: readLengthAttributes(element),
     };
 }
@@ -344,26 +360,72 @@ function createLeafMorph(
         };
     }
 
-    if (snapshot.pose)
+    if (snapshot.frame && snapshot.screenScale) {
+        const captured = captureFrame(element);
+        // A zero-area new box has no invertible bbox frame; skip it (snaps).
+        if (captured.bbox.width === 0 || captured.bbox.height === 0)
+            return null;
+        const bTo = new DOMMatrix()
+            .translate(captured.bbox.x, captured.bbox.y)
+            .scale(captured.bbox.width, captured.bbox.height);
         return {
             kind: "box",
             element,
             fromAttributes,
             toAttributes,
-            parentCTM: parentScreenCTM(element),
             originalTransform: element.getAttribute("transform") ?? "",
-            fromPose: snapshot.pose,
-            toPose: captureAbsolutePose(element),
+            fromComp: snapshot.frame,
+            toComp: captured.comp,
+            parentInverse: parentScreenCTM(element).inverse(),
+            bToInverse: bTo.inverse(),
             fromLengths: snapshot.lengths ?? {},
             toLengths: readLengthAttributes(element),
+            fromScreenScale: snapshot.screenScale,
+            toScreenScale: captured.screenScale,
         };
+    }
     return null;
 }
 
-// Group before/after leaves by their nearest matched-id ancestor (their "scope"),
-// then pair them by document order within each scope. A scope is a single leaf
-// (its own id matched) or every leaf under a matched group.
-function buildLeafMorphTasks(
+// Re-root an old leaf's clone under the new svg and fade it out from where it was.
+// The captured screen CTM already folds in the leaf's own and ancestor transforms,
+// so (new root)⁻¹ · screenCTM, set as the ghost's transform, reproduces its old
+// screen position regardless of how deeply it was nested.
+function buildLeafExit(
+    snapshot: LeafSnapshot,
+    svgRoot: SVGSVGElement,
+): AnimationTask {
+    const ghost = snapshot.clone;
+    const placement = (svgRoot.getScreenCTM() ?? new DOMMatrix())
+        .inverse()
+        .multiply(snapshot.screenCTM);
+    ghost.setAttribute("transform", matrixToSvgTransform(placement));
+    svgRoot.appendChild(ghost);
+    const startOpacity = parseFloat(snapshot.fromAttributes.opacity ?? "1");
+    return {
+        type: "exit",
+        element: ghost,
+        startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1,
+    };
+}
+
+// Fade a new-only (or crossfaded) leaf in from transparent.
+function buildLeafEnter(element: SVGGraphicsElement): AnimationTask {
+    const target = parseFloat(element.getAttribute("opacity") ?? "1");
+    element.style.opacity = "0";
+    return {
+        type: "fadeIn",
+        element,
+        targetOpacity: Number.isFinite(target) ? target : 1,
+    };
+}
+
+// Pair before/after leaves by their nearest matched-id ancestor (their "scope"),
+// in document order. A scope is a single leaf (its own id matched) or every leaf
+// under a matched group. A matched pair tweens its geometry; a leaf with no
+// counterpart crossfades, so labels removed from a group fade out (and fade back
+// in on reverse) instead of vanishing.
+function buildLeafTasks(
     svgRoot: SVGSVGElement,
     oldLeaves: LeafSnapshotSet,
     matchedIds: Set<string>,
@@ -390,16 +452,33 @@ function buildLeafMorphTasks(
     }
 
     const tasks: AnimationTask[] = [];
-    for (const [scope, newElements] of newByScope) {
-        const oldList = oldByScope.get(scope);
-        if (!oldList) continue;
-        const count = Math.min(newElements.length, oldList.length);
-        for (let i = 0; i < count; i++) {
-            const morph = createLeafMorph(newElements[i], oldList[i]);
-            if (!morph) continue;
-            tickMorph(morph, 0); // seed the from-state before the first paint
-            tasks.push({ type: "morph", morph });
+    const scopes = new Set([...oldByScope.keys(), ...newByScope.keys()]);
+    for (const scope of scopes) {
+        const oldList = oldByScope.get(scope) ?? [];
+        const newList = newByScope.get(scope) ?? [];
+        const paired = Math.min(oldList.length, newList.length);
+        for (let i = 0; i < paired; i++) {
+            const snapshot = oldList[i];
+            const element = newList[i];
+            // Same kind → morph the geometry. A kind mismatch (or a failed morph
+            // build) falls through to a crossfade.
+            const morph =
+                leafKind(element) === snapshot.kind
+                    ? createLeafMorph(element, snapshot)
+                    : null;
+            if (morph) {
+                tickMorph(morph, 0); // seed the from-state before the first paint
+                tasks.push({ type: "morph", morph });
+            } else {
+                // Changed content with no geometric counterpart: crossfade.
+                tasks.push(buildLeafExit(snapshot, svgRoot));
+                tasks.push(buildLeafEnter(element));
+            }
         }
+        for (let i = paired; i < oldList.length; i++)
+            tasks.push(buildLeafExit(oldList[i], svgRoot));
+        for (let i = paired; i < newList.length; i++)
+            tasks.push(buildLeafEnter(newList[i]));
     }
     return tasks;
 }
@@ -482,7 +561,7 @@ function buildTasks(
     );
 
     return [
-        ...buildLeafMorphTasks(svgRoot, oldLeaves, matchedIds),
+        ...buildLeafTasks(svgRoot, oldLeaves, matchedIds),
         ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds),
     ];
 }
@@ -511,24 +590,24 @@ function applyColorAttributes(morph: Morph, easedProgress: number): void {
 }
 
 function applyBox(morph: BoxMorph, easedProgress: number): void {
-    const compensation = buildCompensationMatrix(
-        morph.fromPose,
-        morph.toPose,
-        morph.parentCTM,
+    const frame = interpolateAffine(
+        morph.fromComp,
+        morph.toComp,
         easedProgress,
     );
-    const prefix = compensation ? `${matrixToSvgTransform(compensation)} ` : "";
+    // Element local→screen at this progress is frame · B_to⁻¹; the transform
+    // attribute (which composes under the static parent) is parent⁻¹ · that, so
+    // the element's natural rendering lands exactly on `frame`.
+    const localToScreen = frame.multiply(morph.bToInverse);
     morph.element.setAttribute(
         "transform",
-        `${prefix}${morph.originalTransform}`.trim(),
+        matrixToSvgTransform(morph.parentInverse.multiply(localToScreen)),
     );
 
-    const { x: csx, y: csy } = compensationScale(
-        morph.fromPose,
-        morph.toPose,
-        easedProgress,
-    );
-    const uniformScale = Math.sqrt(Math.max(csx * csy, 1e-6));
+    // Shear-free per-axis scale that the element currently renders at, used to
+    // divide the box stretch back out of the corner radius and stroke width.
+    const curScaleX = matrixScaleX(localToScreen);
+    const curScaleY = matrixScaleY(localToScreen);
     const lerp = (from: number, to: number) =>
         from + (to - from) * easedProgress;
 
@@ -537,16 +616,37 @@ function applyBox(morph: BoxMorph, easedProgress: number): void {
     if (rxFrom !== undefined && rxTo !== undefined) {
         const ryFrom = morph.fromLengths.ry ?? rxFrom;
         const ryTo = morph.toLengths.ry ?? rxTo;
-        morph.element.setAttribute("rx", String(lerp(rxFrom, rxTo) / csx));
-        morph.element.setAttribute("ry", String(lerp(ryFrom, ryTo) / csy));
+        // Interpolate the radius in screen space (attribute × that leaf's own
+        // local→screen scale), then convert back through the current scale. The
+        // corner therefore tracks its visual from→to value and stays circular,
+        // never inheriting the box's or the parent's scale.
+        const rxScreen = lerp(
+            rxFrom * morph.fromScreenScale.x,
+            rxTo * morph.toScreenScale.x,
+        );
+        const ryScreen = lerp(
+            ryFrom * morph.fromScreenScale.y,
+            ryTo * morph.toScreenScale.y,
+        );
+        morph.element.setAttribute("rx", String(rxScreen / curScaleX));
+        morph.element.setAttribute("ry", String(ryScreen / curScaleY));
     }
     const swFrom = morph.fromLengths["stroke-width"];
     const swTo = morph.toLengths["stroke-width"];
-    if (swFrom !== undefined && swTo !== undefined)
+    if (swFrom !== undefined && swTo !== undefined) {
+        const fromUniform = Math.sqrt(
+            morph.fromScreenScale.x * morph.fromScreenScale.y,
+        );
+        const toUniform = Math.sqrt(
+            morph.toScreenScale.x * morph.toScreenScale.y,
+        );
+        const curUniform = Math.sqrt(Math.max(curScaleX * curScaleY, 1e-6));
+        const swScreen = lerp(swFrom * fromUniform, swTo * toUniform);
         morph.element.setAttribute(
             "stroke-width",
-            String(lerp(swFrom, swTo) / uniformScale),
+            String(swScreen / curUniform),
         );
+    }
 }
 
 // Place text at its interpolated screen pose, independent of any box scale.

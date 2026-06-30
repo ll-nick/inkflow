@@ -1,11 +1,3 @@
-export interface AbsolutePose {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotation: number; // radians
-}
-
 // Attributes interpolated directly, frame by frame. These are scale-independent
 // (colours, opacities) — unlike lengths such as stroke-width/rx/ry, which the
 // presenter counter-scales so they don't inherit the compensation matrix's scale.
@@ -19,21 +11,6 @@ export const INTERPOLATED_ATTRIBUTES = [
 
 export function easeInOut(t: number): number {
     return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-}
-
-// Absolute-space center of an oriented pose. `x`/`y` is the (possibly rotated)
-// top-left corner and `width`/`height` are edge lengths along the box's own
-// axes, so the center must be reached by stepping half an edge along each
-// rotated axis — not by naive `x + width/2`, which only holds at rotation 0.
-export function poseCenter(pose: AbsolutePose): { x: number; y: number } {
-    const cos = Math.cos(pose.rotation);
-    const sin = Math.sin(pose.rotation);
-    const halfWidth = pose.width / 2;
-    const halfHeight = pose.height / 2;
-    return {
-        x: pose.x + halfWidth * cos - halfHeight * sin,
-        y: pose.y + halfWidth * sin + halfHeight * cos,
-    };
 }
 
 export function parseColorToRGB(
@@ -133,76 +110,113 @@ export function readInterpolatedAttributes(
     return result;
 }
 
-// The per-axis scale the compensation applies at a given progress: fromSize/toSize
-// at progress 0, decaying to 1 at progress 1. Exposed so the presenter can divide
-// it back out of length attributes (rx, ry, stroke-width) and text, which must not
-// stretch with the box.
-export function compensationScale(
-    fromPose: AbsolutePose,
-    toPose: AbsolutePose,
-    easedProgress: number,
-): { x: number; y: number } {
-    const remainingProgress = 1 - easedProgress;
+// ── 2D affine decomposition ──────────────────────────────────────────────────
+//
+// A morphed box is reduced to the full affine map that takes its local unit
+// square to the screen (`AffineComponents`), not to a 5-DOF oriented box. The
+// extra degree of freedom (skew) lets the model represent any matrix an SVG
+// editor writes — rotation, non-uniform scale, *and* shear — so reconstruction
+// is exact. Interpolating the decomposed components (translate, per-axis scale,
+// skew, rotation) and recomposing is the same algorithm CSS uses to interpolate
+// `matrix()` values.
+
+export interface AffineComponents {
+    tx: number;
+    ty: number;
+    scaleX: number;
+    scaleY: number;
+    skew: number; // tan of the skew-x angle
+    rotation: number; // radians
+}
+
+// Decompose a 2D affine matrix into translate · rotate · skewX · scale.
+// Reflection (negative determinant) is folded into scaleX and the rotation so
+// recomposition reproduces the original orientation.
+export function decomposeAffine(m: DOMMatrix): AffineComponents {
+    let a = m.a;
+    let b = m.b;
+    let c = m.c;
+    let d = m.d;
+    const determinant = a * d - b * c;
+
+    let scaleX = Math.hypot(a, b);
+    if (scaleX !== 0) {
+        a /= scaleX;
+        b /= scaleX;
+    }
+    // Shear = dot of the (normalized) first row with the second row.
+    let skew = a * c + b * d;
+    // Make the second row orthogonal to the first.
+    c -= a * skew;
+    d -= b * skew;
+    const scaleY = Math.hypot(c, d);
+    if (scaleY !== 0) {
+        skew /= scaleY;
+    }
+    if (determinant < 0) {
+        scaleX = -scaleX;
+        a = -a;
+        b = -b;
+    }
     return {
-        x:
-            toPose.width > 0
-                ? 1 + (fromPose.width / toPose.width - 1) * remainingProgress
-                : 1,
-        y:
-            toPose.height > 0
-                ? 1 + (fromPose.height / toPose.height - 1) * remainingProgress
-                : 1,
+        tx: m.e,
+        ty: m.f,
+        scaleX,
+        scaleY,
+        skew,
+        rotation: Math.atan2(b, a),
     };
 }
 
-// Returns the DOMMatrix that, prepended to an element's own transform,
-// makes it appear at lerp(fromPose, toPose, easedProgress) in absolute space.
-// Returns null (identity) when easedProgress >= 1.
-export function buildCompensationMatrix(
-    fromPose: AbsolutePose,
-    toPose: AbsolutePose,
-    parentCTM: DOMMatrix,
-    easedProgress: number,
-): DOMMatrix | null {
-    if (easedProgress >= 1) return null;
-    const remainingProgress = 1 - easedProgress;
-    const parentCTMInverse = parentCTM.inverse();
-
-    const fromCenter = poseCenter(fromPose);
-    const toCenter = poseCenter(toPose);
-
-    // Center delta in absolute space, converted to parent-local space (linear part only)
-    const absoluteDeltaX = fromCenter.x - toCenter.x;
-    const absoluteDeltaY = fromCenter.y - toCenter.y;
-    const localDeltaX =
-        (parentCTMInverse.a * absoluteDeltaX +
-            parentCTMInverse.c * absoluteDeltaY) *
-        remainingProgress;
-    const localDeltaY =
-        (parentCTMInverse.b * absoluteDeltaX +
-            parentCTMInverse.d * absoluteDeltaY) *
-        remainingProgress;
-
-    const { x: compensationScaleX, y: compensationScaleY } = compensationScale(
-        fromPose,
-        toPose,
-        easedProgress,
-    );
-    const rotationDeltaDegrees =
-        (fromPose.rotation - toPose.rotation) *
-        (180 / Math.PI) *
-        remainingProgress;
-
-    // Pivot = center of toPose in parent-local space
-    const toPoseCenter = new DOMPoint(toCenter.x, toCenter.y).matrixTransform(
-        parentCTMInverse,
-    );
-    const pivotX = toPoseCenter.x;
-    const pivotY = toPoseCenter.y;
-
+// Inverse of decomposeAffine; the multiply order must match the decomposition.
+export function recomposeAffine(c: AffineComponents): DOMMatrix {
+    const skewMatrix = new DOMMatrix([1, 0, c.skew, 1, 0, 0]);
     return new DOMMatrix()
-        .translate(pivotX + localDeltaX, pivotY + localDeltaY)
-        .scale(compensationScaleX, compensationScaleY)
-        .rotate(rotationDeltaDegrees)
-        .translate(-pivotX, -pivotY);
+        .translate(c.tx, c.ty)
+        .rotate((c.rotation * 180) / Math.PI)
+        .multiply(skewMatrix)
+        .scale(c.scaleX, c.scaleY);
+}
+
+function lerp(from: number, to: number, t: number): number {
+    return from + (to - from) * t;
+}
+
+// Interpolate rotation along the shorter arc so a morph never spins the long way.
+function lerpAngle(from: number, to: number, t: number): number {
+    let delta = to - from;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+    while (delta < -Math.PI) delta += 2 * Math.PI;
+    return from + delta * t;
+}
+
+// Component-wise interpolation of two already-decomposed frames. Inputs are
+// pre-decomposed (once, at capture) so the per-frame cost is just recompose.
+export function interpolateAffine(
+    from: AffineComponents,
+    to: AffineComponents,
+    t: number,
+): DOMMatrix {
+    return recomposeAffine({
+        tx: lerp(from.tx, to.tx, t),
+        ty: lerp(from.ty, to.ty, t),
+        scaleX: lerp(from.scaleX, to.scaleX, t),
+        scaleY: lerp(from.scaleY, to.scaleY, t),
+        skew: lerp(from.skew, to.skew, t),
+        rotation: lerpAngle(from.rotation, to.rotation, t),
+    });
+}
+
+// Shear-free per-axis scale of a matrix. scaleX is the length of the first
+// column; scaleY is the orthogonal (shear-removed) component of the second,
+// equal to |determinant| / scaleX. Used to divide the current visual scale back
+// out of length attributes (rx, ry, stroke-width) so corners stay circular.
+export function matrixScaleX(m: DOMMatrix): number {
+    return Math.hypot(m.a, m.b);
+}
+
+export function matrixScaleY(m: DOMMatrix): number {
+    const scaleX = Math.hypot(m.a, m.b);
+    if (scaleX === 0) return Math.hypot(m.c, m.d);
+    return Math.abs(m.a * m.d - m.b * m.c) / scaleX;
 }
