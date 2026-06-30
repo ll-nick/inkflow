@@ -331,7 +331,8 @@ def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ign
             {"src": src, "controls": ""},
             nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
         )
-        el.append(etree.Comment(""))  # prevent XML self-close: <video/> breaks HTML5 parsing
+        # prevent XML self-close: <video/> breaks HTML5 parsing
+        el.append(etree.Comment(""))
     else:
         el = etree.Element(
             f"{{{ns.XHTML}}}img",
