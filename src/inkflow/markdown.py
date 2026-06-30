@@ -105,7 +105,7 @@ def _math_to_mathml(content: str, options: _MathOpts) -> str:
 
 
 _md = (
-    MarkdownIt()
+    MarkdownIt(options_update={"html": True})
     .enable(["table", "strikethrough"])
     .use(dollarmath_plugin, renderer=_math_to_mathml)
     .use(tasklists_plugin)

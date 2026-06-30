@@ -1,7 +1,8 @@
 # Yours to bend
 
-No proprietary formats, no black magic and fully hackable:  
-\
+No proprietary formats, no black magic and fully hackable
+
+<br/>
 
 ::steps::
 
