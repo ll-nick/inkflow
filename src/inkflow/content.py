@@ -181,12 +181,12 @@ def _zone_geometry(
 ) -> _ZoneGeometry:
     tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
 
-    if tag == "rect":
-        return _ZoneGeometry(rect=_rect_geometry(el))
-
     shape_copy = copy.deepcopy(el)
     if "id" in shape_copy.attrib:
         del shape_copy.attrib["id"]
+
+    if tag == "rect":
+        return _ZoneGeometry(rect=_rect_geometry(el), clip_shape=shape_copy)
 
     if tag in ("polygon", "polyline"):
         rect = _polygon_bbox(el.get("points", ""))
