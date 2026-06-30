@@ -475,7 +475,7 @@
   var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
   function captureFrame(element) {
     const bbox = element.getBBox();
-    const screenCTM = element.getScreenCTM();
+    const screenCTM = DOMMatrix.fromMatrix(element.getScreenCTM());
     const frame = screenCTM.translate(bbox.x, bbox.y).scale(bbox.width, bbox.height);
     return {
       comp: decomposeAffine(frame),

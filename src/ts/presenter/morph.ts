@@ -138,9 +138,17 @@ interface CapturedFrame {
 // screenCTM · translate(bbox) · scale(bbox). Decomposed once here so the morph
 // loop only pays for recomposition. The per-axis screen scale is kept for length
 // (rx/ry/stroke-width) morphing.
+//
+// getScreenCTM() returns a legacy SVGMatrix whose scale() is uniform-only — it
+// keeps the first factor and silently drops the second (non-uniform scaling lived
+// on the separate scaleNonUniform()). So calling scale(width, height) on it would
+// square the box to width × width and leak the box's aspect ratio into the morph
+// as a vertical stretch on any non-square element (e.g. a wide title or the footer
+// logo; square shapes are unaffected, which is why it went unnoticed). Re-wrapping
+// it in a real DOMMatrix makes scale(width, height) genuinely non-uniform.
 function captureFrame(element: SVGGraphicsElement): CapturedFrame {
     const bbox = element.getBBox();
-    const screenCTM = element.getScreenCTM()!;
+    const screenCTM = DOMMatrix.fromMatrix(element.getScreenCTM()!);
     const frame = screenCTM
         .translate(bbox.x, bbox.y)
         .scale(bbox.width, bbox.height);
