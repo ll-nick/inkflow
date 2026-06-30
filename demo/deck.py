@@ -127,6 +127,7 @@ def main() -> Deck:
             # Morph: matching ids interpolate between these two slides.
             Slide(
                 "slides/morph.svg",
+                zones={"title": "# I like to morph it, morph it!"},
                 transition=transitions.Morph(duration=1.5),
                 notes=notes_morph,
             ),
