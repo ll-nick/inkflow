@@ -8,7 +8,7 @@ import {
     registerTransition,
 } from "./transitions";
 import { showError } from "./ui";
-import { connectWS } from "./websocket";
+import { connectWS, loadSyncMode, setSyncMode } from "./websocket";
 import "./keyboard";
 
 // ── Injected by server ──
@@ -22,7 +22,11 @@ state.slides = INITIAL_SLIDES;
 state.transitions = INITIAL_TRANSITIONS;
 
 // ── Public API ──
-window.inkflow = { registerTransition, registerProgressTransition };
+window.inkflow = {
+    registerTransition,
+    registerProgressTransition,
+    setSyncMode,
+};
 
 // ── Boot ──
 window.addEventListener("popstate", () => {
@@ -30,7 +34,7 @@ window.addEventListener("popstate", () => {
     loadSlide(null, CUT);
     renderPv();
 });
-readURL();
+loadSyncMode();
 // Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
 const deepLinked = readURL();
 loadSlide();

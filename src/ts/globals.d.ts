@@ -1,5 +1,5 @@
 import type { Render, TransitionFactory } from "./presenter/transitions";
-import type { SlideData, TransitionData } from "./shared/types";
+import type { SlideData, SyncMode, TransitionData } from "./shared/types";
 
 declare global {
     const __SLIDES_JSON__: SlideData[];
@@ -15,6 +15,7 @@ declare global {
                 render: Render,
                 options?: { easing?: string },
             ): void;
+            setSyncMode(mode: SyncMode): void;
         };
     }
 }

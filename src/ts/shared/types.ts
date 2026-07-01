@@ -8,6 +8,12 @@ export interface SlideData {
     notes: string;
 }
 
+// Per-client position-sync mode. Never sent to the server: it only decides,
+// locally, whether this client broadcasts its nav and whether it applies an
+// incoming position. `two-way` both, `present` send-only, `follow` receive-only,
+// `solo` neither.
+export type SyncMode = "two-way" | "present" | "follow" | "solo";
+
 export interface TransitionData {
     type: string;
     duration: number;

@@ -1,7 +1,7 @@
-import type { TransitionData, WsMessage } from "../shared/types";
-import { renderPv } from "./pv";
+import type { SyncMode, TransitionData, WsMessage } from "../shared/types";
+import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
-import { applyCurrentStep, maxStep } from "./status";
+import { applyCurrentStep, applyCurrentStepInstant, maxStep } from "./status";
 import { CUT, loadSlide, snapInflight } from "./transitions";
 import { hideError, showError } from "./ui";
 
@@ -10,11 +10,59 @@ const wsDot = document.getElementById("ws-dot")!;
 const overviewEl = document.getElementById("overview")!;
 const overviewGridEl = document.getElementById("overview-grid")!;
 
+// ── Sync mode ──────────────────────────────────────────────────────────────────
+// The per-client sync mode governs steady-state behaviour: whether this window
+// broadcasts its navigation to peers, and whether it applies positions pushed by
+// peers. It is never sent to the server; the server is a dumb relay. Persisted in
+// sessionStorage (per-tab, so two windows can hold different modes) and defaulting
+// to two-way. See shared/types.ts SyncMode.
+
+const SYNC_MODE_KEY = "inkflow-sync-mode";
+
+function isSyncMode(v: string | null): v is SyncMode {
+    return v === "two-way" || v === "present" || v === "follow" || v === "solo";
+}
+
+function sends(): boolean {
+    return state.syncMode === "two-way" || state.syncMode === "present";
+}
+
+function receives(): boolean {
+    return state.syncMode === "two-way" || state.syncMode === "follow";
+}
+
+export function loadSyncMode(): void {
+    let stored: string | null = null;
+    try {
+        stored = sessionStorage.getItem(SYNC_MODE_KEY);
+    } catch (_) {}
+    if (isSyncMode(stored)) state.syncMode = stored;
+}
+
+export function setSyncMode(mode: SyncMode): void {
+    state.syncMode = mode;
+    try {
+        sessionStorage.setItem(SYNC_MODE_KEY, mode);
+    } catch (_) {}
+    // Entering a receiving mode: catch up to the presenter's current position now
+    // instead of waiting for their next navigation.
+    if (receives()) requestSync();
+}
+
+// Ask the server to reply (to this client only) with the current position.
+function requestSync(): void {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN)
+        state.ws.send(JSON.stringify({ type: "sync-request" }));
+}
+
+// ── Outbound ─────────────────────────────────────────────────────────────────
+
 export function sendNav(transition?: TransitionData | null): void {
     if (
         !state.ws ||
         state.ws.readyState !== WebSocket.OPEN ||
-        state._syncingFromServer
+        state._syncingFromServer ||
+        !sends()
     )
         return;
     state.ws.send(
@@ -34,7 +82,8 @@ export function sendSnap(): void {
     if (
         !state.ws ||
         state.ws.readyState !== WebSocket.OPEN ||
-        state._syncingFromServer
+        state._syncingFromServer ||
+        !sends()
     )
         return;
     state.ws.send(
