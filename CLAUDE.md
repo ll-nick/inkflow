@@ -43,7 +43,10 @@ src/
     pipeline.py       animation annotation + layout inlining
     content.py        TextBox / Media injection into zone rects, with alignment support
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
-    markdown.py       markdown-it-py rendering + ::zone:: / ::step:: marker parsing, zone param extraction
+    markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
+                               HTML->well-formed-XML normalization (no inkflow-specific grammar)
+    zones.py          ::zone:: / ::step:: marker grammar, zone param extraction, and slide
+                               assembly (parsed markdown -> per-zone TextBox/Media)
     server.py         HTTP server, WebSocket server, file watcher, build pipeline
     export.py         static HTML export (inkflow build) and PDF export (inkflow export)
     cli.py            CLI entry point (serve, build, export, init, clean, sync, verify,
@@ -158,10 +161,13 @@ Typography and color come from the CSS cascade (`theme/styles.css` + per-deck/pe
 
 *3. Python `TextBox` explicit params* — in `deck.py`:
 ```python
-from inkflow import Align, VAlign, TextBox
-TextBox("#zone-content", text="...", align=Align.CENTER, valign=VAlign.TOP, padding=40)
+from inkflow import Align, Slide, TextBox, VAlign
+Slide(
+    "layout.svg",
+    zones={"content": TextBox(text="...", align=Align.CENTER, valign=VAlign.TOP, padding=40)},
+)
 ```
-`Align` and `VAlign` are `StrEnum`s exported from the top-level package. `None` (the default) means "defer to CSS variable".
+The target zone is the `zones` dict key (`"content"` → `zone-content`); `TextBox` has no selector argument, its first positional is `text`. `Align` and `VAlign` are `StrEnum`s exported from the top-level package. `None` (the default) means "defer to CSS variable".
 
 **foreignObject DOM structure after injection:**
 ```
