@@ -8,9 +8,9 @@ from inkflow.clean import clean_inkscape_svg
 from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
 from inkflow.loaders import load_md, resolve_content_src
 from inkflow.manifest import Inline, Media, Slide
-from inkflow.markdown import build_slide_content, parse_markdown_zones
 from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import compose_with_ancestors
+from inkflow.zones import build_slide_content, parse_markdown_zones
 
 Issue = tuple[str, str]  # (level, message) — level is "error" or "warn"
 

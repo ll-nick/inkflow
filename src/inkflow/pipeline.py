@@ -17,8 +17,8 @@ from inkflow.content import (
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.manifest import Animation, ColorMode, Deck, Inline, Slide, Transition
-from inkflow.markdown import build_slide_content, parse_markdown_zones
 from inkflow.svg import compose_with_ancestors
+from inkflow.zones import build_slide_content, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 

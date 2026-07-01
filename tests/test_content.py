@@ -5,6 +5,7 @@ import textwrap
 import pytest
 from lxml import etree
 
+from inkflow import ns
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
@@ -150,6 +151,43 @@ class TestSubstituteContent:
             _ZONE_SVG, {"zone-content": TextBox(text="<p>ok</p>")}
         )
         etree.fromstring(result.encode())  # should not raise
+
+
+class TestContentRobustness:
+    """Regressions for F-021 (raw HTML) and F-028 (degenerate geometry)."""
+
+    def test_raw_void_html_renders_not_escaped(self) -> None:
+        # F-021: raw <br> in a plain zone must render as a real element,
+        # not escape the whole zone to literal &lt;br&gt; text.
+        result = substitute_content(
+            _ZONE_SVG, {"zone-content": TextBox(text="one<br>two")}
+        )
+        assert "&lt;br&gt;" not in result
+        root = etree.fromstring(result.encode())
+        fo = root.find('.//*[@id="zone-content"]')
+        assert fo is not None
+        assert fo.find(f".//{{{ns.XHTML}}}br") is not None
+
+    def test_zero_dimension_media_no_crash(self) -> None:
+        # F-028: zero-width zone must not raise ZeroDivisionError.
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<rect id="zone-image" x="0" y="0" width="0" height="300"/></svg>'
+        )
+        result = substitute_content(svg, {"zone-image": Media("photo.png", x=5.0)})
+        # Offset is skipped for the degenerate axis: base position only, no calc().
+        assert "object-position:50% 50%" in result
+
+    def test_unit_bearing_dimension_media_no_crash(self) -> None:
+        # F-028: a unit-bearing dimension must not raise ValueError. The offset
+        # is declined (not reinterpreted), degrading to base alignment.
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<rect id="zone-image" x="0" y="0" width="400px" height="300px"/></svg>'
+        )
+        result = substitute_content(svg, {"zone-image": Media("photo.png", x=100.0)})
+        assert "calc(" not in result
+        assert "object-position:50% 50%" in result
 
 
 class TestTextBoxAlignment:

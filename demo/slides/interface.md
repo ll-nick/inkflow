@@ -11,8 +11,8 @@
 | `t` | toggle light / dark mode |
 | `.` | toggle laser pointer |
 
-<br/>
-<br/>
+<br>
+<br>
 
 Open this same page in two windows and they stay in sync over WebSocket.
 
