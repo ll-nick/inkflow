@@ -321,6 +321,23 @@ def _fmt_pos(base: int, offset_pct: float) -> str:
     return f"calc({base}% {sign} {abs(offset_pct):.6g}%)"
 
 
+def _parse_dimension(value: str) -> float:
+    """Zone width/height as a user-unit number, for the media-offset math.
+
+    Zone dimensions come from the layout/slide SVG: a ``<rect>``'s width/height
+    (editors emit bare user-unit numbers) or a bbox inkflow computes for non-rect
+    zones (always unitless). ``item.x``/``item.y`` are user-unit offsets from
+    ``deck.py``. A unit-bearing value (e.g. ``"2cm"``) can only appear if a zone
+    rect is hand-authored with one; rather than silently reinterpret the unit as
+    user units, we decline: ``0.0`` makes ``_replace_with_media`` skip the offset
+    and fall back to base alignment. Same graceful path guards a zero dimension.
+    """
+    try:
+        return float(value)
+    except ValueError:
+        return 0.0
+
+
 def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
     suffix = Path(src).suffix.lower()
     if suffix in _VIDEO_SUFFIXES:
@@ -352,8 +369,10 @@ def _replace_with_media(
     rect = geom.rect
 
     base_x, base_y = _ALIGN_MAP[item.align]
-    x_pct = item.x / float(rect.width) * 100
-    y_pct = item.y / float(rect.height) * 100
+    width = _parse_dimension(rect.width)
+    height = _parse_dimension(rect.height)
+    x_pct = item.x / width * 100 if width else 0.0
+    y_pct = item.y / height * 100 if height else 0.0
     base_style = (
         f"width:100%;height:100%;"
         f"object-fit:{item.fit};"
