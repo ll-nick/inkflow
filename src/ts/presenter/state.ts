@@ -1,10 +1,11 @@
-import type { SlideData, TransitionData } from "../shared/types";
+import type { SlideData, SyncMode, TransitionData } from "../shared/types";
 
 export const state = {
     slides: [] as SlideData[],
     transitions: [] as TransitionData[],
     slideIndex: 0,
     step: 0,
+    syncMode: "two-way" as SyncMode,
     _pickerMatches: [] as number[],
     _pickerActive: 0,
     _overviewActive: 0,

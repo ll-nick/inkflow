@@ -1,0 +1,77 @@
+/* ── Sync-mode control ──────────────────────────────────────────────────────── */
+
+.sync-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+/* One glyph, two arrows: up = broadcast, down = receive. An arrow fades out when
+   that direction is off, so the mode reads at a glance (slidev-style). The collapsed
+   button is keyed off the JS-set data-mode; each menu row off its own static mode. */
+.sync-glyph .arrow-up,
+.sync-glyph .arrow-down {
+    transition: opacity 0.12s;
+}
+#btn-sync[data-mode="present"] .arrow-down,
+#btn-sync[data-mode="follow"] .arrow-up,
+#btn-sync[data-mode="solo"] .arrow-up,
+#btn-sync[data-mode="solo"] .arrow-down,
+.sync-row[data-mode="present"] .arrow-down,
+.sync-row[data-mode="follow"] .arrow-up,
+.sync-row[data-mode="solo"] .arrow-up,
+.sync-row[data-mode="solo"] .arrow-down {
+    opacity: 0.28;
+}
+
+/* Dropdown: anchored above the button (status bar sits at the bottom). */
+#sync-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    min-width: 9rem;
+    padding: 0.25rem;
+    background: var(--surface);
+    border: 1px solid var(--overlay);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+#sync-menu.open {
+    display: block;
+}
+
+.sync-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--subtext);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    transition:
+        background 0.12s,
+        color 0.12s;
+}
+.sync-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+[data-theme="light"] .sync-row:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+/* Selected mode: solid accent fill, matching the go-to-slide picker. */
+.sync-row.active,
+.sync-row.active:hover {
+    background: var(--accent);
+    color: var(--bg);
+}
+.sync-row svg {
+    flex-shrink: 0;
+}

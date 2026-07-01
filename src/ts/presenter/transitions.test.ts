@@ -40,7 +40,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
     state.slides = [
-        { svg: "<svg><rect id='a'/></svg>", title: "S1", notes: "" },
+        { id: "a", svg: "<svg><rect id='a'/></svg>", title: "S1", notes: "" },
     ];
     state.slideIndex = 0;
     state.step = 0;
@@ -54,8 +54,18 @@ describe("reverse", () => {
     test("push reverse: forward then fires on abort, backward then fires on completion", async () => {
         vi.useFakeTimers();
         state.slides = [
-            { svg: "<svg><rect id='a'/></svg>", title: "S1", notes: "" },
-            { svg: "<svg><rect id='b'/></svg>", title: "S2", notes: "" },
+            {
+                id: "a",
+                svg: "<svg><rect id='a'/></svg>",
+                title: "S1",
+                notes: "",
+            },
+            {
+                id: "b",
+                svg: "<svg><rect id='b'/></svg>",
+                title: "S2",
+                notes: "",
+            },
         ];
         state.slideIndex = 1;
         let fwdCount = 0;
@@ -93,8 +103,14 @@ describe("reverse", () => {
         vi.useFakeTimers();
         // Slide A has no steps (maxStep 0); slide B has a step-2 element (maxStep 2).
         state.slides = [
-            { svg: "<svg><rect id='a'/></svg>", title: "A", notes: "" },
             {
+                id: "a",
+                svg: "<svg><rect id='a'/></svg>",
+                title: "A",
+                notes: "",
+            },
+            {
+                id: "b",
                 svg: "<svg><rect id='b' data-step='2'/></svg>",
                 title: "B",
                 notes: "",
@@ -131,8 +147,18 @@ describe("reverse", () => {
     test("reverse-of-reverse lands on the new slide (symmetric push)", async () => {
         vi.useFakeTimers();
         state.slides = [
-            { svg: "<svg><rect id='a'/></svg>", title: "A", notes: "" },
-            { svg: "<svg><rect id='b'/></svg>", title: "B", notes: "" },
+            {
+                id: "a",
+                svg: "<svg><rect id='a'/></svg>",
+                title: "A",
+                notes: "",
+            },
+            {
+                id: "b",
+                svg: "<svg><rect id='b'/></svg>",
+                title: "B",
+                notes: "",
+            },
         ];
         state.transitions = [
             { type: "cut", duration: 0 },
@@ -168,8 +194,18 @@ describe("reverse", () => {
     test("reverse keeps the render's params stable (no mid-flight geometry flip)", async () => {
         vi.useFakeTimers();
         state.slides = [
-            { svg: "<svg><rect id='a'/></svg>", title: "A", notes: "" },
-            { svg: "<svg><rect id='b'/></svg>", title: "B", notes: "" },
+            {
+                id: "a",
+                svg: "<svg><rect id='a'/></svg>",
+                title: "A",
+                notes: "",
+            },
+            {
+                id: "b",
+                svg: "<svg><rect id='b'/></svg>",
+                title: "B",
+                notes: "",
+            },
         ];
         state.transitions = [
             { type: "cut", duration: 0 },
@@ -201,8 +237,18 @@ describe("reverse", () => {
 describe("snap in-flight", () => {
     beforeEach(() => {
         state.slides = [
-            { svg: "<svg><rect id='a'/></svg>", title: "A", notes: "" },
-            { svg: "<svg><rect id='b'/></svg>", title: "B", notes: "" },
+            {
+                id: "a",
+                svg: "<svg><rect id='a'/></svg>",
+                title: "A",
+                notes: "",
+            },
+            {
+                id: "b",
+                svg: "<svg><rect id='b'/></svg>",
+                title: "B",
+                notes: "",
+            },
         ];
     });
 

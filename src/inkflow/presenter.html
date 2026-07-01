@@ -36,6 +36,7 @@
         <tr class="kb-group"><td colspan="2">View</td></tr>
         <tr><td>t</td><td>Dark / light mode</td></tr>
         <tr><td>p</td><td>Presenter panel</td></tr>
+        <tr><td>s</td><td>Cycle sync mode</td></tr>
         <tr><td>?</td><td>This help</td></tr>
       </table>
       <p>Press <kbd>?</kbd> or <kbd>Esc</kbd> to close</p>
@@ -154,6 +155,48 @@
         <path d="M5.5 15h5M8 12v3"/>
       </svg>
     </button>
+    <span class="hud-sep"></span>
+    <!-- Sync mode: up arrow = broadcast, down arrow = receive; each fades out when
+         that direction is off. The same glyph drives the collapsed button and every
+         menu row (fade state keyed off data-mode in sync.css). Menu opens upward. -->
+    <span class="sync-wrap">
+      <button type="button" class="hud-btn" id="btn-sync" aria-haspopup="true" aria-expanded="false" title="Sync mode (s)">
+        <svg class="sync-glyph" viewBox="0 0 16 16" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+          <g class="arrow-up"><path d="M4.5 14V3"/><path d="M1.5 6 4.5 3 7.5 6"/></g>
+          <g class="arrow-down"><path d="M11.5 2v11"/><path d="M8.5 10 11.5 13 14.5 10"/></g>
+        </svg>
+      </button>
+      <div id="sync-menu" role="menu" aria-label="Sync mode">
+        <button type="button" class="sync-row" role="menuitemradio" aria-checked="false" data-mode="two-way">
+          <svg class="sync-glyph" viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+            <g class="arrow-up"><path d="M4.5 14V3"/><path d="M1.5 6 4.5 3 7.5 6"/></g>
+            <g class="arrow-down"><path d="M11.5 2v11"/><path d="M8.5 10 11.5 13 14.5 10"/></g>
+          </svg>
+          <span class="sync-row-label">Two-way</span>
+        </button>
+        <button type="button" class="sync-row" role="menuitemradio" aria-checked="false" data-mode="present">
+          <svg class="sync-glyph" viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+            <g class="arrow-up"><path d="M4.5 14V3"/><path d="M1.5 6 4.5 3 7.5 6"/></g>
+            <g class="arrow-down"><path d="M11.5 2v11"/><path d="M8.5 10 11.5 13 14.5 10"/></g>
+          </svg>
+          <span class="sync-row-label">Present</span>
+        </button>
+        <button type="button" class="sync-row" role="menuitemradio" aria-checked="false" data-mode="follow">
+          <svg class="sync-glyph" viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+            <g class="arrow-up"><path d="M4.5 14V3"/><path d="M1.5 6 4.5 3 7.5 6"/></g>
+            <g class="arrow-down"><path d="M11.5 2v11"/><path d="M8.5 10 11.5 13 14.5 10"/></g>
+          </svg>
+          <span class="sync-row-label">Follow</span>
+        </button>
+        <button type="button" class="sync-row" role="menuitemradio" aria-checked="false" data-mode="solo">
+          <svg class="sync-glyph" viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+            <g class="arrow-up"><path d="M4.5 14V3"/><path d="M1.5 6 4.5 3 7.5 6"/></g>
+            <g class="arrow-down"><path d="M11.5 2v11"/><path d="M8.5 10 11.5 13 14.5 10"/></g>
+          </svg>
+          <span class="sync-row-label">Solo</span>
+        </button>
+      </div>
+    </span>
     <span id="sb-spacer" style="flex:1"></span>
     <span class="hud-sep"></span>
     <span id="slide-info">– / –</span>

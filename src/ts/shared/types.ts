@@ -1,9 +1,18 @@
+// Every field is always emitted by the Python side (pipeline.py process_deck),
+// so all are required here. Consumers that still guard with `|| ""` are being
+// defensive, not handling a real absent case.
 export interface SlideData {
-    id?: string;
+    id: string;
     svg: string;
-    title?: string;
-    notes?: string;
+    title: string;
+    notes: string;
 }
+
+// Per-client position-sync mode. Never sent to the server: it only decides,
+// locally, whether this client broadcasts its nav and whether it applies an
+// incoming position. `two-way` both, `present` send-only, `follow` receive-only,
+// `solo` neither.
+export type SyncMode = "two-way" | "present" | "follow" | "solo";
 
 export interface TransitionData {
     type: string;
@@ -25,7 +34,7 @@ export interface NavMessage {
 }
 
 export type WsMessage =
-    | { type: "update"; slides: SlideData[]; transitions?: TransitionData[] }
+    | { type: "update"; slides: SlideData[]; transitions: TransitionData[] }
     | { type: "error"; message: string }
     | {
           type: "position";

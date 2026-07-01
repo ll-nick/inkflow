@@ -1,3 +1,4 @@
+import { escapeHtml } from "../shared/escape";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { maxStep } from "./status";
@@ -50,7 +51,7 @@ export function filterPicker(query: string): void {
             (idx, pos) =>
                 `<li role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}">` +
                 `<span class="pk-num">${idx + 1}</span>` +
-                `<span class="pk-title">${state.slides[idx].title || ""}</span></li>`,
+                `<span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></li>`,
         )
         .join("");
     const active = pickerList.querySelector("li.active");
