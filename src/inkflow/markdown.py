@@ -388,31 +388,6 @@ def parse_markdown_zones(source: str) -> ParsedMarkdown:
 # ── HTML rendering from chunks ────────────────────────────────────────────────
 
 
-def steps_wrap_list_items(html: str, base_step: int) -> tuple[str, int]:
-    from lxml import etree
-
-    wrapped = f"<div>{html}</div>"
-    root = etree.fromstring(wrapped.encode())
-
-    step = base_step
-    for ul_or_ol in root.findall("ul") + root.findall("ol"):
-        for li in list(ul_or_ol):
-            if li.tag != "li":
-                continue
-            step += 1
-            wrapper = etree.Element("div")
-            wrapper.set("class", "anim-fade-in")
-            wrapper.set("data-step", str(step))
-            idx = list(ul_or_ol).index(li)
-            ul_or_ol.remove(li)
-            wrapper.append(li)
-            ul_or_ol.insert(idx, wrapper)
-
-    inner = etree.tostring(root, encoding="unicode")
-    inner = inner[len("<div>") : -len("</div>")]
-    return inner, step
-
-
 def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
     """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped fade-in div."""
     from lxml import etree
