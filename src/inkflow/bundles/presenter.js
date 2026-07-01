@@ -30,6 +30,7 @@
     transitions: [],
     slideIndex: 0,
     step: 0,
+    syncMode: "two-way",
     _pickerMatches: [],
     _pickerActive: 0,
     _overviewActive: 0,
@@ -138,13 +139,14 @@
   function readURL() {
     const seg = window.location.pathname.replace(/^.*\//, "");
     const n = parseInt(seg, 10);
-    if (!Number.isNaN(n) && n >= 1 && n <= state.slides.length)
-      state.slideIndex = n - 1;
+    const deepLinked2 = !Number.isNaN(n) && n >= 1 && n <= state.slides.length;
+    if (deepLinked2) state.slideIndex = n - 1;
     const steps = parseInt(
       new URLSearchParams(window.location.search).get("steps") ?? "0",
       10
     );
     if (!Number.isNaN(steps) && steps >= 0) state.step = steps;
+    return deepLinked2;
   }
   function updateStatus() {
     const infoHtml = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
@@ -1474,8 +1476,38 @@
   var wsDot = document.getElementById("ws-dot");
   var overviewEl = document.getElementById("overview");
   var overviewGridEl = document.getElementById("overview-grid");
+  var SYNC_MODE_KEY = "inkflow-sync-mode";
+  function isSyncMode(v) {
+    return v === "two-way" || v === "present" || v === "follow" || v === "solo";
+  }
+  function sends() {
+    return state.syncMode === "two-way" || state.syncMode === "present";
+  }
+  function receives() {
+    return state.syncMode === "two-way" || state.syncMode === "follow";
+  }
+  function loadSyncMode() {
+    let stored = null;
+    try {
+      stored = sessionStorage.getItem(SYNC_MODE_KEY);
+    } catch (_) {
+    }
+    if (isSyncMode(stored)) state.syncMode = stored;
+  }
+  function setSyncMode(mode) {
+    state.syncMode = mode;
+    try {
+      sessionStorage.setItem(SYNC_MODE_KEY, mode);
+    } catch (_) {
+    }
+    if (receives()) requestSync();
+  }
+  function requestSync() {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN)
+      state.ws.send(JSON.stringify({ type: "sync-request" }));
+  }
   function sendNav(transition) {
-    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer)
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer || !sends())
       return;
     state.ws.send(
       JSON.stringify({
@@ -1487,7 +1519,7 @@
     );
   }
   function sendSnap() {
-    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer)
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer || !sends())
       return;
     state.ws.send(
       JSON.stringify({
@@ -1498,18 +1530,26 @@
       })
     );
   }
-  function connectWS(wsPort) {
+  function connectWS(wsPort, authoritative) {
     if (!wsPort) return;
     state.ws = new WebSocket(`ws://localhost:${wsPort}`);
+    let firstPositionPending = false;
     state.ws.onopen = () => {
       wsDot.className = "connected";
-      sendNav();
+      const assert = authoritative && sends();
+      firstPositionPending = assert;
+      if (assert) sendNav();
     };
     state.ws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data);
+      let msg;
+      try {
+        msg = JSON.parse(ev.data);
+      } catch (_) {
+        return;
+      }
       if (msg.type === "update") {
         state.slides = msg.slides;
-        state.transitions = msg.transitions ?? [];
+        state.transitions = msg.transitions;
         hideError();
         if (overviewEl.classList.contains("visible")) {
           overviewEl.classList.remove("visible");
@@ -1525,8 +1565,13 @@
       } else if (msg.type === "error") {
         showError(msg.message);
       } else if (msg.type === "position") {
+        if (!receives()) return;
         if (msg.snap) {
           snapInflight();
+          return;
+        }
+        if (firstPositionPending) {
+          firstPositionPending = false;
           return;
         }
         const newIndex = Math.min(
@@ -1535,6 +1580,17 @@
         );
         const newStep = Math.max(0, msg.step | 0);
         if (newIndex === state.slideIndex && newStep === state.step) return;
+        if (newIndex === state.slideIndex) {
+          const prevStep = state.step;
+          state._syncingFromServer = true;
+          state.step = newStep;
+          if (Math.abs(newStep - prevStep) === 1) applyCurrentStep();
+          else applyCurrentStepInstant();
+          state._syncingFromServer = false;
+          renderPvNext();
+          updatePvInfo();
+          return;
+        }
         state._syncingFromServer = true;
         state.slideIndex = newIndex;
         state.step = newStep;
@@ -1548,7 +1604,7 @@
     state.ws.onclose = () => {
       wsDot.className = "";
       state.ws = null;
-      setTimeout(() => connectWS(wsPort), 2e3);
+      setTimeout(() => connectWS(wsPort, true), 2e3);
     };
     state.ws.onerror = () => state.ws?.close();
   }
@@ -2163,17 +2219,22 @@
   var INITIAL_ERROR = __ERROR_JSON__;
   state.slides = INITIAL_SLIDES;
   state.transitions = INITIAL_TRANSITIONS;
-  window.inkflow = { registerTransition, registerProgressTransition };
+  window.inkflow = {
+    registerTransition,
+    registerProgressTransition,
+    setSyncMode
+  };
   window.addEventListener("popstate", () => {
     readURL();
     loadSlide(null, CUT);
     renderPv();
   });
-  readURL();
+  loadSyncMode();
+  var deepLinked = readURL();
   loadSlide();
   renderPv();
   updatePvClock();
   setInterval(updatePvClock, 1e3);
   if (INITIAL_ERROR) showError(INITIAL_ERROR);
-  connectWS(WS_PORT);
+  connectWS(WS_PORT, deepLinked);
 })();
