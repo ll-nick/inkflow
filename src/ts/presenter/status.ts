@@ -63,16 +63,21 @@ export function syncURL(): void {
     } catch (_) {}
 }
 
-export function readURL(): void {
+// Returns whether the path carried an explicit, valid slide segment (a "deep
+// link"). The caller captures this at boot before loadSlide() rewrites the URL,
+// to decide sync-handshake authority: a deliberate URL must not be overridden by
+// the server's stored position.
+export function readURL(): boolean {
     const seg = window.location.pathname.replace(/^.*\//, "");
     const n = parseInt(seg, 10);
-    if (!Number.isNaN(n) && n >= 1 && n <= state.slides.length)
-        state.slideIndex = n - 1;
+    const deepLinked = !Number.isNaN(n) && n >= 1 && n <= state.slides.length;
+    if (deepLinked) state.slideIndex = n - 1;
     const steps = parseInt(
         new URLSearchParams(window.location.search).get("steps") ?? "0",
         10,
     );
     if (!Number.isNaN(steps) && steps >= 0) state.step = steps;
+    return deepLinked;
 }
 
 export function updateStatus(): void {

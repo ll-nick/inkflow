@@ -47,13 +47,27 @@ export function sendSnap(): void {
     );
 }
 
-export function connectWS(wsPort: number | null): void {
+// ── Connection ───────────────────────────────────────────────────────────────
+
+// `authoritative` marks a client whose own position should win over the server's
+// stored one on connect: a deep-linked window (URL carried a slide segment) or a
+// reconnecting live window. Such a client announces its position and discards the
+// server's first push. A non-authoritative window stays silent and adopts the
+// pushed position (proper second-screen follow), so opening a bare window never
+// yanks the others.
+export function connectWS(wsPort: number | null, authoritative: boolean): void {
     if (!wsPort) return;
     state.ws = new WebSocket(`ws://localhost:${wsPort}`);
 
+    // Set in onopen (which fires before any message): true only while this
+    // connection still owes the server's stale connect-time push a discard.
+    let firstPositionPending = false;
+
     state.ws.onopen = () => {
         wsDot.className = "connected";
-        sendNav();
+        const assert = authoritative && sends();
+        firstPositionPending = assert;
+        if (assert) sendNav();
     };
 
     state.ws.onmessage = (ev) => {
@@ -65,7 +79,7 @@ export function connectWS(wsPort: number | null): void {
         }
         if (msg.type === "update") {
             state.slides = msg.slides;
-            state.transitions = msg.transitions ?? [];
+            state.transitions = msg.transitions;
             hideError();
             if (overviewEl.classList.contains("visible")) {
                 overviewEl.classList.remove("visible");
@@ -81,10 +95,17 @@ export function connectWS(wsPort: number | null): void {
         } else if (msg.type === "error") {
             showError(msg.message);
         } else if (msg.type === "position") {
+            if (!receives()) return;
             if (msg.snap) {
                 // Another screen snapped its transition; match it. Position is
                 // already in sync, so just collapse our in-flight transition.
                 snapInflight();
+                return;
+            }
+            if (firstPositionPending) {
+                // Discard exactly the stale connect-time push so an authoritative
+                // window keeps its own position. Later updates apply normally.
+                firstPositionPending = false;
                 return;
             }
             const newIndex = Math.min(
@@ -122,7 +143,9 @@ export function connectWS(wsPort: number | null): void {
     state.ws.onclose = () => {
         wsDot.className = "";
         state.ws = null;
-        setTimeout(() => connectWS(wsPort), 2000);
+        // A reconnecting live window re-asserts its position rather than being
+        // adopted by a possibly-stale server.
+        setTimeout(() => connectWS(wsPort, true), 2000);
     };
 
     state.ws.onerror = () => state.ws?.close();

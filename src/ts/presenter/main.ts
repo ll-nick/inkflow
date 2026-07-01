@@ -31,9 +31,11 @@ window.addEventListener("popstate", () => {
     renderPv();
 });
 readURL();
+// Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
+const deepLinked = readURL();
 loadSlide();
 renderPv();
 updatePvClock();
 setInterval(updatePvClock, 1000);
 if (INITIAL_ERROR) showError(INITIAL_ERROR);
-connectWS(WS_PORT);
+connectWS(WS_PORT, deepLinked);
