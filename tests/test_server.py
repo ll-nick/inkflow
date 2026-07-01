@@ -7,6 +7,7 @@ from typing import cast
 from inkflow.manifest import ColorMode
 from inkflow.server import (
     State,
+    _coerce_nav_position,  # pyright: ignore[reportPrivateUsage]
     _resolve_asset,  # pyright: ignore[reportPrivateUsage]
     build_html,
 )
@@ -141,3 +142,43 @@ def test_resolve_asset_symlink_outside_project(tmp_path: Path) -> None:
     (project / "photo.png").symlink_to(real_img)
     result = _resolve_asset(project, "/photo.png")
     assert result == real_img.resolve()
+
+
+# ── _coerce_nav_position ──────────────────────────────────────────────────────
+
+
+def test_coerce_nav_non_numeric_index_is_dropped() -> None:
+    assert _coerce_nav_position({"slideIndex": "x", "step": 0}, 5) is None
+
+
+def test_coerce_nav_null_index_is_dropped() -> None:
+    assert _coerce_nav_position({"slideIndex": None, "step": 0}, 5) is None
+
+
+def test_coerce_nav_non_numeric_step_is_dropped() -> None:
+    assert _coerce_nav_position({"slideIndex": 2, "step": "y"}, 5) is None
+
+
+def test_coerce_nav_clamps_high_index() -> None:
+    assert _coerce_nav_position({"slideIndex": 99, "step": 3}, 5) == {
+        "slideIndex": 4,
+        "step": 3,
+    }
+
+
+def test_coerce_nav_clamps_negative_index_and_step() -> None:
+    assert _coerce_nav_position({"slideIndex": -2, "step": -1}, 5) == {
+        "slideIndex": 0,
+        "step": 0,
+    }
+
+
+def test_coerce_nav_empty_deck_pins_index_to_zero() -> None:
+    assert _coerce_nav_position({"slideIndex": 2, "step": 1}, 0) == {
+        "slideIndex": 0,
+        "step": 1,
+    }
+
+
+def test_coerce_nav_defaults_when_fields_absent() -> None:
+    assert _coerce_nav_position({}, 5) == {"slideIndex": 0, "step": 0}

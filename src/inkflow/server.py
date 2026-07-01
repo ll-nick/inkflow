@@ -146,6 +146,26 @@ async def broadcast(msg: str, sender: ServerConnection | None = None) -> None:
 # ── WebSocket handler ─────────────────────────────────────────────────────────
 
 
+def _coerce_nav_position(
+    msg: dict[str, object], n_slides: int
+) -> dict[str, int] | None:
+    """Validate and clamp a `nav` payload's slideIndex/step.
+
+    Returns None when the values cannot be coerced to ints (a hostile or buggy
+    sender), so the caller can drop the frame instead of tearing down the
+    connection. slideIndex is clamped to [0, n_slides-1] (or 0 for an empty deck)
+    and step to >= 0, so the stored position is always valid regardless of sender.
+    """
+    try:
+        slide_index = int(cast(int, msg.get("slideIndex", 0)))
+        step = int(cast(int, msg.get("step", 0)))
+    except (ValueError, TypeError):
+        return None
+    slide_index = max(0, min(n_slides - 1, slide_index)) if n_slides > 0 else 0
+    step = max(0, step)
+    return {"slideIndex": slide_index, "step": step}
+
+
 def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]:
     async def handler(websocket: ServerConnection) -> None:
         _state["ws_clients"].add(websocket)
@@ -169,14 +189,29 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
                 if not isinstance(parsed, dict):
                     continue
                 msg = cast(dict[str, object], parsed)
-                if msg.get("type") == "nav":
-                    si = int(cast(int, msg.get("slideIndex", 0)))
-                    st = int(cast(int, msg.get("step", 0)))
-                    _state["position"] = {"slideIndex": si, "step": st}
+                msg_type = msg.get("type")
+                if msg_type == "sync-request":
+                    # A client that just switched into a receiving sync mode asks
+                    # for the current position. Reply to it alone, not a broadcast.
+                    cur = _state["position"]
+                    await websocket.send(
+                        json.dumps(
+                            {
+                                "type": "position",
+                                "slideIndex": cur["slideIndex"],
+                                "step": cur["step"],
+                            }
+                        )
+                    )
+                elif msg_type == "nav":
+                    pos = _coerce_nav_position(msg, len(_state["slides"]))
+                    if pos is None:
+                        continue
+                    _state["position"] = pos
                     position_msg: dict[str, object] = {
                         "type": "position",
-                        "slideIndex": si,
-                        "step": st,
+                        "slideIndex": pos["slideIndex"],
+                        "step": pos["step"],
                     }
                     nav_transition = msg.get("transition")
                     if nav_transition:
