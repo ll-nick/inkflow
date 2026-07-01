@@ -8,23 +8,23 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Media, TextBox
+from inkflow.manifest import Media, MediaAlign, TextBox
 from inkflow.markdown import html_fragment_to_xml
 from inkflow.svg import ensure_defs
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
 
-_ALIGN_MAP: dict[str, tuple[int, int]] = {
-    "center": (50, 50),
-    "top": (50, 0),
-    "bottom": (50, 100),
-    "left": (0, 50),
-    "right": (100, 50),
-    "top-left": (0, 0),
-    "top-right": (100, 0),
-    "bottom-left": (0, 100),
-    "bottom-right": (100, 100),
+_ALIGN_MAP: dict[MediaAlign, tuple[int, int]] = {
+    MediaAlign.CENTER: (50, 50),
+    MediaAlign.TOP: (50, 0),
+    MediaAlign.BOTTOM: (50, 100),
+    MediaAlign.LEFT: (0, 50),
+    MediaAlign.RIGHT: (100, 50),
+    MediaAlign.TOP_LEFT: (0, 0),
+    MediaAlign.TOP_RIGHT: (100, 0),
+    MediaAlign.BOTTOM_LEFT: (0, 100),
+    MediaAlign.BOTTOM_RIGHT: (100, 100),
 }
 
 _VALIGN_CSS: dict[str, str] = {
