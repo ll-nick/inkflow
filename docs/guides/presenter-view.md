@@ -81,7 +81,28 @@ stay in sync regardless of which one you use to advance.
 Position sync runs over the same WebSocket the main view uses for live reload.
 Any number of windows can be open at once:
 
-- Each window connects on load and receives the current position immediately,
-  so it lands on the correct slide and step.
 - A navigation in any window is broadcast to every other open window.
+- A window opened at the bare URL adopts the shared position on connect, so it
+  lands where the presenter already is (second-screen follow).
+- A window opened at a deliberate deep link (a URL with a slide number, such as
+  `/5`) keeps that slide instead of being pulled to the shared position. A browser
+  refresh counts as a deep link, so reloading never yanks a window off its slide.
 - After a deck rebuild, the position is preserved (clamped if the slide count drops).
+
+### Sync modes
+
+Each window chooses how it participates, independent of the others. Cycle the mode
+with <kbd>s</kbd>, or click the sync button in the status bar and pick from the menu.
+The button shows the active mode and tints when it is anything but two-way.
+
+| mode | broadcasts its navigation | follows other windows |
+|------|:---:|:---:|
+| **Two-way** (default) | yes | yes |
+| **Present** | yes | no |
+| **Follow** | no | yes |
+| **Solo** | no | no |
+
+Use **Present** on the window you drive from and **Follow** on a screen that should
+only ever track it, so an accidental key press on the follower cannot move the deck.
+Switching a window into Follow (or Two-way) immediately catches it up to the current
+position. The choice is remembered per browser tab across reloads.
