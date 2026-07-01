@@ -57,7 +57,12 @@ export function connectWS(wsPort: number | null): void {
     };
 
     state.ws.onmessage = (ev) => {
-        const msg = JSON.parse(ev.data) as WsMessage;
+        let msg: WsMessage;
+        try {
+            msg = JSON.parse(ev.data) as WsMessage;
+        } catch (_) {
+            return;
+        }
         if (msg.type === "update") {
             state.slides = msg.slides;
             state.transitions = msg.transitions ?? [];
