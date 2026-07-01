@@ -17,10 +17,10 @@ from inkflow.markdown import (
     _StepsBlock,  # pyright: ignore[reportPrivateUsage]
     build_slide_content,
     chunks_to_html,
+    html_fragment_to_xml,
     markdown_to_html,
     parse_markdown_zones,
     steps_wrap_content,
-    steps_wrap_list_items,
 )
 
 
@@ -220,35 +220,30 @@ class TestChunksToHtml:
         assert step == 1
 
 
-class TestStepsWrapListItems:
-    def test_each_li_wrapped_with_data_step(self) -> None:
-        html = "<ul><li>One</li><li>Two</li></ul>"
-        result, step = steps_wrap_list_items(html, 0)
-        assert 'data-step="1"' in result
-        assert 'data-step="2"' in result
-        assert step == 2
+class TestHtmlFragmentToXml:
+    def test_closes_raw_void_element(self) -> None:
+        assert html_fragment_to_xml("a<br>b") == "a<br/>b"
 
-    def test_base_step_offset(self) -> None:
-        html = "<ul><li>Item</li></ul>"
-        result, step = steps_wrap_list_items(html, 3)
-        assert 'data-step="4"' in result
-        assert step == 4
+    def test_leaves_wellformed_unchanged(self) -> None:
+        assert html_fragment_to_xml("<p>ok</p>") == "<p>ok</p>"
 
-    def test_non_list_content_unwrapped(self) -> None:
-        html = "<p>Paragraph</p>"
-        result, step = steps_wrap_list_items(html, 0)
-        assert "data-step" not in result
-        assert "Paragraph" in result
-        assert step == 0
+    def test_empty_returns_empty(self) -> None:
+        assert html_fragment_to_xml("") == ""
 
-    def test_nested_li_not_separately_wrapped(self) -> None:
-        html = "<ul><li>Parent<ul><li>Child</li></ul></li></ul>"
-        result, _step = steps_wrap_list_items(html, 0)
-        # Only one top-level li → one data-step
-        assert result.count("data-step") == 1
+    def test_preserves_embedded_mathml(self) -> None:
+        html = markdown_to_html(r"$e^{i\pi}$")
+        assert "Math/MathML" in html_fragment_to_xml(html)
 
 
 class TestStepsWrapContent:
+    def test_raw_void_html_does_not_crash(self) -> None:
+        # Regression for F-021: raw <br> in a stepped zone must not raise.
+        html = markdown_to_html("Intro line<br>second line")
+        result, step = steps_wrap_content(html, 0)
+        assert "<br/>" in result
+        assert 'data-step="1"' in result
+        assert step == 1
+
     def test_list_items_each_wrapped(self) -> None:
         html = "<ul><li>One</li><li>Two</li></ul>"
         result, step = steps_wrap_content(html, 0)

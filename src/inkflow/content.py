@@ -9,6 +9,7 @@ from lxml import etree
 
 from inkflow import ns
 from inkflow.manifest import Media, TextBox
+from inkflow.markdown import html_fragment_to_xml
 from inkflow.svg import ensure_defs
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
@@ -290,14 +291,11 @@ def _replace_with_foreignobject(
         content_attrs["style"] = ";".join(content_style_parts)
     content_div = etree.SubElement(wrapper, f"{{{ns.XHTML}}}div", content_attrs)
 
-    html = item.text or ""
-    try:
-        fragment = etree.fromstring(f"<div xmlns='{ns.XHTML}'>{html}</div>")
-        content_div.text = fragment.text
-        for child in fragment:
-            content_div.append(child)
-    except etree.XMLSyntaxError:
-        content_div.text = html
+    html = html_fragment_to_xml(item.text or "")
+    fragment = etree.fromstring(f"<div xmlns='{ns.XHTML}'>{html}</div>")
+    content_div.text = fragment.text
+    for child in fragment:
+        content_div.append(child)
 
     # Drop <hr class="footnotes-sep"> (CSS border-top on the section replaces it)
     # and hoist <section class="footnotes"> to wrapper so margin-top:auto anchors

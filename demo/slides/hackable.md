@@ -2,7 +2,7 @@
 
 No proprietary formats, no black magic and fully hackable
 
-<br/>
+<br>
 
 ::steps::
 

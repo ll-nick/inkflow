@@ -5,8 +5,10 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TypeAlias, TypedDict, cast
+from xml.sax.saxutils import escape
 
 from latex2mathml.converter import convert as _latex_to_mathml
+from lxml import etree
 from markdown_it import MarkdownIt
 from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
@@ -270,6 +272,30 @@ def markdown_to_html(md_str: str) -> str:
     return cast(str, _md.render(md_str))
 
 
+def html_fragment_to_xml(html: str) -> str:
+    """Normalise a rendered-HTML fragment into well-formed XML markup.
+
+    markdown-it with ``html=True`` passes raw author HTML through verbatim, so
+    natural void elements like ``<br>`` arrive un-closed and are not valid XML.
+    The SVG/foreignObject pipeline re-serialises this content as XML (lxml), so it
+    must be well-formed. Parse with lxml's tolerant HTML parser and re-emit as XML:
+    void elements close, embedded MathML is preserved. Falls back to XML-escaped
+    text if the fragment cannot be made well-formed.
+    """
+    if not html:
+        return ""
+    try:
+        root = etree.fromstring(f"<div>{html}</div>", etree.HTMLParser())
+        div = root.find(".//div")
+        if div is None:
+            return escape(html)
+        inner = etree.tostring(div, encoding="unicode")[len("<div>") : -len("</div>")]
+        etree.fromstring(f"<x>{inner}</x>")  # guarantee well-formed downstream
+    except (etree.XMLSyntaxError, ValueError):
+        return escape(html)
+    return inner
+
+
 # ── Step / steps parsing ──────────────────────────────────────────────────────
 
 
@@ -390,9 +416,8 @@ def parse_markdown_zones(source: str) -> ParsedMarkdown:
 
 def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
     """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped fade-in div."""
-    from lxml import etree
 
-    wrapped = f"<div>{html}</div>"
+    wrapped = f"<div>{html_fragment_to_xml(html)}</div>"
     root = etree.fromstring(wrapped.encode())
 
     step = base_step
