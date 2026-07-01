@@ -1,8 +1,11 @@
+// Every field is always emitted by the Python side (pipeline.py process_deck),
+// so all are required here. Consumers that still guard with `|| ""` are being
+// defensive, not handling a real absent case.
 export interface SlideData {
-    id?: string;
+    id: string;
     svg: string;
-    title?: string;
-    notes?: string;
+    title: string;
+    notes: string;
 }
 
 export interface TransitionData {
@@ -25,7 +28,7 @@ export interface NavMessage {
 }
 
 export type WsMessage =
-    | { type: "update"; slides: SlideData[]; transitions?: TransitionData[] }
+    | { type: "update"; slides: SlideData[]; transitions: TransitionData[] }
     | { type: "error"; message: string }
     | {
           type: "position";
