@@ -93,6 +93,21 @@ export function connectWS(wsPort: number | null): void {
             );
             const newStep = Math.max(0, msg.step | 0);
             if (newIndex === state.slideIndex && newStep === state.step) return;
+            if (newIndex === state.slideIndex) {
+                // Same slide, step-only change from a peer: reveal it in place
+                // rather than rebuilding the slide DOM (which would interrupt the
+                // step animation and replay the entry transition). A single-step
+                // delta animates; a multi-step jump lands instantly.
+                const prevStep = state.step;
+                state._syncingFromServer = true;
+                state.step = newStep;
+                if (Math.abs(newStep - prevStep) === 1) applyCurrentStep();
+                else applyCurrentStepInstant();
+                state._syncingFromServer = false;
+                renderPvNext();
+                updatePvInfo();
+                return;
+            }
             state._syncingFromServer = true;
             state.slideIndex = newIndex;
             state.step = newStep;
