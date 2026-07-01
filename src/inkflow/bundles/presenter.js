@@ -1494,7 +1494,7 @@
     }
     if (isSyncMode(stored)) state.syncMode = stored;
   }
-  function setSyncMode(mode) {
+  function applySyncMode(mode) {
     state.syncMode = mode;
     try {
       sessionStorage.setItem(SYNC_MODE_KEY, mode);
@@ -1607,6 +1607,76 @@
       setTimeout(() => connectWS(wsPort, true), 2e3);
     };
     state.ws.onerror = () => state.ws?.close();
+  }
+
+  // src/ts/presenter/syncmenu.ts
+  var btnSync = document.getElementById("btn-sync");
+  var syncMenu = document.getElementById("sync-menu");
+  var SYNC_ORDER = ["two-way", "present", "follow", "solo"];
+  var SYNC_LABELS = {
+    "two-way": "Two-way (send + receive)",
+    present: "Present (send only)",
+    follow: "Follow (receive only)",
+    solo: "Solo (no sync)"
+  };
+  function renderSyncButton() {
+    btnSync.dataset.mode = state.syncMode;
+    const label = SYNC_LABELS[state.syncMode];
+    btnSync.title = `Sync: ${label} (s)`;
+    btnSync.setAttribute("aria-label", `Sync mode: ${label}`);
+    for (const row of syncMenu.querySelectorAll(".sync-row")) {
+      const active = row.dataset.mode === state.syncMode;
+      row.classList.toggle("active", active);
+      row.setAttribute("aria-checked", String(active));
+    }
+  }
+  function setSyncMode(mode) {
+    applySyncMode(mode);
+    renderSyncButton();
+    closeMenu();
+  }
+  function cycleSyncMode() {
+    const i = SYNC_ORDER.indexOf(state.syncMode);
+    setSyncMode(SYNC_ORDER[(i + 1) % SYNC_ORDER.length]);
+  }
+  function onDocClick(e) {
+    const t = e.target;
+    if (!btnSync.contains(t) && !syncMenu.contains(t)) closeMenu();
+  }
+  function onKeydown(e) {
+    if (e.key === "Escape") {
+      closeMenu();
+      btnSync.focus();
+    }
+  }
+  function openMenu() {
+    syncMenu.classList.add("open");
+    btnSync.setAttribute("aria-expanded", "true");
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKeydown);
+  }
+  function closeMenu() {
+    if (!syncMenu.classList.contains("open")) return;
+    syncMenu.classList.remove("open");
+    btnSync.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", onDocClick);
+    document.removeEventListener("keydown", onKeydown);
+  }
+  function toggleMenu() {
+    if (syncMenu.classList.contains("open")) closeMenu();
+    else openMenu();
+  }
+  function initSyncMenu() {
+    btnSync.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleMenu();
+    });
+    for (const row of syncMenu.querySelectorAll(".sync-row"))
+      row.addEventListener(
+        "click",
+        () => setSyncMode(row.dataset.mode)
+      );
+    renderSyncButton();
   }
 
   // src/ts/presenter/laser.ts
@@ -1969,6 +2039,11 @@
     });
   });
 
+  // src/ts/shared/escape.ts
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
   // src/ts/presenter/picker.ts
   var picker = document.getElementById("picker");
   var pickerInput = document.getElementById("picker-input");
@@ -2009,7 +2084,7 @@
     state._pickerMatches = matches;
     state._pickerActive = 0;
     pickerList.innerHTML = matches.map(
-      (idx, pos) => `<li role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}"><span class="pk-num">${idx + 1}</span><span class="pk-title">${state.slides[idx].title || ""}</span></li>`
+      (idx, pos) => `<li role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}"><span class="pk-num">${idx + 1}</span><span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></li>`
     ).join("");
     const active = pickerList.querySelector("li.active");
     if (active) active.scrollIntoView({ block: "nearest" });
@@ -2150,7 +2225,8 @@
     w: { action: () => toggleCurtain("white") },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
-    p: { action: togglePv }
+    p: { action: togglePv },
+    s: { action: cycleSyncMode }
   };
   var helpEl = document.getElementById("help");
   var overviewEl2 = document.getElementById("overview");
@@ -2230,6 +2306,7 @@
     renderPv();
   });
   loadSyncMode();
+  initSyncMenu();
   var deepLinked = readURL();
   loadSlide();
   renderPv();

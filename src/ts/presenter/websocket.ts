@@ -39,13 +39,15 @@ export function loadSyncMode(): void {
     if (isSyncMode(stored)) state.syncMode = stored;
 }
 
-export function setSyncMode(mode: SyncMode): void {
+// Behavioural core of a mode change: update state, persist, and (when entering a
+// receiving mode) catch up to the presenter's current position immediately instead
+// of waiting for their next navigation. The status-bar widget wraps this with the
+// UI refresh (syncmenu.ts setSyncMode).
+export function applySyncMode(mode: SyncMode): void {
     state.syncMode = mode;
     try {
         sessionStorage.setItem(SYNC_MODE_KEY, mode);
     } catch (_) {}
-    // Entering a receiving mode: catch up to the presenter's current position now
-    // instead of waiting for their next navigation.
     if (receives()) requestSync();
 }
 

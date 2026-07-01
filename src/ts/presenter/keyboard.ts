@@ -17,6 +17,7 @@ import {
 import { openPicker } from "./picker";
 import { togglePv } from "./pv";
 import { state } from "./state";
+import { cycleSyncMode } from "./syncmenu";
 import {
     hideCurtain,
     toggleCurtain,
@@ -129,6 +130,7 @@ const KEYBINDINGS: Record<
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
+    s: { action: cycleSyncMode },
 };
 
 // DOM refs for visibility checks (avoid importing the modules that own them)

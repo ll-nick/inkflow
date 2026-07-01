@@ -1,6 +1,7 @@
 import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { readURL } from "./status";
+import { initSyncMenu, setSyncMode } from "./syncmenu";
 import {
     CUT,
     loadSlide,
@@ -8,7 +9,7 @@ import {
     registerTransition,
 } from "./transitions";
 import { showError } from "./ui";
-import { connectWS, loadSyncMode, setSyncMode } from "./websocket";
+import { connectWS, loadSyncMode } from "./websocket";
 import "./keyboard";
 
 // ── Injected by server ──
@@ -35,6 +36,7 @@ window.addEventListener("popstate", () => {
     renderPv();
 });
 loadSyncMode();
+initSyncMenu();
 // Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
 const deepLinked = readURL();
 loadSlide();
