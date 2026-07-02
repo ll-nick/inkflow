@@ -422,30 +422,27 @@ After colorizing, run `inkflow sync` to refresh Inkscape's preview style.
 Generate an Inkscape GPL color palette for the active theme.
 
 ```bash
-inkflow palette [--deck DECK] [--no-deck] [--mode dark|light] [--output FILE] [--install]
+inkflow palette [--deck DECK] [--no-deck] [--mode dark|light]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `--deck` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
 | `--mode` | deck's `dark_mode` | Generate `dark` or `light` mode palette |
-| `--output`, `-o` | stdout | Write palette to FILE instead of stdout |
-| `--install` | off | Install to `~/.config/inkscape/palettes/inkflow.gpl` |
 
-`--output` and `--install` are mutually exclusive.
-
-Outputs a GIMP Palette (`.gpl`) file whose named colors correspond to the
+Writes a GIMP Palette (`.gpl`) to stdout whose named colors correspond to the
 `inkflow-fill-*` / `inkflow-stroke-*` CSS token set.
 Load this palette in Inkscape's swatches panel to pick theme colors by name.
+Redirect it to save wherever you want:
 
 ```bash
-# Install for the current user:
-inkflow palette --install
-
 # Preview the palette for a custom theme in light mode:
-inkflow palette --deck deck.py --mode light
+inkflow palette --mode light
 
 # Save for theme distribution:
-inkflow palette --deck deck.py --output my-theme/inkflow.gpl
+inkflow palette --deck deck.py > my-theme/inkflow.gpl
+
+# Install for the current user (Linux path shown):
+inkflow palette > ~/.config/inkscape/palettes/inkflow.gpl
 ```

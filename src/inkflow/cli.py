@@ -642,36 +642,20 @@ def colorize_cmd(
 @_deck_option
 @_no_deck_option
 @_mode_option
-@click.option(
-    "--output",
-    "-o",
-    "output_path",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Write palette to FILE instead of stdout.",
-)
-@click.option(
-    "--install",
-    is_flag=True,
-    help="Install to ~/.config/inkscape/palettes/inkflow.gpl.",
-)
 def palette_cmd(
     deck_path: Path,
     no_deck: bool,
     color_mode: str | None,
-    output_path: Path | None,
-    install: bool,
 ) -> None:
     """Generate an Inkscape GPL color palette for the active theme.
 
-    Outputs a .gpl file whose colors correspond to the inkflow-fill-* /
-    inkflow-stroke-* CSS class tokens so you can pick theme colors by name
-    in Inkscape's swatches panel and then run 'inkflow colorize' to convert
-    the hardcoded hex values to semantic classes.
-    """
-    if output_path and install:
-        raise click.UsageError("--output and --install are mutually exclusive")
+    Writes a .gpl palette to stdout whose colors correspond to the inkflow-fill-* /
+    inkflow-stroke-* CSS class tokens so you can pick theme colors by name in
+    Inkscape's swatches panel and then run 'inkflow colorize' to convert the
+    hardcoded hex values to semantic classes. Redirect it to save:
 
+        inkflow palette > inkflow.gpl
+    """
     project = _load_project_or_none(deck_path, no_deck)
     deck_obj = project.deck if project else None
     project_dir = project.dir if project else None
@@ -688,18 +672,7 @@ def palette_cmd(
         else f"inkflow ({mode_label})"
     )
     gpl = colors.build_gpl(tokens, palette_name)
-
-    if install:
-        dest = Path.home() / ".config" / "inkscape" / "palettes" / "inkflow.gpl"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(gpl, encoding="utf-8")
-        click.echo(f"[inkflow] installed palette to {dest}")
-    elif output_path:
-        output_path = output_path.resolve()
-        output_path.write_text(gpl, encoding="utf-8")
-        click.echo(f"[inkflow] wrote palette to {output_path}")
-    else:
-        click.get_text_stream("stdout").write(gpl)
+    click.echo(gpl, nl=False)
 
 
 # ── verify ────────────────────────────────────────────────────────────────────

@@ -52,9 +52,6 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-# ── Chunk 1: deck is always -d/--deck ─────────────────────────────────────────
-
-
 class TestDeckOption:
     @pytest.mark.parametrize("cmd", ["serve", "build", "export"])
     def test_missing_deck_exits_1(self, runner: CliRunner, cmd: str) -> None:
@@ -77,9 +74,6 @@ class TestDeckOption:
         result = runner.invoke(main, ["export", "--size", "huge"])
         assert result.exit_code == 1
         assert "--size must be WxH" in result.output
-
-
-# ── Chunk 2: unified missing-file errors (hard-raise, exit 1) ─────────────────
 
 
 class TestMissingFile:
@@ -124,9 +118,6 @@ class TestMissingFile:
         assert Path("dirty.svg").read_text(encoding="utf-8") == before
 
 
-# ── Chunk 3: FILES omitted falls back to all deck slides ─────────────────────
-
-
 class TestDeckFallback:
     @pytest.mark.usefixtures("project")
     def test_clean_no_files_uses_deck(self, runner: CliRunner) -> None:
@@ -154,9 +145,6 @@ class TestDeckFallback:
         result = runner.invoke(main, ["colorize", "--no-deck"])
         assert result.exit_code == 2
         assert "FILES required" in result.output
-
-
-# ── Chunk 4: add rework (optional -p/--parent, --no-deck) ────────────────────
 
 
 class TestAdd:
@@ -189,9 +177,6 @@ class TestAdd:
             assert result.exit_code == 0
             svg = Path("wired.svg").read_text(encoding="utf-8")
             assert 'inkflow:parent="builtin:base"' in svg
-
-
-# ── Chunk 5: parent get absorbs parent list ──────────────────────────────────
 
 
 class TestParentGet:

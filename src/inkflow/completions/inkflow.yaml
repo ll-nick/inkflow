@@ -140,11 +140,9 @@ commands:
   - name: palette
     description: Generate an Inkscape GPL color palette for the active theme.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
       --mode=: Color mode for preview style
-      -o, --output=: Write palette to FILE instead of stdout
-      --install: Install to ~/.config/inkscape/palettes/inkflow.gpl
     completion:
       flag:
         mode: ["dark", "light"]
