@@ -54,7 +54,7 @@ def main() -> Deck:
 ```
 
 ```bash
-inkflow serve deck.py   # open http://localhost:7777
+inkflow serve   # open http://localhost:7777
 ```
 
 ---

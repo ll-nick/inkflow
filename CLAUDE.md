@@ -3,7 +3,7 @@
 ## Running
 
 ```bash
-uv run inkflow serve demo/deck.py   # start server at localhost:7777
+uv run inkflow serve --deck demo/deck.py   # start server at localhost:7777
 mise run check                      # lint + format + typecheck + test (Python and JS)
 mise run bundle                     # rebuild JS/CSS bundles from src/ts/ and src/css/
 ```
@@ -49,8 +49,12 @@ src/
                                assembly (parsed markdown -> per-zone TextBox/Media)
     server.py         HTTP server, WebSocket server, file watcher, build pipeline
     export.py         static HTML export (inkflow build) and PDF export (inkflow export)
-    cli.py            CLI entry point (serve, build, export, init, clean, sync, verify,
-                               colorize, palette, layouts, add, parent, setup-git, completion)
+    cli/              CLI package (entry point inkflow.cli:main). _common.py holds the
+                               `main` group, shared options, and the Project/Target helpers;
+                               commands are grouped by area: project.py (init, setup-git,
+                               completion), present.py (serve, build, export), authoring.py
+                               (clean, add, parent group, sync, layouts), color.py (colorize,
+                               palette), verify.py. Submodules register on `main` by import.
     clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
     colors.py         CSS color token extraction, hex→class mapping, SVG colorization, GPL palette
     git_setup.py      git hook + SVG diff driver setup

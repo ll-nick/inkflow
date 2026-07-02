@@ -105,13 +105,15 @@ Two commands bridge this gap:
 
 **1. Install the Inkscape palette (once per machine):**
 
+`inkflow palette` writes a GIMP palette to stdout; redirect it into Inkscape's
+palette directory (the Linux path is shown here):
+
 ```bash
-inkflow palette --install
+inkflow palette > ~/.config/inkscape/palettes/inkflow.gpl
 # or for a custom theme:
-inkflow palette --deck deck.py --install
+inkflow palette --deck deck.py > ~/.config/inkscape/palettes/inkflow.gpl
 ```
 
-This writes `~/.config/inkscape/palettes/inkflow.gpl`.
 Open Inkscape's swatches panel and switch to the "inkflow" palette.
 You can now pick theme colors by token name.
 
@@ -130,7 +132,7 @@ that match known theme hex values, replaces them with the corresponding
 **3. Refresh the editor preview:**
 
 ```bash
-inkflow parent inject
+inkflow sync
 ```
 
 This injects a `<style id="inkflow-preview">` block into each SVG with hardcoded
@@ -141,7 +143,7 @@ colors. The block is stripped automatically at serve time — it never appears i
 
 1. Draw the shape in Inkscape, pick a color from the inkflow swatches panel.
 2. Run `inkflow colorize slides/myslide.svg` to convert the hex to a class.
-3. Run `inkflow parent inject` to refresh the Inkscape preview.
+3. Run `inkflow sync` to refresh the Inkscape preview.
 4. Alternatively, assign the class directly in Object Properties (Shift+Ctrl+O)
    — Inkscape shows the correct color immediately after step 3.
 

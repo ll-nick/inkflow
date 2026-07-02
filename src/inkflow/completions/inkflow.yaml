@@ -18,19 +18,23 @@ commands:
   - name: serve
     description: Start the presentation server.
     flags:
+      -d, --deck=: Path to deck.py
       --host=: Bind address
       --port=: HTTP port
       --ws-port=: WebSocket port
     completion:
-      positional:
-        - ["$files([\"*.py\"])"]
+      flag:
+        deck: ["$files([\"*.py\"])"]
 
   - name: clean
     description: Strip Inkscape editor metadata from SVG files.
     flags:
+      -d, --deck=: Path to deck.py (used only when FILES is omitted)
       --stdout: Write to stdout instead of modifying files in place
       --check: Exit non-zero if any file would be modified
     completion:
+      flag:
+        deck: ["$files([\"*.py\"])"]
       positionalany:
         - "$files([\"*.svg\"])"
 
@@ -47,15 +51,19 @@ commands:
     description: Manage slide layout parents.
     commands:
       - name: get
-        description: Print the inkflow:parent value of one or more slide SVGs.
+        description: Print the inkflow:parent value of slide SVGs.
+        flags:
+          -d, --deck=: Path to deck.py (used only when FILES is omitted)
         completion:
+          flag:
+            deck: ["$files([\"*.py\"])"]
           positionalany:
             - "$files([\"*.svg\"])"
 
       - name: set
         description: Set the inkflow:parent of a slide SVG and refresh its layout layers.
         flags:
-          --deck=: Path to deck.py
+          -d, --deck=: Path to deck.py
           --no-deck: Operate without a deck.py
         completion:
           positional:
@@ -66,49 +74,49 @@ commands:
         description: Remove inkflow:parent and injected layout layers from slide SVGs.
         flags:
           -y, --yes: Skip confirmation prompt
-          --deck=: Path to deck.py
+          -d, --deck=: Path to deck.py
         completion:
           positionalany:
             - "$files([\"*.svg\"])"
 
-      - name: list
-        description: List all slides and their inkflow:parent values.
-        flags:
-          --deck=: Path to deck.py
-
   - name: add
-    description: Create a new slide SVG wired to a layout parent.
+    description: Create a new slide SVG, optionally wired to a layout parent.
     flags:
-      --deck=: Path to deck.py
+      -p, --parent=: Layout name or inkflow:parent string (blank slide if omitted)
+      -d, --deck=: Path to deck.py
+      --no-deck: Operate without a deck.py
     completion:
+      flag:
+        deck: ["$files([\"*.py\"])"]
       positional:
-        - []
         - ["$files([\"*.svg\"])"]
 
   - name: build
     description: Export a self-contained presentation directory for offline use.
     flags:
+      -d, --deck=: Path to deck.py
       -o, --output=: Output directory
     completion:
-      positional:
-        - ["$files([\"*.py\"])"]
+      flag:
+        deck: ["$files([\"*.py\"])"]
 
   - name: export
     description: Export a PDF via headless Chromium (one page per slide).
     flags:
+      -d, --deck=: Path to deck.py
       -o, --output=: Output PDF path
       --chromium=: Path to chromium/chrome binary
       --no-sandbox: Pass --no-sandbox to Chromium
       --size=: Override PDF page size, e.g. 1280x720
     completion:
-      positional:
-        - ["$files([\"*.py\"])"]
+      flag:
+        deck: ["$files([\"*.py\"])"]
 
   - name: sync
     description: Refresh layout layers and preview styles in slide SVGs.
     flags:
       --check: Report stale files without rewriting
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
       --mode=: Color mode for preview style
     completion:
@@ -120,7 +128,7 @@ commands:
   - name: colorize
     description: Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
       --mode=: Color mode for preview style
     completion:
@@ -132,11 +140,9 @@ commands:
   - name: palette
     description: Generate an Inkscape GPL color palette for the active theme.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
       --mode=: Color mode for preview style
-      -o, --output=: Write palette to FILE instead of stdout
-      --install: Install to ~/.config/inkscape/palettes/inkflow.gpl
     completion:
       flag:
         mode: ["dark", "light"]
@@ -144,7 +150,7 @@ commands:
   - name: verify
     description: Check slides for authoring errors before presenting or building.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --all: Include hidden slides
       --strict: Treat warnings as errors
     completion:
@@ -154,5 +160,5 @@ commands:
   - name: layouts
     description: List available layouts with their zones.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py

@@ -14,14 +14,14 @@ inkflow --version
 Start the presentation server with live reload.
 
 ```bash
-inkflow serve [DECK] [--port PORT] [--ws-port WS_PORT] [--host HOST]
+inkflow serve [--deck DECK] [--port PORT] [--ws-port WS_PORT] [--host HOST]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--ws-port` | `7778` | WebSocket server port |
-| `--host` | `127.0.0.1` | Bind address. Use `0.0.0.0` to expose on all interfaces |
+| `--host` | `localhost` | Bind address. Use `0.0.0.0` to expose on all interfaces |
 | `--port` | `7777` | HTTP server port |
 
 The server is accessible at `http://{host}:{port}`.
@@ -38,12 +38,12 @@ Press `?` in the browser for keyboard shortcut help.
 Export a self-contained presentation directory for offline use.
 
 ```bash
-inkflow build [DECK] [--output DIR]
+inkflow build [--deck DECK] [--output DIR]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--output`, `-o` | `build/` next to `deck.py` | Output directory |
 
 Produces `index.html` with all slides inlined.
@@ -57,12 +57,12 @@ Assets referenced by the deck are copied into the output directory.
 Export a PDF via headless Chromium. One page per slide, no animations.
 
 ```bash
-inkflow export [DECK] [--output FILE] [--chromium PATH] [--no-sandbox]
+inkflow export [--deck DECK] [--output FILE] [--chromium PATH] [--no-sandbox]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--output`, `-o` | `<deck-stem>.pdf` | Output PDF path |
 | `--chromium` | auto-detected | Path to `chromium` or `google-chrome` binary |
 | `--no-sandbox` | off | Pass `--no-sandbox` to Chromium (needed when running as root or in Docker) |
@@ -76,14 +76,18 @@ Requires a Chromium-based browser on the system.
 Strip editor metadata from SVG files in place.
 
 ```bash
-inkflow clean FILE [FILE ...] [--stdout] [--check]
+inkflow clean [FILE ...] [--deck DECK] [--stdout] [--check]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | required | One or more SVG file paths |
+| `FILE` | all slides in deck | One or more SVG file paths |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only when FILE is omitted) |
 | `--stdout` | off | Write cleaned SVG to stdout instead of modifying files |
 | `--check` | off | Exit non-zero if any file would be modified, without writing changes |
+
+If `FILE` is omitted, every SVG-authored slide in the deck is cleaned.
+Pass explicit files (as the pre-commit hook does) to run without loading a deck.
 
 Removes elements and attributes in the Inkscape and Sodipodi namespaces that represent editor state
 (viewport position, zoom level, window geometry, etc.).
@@ -179,18 +183,20 @@ inkflow parent COMMAND [ARGS]...
 
 ### `inkflow parent get`
 
-Print the `inkflow:parent` value of a slide SVG.
+Print the `inkflow:parent` value of slide SVGs.
 
 ```bash
-inkflow parent get FILE [FILE ...]
+inkflow parent get [FILE ...] [--deck DECK]
 ```
 
-| Argument | Description |
-|---|---|
-| `FILE` | One or more slide SVGs |
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILE` | all slides in deck | One or more slide SVGs |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only when FILE is omitted) |
 
 With a single file, prints just the value (useful for scripting).
 With multiple files, prefixes each line with the filename.
+With `FILE` omitted, lists every slide in the deck alongside its parent.
 Prints `(no parent)` if the attribute is absent.
 
 ---
@@ -234,18 +240,6 @@ Use this to detach a slide from its layout.
 The SVG's own content is untouched.
 
 ---
-
-### `inkflow parent list`
-
-List all slides and their `inkflow:parent` values.
-
-```bash
-inkflow parent list [--deck DECK]
-```
-
-| Option | Default | Description |
-|---|---|---|
-| `--deck` | `deck.py` | Path to `deck.py` |
 
 ---
 
@@ -357,29 +351,33 @@ The `#` column shows ✓ when the layout contains `zone-slide-number` or `zone-s
 
 ## `inkflow add`
 
-Create a new slide SVG wired to a layout parent.
+Create a new slide SVG, optionally wired to a layout parent.
 
 ```bash
-inkflow add PARENT OUTPUT [--deck DECK]
+inkflow add OUTPUT [-p PARENT] [--deck DECK] [--no-deck]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `PARENT` | required | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
 | `OUTPUT` | required | Path for the new SVG file |
-| `--deck` | `deck.py` | Path to `deck.py` |
+| `-p`, `--parent` | none (blank slide) | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only to resolve `--parent`) |
+| `--no-deck` | off | Resolve `--parent` without a `deck.py` (restricts it to `builtin:` and relative paths) |
 
-Creates the SVG with `inkflow:parent` set,
-then automatically runs `inkflow sync` to add preview layers.
-Prints the `Slide(...)` line to add to `deck.py`.
+With `-p/--parent`, creates the SVG with `inkflow:parent` set and injects preview
+layers. Without it, creates a blank `1920x1080` slide carrying no parent.
+Either way, prints the `Slide(...)` line to add to `deck.py`.
 
 Example:
 
 ```bash
-inkflow add content slides/07-new.svg
+inkflow add slides/07-new.svg -p content
 # [inkflow] created slides/07-new.svg
 # [inkflow] add to deck.py:
 #     Slide("slides/07-new.svg"),
+
+inkflow add slides/08-blank.svg
+# a blank slide, no parent
 ```
 
 ---
@@ -389,15 +387,18 @@ inkflow add content slides/07-new.svg
 Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
 
 ```bash
-inkflow colorize FILE [FILE ...] [--deck DECK] [--no-deck] [--mode dark|light]
+inkflow colorize [FILE ...] [--deck DECK] [--no-deck] [--mode dark|light]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | required | One or more SVG file paths |
-| `--deck` | `deck.py` | Path to `deck.py` |
+| `FILE` | all slides in deck | One or more SVG file paths |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
 | `--mode` | deck's `dark_mode` | Match `dark` or `light` mode palette hex values |
+
+If `FILE` is omitted, every SVG-authored slide in the deck is colorized.
+`--no-deck` requires explicit `FILE` arguments.
 
 Reads the active theme's color tokens for the selected mode and scans each SVG for
 `fill` and `stroke` attributes (and `style=` declarations) whose hex values match.
@@ -421,30 +422,27 @@ After colorizing, run `inkflow sync` to refresh Inkscape's preview style.
 Generate an Inkscape GPL color palette for the active theme.
 
 ```bash
-inkflow palette [--deck DECK] [--no-deck] [--mode dark|light] [--output FILE] [--install]
+inkflow palette [--deck DECK] [--no-deck] [--mode dark|light]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `--deck` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
 | `--mode` | deck's `dark_mode` | Generate `dark` or `light` mode palette |
-| `--output`, `-o` | stdout | Write palette to FILE instead of stdout |
-| `--install` | off | Install to `~/.config/inkscape/palettes/inkflow.gpl` |
 
-`--output` and `--install` are mutually exclusive.
-
-Outputs a GIMP Palette (`.gpl`) file whose named colors correspond to the
+Writes a GIMP Palette (`.gpl`) to stdout whose named colors correspond to the
 `inkflow-fill-*` / `inkflow-stroke-*` CSS token set.
 Load this palette in Inkscape's swatches panel to pick theme colors by name.
+Redirect it to save wherever you want:
 
 ```bash
-# Install for the current user:
-inkflow palette --install
-
 # Preview the palette for a custom theme in light mode:
-inkflow palette --deck deck.py --mode light
+inkflow palette --mode light
 
 # Save for theme distribution:
-inkflow palette --deck deck.py --output my-theme/inkflow.gpl
+inkflow palette --deck deck.py > my-theme/inkflow.gpl
+
+# Install for the current user (Linux path shown):
+inkflow palette > ~/.config/inkscape/palettes/inkflow.gpl
 ```

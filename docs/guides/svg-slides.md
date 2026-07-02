@@ -158,7 +158,7 @@ PDF export auto-detects the page size from the first slide's `viewBox`.
 You can override it if needed:
 
 ```bash
-inkflow export deck.py --size 2560x1440
+inkflow export --size 2560x1440
 ```
 
 ## Tips

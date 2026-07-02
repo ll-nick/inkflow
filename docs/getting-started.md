@@ -44,7 +44,7 @@ This page takes you from zero to a running presentation in about five minutes.
 The repository ships with a working demo deck:
 
 ```bash
-uv run inkflow serve demo/deck.py
+uv run inkflow serve --deck demo/deck.py
 ```
 
 Open [http://localhost:7777](http://localhost:7777) in your browser.
@@ -90,7 +90,7 @@ def main() -> Deck:
 **4. Serve it:**
 
 ```bash
-inkflow serve deck.py
+inkflow serve
 ```
 
 Every time you save a change in your editor, the presenter updates automatically.

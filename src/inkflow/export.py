@@ -50,10 +50,11 @@ def _collect_local_media_paths(deck: Deck) -> list[str]:
     paths: list[str] = []
     for slide in deck.slides:
         for val in slide.zones.values():
-            if isinstance(val, Media) and not val.src.startswith(
-                ("http://", "https://", "//")
-            ):
-                paths.append(val.src)
+            if not isinstance(val, Media):
+                continue
+            for src in filter(None, [val.src, val.alt_src]):
+                if not src.startswith(("http://", "https://", "//")):
+                    paths.append(src)
     return paths
 
 

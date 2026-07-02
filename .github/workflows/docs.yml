@@ -21,9 +21,9 @@ jobs:
 
       - run: uv sync --group docs
 
-      - run: uv run inkflow build demo/deck.py --output docs/demo/presentation
+      - run: uv run inkflow build --deck demo/deck.py --output docs/demo/presentation
 
-      - run: uv run inkflow build src/inkflow/theme/showcase/deck.py --output docs/showcase/presentation
+      - run: uv run inkflow build --deck src/inkflow/theme/showcase/deck.py --output docs/showcase/presentation
 
       - run: uv run mkdocs build --strict
 
@@ -38,8 +38,8 @@ jobs:
 
       - run: uv sync --group docs
 
-      - run: uv run inkflow build demo/deck.py --output docs/demo/presentation
+      - run: uv run inkflow build --deck demo/deck.py --output docs/demo/presentation
 
-      - run: uv run inkflow build src/inkflow/theme/showcase/deck.py --output docs/showcase/presentation
+      - run: uv run inkflow build --deck src/inkflow/theme/showcase/deck.py --output docs/showcase/presentation
 
       - run: uv run mkdocs gh-deploy --force
