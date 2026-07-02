@@ -29,9 +29,12 @@ commands:
   - name: clean
     description: Strip Inkscape editor metadata from SVG files.
     flags:
+      -d, --deck=: Path to deck.py (used only when FILES is omitted)
       --stdout: Write to stdout instead of modifying files in place
       --check: Exit non-zero if any file would be modified
     completion:
+      flag:
+        deck: ["$files([\"*.py\"])"]
       positionalany:
         - "$files([\"*.svg\"])"
 
@@ -123,7 +126,7 @@ commands:
   - name: colorize
     description: Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
       --mode=: Color mode for preview style
     completion:

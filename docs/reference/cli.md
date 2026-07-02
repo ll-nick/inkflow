@@ -76,14 +76,18 @@ Requires a Chromium-based browser on the system.
 Strip editor metadata from SVG files in place.
 
 ```bash
-inkflow clean FILE [FILE ...] [--stdout] [--check]
+inkflow clean [FILE ...] [--deck DECK] [--stdout] [--check]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | required | One or more SVG file paths |
+| `FILE` | all slides in deck | One or more SVG file paths |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only when FILE is omitted) |
 | `--stdout` | off | Write cleaned SVG to stdout instead of modifying files |
 | `--check` | off | Exit non-zero if any file would be modified, without writing changes |
+
+If `FILE` is omitted, every SVG-authored slide in the deck is cleaned.
+Pass explicit files (as the pre-commit hook does) to run without loading a deck.
 
 Removes elements and attributes in the Inkscape and Sodipodi namespaces that represent editor state
 (viewport position, zoom level, window geometry, etc.).
@@ -389,15 +393,18 @@ inkflow add content slides/07-new.svg
 Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
 
 ```bash
-inkflow colorize FILE [FILE ...] [--deck DECK] [--no-deck] [--mode dark|light]
+inkflow colorize [FILE ...] [--deck DECK] [--no-deck] [--mode dark|light]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | required | One or more SVG file paths |
-| `--deck` | `deck.py` | Path to `deck.py` |
+| `FILE` | all slides in deck | One or more SVG file paths |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
 | `--mode` | deck's `dark_mode` | Match `dark` or `light` mode palette hex values |
+
+If `FILE` is omitted, every SVG-authored slide in the deck is colorized.
+`--no-deck` requires explicit `FILE` arguments.
 
 Reads the active theme's color tokens for the selected mode and scans each SVG for
 `fill` and `stroke` attributes (and `style=` declarations) whose hex values match.

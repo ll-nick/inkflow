@@ -51,27 +51,6 @@ def _resolve_deck_path(deck_path: Path) -> Path:
 
 
 @dataclass(frozen=True)
-class Project:
-    """A loaded deck together with the directory paths resolve against."""
-
-    deck: Deck
-    dir: Path
-
-    @classmethod
-    def load(cls, deck_path: Path) -> Project:
-        resolved = _resolve_deck_path(deck_path)
-        return cls(load_deck(resolved), resolved.parent)
-
-    @property
-    def theme(self) -> str | None:
-        return self.deck.theme
-
-
-def _load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
-    return None if no_deck else Project.load(deck_path)
-
-
-@dataclass(frozen=True)
 class Target:
     """A file to operate on: its resolved path plus the label shown to the user."""
 
@@ -88,6 +67,49 @@ def _resolve_targets(files: Iterable[Path]) -> list[Target]:
             raise click.ClickException(f"file not found: {resolved}")
         targets.append(Target(resolved, str(file)))
     return targets
+
+
+@dataclass(frozen=True)
+class Project:
+    """A loaded deck together with the directory paths resolve against."""
+
+    deck: Deck
+    dir: Path
+
+    @classmethod
+    def load(cls, deck_path: Path) -> Project:
+        resolved = _resolve_deck_path(deck_path)
+        return cls(load_deck(resolved), resolved.parent)
+
+    @property
+    def theme(self) -> str | None:
+        return self.deck.theme
+
+    def slide_targets(self) -> list[Target]:
+        """The SVG-authored slides of the deck as operation targets."""
+        return [
+            Target(resolve_slide_src(s.src, self.dir, self.theme), str(s.src))
+            for s in self.deck.slides
+            if s.md is None
+        ]
+
+
+def _load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
+    return None if no_deck else Project.load(deck_path)
+
+
+def _targets_or_deck_slides(
+    files: tuple[Path, ...], project: Project | None
+) -> list[Target]:
+    """Explicit FILES if given, else every SVG slide in the deck.
+
+    Raises if FILES is omitted with no deck to fall back on (``--no-deck``).
+    """
+    if files:
+        return _resolve_targets(files)
+    if project is None:
+        raise click.UsageError("FILES required with --no-deck")
+    return project.slide_targets()
 
 
 _deck_option = click.option(
@@ -160,7 +182,8 @@ def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
 
 
 @main.command()
-@click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@_deck_option
 @click.option(
     "--stdout",
     "to_stdout",
@@ -172,11 +195,19 @@ def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
     is_flag=True,
     help="Exit non-zero if any file would be modified, without writing changes",
 )
-def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
-    """Strip Inkscape editor metadata from SVG files."""
+def clean(
+    files: tuple[Path, ...], deck_path: Path, to_stdout: bool, check: bool
+) -> None:
+    """Strip Inkscape editor metadata from SVG files.
+
+    If FILES is omitted, cleans all slides in the deck.
+    """
     if check and to_stdout:
         raise click.UsageError("--check and --stdout are mutually exclusive")
-    targets = _resolve_targets(files)
+    if files:
+        targets = _resolve_targets(files)
+    else:
+        targets = Project.load(deck_path).slide_targets()
     dirty = False
     errors = False
     for target in targets:
@@ -312,12 +343,7 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
     if files:
         targets = _resolve_targets(files)
     else:
-        project = Project.load(deck_path)
-        targets = [
-            Target(resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
-            for s in project.deck.slides
-            if s.md is None
-        ]
+        targets = Project.load(deck_path).slide_targets()
 
     if not confirmed:
         n = len(targets)
@@ -507,28 +533,12 @@ def sync_cmd(
     If FILES is omitted, refreshes all slides in the deck.
     Use --no-deck when authoring a theme without a project deck.py.
     """
-    if no_deck:
-        if not files:
-            raise click.UsageError("FILES required with --no-deck")
-        project_dir: Path | None = None
-        theme: str | None = None
-        deck_obj: Deck | None = None
-        dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
-        targets = _resolve_targets(files)
-    else:
-        project = Project.load(deck_path)
-        deck_obj = project.deck
-        project_dir = project.dir
-        theme = project.theme
-        dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
-        if files:
-            targets = _resolve_targets(files)
-        else:
-            targets = [
-                Target(resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
-                for s in project.deck.slides
-                if s.md is None
-            ]
+    project = _load_project_or_none(deck_path, no_deck)
+    deck_obj = project.deck if project else None
+    project_dir = project.dir if project else None
+    theme = project.theme if project else None
+    dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
+    targets = _targets_or_deck_slides(files, project)
 
     css = loaders.load_deck_styles(deck_obj, project_dir)
     tokens = colors.extract_tokens(css, dark_mode)
@@ -572,7 +582,7 @@ def sync_cmd(
 
 
 @main.command("colorize")
-@click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
 @_deck_option
 @_no_deck_option
 @_mode_option
@@ -587,6 +597,8 @@ def colorize_cmd(
     Reads the active theme's color tokens and replaces matching fill/stroke
     attributes and inline style declarations with inkflow-fill-* / inkflow-stroke-*
     classes. The hardcoded attributes are removed after replacement.
+
+    If FILES is omitted, colorizes all slides in the deck.
     """
     project = _load_project_or_none(deck_path, no_deck)
     deck_obj = project.deck if project else None
@@ -595,7 +607,7 @@ def colorize_cmd(
     deck_styles = loaders.load_deck_styles(deck_obj, project_dir)
     hex_map = colors.hex_to_class_map(colors.extract_tokens(deck_styles, dark_mode))
 
-    targets = _resolve_targets(files)
+    targets = _targets_or_deck_slides(files, project)
     errors = False
     for target in targets:
         try:

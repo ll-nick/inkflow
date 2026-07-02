@@ -122,3 +122,35 @@ class TestMissingFile:
         result = runner.invoke(main, ["clean", "dirty.svg", "ghost.svg"])
         assert result.exit_code == 1
         assert Path("dirty.svg").read_text(encoding="utf-8") == before
+
+
+# ── Chunk 3: FILES omitted falls back to all deck slides ─────────────────────
+
+
+class TestDeckFallback:
+    @pytest.mark.usefixtures("project")
+    def test_clean_no_files_uses_deck(self, runner: CliRunner) -> None:
+        Path("slides/01.svg").write_text(_DIRTY_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["clean"])
+        assert result.exit_code == 0
+        assert "cleaned" in result.output
+        # The deck slide was rewritten clean (no inkscape metadata left).
+        assert "inkscape:" not in Path("slides/01.svg").read_text(encoding="utf-8")
+
+    @pytest.mark.usefixtures("project")
+    def test_clean_check_no_files_clean_deck_exits_0(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["clean", "--check"])
+        assert result.exit_code == 0
+
+    @pytest.mark.usefixtures("project")
+    def test_colorize_no_files_uses_deck(self, runner: CliRunner) -> None:
+        # No hex to remap, so it reports the deck slide with no changes.
+        result = runner.invoke(main, ["colorize"])
+        assert result.exit_code == 0
+        assert "01.svg" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_colorize_no_deck_no_files_errors(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["colorize", "--no-deck"])
+        assert result.exit_code == 2
+        assert "FILES required" in result.output
