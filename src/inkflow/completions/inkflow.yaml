@@ -63,7 +63,7 @@ commands:
       - name: set
         description: Set the inkflow:parent of a slide SVG and refresh its layout layers.
         flags:
-          --deck=: Path to deck.py
+          -d, --deck=: Path to deck.py
           --no-deck: Operate without a deck.py
         completion:
           positional:
@@ -74,7 +74,7 @@ commands:
         description: Remove inkflow:parent and injected layout layers from slide SVGs.
         flags:
           -y, --yes: Skip confirmation prompt
-          --deck=: Path to deck.py
+          -d, --deck=: Path to deck.py
         completion:
           positionalany:
             - "$files([\"*.svg\"])"
@@ -116,7 +116,7 @@ commands:
     description: Refresh layout layers and preview styles in slide SVGs.
     flags:
       --check: Report stale files without rewriting
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
       --mode=: Color mode for preview style
     completion:
@@ -150,7 +150,7 @@ commands:
   - name: verify
     description: Check slides for authoring errors before presenting or building.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --all: Include hidden slides
       --strict: Treat warnings as errors
     completion:
@@ -160,5 +160,5 @@ commands:
   - name: layouts
     description: List available layouts with their zones.
     flags:
-      --deck=: Path to deck.py
+      -d, --deck=: Path to deck.py
       --no-deck: Operate without a deck.py
