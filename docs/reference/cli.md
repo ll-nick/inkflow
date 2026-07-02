@@ -183,18 +183,20 @@ inkflow parent COMMAND [ARGS]...
 
 ### `inkflow parent get`
 
-Print the `inkflow:parent` value of a slide SVG.
+Print the `inkflow:parent` value of slide SVGs.
 
 ```bash
-inkflow parent get FILE [FILE ...]
+inkflow parent get [FILE ...] [--deck DECK]
 ```
 
-| Argument | Description |
-|---|---|
-| `FILE` | One or more slide SVGs |
+| Argument/Option | Default | Description |
+|---|---|---|
+| `FILE` | all slides in deck | One or more slide SVGs |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only when FILE is omitted) |
 
 With a single file, prints just the value (useful for scripting).
 With multiple files, prefixes each line with the filename.
+With `FILE` omitted, lists every slide in the deck alongside its parent.
 Prints `(no parent)` if the attribute is absent.
 
 ---
@@ -238,18 +240,6 @@ Use this to detach a slide from its layout.
 The SVG's own content is untouched.
 
 ---
-
-### `inkflow parent list`
-
-List all slides and their `inkflow:parent` values.
-
-```bash
-inkflow parent list [--deck DECK]
-```
-
-| Option | Default | Description |
-|---|---|---|
-| `--deck` | `deck.py` | Path to `deck.py` |
 
 ---
 

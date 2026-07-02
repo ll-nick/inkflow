@@ -189,3 +189,36 @@ class TestAdd:
             assert result.exit_code == 0
             svg = Path("wired.svg").read_text(encoding="utf-8")
             assert 'inkflow:parent="builtin:base"' in svg
+
+
+# ── Chunk 5: parent get absorbs parent list ──────────────────────────────────
+
+
+class TestParentGet:
+    @pytest.mark.usefixtures("project")
+    def test_single_file_bare_value(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["parent", "get", "slides/01.svg"])
+        assert result.exit_code == 0
+        assert result.output.strip() == "(no parent)"
+
+    @pytest.mark.usefixtures("project")
+    def test_multiple_files_prefixed(self, runner: CliRunner) -> None:
+        Path("slides/02.svg").write_text(_SLIDE_SVG, encoding="utf-8")
+        result = runner.invoke(
+            main, ["parent", "get", "slides/01.svg", "slides/02.svg"]
+        )
+        assert result.exit_code == 0
+        assert "slides/01.svg: (no parent)" in result.output
+        assert "slides/02.svg: (no parent)" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_no_files_lists_deck_slides(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["parent", "get"])
+        assert result.exit_code == 0
+        # The deck's single slide is listed in the aligned overview.
+        assert "slides/01.svg" in result.output
+        assert "(no parent)" in result.output
+
+    def test_list_command_removed(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["parent", "list"])
+        assert result.exit_code == 2

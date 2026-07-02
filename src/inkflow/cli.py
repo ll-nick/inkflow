@@ -269,9 +269,23 @@ def parent() -> None:
 
 
 @parent.command("get")
-@click.argument("files", nargs=-1, required=True, type=click.Path(path_type=Path))
-def parent_get(files: tuple[Path, ...]) -> None:
-    """Print the inkflow:parent value of one or more slide SVGs."""
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@_deck_option
+def parent_get(files: tuple[Path, ...], deck_path: Path) -> None:
+    """Print the inkflow:parent value of slide SVGs.
+
+    With FILES, prints each file's parent (a bare value for a single file, else
+    one 'file: parent' line each). With FILES omitted, lists every slide in the
+    deck alongside its parent.
+    """
+    if not files:
+        project = Project.load(deck_path)
+        for slide in project.deck.slides:
+            svg_path = resolve_slide_src(slide.src, project.dir, project.theme)
+            root = _etree.parse(svg_path).getroot()
+            value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
+            click.echo(f"{slide.src!s:<45} {value}")
+        return
 
     targets = _resolve_targets(files)
     multi = len(targets) > 1
@@ -367,20 +381,6 @@ _mode_option = click.option(
     default=None,
     help="Color mode for preview style (default: deck mode; dark with --no-deck).",
 )
-
-
-@parent.command("list")
-@_deck_option
-def parent_list(deck_path: Path) -> None:
-    """List all slides and their inkflow:parent values."""
-
-    project = Project.load(deck_path)
-
-    for slide in project.deck.slides:
-        svg_path = resolve_slide_src(slide.src, project.dir, project.theme)
-        root = _etree.parse(svg_path).getroot()
-        value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
-        click.echo(f"{slide.src!s:<45} {value}")
 
 
 @main.command("add")

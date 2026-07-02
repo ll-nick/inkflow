@@ -51,8 +51,12 @@ commands:
     description: Manage slide layout parents.
     commands:
       - name: get
-        description: Print the inkflow:parent value of one or more slide SVGs.
+        description: Print the inkflow:parent value of slide SVGs.
+        flags:
+          -d, --deck=: Path to deck.py (used only when FILES is omitted)
         completion:
+          flag:
+            deck: ["$files([\"*.py\"])"]
           positionalany:
             - "$files([\"*.svg\"])"
 
@@ -74,11 +78,6 @@ commands:
         completion:
           positionalany:
             - "$files([\"*.svg\"])"
-
-      - name: list
-        description: List all slides and their inkflow:parent values.
-        flags:
-          --deck=: Path to deck.py
 
   - name: add
     description: Create a new slide SVG, optionally wired to a layout parent.
