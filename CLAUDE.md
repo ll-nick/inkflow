@@ -141,7 +141,7 @@ Committing fonts in `fonts/` gives fully reproducible output independent of the 
 For serve: full font files are embedded; the font index is cached at module level so only the
 first rebuild in a session pays the directory-scan cost. For build/export: fonts are subsetted
 to only the codepoints present in the slides (via `fonttools`), typically 10–30 KB per variant.
-`brotli` is required for WOFF2 subsetting output; without it subsetting falls back to TTF.
+`brotli` is a required dependency, so subsetted fonts are always emitted as WOFF2. If subsetting fails for a given font (for example a corrupt or unreadable file), the full font file is embedded instead.
 
 Unresolvable fonts produce a yellow TUI warning and fall back to system rendering.
 Opt out per-deck: `Deck(embed_fonts=False)`.
