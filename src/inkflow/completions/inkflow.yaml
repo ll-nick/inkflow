@@ -18,12 +18,13 @@ commands:
   - name: serve
     description: Start the presentation server.
     flags:
+      -d, --deck=: Path to deck.py
       --host=: Bind address
       --port=: HTTP port
       --ws-port=: WebSocket port
     completion:
-      positional:
-        - ["$files([\"*.py\"])"]
+      flag:
+        deck: ["$files([\"*.py\"])"]
 
   - name: clean
     description: Strip Inkscape editor metadata from SVG files.
@@ -88,21 +89,23 @@ commands:
   - name: build
     description: Export a self-contained presentation directory for offline use.
     flags:
+      -d, --deck=: Path to deck.py
       -o, --output=: Output directory
     completion:
-      positional:
-        - ["$files([\"*.py\"])"]
+      flag:
+        deck: ["$files([\"*.py\"])"]
 
   - name: export
     description: Export a PDF via headless Chromium (one page per slide).
     flags:
+      -d, --deck=: Path to deck.py
       -o, --output=: Output PDF path
       --chromium=: Path to chromium/chrome binary
       --no-sandbox: Pass --no-sandbox to Chromium
       --size=: Override PDF page size, e.g. 1280x720
     completion:
-      positional:
-        - ["$files([\"*.py\"])"]
+      flag:
+        deck: ["$files([\"*.py\"])"]
 
   - name: sync
     description: Refresh layout layers and preview styles in slide SVGs.

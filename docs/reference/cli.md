@@ -14,14 +14,14 @@ inkflow --version
 Start the presentation server with live reload.
 
 ```bash
-inkflow serve [DECK] [--port PORT] [--ws-port WS_PORT] [--host HOST]
+inkflow serve [--deck DECK] [--port PORT] [--ws-port WS_PORT] [--host HOST]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--ws-port` | `7778` | WebSocket server port |
-| `--host` | `127.0.0.1` | Bind address. Use `0.0.0.0` to expose on all interfaces |
+| `--host` | `localhost` | Bind address. Use `0.0.0.0` to expose on all interfaces |
 | `--port` | `7777` | HTTP server port |
 
 The server is accessible at `http://{host}:{port}`.
@@ -38,12 +38,12 @@ Press `?` in the browser for keyboard shortcut help.
 Export a self-contained presentation directory for offline use.
 
 ```bash
-inkflow build [DECK] [--output DIR]
+inkflow build [--deck DECK] [--output DIR]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--output`, `-o` | `build/` next to `deck.py` | Output directory |
 
 Produces `index.html` with all slides inlined.
@@ -57,12 +57,12 @@ Assets referenced by the deck are copied into the output directory.
 Export a PDF via headless Chromium. One page per slide, no animations.
 
 ```bash
-inkflow export [DECK] [--output FILE] [--chromium PATH] [--no-sandbox]
+inkflow export [--deck DECK] [--output FILE] [--chromium PATH] [--no-sandbox]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `DECK` | `deck.py` | Path to `deck.py` |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--output`, `-o` | `<deck-stem>.pdf` | Output PDF path |
 | `--chromium` | auto-detected | Path to `chromium` or `google-chrome` binary |
 | `--no-sandbox` | off | Pass `--no-sandbox` to Chromium (needed when running as root or in Docker) |

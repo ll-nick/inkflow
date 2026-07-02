@@ -42,23 +42,36 @@ def main() -> None:
     """Beautiful slides from SVG. Your editor, your style."""
 
 
-def _deck_context(deck_path: Path) -> tuple[Deck, Path]:
+def _resolve_deck_path(deck_path: Path) -> Path:
     resolved = deck_path.resolve()
     if not resolved.exists():
         raise click.ClickException(f"deck not found: {resolved}")
-    deck_obj = load_deck(resolved)
-    return deck_obj, resolved.parent
+    return resolved
 
 
-def _resolve_deck_or_none(
-    deck_path: Path, no_deck: bool
-) -> tuple[Deck | None, Path | None]:
-    if no_deck:
-        return None, None
-    return _deck_context(deck_path)
+@dataclass(frozen=True)
+class Project:
+    """A loaded deck together with the directory paths resolve against."""
+
+    deck: Deck
+    dir: Path
+
+    @classmethod
+    def load(cls, deck_path: Path) -> Project:
+        resolved = _resolve_deck_path(deck_path)
+        return cls(load_deck(resolved), resolved.parent)
+
+    @property
+    def theme(self) -> str | None:
+        return self.deck.theme
+
+
+def _load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
+    return None if no_deck else Project.load(deck_path)
 
 
 _deck_option = click.option(
+    "-d",
     "--deck",
     "deck_path",
     default="deck.py",
@@ -110,7 +123,7 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
 
 
 @main.command()
-@click.argument("deck", default="deck.py")
+@_deck_option
 @click.option(
     "--host",
     default="localhost",
@@ -119,13 +132,11 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
 )
 @click.option("--port", default=7777, show_default=True, help="HTTP port")
 @click.option("--ws-port", default=7778, show_default=True, help="WebSocket port")
-def serve(deck: str, host: str, port: int, ws_port: int) -> None:
+def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
     """Start the presentation server."""
-    deck_path = Path(deck).resolve()
-    if not deck_path.exists():
-        raise click.ClickException(f"deck not found: {deck_path}")
+    resolved = _resolve_deck_path(deck_path)
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(_serve(deck_path, host, port, ws_port))
+        asyncio.run(_serve(resolved, host, port, ws_port))
 
 
 @main.command()
@@ -240,12 +251,9 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
     if not svg_path.exists():
         raise click.ClickException(f"file not found: {svg_path}")
 
-    if no_deck:
-        project_dir: Path | None = None
-        theme: str | None = None
-    else:
-        deck_obj, project_dir = _deck_context(deck_path)
-        theme = deck_obj.theme
+    project = _load_project_or_none(deck_path, no_deck)
+    project_dir = project.dir if project else None
+    theme = project.theme if project else None
 
     try:
         resolve_parent_path(parent_str, svg_path, project_dir, theme)
@@ -291,10 +299,10 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
             if not svg_path.exists():
                 raise click.ClickException(f"file not found: {svg_path}")
     else:
-        deck_obj, project_dir = _deck_context(deck_path)
+        project = Project.load(deck_path)
         targets = [
-            (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
-            for s in deck_obj.slides
+            (resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
+            for s in project.deck.slides
             if s.md is None
         ]
 
@@ -323,10 +331,10 @@ _mode_option = click.option(
 def parent_list(deck_path: Path) -> None:
     """List all slides and their inkflow:parent values."""
 
-    deck_obj, project_dir = _deck_context(deck_path)
+    project = Project.load(deck_path)
 
-    for slide in deck_obj.slides:
-        svg_path = resolve_slide_src(slide.src, project_dir, deck_obj.theme)
+    for slide in project.deck.slides:
+        svg_path = resolve_slide_src(slide.src, project.dir, project.theme)
         root = _etree.parse(svg_path).getroot()
         value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
         click.echo(f"{slide.src!s:<45} {value}")
@@ -373,27 +381,25 @@ def add_slide(parent: str, output: Path, deck_path: Path) -> None:
 
 
 @main.command("build")
-@click.argument("deck", default="deck.py")
+@_deck_option
 @click.option(
     "--output",
     "-o",
     default=None,
     help="Output directory (default: build/ next to deck.py)",
 )
-def build_cmd(deck: str, output: str | None) -> None:
+def build_cmd(deck_path: Path, output: str | None) -> None:
     """Export a self-contained presentation directory for offline use."""
-    deck_path = Path(deck).resolve()
-    if not deck_path.exists():
-        raise click.ClickException(f"deck not found: {deck_path}")
-    out_dir = Path(output).resolve() if output else deck_path.parent / "build"
-    warnings = build_static_html(deck_path, out_dir)
+    resolved = _resolve_deck_path(deck_path)
+    out_dir = Path(output).resolve() if output else resolved.parent / "build"
+    warnings = build_static_html(resolved, out_dir)
     for w in warnings:
         click.echo(click.style(f" ⚠  {w}", fg="yellow"))
     click.echo(f"[inkflow] built {out_dir / 'index.html'}")
 
 
 @main.command("export")
-@click.argument("deck", default="deck.py")
+@_deck_option
 @click.option(
     "--output",
     "-o",
@@ -418,17 +424,15 @@ def build_cmd(deck: str, output: str | None) -> None:
     help="Override PDF page size, e.g. 1280x720. Auto-detected from slides if not set.",
 )
 def export_cmd(
-    deck: str,
+    deck_path: Path,
     output: str | None,
     chromium: str | None,
     no_sandbox: bool,
     size: str | None,
 ) -> None:
     """Export a PDF via headless Chromium (one page per slide)."""
-    deck_path = Path(deck).resolve()
-    if not deck_path.exists():
-        raise click.ClickException(f"deck not found: {deck_path}")
-    out = Path(output).resolve() if output else deck_path.with_suffix(".pdf")
+    resolved = _resolve_deck_path(deck_path)
+    out = Path(output).resolve() if output else resolved.with_suffix(".pdf")
     parsed_size: tuple[int, int] | None = None
     if size is not None:
         try:
@@ -439,7 +443,7 @@ def export_cmd(
                 f"--size must be WxH (e.g. 1920x1080), got: {size!r}"
             ) from None
     try:
-        warnings = build_pdf(deck_path, out, chromium, no_sandbox, size=parsed_size)
+        warnings = build_pdf(resolved, out, chromium, no_sandbox, size=parsed_size)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
     for w in warnings:
@@ -498,8 +502,10 @@ def sync_cmd(
             if not svg_path.exists():
                 raise click.ClickException(f"file not found: {svg_path}")
     else:
-        deck_obj, project_dir = _deck_context(deck_path)
-        theme = deck_obj.theme
+        project = Project.load(deck_path)
+        deck_obj = project.deck
+        project_dir = project.dir
+        theme = project.theme
         dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
         if files:
             targets = [(Path(f).resolve(), str(f)) for f in files]
@@ -508,8 +514,8 @@ def sync_cmd(
                     raise click.ClickException(f"file not found: {svg_path}")
         else:
             targets = [
-                (resolve_slide_src(s.src, project_dir, deck_obj.theme), str(s.src))
-                for s in deck_obj.slides
+                (resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
+                for s in project.deck.slides
                 if s.md is None
             ]
 
@@ -569,7 +575,9 @@ def colorize_cmd(
     attributes and inline style declarations with inkflow-fill-* / inkflow-stroke-*
     classes. The hardcoded attributes are removed after replacement.
     """
-    deck_obj, project_dir = _resolve_deck_or_none(deck_path, no_deck)
+    project = _load_project_or_none(deck_path, no_deck)
+    deck_obj = project.deck if project else None
+    project_dir = project.dir if project else None
     dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
     deck_styles = loaders.load_deck_styles(deck_obj, project_dir)
     hex_map = colors.hex_to_class_map(colors.extract_tokens(deck_styles, dark_mode))
@@ -635,13 +643,15 @@ def palette_cmd(
     if output_path and install:
         raise click.UsageError("--output and --install are mutually exclusive")
 
-    deck_obj, project_dir = _resolve_deck_or_none(deck_path, no_deck)
+    project = _load_project_or_none(deck_path, no_deck)
+    deck_obj = project.deck if project else None
+    project_dir = project.dir if project else None
     dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck)
     tokens = colors.extract_tokens(
         loaders.load_deck_styles(deck_obj, project_dir), dark_mode
     )
 
-    theme_label: str | None = deck_obj.theme if deck_obj else None
+    theme_label: str | None = project.theme if project else None
     mode_label = "light" if not dark_mode else "dark"
     palette_name = (
         f"inkflow/{Path(theme_label).name} ({mode_label})"
@@ -681,8 +691,10 @@ def verify_cmd(
 ) -> None:
     """Check slides for authoring errors before presenting or building."""
 
-    deck_obj, project_dir = _deck_context(deck_path)
-    theme = deck_obj.theme
+    project = Project.load(deck_path)
+    deck_obj = project.deck
+    project_dir = project.dir
+    theme = project.theme
     slides = (
         deck_obj.slides if include_hidden else [s for s in deck_obj.slides if s.visible]
     )
@@ -749,12 +761,9 @@ class _LayoutRow:
 def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
     """List available layouts with their zones."""
 
-    if no_deck:
-        project_dir: Path | None = None
-        theme: str | None = None
-    else:
-        deck_obj, project_dir = _deck_context(deck_path)
-        theme = deck_obj.theme
+    project = _load_project_or_none(deck_path, no_deck)
+    project_dir = project.dir if project else None
+    theme = project.theme if project else None
 
     groups: dict[str, list[_LayoutRow]] = {}
     for source_label, layout_path in discover_layouts(project_dir, theme):
