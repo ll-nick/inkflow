@@ -361,29 +361,33 @@ The `#` column shows ✓ when the layout contains `zone-slide-number` or `zone-s
 
 ## `inkflow add`
 
-Create a new slide SVG wired to a layout parent.
+Create a new slide SVG, optionally wired to a layout parent.
 
 ```bash
-inkflow add PARENT OUTPUT [--deck DECK]
+inkflow add OUTPUT [-p PARENT] [--deck DECK] [--no-deck]
 ```
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `PARENT` | required | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
 | `OUTPUT` | required | Path for the new SVG file |
-| `--deck` | `deck.py` | Path to `deck.py` |
+| `-p`, `--parent` | none (blank slide) | Layout name or `inkflow:parent` string (see [path resolution](../guides/layout-system.md#path-resolution)) |
+| `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only to resolve `--parent`) |
+| `--no-deck` | off | Resolve `--parent` without a `deck.py` (restricts it to `builtin:` and relative paths) |
 
-Creates the SVG with `inkflow:parent` set,
-then automatically runs `inkflow sync` to add preview layers.
-Prints the `Slide(...)` line to add to `deck.py`.
+With `-p/--parent`, creates the SVG with `inkflow:parent` set and injects preview
+layers. Without it, creates a blank `1920x1080` slide carrying no parent.
+Either way, prints the `Slide(...)` line to add to `deck.py`.
 
 Example:
 
 ```bash
-inkflow add content slides/07-new.svg
+inkflow add slides/07-new.svg -p content
 # [inkflow] created slides/07-new.svg
 # [inkflow] add to deck.py:
 #     Slide("slides/07-new.svg"),
+
+inkflow add slides/08-blank.svg
+# a blank slide, no parent
 ```
 
 ---

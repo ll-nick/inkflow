@@ -81,12 +81,15 @@ commands:
           --deck=: Path to deck.py
 
   - name: add
-    description: Create a new slide SVG wired to a layout parent.
+    description: Create a new slide SVG, optionally wired to a layout parent.
     flags:
-      --deck=: Path to deck.py
+      -p, --parent=: Layout name or inkflow:parent string (blank slide if omitted)
+      -d, --deck=: Path to deck.py
+      --no-deck: Operate without a deck.py
     completion:
+      flag:
+        deck: ["$files([\"*.py\"])"]
       positional:
-        - []
         - ["$files([\"*.svg\"])"]
 
   - name: build

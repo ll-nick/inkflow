@@ -279,12 +279,28 @@ def _build_layer_group(
 
 
 def create_slide(
-    parent_str: str, output_path: Path, project_dir: Path, theme: str | None
+    parent_str: str | None,
+    output_path: Path,
+    project_dir: Path | None,
+    theme: str | None,
 ) -> None:
-    """Create a minimal slide SVG wired to a layout parent and inject layout layers.
+    """Create a minimal slide SVG, optionally wired to a layout parent.
 
-    Raises ValueError if the parent string cannot be resolved.
+    With ``parent_str`` set, resolves the parent, records ``inkflow:parent``, and
+    injects ancestor layout layers for editor preview. With ``parent_str`` None,
+    writes a blank slide carrying no parent.
+
+    Raises ValueError if a given parent string cannot be resolved.
     """
+    if parent_str is None:
+        blank = (
+            f'<svg xmlns="{ns.SVG}"\n'
+            f'     viewBox="0 0 1920 1080" width="1920" height="1080">\n'
+            f"</svg>\n"
+        )
+        output_path.write_text(blank, encoding="utf-8")
+        return
+
     parent_abs = resolve_parent_path(parent_str, output_path.parent, project_dir, theme)
 
     view_box, width, height = "0 0 1920 1080", "1920", "1080"

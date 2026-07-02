@@ -9,6 +9,7 @@ from lxml import etree
 from inkflow import ns
 from inkflow.layout import (
     LayoutInfo,
+    create_slide,
     discover_layouts,
     inject_layout_layers,
     is_layout_current,
@@ -322,3 +323,30 @@ class TestLayoutZones:
         layout = _write_svg(tmp_path / "layout.svg", _NO_ZONE_SVG)
         info = layout_zones(layout, tmp_path, None)
         assert info.default_zone == ""
+
+
+# ── create_slide ──────────────────────────────────────────────────────────────
+
+
+class TestCreateSlide:
+    def test_blank_slide_has_no_parent(self, tmp_path: Path) -> None:
+        out = tmp_path / "blank.svg"
+        create_slide(None, out, tmp_path, None)
+        svg = out.read_text(encoding="utf-8")
+        assert "inkflow:parent" not in svg
+        assert 'viewBox="0 0 1920 1080"' in svg
+
+    def test_blank_slide_needs_no_project_dir(self, tmp_path: Path) -> None:
+        out = tmp_path / "blank.svg"
+        create_slide(None, out, None, None)
+        assert out.exists()
+
+    def test_parented_slide_records_parent(self, tmp_path: Path) -> None:
+        _write_svg(tmp_path / "base.svg")
+        out = tmp_path / "child.svg"
+        create_slide("base", out, tmp_path, None)
+        assert 'inkflow:parent="base"' in out.read_text(encoding="utf-8")
+
+    def test_unresolvable_parent_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError):
+            create_slide("local:missing", tmp_path / "child.svg", tmp_path, None)

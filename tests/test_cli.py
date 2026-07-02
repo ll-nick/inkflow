@@ -154,3 +154,38 @@ class TestDeckFallback:
         result = runner.invoke(main, ["colorize", "--no-deck"])
         assert result.exit_code == 2
         assert "FILES required" in result.output
+
+
+# ── Chunk 4: add rework (optional -p/--parent, --no-deck) ────────────────────
+
+
+class TestAdd:
+    @pytest.mark.usefixtures("project")
+    def test_parented_slide(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["add", "slides/new.svg", "-p", "builtin:base"])
+        assert result.exit_code == 0
+        assert 'Slide("slides/new.svg")' in result.output
+        svg = Path("slides/new.svg").read_text(encoding="utf-8")
+        assert 'inkflow:parent="builtin:base"' in svg
+
+    @pytest.mark.usefixtures("project")
+    def test_blank_slide_has_no_parent(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["add", "slides/blank.svg"])
+        assert result.exit_code == 0
+        svg = Path("slides/blank.svg").read_text(encoding="utf-8")
+        assert "inkflow:parent" not in svg
+
+    @pytest.mark.usefixtures("project")
+    def test_existing_output_rejected(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["add", "slides/01.svg"])
+        assert result.exit_code == 1
+        assert "already exists" in result.output
+
+    def test_no_deck_parented_without_deck_py(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                main, ["add", "wired.svg", "-p", "builtin:base", "--no-deck"]
+            )
+            assert result.exit_code == 0
+            svg = Path("wired.svg").read_text(encoding="utf-8")
+            assert 'inkflow:parent="builtin:base"' in svg

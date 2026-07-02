@@ -384,40 +384,46 @@ def parent_list(deck_path: Path) -> None:
 
 
 @main.command("add")
-@click.argument("parent")
 @click.argument("output", type=click.Path(path_type=Path))
 @click.option(
-    "--deck",
-    "deck_path",
-    default="deck.py",
-    type=click.Path(path_type=Path),
-    help="Path to deck.py (default: deck.py in cwd)",
+    "-p",
+    "--parent",
+    "parent",
+    default=None,
+    help="Layout name or inkflow:parent string; omit for a blank slide.",
 )
-def add_slide(parent: str, output: Path, deck_path: Path) -> None:
-    """Create a new slide SVG wired to a layout parent.
+@_deck_option
+@_no_deck_option
+def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) -> None:
+    """Create a new slide SVG, optionally wired to a layout parent.
 
-    PARENT is a layout name or inkflow:parent string:
-    bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
-    or a relative path. OUTPUT is the path for the new SVG file.
+    OUTPUT is the path for the new SVG file. With -p/--parent, the slide is wired
+    to that layout (bare name, 'local:foo', 'theme:foo', 'builtin:foo', or a
+    relative path) and given preview layers. Without it, a blank slide is created.
     """
-    resolved_deck = deck_path.resolve()
-    if not resolved_deck.exists():
-        raise click.ClickException(f"deck not found: {resolved_deck}")
+    if parent is not None and not no_deck:
+        project = Project.load(deck_path)
+        project_dir: Path | None = project.dir
+        theme = project.theme
+    else:
+        project_dir = None
+        theme = None
 
-    deck_obj = load_deck(resolved_deck)
-    project_dir = resolved_deck.parent
     output_path = output.resolve()
-
     if output_path.exists():
         raise click.ClickException(f"file already exists: {output_path}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        create_slide(parent, output_path, project_dir, deck_obj.theme)
+        create_slide(parent, output_path, project_dir, theme)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    output_rel = output_path.relative_to(project_dir)
+    base = project_dir or Path.cwd()
+    try:
+        output_rel = output_path.relative_to(base)
+    except ValueError:
+        output_rel = output_path
     click.echo(f"[inkflow] created {output_rel}")
     click.echo("[inkflow] add to deck.py:")
     click.echo(f'    Slide("{output_rel}"),')
