@@ -207,3 +207,122 @@ class TestParentGet:
     def test_list_command_removed(self, runner: CliRunner) -> None:
         result = runner.invoke(main, ["parent", "list"])
         assert result.exit_code == 2
+
+
+_PARENTED_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkflow="urn:inkflow"
+         inkflow:parent="builtin:base"
+         viewBox="0 0 1920 1080" width="1920" height="1080">
+    </svg>
+""")
+
+_MISSING_SRC_DECK = textwrap.dedent("""\
+    from inkflow import Deck, Slide
+    def main():
+        return Deck(slides=[Slide('slides/missing.svg')])
+""")
+
+_STEP_GAP_DECK = textwrap.dedent("""\
+    from inkflow import Deck, Slide
+    from inkflow.animations import FadeIn
+    def main():
+        return Deck(slides=[Slide('slides/01.svg', animations=[
+            FadeIn('#my-rect', step=1), FadeIn('#my-rect', step=3)])])
+""")
+
+
+class TestCleanModes:
+    @pytest.mark.usefixtures("project")
+    def test_check_dirty_exits_1_untouched(self, runner: CliRunner) -> None:
+        Path("dirty.svg").write_text(_DIRTY_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["clean", "--check", "dirty.svg"])
+        assert result.exit_code == 1
+        assert Path("dirty.svg").read_text(encoding="utf-8") == _DIRTY_SVG
+
+    @pytest.mark.usefixtures("project")
+    def test_check_clean_exits_0(self, runner: CliRunner) -> None:
+        Path("clean.svg").write_text(_SLIDE_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["clean", "--check", "clean.svg"])
+        assert result.exit_code == 0
+
+    @pytest.mark.usefixtures("project")
+    def test_check_and_stdout_mutually_exclusive(self, runner: CliRunner) -> None:
+        Path("x.svg").write_text(_DIRTY_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["clean", "--check", "--stdout", "x.svg"])
+        assert result.exit_code == 2
+
+    @pytest.mark.usefixtures("project")
+    def test_stdout_leaves_file_untouched(self, runner: CliRunner) -> None:
+        Path("dirty.svg").write_text(_DIRTY_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["clean", "--stdout", "dirty.svg"])
+        assert result.exit_code == 0
+        assert "inkscape:" not in result.output
+        assert Path("dirty.svg").read_text(encoding="utf-8") == _DIRTY_SVG
+
+
+class TestSyncCheck:
+    def test_check_stale_then_write(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
+            stale = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
+            assert stale.exit_code == 1
+            written = runner.invoke(main, ["sync", "--no-deck", "s.svg"])
+            assert written.exit_code == 0
+            fresh = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
+            assert fresh.exit_code == 0
+
+
+class TestVerify:
+    def test_missing_src_exits_1(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            Path("deck.py").write_text(_MISSING_SRC_DECK, encoding="utf-8")
+            result = runner.invoke(main, ["verify"])
+            assert result.exit_code == 1
+
+    @pytest.mark.usefixtures("project")
+    def test_step_gap_warns_only_with_strict(self, runner: CliRunner) -> None:
+        Path("deck.py").write_text(_STEP_GAP_DECK, encoding="utf-8")
+        lenient = runner.invoke(main, ["verify"])
+        assert lenient.exit_code == 0
+        strict = runner.invoke(main, ["verify", "--strict"])
+        assert strict.exit_code == 1
+
+
+class TestParentMutation:
+    def test_set_writes_parent(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            Path("s.svg").write_text(_SLIDE_SVG, encoding="utf-8")
+            result = runner.invoke(
+                main, ["parent", "set", "s.svg", "builtin:base", "--no-deck"]
+            )
+            assert result.exit_code == 0
+            assert 'inkflow:parent="builtin:base"' in Path("s.svg").read_text(
+                encoding="utf-8"
+            )
+
+    def test_strip_removes_parent(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
+            result = runner.invoke(main, ["parent", "strip", "-y", "s.svg"])
+            assert result.exit_code == 0
+            assert "inkflow:parent" not in Path("s.svg").read_text(encoding="utf-8")
+
+
+class TestPalette:
+    def test_no_deck_writes_gpl_to_stdout(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["palette", "--no-deck"])
+        assert result.exit_code == 0
+        assert result.output.startswith("GIMP Palette")
+
+    @pytest.mark.parametrize("flag", ["--install", "--output"])
+    def test_removed_flags_rejected(self, runner: CliRunner, flag: str) -> None:
+        result = runner.invoke(main, ["palette", "--no-deck", flag])
+        assert result.exit_code == 2
+
+
+class TestLayouts:
+    def test_no_deck_lists_builtin(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["layouts", "--no-deck"])
+        assert result.exit_code == 0
+        assert "base" in result.output
