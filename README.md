@@ -77,7 +77,7 @@ def main() -> Deck:
     )
 ```
 
-When you run `inkflow serve deck.py`, Inkflow reads the slides as defined in the Python file
+When you run `inkflow serve`, Inkflow reads the slides as defined in the Python file
 and processes them into a web-based presentation.
 It will inject the Markdown and media files into the SVGs, apply the transitions and animations, and serve the result to your browser.
 
@@ -97,7 +97,7 @@ To try the bundled demo:
 ```bash
 git clone https://github.com/ll-nick/inkflow
 cd inkflow
-uv run inkflow serve demo/deck.py
+uv run inkflow serve --deck demo/deck.py
 ```
 
 No SVG editor is invoked at serve time. Inkscape or any other tool writes the files, Inkflow reads them.

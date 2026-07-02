@@ -3,7 +3,7 @@
 ## Running
 
 ```bash
-uv run inkflow serve demo/deck.py   # start server at localhost:7777
+uv run inkflow serve --deck demo/deck.py   # start server at localhost:7777
 mise run check                      # lint + format + typecheck + test (Python and JS)
 mise run bundle                     # rebuild JS/CSS bundles from src/ts/ and src/css/
 ```

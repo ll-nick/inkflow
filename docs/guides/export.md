@@ -9,14 +9,14 @@ Both commands work from the same `deck.py` you use for live presenting.
 No server required. Open it in any browser, put it on a USB drive, host it on any static file server.
 
 ```bash
-inkflow build deck.py
+inkflow build
 # → build/index.html
 ```
 
 Output to a custom location:
 
 ```bash
-inkflow build deck.py --output ./dist
+inkflow build --output ./dist
 ```
 
 The build output is the same presenter you see during `inkflow serve`, packaged for offline use.
@@ -33,14 +33,14 @@ One page per slide, no animations.
 A static snapshot suitable for sharing with conference organisers or archiving.
 
 ```bash
-inkflow export deck.py
+inkflow export
 # → deck.pdf
 ```
 
 Output to a custom path:
 
 ```bash
-inkflow export deck.py --output my-talk.pdf
+inkflow export --output my-talk.pdf
 ```
 
 ### Chromium path
@@ -49,7 +49,7 @@ Inkflow auto-detects `chromium`, `chromium-browser`, and `google-chrome` on `PAT
 If your binary is elsewhere:
 
 ```bash
-inkflow export deck.py --chromium /usr/bin/chromium-browser
+inkflow export --chromium /usr/bin/chromium-browser
 ```
 
 ### Slide dimensions
@@ -60,7 +60,7 @@ No configuration needed for standard decks.
 To override — for example when mixing slide sizes or forcing a specific output resolution:
 
 ```bash
-inkflow export deck.py --size 1280x720
+inkflow export --size 1280x720
 ```
 
 ### Running as root or in Docker
@@ -68,7 +68,7 @@ inkflow export deck.py --size 1280x720
 Pass `--no-sandbox` when Chromium refuses to start due to sandbox restrictions:
 
 ```bash
-inkflow export deck.py --no-sandbox
+inkflow export --no-sandbox
 ```
 
 ### Requirements
@@ -98,7 +98,7 @@ add a `poe` task:
 
 ```toml
 [tool.poe.tasks.docs-build-demo]
-cmd = "inkflow build src/inkflow/theme/showcase/deck.py --output docs/demo"
+cmd = "inkflow build --deck src/inkflow/theme/showcase/deck.py --output docs/demo"
 ```
 
 Then run `poe docs-build-demo` before `mkdocs build` or `mkdocs gh-deploy`.

@@ -143,14 +143,16 @@ Prefixes bypass the search entirely:
 
 ## Creating a new slide from a layout
 
-The `inkflow add` command creates a new SVG file wired to a layout parent:
+The `inkflow add` command creates a new SVG file, optionally wired to a layout
+parent via `-p/--parent`:
 
 ```bash
-inkflow add content slides/07-new.svg
+inkflow add slides/07-new.svg -p content
 ```
 
 This creates `slides/07-new.svg` with `inkflow:parent="content"` set,
 then automatically runs `inkflow sync` to add preview layers.
+Omit `-p` to create a blank slide with no parent.
 
 Add it to `deck.py`:
 
