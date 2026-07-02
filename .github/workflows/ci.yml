@@ -37,15 +37,15 @@ jobs:
       - run: git ls-files '*.svg' | xargs --no-run-if-empty uv run inkflow clean --check
 
       - name: Build demo deck
-        run: uv run inkflow build demo/deck.py
+        run: uv run inkflow build --deck demo/deck.py
 
       - name: Build theme showcase deck
-        run: uv run inkflow build src/inkflow/theme/showcase/deck.py
+        run: uv run inkflow build --deck src/inkflow/theme/showcase/deck.py
 
       - name: Build init deck
         run: |
           uv run inkflow init /tmp/test-init
-          uv run inkflow build /tmp/test-init/deck.py
+          uv run inkflow build --deck /tmp/test-init/deck.py
 
   export:
     runs-on: ubuntu-latest
@@ -61,4 +61,4 @@ jobs:
           sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
 
       - name: Export demo deck
-        run: uv run inkflow export demo/deck.py --no-sandbox
+        run: uv run inkflow export --deck demo/deck.py --no-sandbox
