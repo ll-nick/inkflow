@@ -22,6 +22,17 @@ _SLIDE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+# An SVG carrying Inkscape editor metadata that `clean` strips.
+_DIRTY_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+         xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+         inkscape:version="1.3.2" viewBox="0 0 1920 1080">
+      <sodipodi:namedview id="namedview1" inkscape:zoom="1.0"/>
+      <rect id="box" x="0" y="0" width="10" height="10"/>
+    </svg>
+""")
+
 
 @pytest.fixture
 def project() -> Iterator[Path]:
@@ -66,3 +77,48 @@ class TestDeckOption:
         result = runner.invoke(main, ["export", "--size", "huge"])
         assert result.exit_code == 1
         assert "--size must be WxH" in result.output
+
+
+# ── Chunk 2: unified missing-file errors (hard-raise, exit 1) ─────────────────
+
+
+class TestMissingFile:
+    @pytest.mark.usefixtures("project")
+    def test_clean_missing_file(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["clean", "ghost.svg"])
+        assert result.exit_code == 1
+        assert "file not found" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_colorize_missing_file(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["colorize", "ghost.svg"])
+        assert result.exit_code == 1
+        assert "file not found" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_parent_get_missing_file(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["parent", "get", "ghost.svg"])
+        assert result.exit_code == 1
+        assert "file not found" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_parent_set_missing_file(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["parent", "set", "ghost.svg", "builtin:base"])
+        assert result.exit_code == 1
+        assert "file not found" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_sync_missing_file(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["sync", "ghost.svg"])
+        assert result.exit_code == 1
+        assert "file not found" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_clean_validates_before_writing(self, runner: CliRunner) -> None:
+        # A dirty file listed alongside a missing one must be left untouched
+        # because validation happens up front.
+        Path("dirty.svg").write_text(_DIRTY_SVG, encoding="utf-8")
+        before = Path("dirty.svg").read_text(encoding="utf-8")
+        result = runner.invoke(main, ["clean", "dirty.svg", "ghost.svg"])
+        assert result.exit_code == 1
+        assert Path("dirty.svg").read_text(encoding="utf-8") == before

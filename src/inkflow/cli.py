@@ -5,6 +5,7 @@ import contextlib
 import os
 import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
@@ -68,6 +69,25 @@ class Project:
 
 def _load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
     return None if no_deck else Project.load(deck_path)
+
+
+@dataclass(frozen=True)
+class Target:
+    """A file to operate on: its resolved path plus the label shown to the user."""
+
+    path: Path
+    label: str
+
+
+def _resolve_targets(files: Iterable[Path]) -> list[Target]:
+    """Resolve each file, raising on the first that does not exist (exit 1)."""
+    targets: list[Target] = []
+    for file in files:
+        resolved = file.resolve()
+        if not resolved.exists():
+            raise click.ClickException(f"file not found: {resolved}")
+        targets.append(Target(resolved, str(file)))
+    return targets
 
 
 _deck_option = click.option(
@@ -156,26 +176,25 @@ def clean(files: tuple[Path, ...], to_stdout: bool, check: bool) -> None:
     """Strip Inkscape editor metadata from SVG files."""
     if check and to_stdout:
         raise click.UsageError("--check and --stdout are mutually exclusive")
+    targets = _resolve_targets(files)
     dirty = False
     errors = False
-    for p in files:
-        if not p.exists():
-            click.echo(f"[inkflow] clean: not found: {p}", err=True)
-            errors = True
-            continue
+    for target in targets:
         try:
-            cleaned = clean_inkscape_svg(p, keep_preview=True)
+            cleaned = clean_inkscape_svg(target.path, keep_preview=True)
             if check:
-                if cleaned != p.read_text(encoding="utf-8"):
-                    click.echo(f"[inkflow] would clean: {p}", err=True)
+                if cleaned != target.path.read_text(encoding="utf-8"):
+                    click.echo(f"[inkflow] would clean: {target.label}", err=True)
                     dirty = True
             elif to_stdout:
                 sys.stdout.write(cleaned)
             else:
-                p.write_text(cleaned, encoding="utf-8")
-                click.echo(f"[inkflow] cleaned {p}")
+                target.path.write_text(cleaned, encoding="utf-8")
+                click.echo(f"[inkflow] cleaned {target.label}")
         except Exception as exc:
-            click.echo(f"[inkflow] clean: error processing {p}: {exc}", err=True)
+            click.echo(
+                f"[inkflow] clean: error processing {target.label}: {exc}", err=True
+            )
             errors = True
     if dirty or errors:
         sys.exit(1)
@@ -223,15 +242,13 @@ def parent() -> None:
 def parent_get(files: tuple[Path, ...]) -> None:
     """Print the inkflow:parent value of one or more slide SVGs."""
 
-    multi = len(files) > 1
-    for f in files:
-        svg_path = Path(f).resolve()
-        if not svg_path.exists():
-            raise click.ClickException(f"file not found: {svg_path}")
-        root = _etree.parse(svg_path).getroot()
+    targets = _resolve_targets(files)
+    multi = len(targets) > 1
+    for target in targets:
+        root = _etree.parse(target.path).getroot()
         value = root.get(ns.INKFLOW_PARENT)
-        label = value if value is not None else "(no parent)"
-        click.echo(f"{f}: {label}" if multi else label)
+        shown = value if value is not None else "(no parent)"
+        click.echo(f"{target.label}: {shown}" if multi else shown)
 
 
 @parent.command("set")
@@ -247,9 +264,8 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
     or a relative path.
     """
 
-    svg_path = Path(file).resolve()
-    if not svg_path.exists():
-        raise click.ClickException(f"file not found: {svg_path}")
+    (target,) = _resolve_targets([file])
+    svg_path = target.path
 
     project = _load_project_or_none(deck_path, no_deck)
     project_dir = project.dir if project else None
@@ -294,14 +310,11 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
     If FILES is omitted, strips all slides in the deck.
     """
     if files:
-        targets = [(Path(f).resolve(), str(f)) for f in files]
-        for svg_path, _ in targets:
-            if not svg_path.exists():
-                raise click.ClickException(f"file not found: {svg_path}")
+        targets = _resolve_targets(files)
     else:
         project = Project.load(deck_path)
         targets = [
-            (resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
+            Target(resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
             for s in project.deck.slides
             if s.md is None
         ]
@@ -312,9 +325,13 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
             f"Remove inkflow:parent and injected layers from {n} file(s)?",
             abort=True,
         )
-    for svg_path, label in targets:
-        had_parent = strip_parent(svg_path)
-        click.echo(f"[stripped]    {label}" if had_parent else f"[no parent]   {label}")
+    for target in targets:
+        had_parent = strip_parent(target.path)
+        click.echo(
+            f"[stripped]    {target.label}"
+            if had_parent
+            else f"[no parent]   {target.label}"
+        )
 
 
 _mode_option = click.option(
@@ -497,10 +514,7 @@ def sync_cmd(
         theme: str | None = None
         deck_obj: Deck | None = None
         dark_mode = _resolve_dark_mode(color_mode, None, no_deck=True)
-        targets = [(Path(f).resolve(), str(f)) for f in files]
-        for svg_path, _ in targets:
-            if not svg_path.exists():
-                raise click.ClickException(f"file not found: {svg_path}")
+        targets = _resolve_targets(files)
     else:
         project = Project.load(deck_path)
         deck_obj = project.deck
@@ -508,13 +522,10 @@ def sync_cmd(
         theme = project.theme
         dark_mode = _resolve_dark_mode(color_mode, deck_obj, no_deck=False)
         if files:
-            targets = [(Path(f).resolve(), str(f)) for f in files]
-            for svg_path, _ in targets:
-                if not svg_path.exists():
-                    raise click.ClickException(f"file not found: {svg_path}")
+            targets = _resolve_targets(files)
         else:
             targets = [
-                (resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
+                Target(resolve_slide_src(s.src, project.dir, project.theme), str(s.src))
                 for s in project.deck.slides
                 if s.md is None
             ]
@@ -524,34 +535,36 @@ def sync_cmd(
     preview_css = colors.build_preview_style(tokens)
 
     stale_found = False
-    for svg_path, label in targets:
+    for target in targets:
         try:
-            chain = resolve_chain(svg_path, project_dir, theme)
+            chain = resolve_chain(target.path, project_dir, theme)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
         if not chain:
             if not (files or no_deck):
                 continue
             if check:
-                if is_layout_current(svg_path, [], preview_css):
-                    click.echo(f"[ok]          {label}")
+                if is_layout_current(target.path, [], preview_css):
+                    click.echo(f"[ok]          {target.label}")
                 else:
-                    click.echo(f"[stale]       {label}")
+                    click.echo(f"[stale]       {target.label}")
                     stale_found = True
             else:
-                inject_layout_layers(svg_path, [], preview_css)
-                click.echo(f"[no parent]   {label}")
+                inject_layout_layers(target.path, [], preview_css)
+                click.echo(f"[no parent]   {target.label}")
             continue
         if check:
-            if is_layout_current(svg_path, chain, preview_css):
-                click.echo(f"[ok]          {label}")
+            if is_layout_current(target.path, chain, preview_css):
+                click.echo(f"[ok]          {target.label}")
             else:
-                click.echo(f"[stale]       {label}")
+                click.echo(f"[stale]       {target.label}")
                 stale_found = True
         else:
-            changed = inject_layout_layers(svg_path, chain, preview_css)
+            changed = inject_layout_layers(target.path, chain, preview_css)
             click.echo(
-                f"[injected]    {label}" if changed else f"[up to date]  {label}"
+                f"[injected]    {target.label}"
+                if changed
+                else f"[up to date]  {target.label}"
             )
 
     if check and stale_found:
@@ -582,24 +595,22 @@ def colorize_cmd(
     deck_styles = loaders.load_deck_styles(deck_obj, project_dir)
     hex_map = colors.hex_to_class_map(colors.extract_tokens(deck_styles, dark_mode))
 
+    targets = _resolve_targets(files)
     errors = False
-    for f in files:
-        p = Path(f).resolve()
-        if not p.exists():
-            click.echo(f"[inkflow] colorize: not found: {f}", err=True)
-            errors = True
-            continue
+    for target in targets:
         try:
             new_svg, changed = colors.colorize_svg(
-                p.read_text(encoding="utf-8"), hex_map
+                target.path.read_text(encoding="utf-8"), hex_map
             )
             if changed:
-                p.write_text(new_svg, encoding="utf-8")
-                click.echo(f"[colorized]   {f}")
+                target.path.write_text(new_svg, encoding="utf-8")
+                click.echo(f"[colorized]   {target.label}")
             else:
-                click.echo(f"[no changes]  {f}")
+                click.echo(f"[no changes]  {target.label}")
         except Exception as exc:
-            click.echo(f"[inkflow] colorize: error processing {f}: {exc}", err=True)
+            click.echo(
+                f"[inkflow] colorize: error processing {target.label}: {exc}", err=True
+            )
             errors = True
 
     if errors:
