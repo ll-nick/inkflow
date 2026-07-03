@@ -81,6 +81,7 @@ function toggleMenu(): void {
 export function initSyncMenu(wsPort: number | null): void {
     if (!wsPort) {
         syncWrap.style.display = "none";
+        document.getElementById("help-sync-row")!.style.display = "none";
         return;
     }
     enabled = true;
