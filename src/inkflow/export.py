@@ -95,6 +95,8 @@ def build_pdf(
     deck = load_deck(deck_path)
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir)
+    if not slides:
+        raise RuntimeError("Cannot export a PDF: the deck has no visible slides.")
     styles_css = load_deck_styles(deck, project_dir)
     warnings: list[str] = []
     if deck.embed_fonts:
