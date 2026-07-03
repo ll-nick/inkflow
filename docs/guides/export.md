@@ -20,7 +20,7 @@ inkflow build --output ./dist
 ```
 
 The build output is the same presenter you see during `inkflow serve`, packaged for offline use.
-All assets (media, fonts) referenced by the deck are copied into the output directory.
+All local assets referenced by the deck are copied into the output directory: `Media` zones plus images referenced from Markdown (`![](...)`) or SVG (`<image href>`). Paths are resolved relative to the project root (the directory containing `deck.py`), and remote (`https://`) and `data:` URIs are left untouched. Fonts are embedded directly into the HTML, so they need no separate files.
 
 !!! tip "Live demo in these docs"
     The interactive demo on this site was produced with `inkflow build` and embedded as an `<iframe>`.
