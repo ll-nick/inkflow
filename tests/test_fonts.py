@@ -1,3 +1,7 @@
+# fontTools ships no type stubs, so its builder/pen calls in the font fixture below
+# report partially-unknown member types. Silence that one rule for this test module.
+# pyright: reportUnknownMemberType=false
+
 from __future__ import annotations
 
 import textwrap
@@ -14,6 +18,7 @@ from inkflow.fonts import (
     _first_named_family,  # pyright: ignore[reportPrivateUsage]
     _FontRecord,  # pyright: ignore[reportPrivateUsage]
     _index_cache,  # pyright: ignore[reportPrivateUsage]
+    _subset_font,  # pyright: ignore[reportPrivateUsage]
     embed_fonts_css,
     embed_fonts_css_subsetted,
     extract_font_specs,
@@ -342,3 +347,42 @@ def test_embed_fonts_css_subsetted_fallback_on_failure(
     # Falls back to full font embedding
     assert "@font-face" in css
     assert any("subsetting failed" in w for w in warnings)
+
+
+# ── _subset_font — real subsetting ───────────────────────────────────────────
+
+
+def _write_minimal_ttf(path: Path) -> None:
+    """Synthesize a tiny but valid TTF containing the glyph 'A'."""
+    from fontTools.fontBuilder import FontBuilder
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+
+    pen = TTGlyphPen(None)
+    pen.moveTo((0, 0))
+    pen.lineTo((0, 700))
+    pen.lineTo((500, 700))
+    pen.lineTo((500, 0))
+    pen.closePath()
+
+    fb = FontBuilder(unitsPerEm=1000, isTTF=True)
+    fb.setupGlyphOrder([".notdef", "A"])
+    fb.setupCharacterMap({0x41: "A"})
+    fb.setupGlyf({".notdef": TTGlyphPen(None).glyph(), "A": pen.glyph()})
+    fb.setupHorizontalMetrics({".notdef": (600, 0), "A": (600, 0)})
+    fb.setupHorizontalHeader(ascent=800, descent=-200)
+    fb.setupNameTable({"familyName": "Test", "styleName": "Regular"})
+    fb.setupOS2()
+    fb.setupPost()
+    fb.save(str(path))
+
+
+def test_subset_font_emits_woff2(tmp_path: Path) -> None:
+    font_path = tmp_path / "Test.ttf"
+    _write_minimal_ttf(font_path)
+
+    data, mime, fmt = _subset_font(font_path, frozenset({ord("A")}))
+
+    assert mime == "font/woff2"
+    assert fmt == "woff2"
+    # WOFF2 files begin with the "wOF2" signature.
+    assert data[:4] == b"wOF2"

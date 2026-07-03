@@ -238,6 +238,18 @@ Slide("default", md="slides/02-bullets.md", notes=Path("notes/02.md"))
 `str` is used as-is (inline HTML/text). `Path` pointing to a `.md` file is rendered as Markdown; any other extension is read as-is.
 When both `notes=` and `::notes::` are present, they are concatenated (`notes=` first, then `::notes::`).
 
+## Images
+
+Reference an image from Markdown with standard syntax:
+
+```markdown
+![A diagram](assets/diagram.png)
+```
+
+Image paths are resolved relative to the **project root** (the directory that holds `deck.py`), not relative to the `.md` file. So `![](assets/diagram.png)` always points at `<project>/assets/diagram.png` no matter where the Markdown file lives. The same rule applies to `<image href="...">` references inside SVG slides.
+
+Local image paths are copied into the output of `inkflow build` and `inkflow export`. Remote (`https://`) and `data:` URIs are left as they are.
+
 ## Media
 
 Pass an image or video into a zone using the `zones` dict:

@@ -298,22 +298,13 @@ def _subset_font(font_path: Path, codepoints: frozenset[int]) -> tuple[bytes, st
     from fontTools.ttLib import TTFont
 
     font = TTFont(font_path)
-    options = subset.Options()
-    try:
-        options.flavor = "woff2"  # pyright: ignore[reportAttributeAccessIssue]
-        fmt = "woff2"
-        mime = "font/woff2"
-    except Exception:
-        options.flavor = None
-        fmt = "truetype"
-        mime = "font/ttf"
-
-    subsetter = subset.Subsetter(options=options)
+    subsetter = subset.Subsetter()
     subsetter.populate(unicodes=list(codepoints))  # pyright: ignore[reportUnknownMemberType]
     subsetter.subset(font)  # pyright: ignore[reportUnknownMemberType]
+    font.flavor = "woff2"
     buf = io.BytesIO()
     font.save(buf)
-    return buf.getvalue(), mime, fmt
+    return buf.getvalue(), "font/woff2", "woff2"
 
 
 # ── @font-face rule generation ────────────────────────────────────────────────

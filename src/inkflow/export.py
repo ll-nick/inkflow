@@ -6,11 +6,12 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import cast
 
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.manifest import ColorMode, Deck, Media
-from inkflow.pipeline import process_deck, resolve_transitions
+from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
 
 # ── build ─────────────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> list[str]:
             styles_css = (font_css + "\n" + styles_css).strip()
     scripts_js = load_deck_scripts(deck, project_dir)
 
-    _copy_assets(_collect_local_media_paths(deck), project_dir, out_dir)
+    _copy_assets(_all_asset_paths(deck, slides), project_dir, out_dir)
 
     state: State = {
         "slides": slides,
@@ -46,16 +47,43 @@ def build_static_html(deck_path: Path, out_dir: Path) -> list[str]:
     return warnings
 
 
+def _is_local_ref(src: str) -> bool:
+    """True for a copyable local path (not a URL, protocol-relative, or data URI)."""
+    return bool(src) and not src.startswith(("http://", "https://", "//", "data:"))
+
+
 def _collect_local_media_paths(deck: Deck) -> list[str]:
     paths: list[str] = []
     for slide in deck.slides:
         for val in slide.zones.values():
             if not isinstance(val, Media):
                 continue
-            for src in filter(None, [val.src, val.alt_src]):
-                if not src.startswith(("http://", "https://", "//")):
-                    paths.append(src)
+            paths.extend(
+                src for src in [val.src, val.alt_src] if src and _is_local_ref(src)
+            )
     return paths
+
+
+# Matches HTML <img src> (markdown-injected) and SVG <image href>/<image xlink:href>
+# references in a produced slide SVG string, capturing the path.
+_IMG_SRC_RE = re.compile(r'<img\b[^>]*?\bsrc="([^"]*)"', re.IGNORECASE)
+_IMAGE_HREF_RE = re.compile(r'<image\b[^>]*?\b(?:xlink:)?href="([^"]*)"', re.IGNORECASE)
+
+
+def _collect_slide_asset_paths(slides: list[SlideData]) -> list[str]:
+    """Local paths referenced from the produced slide SVGs (markdown + SVG images)."""
+    paths: list[str] = []
+    for slide in slides:
+        for pattern in (_IMG_SRC_RE, _IMAGE_HREF_RE):
+            refs = cast(list[str], pattern.findall(slide["svg"]))
+            paths.extend(ref for ref in refs if _is_local_ref(ref))
+    return paths
+
+
+def _all_asset_paths(deck: Deck, slides: list[SlideData]) -> list[str]:
+    """Media-zone assets plus markdown- and SVG-referenced assets, deduped in order."""
+    paths = _collect_local_media_paths(deck) + _collect_slide_asset_paths(slides)
+    return list(dict.fromkeys(paths))
 
 
 def _copy_assets(paths: list[str], project_dir: Path, out_dir: Path) -> None:
@@ -95,6 +123,8 @@ def build_pdf(
     deck = load_deck(deck_path)
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir)
+    if not slides:
+        raise RuntimeError("Cannot export a PDF: the deck has no visible slides.")
     styles_css = load_deck_styles(deck, project_dir)
     warnings: list[str] = []
     if deck.embed_fonts:
@@ -122,7 +152,7 @@ def build_pdf(
     with tempfile.TemporaryDirectory() as tmp:
         html_path = Path(tmp) / "slides.html"
         html_path.write_text(html, encoding="utf-8")
-        _copy_assets(_collect_local_media_paths(deck), project_dir, Path(tmp))
+        _copy_assets(_all_asset_paths(deck, slides), project_dir, Path(tmp))
         cmd = [
             exe,
             "--headless",
