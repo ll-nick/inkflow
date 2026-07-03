@@ -1612,6 +1612,8 @@
   // src/ts/presenter/syncmenu.ts
   var btnSync = document.getElementById("btn-sync");
   var syncMenu = document.getElementById("sync-menu");
+  var syncWrap = btnSync.closest(".sync-wrap");
+  var enabled = false;
   var SYNC_ORDER = ["two-way", "present", "follow", "solo"];
   var SYNC_LABELS = {
     "two-way": "Two-way (send + receive)",
@@ -1636,6 +1638,7 @@
     closeMenu();
   }
   function cycleSyncMode() {
+    if (!enabled) return;
     const i = SYNC_ORDER.indexOf(state.syncMode);
     setSyncMode(SYNC_ORDER[(i + 1) % SYNC_ORDER.length]);
   }
@@ -1666,7 +1669,12 @@
     if (syncMenu.classList.contains("open")) closeMenu();
     else openMenu();
   }
-  function initSyncMenu() {
+  function initSyncMenu(wsPort) {
+    if (!wsPort) {
+      syncWrap.style.display = "none";
+      return;
+    }
+    enabled = true;
     btnSync.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleMenu();
@@ -2306,7 +2314,7 @@
     renderPv();
   });
   loadSyncMode();
-  initSyncMenu();
+  initSyncMenu(WS_PORT);
   var deepLinked = readURL();
   loadSlide();
   renderPv();
