@@ -3,7 +3,14 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-from inkflow.svg import compose_with_ancestors
+from inkflow.svg import compose_with_ancestors as _compose_with_ancestors_el
+from inkflow.svgio import parse_svg, serialize_svg
+
+
+# String adapter: compose_with_ancestors now takes and returns an element (parse once).
+def compose_with_ancestors(svg: str, chain: list[Path]) -> str:
+    return serialize_svg(_compose_with_ancestors_el(parse_svg(svg), chain))
+
 
 _ANCESTOR_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">

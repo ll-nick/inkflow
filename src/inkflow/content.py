@@ -11,6 +11,7 @@ from inkflow import ns
 from inkflow.manifest import Media, MediaAlign, TextBox
 from inkflow.markdown import html_fragment_to_xml
 from inkflow.svg import ensure_defs
+from inkflow.svgio import SvgElement
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
@@ -45,21 +46,22 @@ class _ZoneRect:
 @dataclass
 class _ZoneGeometry:
     rect: _ZoneRect
-    clip_shape: etree._Element | None = None  # pyright: ignore[reportPrivateUsage]
+    clip_shape: SvgElement | None = None
 
 
-def substitute_zone_numbers(svg_str: str, slide_number: int, total: int) -> str:
-    root = etree.fromstring(svg_str.encode())
+def substitute_zone_numbers(
+    root: SvgElement, slide_number: int, total: int
+) -> SvgElement:
     for el in root.iter(f"{{{ns.SVG}}}text"):
         eid = el.get("id", "")
         if eid == "zone-slide-number":
             el.text = str(slide_number)
         elif eid == "zone-slide-total":
             el.text = str(total)
-    return etree.tostring(root, encoding="unicode")
+    return root
 
 
-def _rect_geometry(el: etree._Element) -> _ZoneRect:  # pyright: ignore[reportPrivateUsage]
+def _rect_geometry(el: SvgElement) -> _ZoneRect:
     x = el.get("x", "0")
     y = el.get("y", "0")
     w = el.get("width")
@@ -178,7 +180,7 @@ def _path_bbox(d: str) -> _ZoneRect:
 
 
 def _zone_geometry(
-    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    el: SvgElement,
 ) -> _ZoneGeometry:
     tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
 
@@ -217,9 +219,9 @@ def _zone_geometry(
 
 
 def _add_clip_path(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    root: SvgElement,
     zone_id: str,
-    shape_el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    shape_el: SvgElement,
 ) -> str:
     clip_id = f"inkflow-clip-{zone_id}"
     defs = ensure_defs(root)
@@ -230,8 +232,8 @@ def _add_clip_path(
 
 
 def _swap_zone(
-    old_el: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    new_el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    old_el: SvgElement,
+    new_el: SvgElement,
     rect: _ZoneRect,
     zone_id: str,
 ) -> None:
@@ -253,7 +255,7 @@ def _swap_zone(
 
 
 def _replace_with_foreignobject(
-    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    el: SvgElement,
     zone_id: str,
     font_size: int,
     item: TextBox,
@@ -338,7 +340,7 @@ def _parse_dimension(value: str) -> float:
         return 0.0
 
 
-def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+def _make_media_element(src: str, style: str) -> SvgElement:
     suffix = Path(src).suffix.lower()
     if suffix in _VIDEO_SUFFIXES:
         el = etree.Element(
@@ -359,8 +361,8 @@ def _make_media_element(src: str, style: str) -> etree._Element:  # pyright: ign
 
 
 def _replace_with_media(
-    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    el: SvgElement,
+    root: SvgElement,
     zone_id: str,
     dark_mode: bool,
     item: Media,
@@ -401,13 +403,11 @@ def _replace_with_media(
 
 
 def substitute_content(
-    svg_str: str,
+    root: SvgElement,
     content: dict[str, TextBox | Media],
     font_size: int = 36,
     dark_mode: bool = True,
-) -> str:
-    root = etree.fromstring(svg_str.encode())
-
+) -> SvgElement:
     for zone_id, item in content.items():
         el = root.find(f'.//*[@id="{zone_id}"]')
         if el is None:
@@ -419,7 +419,7 @@ def substitute_content(
         else:
             _replace_with_media(el, root, zone_id, dark_mode, item)
 
-    return etree.tostring(root, encoding="unicode")
+    return root
 
 
 _ZONE_SHAPE_TAGS = frozenset(
@@ -434,8 +434,7 @@ _ZONE_SHAPE_TAGS = frozenset(
 )
 
 
-def remove_unreferenced_zones(svg_str: str) -> str:
-    root = etree.fromstring(svg_str.encode())
+def remove_unreferenced_zones(root: SvgElement) -> SvgElement:
     to_remove = [
         el
         for el in root.iter(*_ZONE_SHAPE_TAGS)
@@ -445,17 +444,16 @@ def remove_unreferenced_zones(svg_str: str) -> str:
         parent = el.getparent()
         if parent is not None:
             parent.remove(el)
-    return etree.tostring(root, encoding="unicode")
+    return root
 
 
-def inject_style(svg_str: str, css: str) -> str:
+def inject_style(root: SvgElement, css: str) -> SvgElement:
     if not css:
-        return svg_str
-    root = etree.fromstring(svg_str.encode())
+        return root
     defs = root.find(f"{{{ns.SVG}}}defs")
     if defs is None:
         defs = etree.Element(f"{{{ns.SVG}}}defs")
         root.insert(0, defs)
     style = etree.SubElement(defs, f"{{{ns.SVG}}}style")
     style.text = css
-    return etree.tostring(root, encoding="unicode")
+    return root

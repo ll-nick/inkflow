@@ -5,6 +5,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
+from inkflow.svgio import SvgElement, parse_svg_file
 
 _INKSCAPE_NAMESPACES: frozenset[str] = frozenset({ns.INKSCAPE, ns.SODIPODI})
 
@@ -19,24 +20,22 @@ _PRESERVE_ATTRS: frozenset[str] = frozenset(
 )
 
 
-def strip_layout_layers(root: etree._Element) -> None:  # pyright: ignore[reportPrivateUsage]
+def strip_layout_layers(root: SvgElement) -> None:
     """Remove direct-child <g> elements injected by inject_layout_layers."""
     to_remove = [el for el in root if el.get(ns.INKFLOW_LAYOUT_SRC) is not None]
     for el in to_remove:
         root.remove(el)
 
 
-def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
-    """Strip Inkscape/Sodipodi editor metadata from an SVG file.
+def clean_inkscape_tree(src: Path, keep_preview: bool = False) -> SvgElement:
+    """Parse an SVG file, strip Inkscape/Sodipodi editor metadata, return the root.
 
     When keep_preview is False (default), also removes inkflow preview content
-    (injected layout layers and the inkflow-preview style block) so the output
-    is suitable for the presentation pipeline.  Pass keep_preview=True to
-    preserve that content for Inkscape editing (used by the clean CLI command
-    and the pre-commit hook).
+    (injected layout layers and the inkflow-preview style block) so the tree is
+    suitable for the presentation pipeline.  Pass keep_preview=True to preserve
+    that content for Inkscape editing (used by the clean CLI and pre-commit hook).
     """
-    tree = etree.parse(src)
-    root = tree.getroot()
+    root = parse_svg_file(src)
 
     for ns_uri in _INKSCAPE_NAMESPACES:
         for el in root.findall(f".//{{{ns_uri}}}*"):
@@ -64,4 +63,10 @@ def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
             if parent is not None:
                 parent.remove(el)
 
+    return root
+
+
+def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
+    """Cleaned SVG as a pretty-printed string. See :func:`clean_inkscape_tree`."""
+    root = clean_inkscape_tree(src, keep_preview)
     return etree.tostring(root, encoding="unicode", pretty_print=True)

@@ -29,7 +29,19 @@ from inkflow.pipeline import (
     resolve_slide_src,
     resolve_transitions,
 )
+from inkflow.svgio import parse_svg, serialize_svg
 from inkflow.transitions import Crossfade, Cut, Morph
+
+
+# String adapters: these pipeline DOM functions now take and return an element
+# (parse once). These same-named wrappers keep the string call sites below.
+def annotate_svg(svg: str, anims: list[Animation]) -> str:
+    return serialize_svg(_annotate_svg_el(parse_svg(svg), anims))
+
+
+def _add_layout_classes(svg: str, chain: list[Path], src: Path) -> str:
+    return serialize_svg(_add_layout_classes_el(parse_svg(svg), chain, src))
+
 
 _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
