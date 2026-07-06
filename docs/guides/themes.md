@@ -33,14 +33,16 @@ For now, use a path.
 With a theme set, bare layout names in `Slide` are resolved through the theme's `layouts/` directory
 before falling back to the built-in layouts.
 
-## Dark mode
+## Color mode
 
 ```python
-Deck(dark_mode=True)   # default
-Deck(dark_mode=False)
+Deck(mode=ColorMode.DARK)    # default
+Deck(mode=ColorMode.LIGHT)
 ```
 
-`dark_mode` sets a `data-theme="dark"` (or `"light"`) attribute on the presenter's `<html>` element.
+`mode` controls the `data-theme` attribute on the presenter's `<html>` element:
+`ColorMode.DARK` leaves it empty (the default `:root` styles apply) and
+`ColorMode.LIGHT` sets `data-theme="light"`.
 Your theme CSS can target this to provide palette variants:
 
 ```css
