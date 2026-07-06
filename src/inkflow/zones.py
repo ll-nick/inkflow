@@ -320,7 +320,7 @@ def _reroute_zones(
 
 
 def build_slide_content(
-    content: str | None,
+    parsed: ParsedMarkdown | None,
     extra: dict[str, ZoneContent],
     available_zones: set[str] | None = None,
     default_zone: str = "",
@@ -328,9 +328,9 @@ def build_slide_content(
     zones: _ZoneChunks = {}
     zone_params: _ZoneParams = {}
     auto_zones: frozenset[str] = frozenset()
-    if content is not None:
-        parsed = parse_markdown_zones(content)
-        zones = parsed.zones
+    if parsed is not None:
+        # copy: the notes pop below must not mutate the shared parsed object
+        zones = dict(parsed.zones)
         zone_params = parsed.params
         auto_zones = parsed.auto_zones
 

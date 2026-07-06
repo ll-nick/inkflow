@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -14,10 +15,19 @@ from inkflow.content import (
 )
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
-from inkflow.manifest import Animation, ColorMode, Deck, Inline, Slide, Transition
+from inkflow.manifest import (
+    Animation,
+    ColorMode,
+    Deck,
+    Inline,
+    Media,
+    Slide,
+    TextBox,
+    Transition,
+)
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
-from inkflow.zones import build_slide_content, parse_markdown_zones
+from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────
 
@@ -54,16 +64,15 @@ def _deduplicate_ids(raw_ids: list[str]) -> list[str]:
     return result
 
 
-def _infer_slide_title(slide: Slide, slide_id: str, project_dir: Path) -> str:
+def _infer_slide_title(
+    slide: Slide, slide_id: str, parsed: ParsedMarkdown | None
+) -> str:
     if slide.title:
         return slide.title
-    if slide.md is not None:
-        md_text = load_md(slide.md, project_dir)
-        if md_text is not None:
-            zones = parse_markdown_zones(md_text).zones
-            chunks = zones.get("title", [])
-            if chunks and isinstance(chunks[0], str):
-                return chunks[0].lstrip("#").strip()
+    if parsed is not None:
+        chunks = parsed.zones.get("title", [])
+        if chunks and isinstance(chunks[0], str):
+            return chunks[0].lstrip("#").strip()
     stem = re.sub(r"^\d+-", "", slide_id)
     return stem.replace("-", " ").replace("_", " ").title()
 
@@ -196,81 +205,139 @@ def _add_layout_classes(root: SvgElement, chain: list[Path], src: Path) -> SvgEl
     return root
 
 
-def process_slide(
-    slide: Slide,
-    project_dir: Path,
-    theme: str | None,
-    slide_number: int,
-    total_slides: int,
-    deck_style: str = "",
-    font_size: int = 36,
-    mode: ColorMode = ColorMode.DARK,
-) -> str:
-    src = resolve_slide_src(slide.src, project_dir, theme)
+# ── Per-slide pipeline ────────────────────────────────────────────────────────
 
-    svg_str = clean_inkscape_svg(src)
-    chain = resolve_chain(src, project_dir, theme)
-    if chain:
-        svg_str = compose_with_ancestors(svg_str, chain)
-    svg_str = _add_layout_classes(svg_str, chain, src)
-    svg_str = substitute_zone_numbers(svg_str, slide_number, total_slides)
 
-    if slide.md is not None or slide.zones:
-        md_text = load_md(slide.md, project_dir) if slide.md is not None else None
-        _root = etree.fromstring(svg_str.encode())
-        _zone_ids = {
+@dataclass
+class SlideSvg:
+    """A slide's SVG tree as it moves through the per-slide pipeline.
+
+    Each method mutates the tree in place (like ``list.sort()``) and returns ``None``;
+    the DOM work is delegated to the content/svg modules, which take and return the root
+    element. This keeps the pipeline a single parse and a single serialize with a
+    readable sequence of commands in ``process_slide``.
+    """
+
+    root: SvgElement
+
+    @classmethod
+    def cleaned(cls, src: Path) -> SlideSvg:
+        return cls(clean_inkscape_tree(src))
+
+    def compose_ancestors(self, chain: list[Path]) -> None:
+        if chain:
+            self.root = compose_with_ancestors(self.root, chain)
+
+    def tag_layout(self, chain: list[Path], src: Path) -> None:
+        self.root = _add_layout_classes(self.root, chain, src)
+
+    def number_slides(self, slide_number: int, total: int) -> None:
+        self.root = substitute_zone_numbers(self.root, slide_number, total)
+
+    def zone_ids(self) -> set[str]:
+        return {
             eid
-            for el in _root.iter()
+            for el in self.root.iter()
             if (eid := el.get("id")) is not None and eid.startswith("zone-")
         }
-        _default_zone = resolve_default_zone(_root, _zone_ids)
+
+    def inject_content(
+        self, content: dict[str, TextBox | Media], font_size: int, dark_mode: bool
+    ) -> None:
+        self.root = substitute_content(self.root, content, font_size, dark_mode)
+
+    def annotate(self, animations: list[Animation]) -> None:
+        self.root = annotate_svg(self.root, animations)
+
+    def add_style(self, css: str) -> None:
+        self.root = inject_style(self.root, css)
+
+    def prune_zones(self) -> None:
+        self.root = remove_unreferenced_zones(self.root)
+
+    def scope_styles(self, slide_number: int) -> None:
+        self.root = _scope_slide_styles(self.root, slide_number)
+
+    def to_svg(self) -> str:
+        return serialize_svg(self.root)
+
+
+@dataclass(frozen=True)
+class DeckContext:
+    """Loop-invariant deck params, built once per rebuild and shared by every slide."""
+
+    project_dir: Path
+    theme: str | None
+    deck_style: str
+    font_size: int  # deck default; a slide may override via Slide.font_size
+    mode: ColorMode
+    total_slides: int
+
+
+def process_slide(
+    slide: Slide,
+    ctx: DeckContext,
+    slide_number: int,
+    parsed: ParsedMarkdown | None,
+) -> tuple[str, str]:
+    """Return the processed SVG string and the slide's markdown-derived notes."""
+    src = resolve_slide_src(slide.src, ctx.project_dir, ctx.theme)
+    chain = resolve_chain(src, ctx.project_dir, ctx.theme)
+
+    doc = SlideSvg.cleaned(src)
+    doc.compose_ancestors(chain)
+    doc.tag_layout(chain, src)
+    doc.number_slides(slide_number, ctx.total_slides)
+
+    md_notes = ""
+    if parsed is not None or slide.zones:
+        zone_ids = doc.zone_ids()
+        default_zone = resolve_default_zone(doc.root, zone_ids)
         result = build_slide_content(
-            md_text,
+            parsed,
             slide.zones,
-            available_zones=_zone_ids,
-            default_zone=_default_zone,
+            available_zones=zone_ids,
+            default_zone=default_zone,
         )
+        md_notes = result.notes
         if result.content:
-            svg_str = substitute_content(
-                svg_str, result.content, font_size, mode == ColorMode.DARK
+            font_size = (
+                slide.font_size if slide.font_size is not None else ctx.font_size
             )
+            doc.inject_content(result.content, font_size, ctx.mode == ColorMode.DARK)
 
     if slide.animations:
-        svg_str = annotate_svg(svg_str, slide.animations)
-    slide_style_css = load_style(slide.extra_style, project_dir)
-    combined_css = "\n".join(filter(None, [deck_style, slide_style_css]))
+        doc.annotate(slide.animations)
+
+    slide_style_css = load_style(slide.extra_style, ctx.project_dir)
+    combined_css = "\n".join(filter(None, [ctx.deck_style, slide_style_css]))
     if combined_css:
-        svg_str = inject_style(svg_str, combined_css)
-    svg_str = remove_unreferenced_zones(svg_str)
-    svg_str = _scope_slide_styles(svg_str, slide_number)
-    return svg_str
+        doc.add_style(combined_css)
+
+    doc.prune_zones()
+    doc.scope_styles(slide_number)
+    return doc.to_svg(), md_notes
 
 
 def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
-    total = len(visible_slides)
-    deck_style_css = load_style(deck.style, project_dir)
+    ctx = DeckContext(
+        project_dir=project_dir,
+        theme=deck.theme,
+        deck_style=load_style(deck.style, project_dir),
+        font_size=deck.font_size,
+        mode=deck.mode,
+        total_slides=len(visible_slides),
+    )
     raw_ids = [_infer_slide_id(s) for s in visible_slides]
     slide_ids = _deduplicate_ids(raw_ids)
     results: list[SlideData] = []
     for i, (slide, slide_id) in enumerate(zip(visible_slides, slide_ids, strict=True)):
-        title = _infer_slide_title(slide, slide_id, project_dir)
+        md_text = load_md(slide.md, project_dir) if slide.md is not None else None
+        parsed = parse_markdown_zones(md_text) if md_text is not None else None
+        title = _infer_slide_title(slide, slide_id, parsed)
         explicit_notes = load_notes(slide.notes, project_dir)
-        md_notes = ""
-        if slide.md is not None:
-            md_text = load_md(slide.md, project_dir)
-            md_notes = build_slide_content(md_text, slide.zones).notes
+        svg, md_notes = process_slide(slide, ctx, i + 1, parsed)
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
-        svg = process_slide(
-            slide,
-            project_dir,
-            deck.theme,
-            i + 1,
-            total,
-            deck_style_css,
-            slide.font_size if slide.font_size is not None else deck.font_size,
-            mode=deck.mode,
-        )
-
         results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
     return results

@@ -119,7 +119,7 @@ def _check_default_zone(
         return []
     try:
         build_slide_content(
-            md_text,
+            parse_markdown_zones(md_text),
             slide.zones,
             available_zones=zone_ids,
             default_zone=default_zone,
