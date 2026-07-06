@@ -4,10 +4,8 @@ import re
 from pathlib import Path
 from typing import TypedDict, cast
 
-from lxml import etree
-
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg
+from inkflow.clean import clean_inkscape_tree
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
@@ -18,6 +16,7 @@ from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_p
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.manifest import Animation, ColorMode, Deck, Inline, Slide, Transition
 from inkflow.svg import compose_with_ancestors
+from inkflow.svgio import SvgElement, serialize_svg
 from inkflow.zones import build_slide_content, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────
@@ -134,9 +133,7 @@ def _anim_style(anim: Animation) -> str:
     return "; ".join(decls)
 
 
-def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
-    root = etree.fromstring(svg_str.encode())
-
+def annotate_svg(root: SvgElement, animations: list[Animation]) -> SvgElement:
     for anim in animations:
         eid = anim.element.lstrip("#")
         el = root.find(f'.//*[@id="{eid}"]')
@@ -154,7 +151,7 @@ def annotate_svg(svg_str: str, animations: list[Animation]) -> str:
             existing_style = el.get("style", "").strip().rstrip(";")
             el.set("style", f"{existing_style}; {style}" if existing_style else style)
 
-    return etree.tostring(root, encoding="unicode")
+    return root
 
 
 def _serialize_transition(t: Transition | None) -> dict[str, object]:
@@ -175,13 +172,12 @@ def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
     ]
 
 
-def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
+def _scope_slide_styles(root: SvgElement, slide_number: int) -> SvgElement:
     """Assign a unique ID to the SVG root and wrap any inline <style> in @scope.
 
     SVG style blocks would bleed onto adjacent slides
     during CSS transitions without this guard.
     """
-    root = etree.fromstring(svg_str.encode())
     slide_id = f"inkflow-slide-{slide_number}"
     root.set("id", slide_id)
     for style_el in root.findall(f".//{{{ns.SVG}}}style"):
@@ -189,20 +185,19 @@ def _scope_slide_styles(svg_str: str, slide_number: int) -> str:
         if not css or not css.strip():
             continue
         style_el.text = f"@scope(#{slide_id}) {{\n{css}\n}}"
-    return etree.tostring(root, encoding="unicode")
+    return root
 
 
-def _add_layout_classes(svg_str: str, chain: list[Path], src: Path) -> str:
+def _add_layout_classes(root: SvgElement, chain: list[Path], src: Path) -> SvgElement:
     """Add layout-<stem> classes to the SVG root for every entry in [*chain, src].
 
     This scopes CSS rules in styles.css to a slide type
     (e.g. `.layout-cover #zone-title`)
     """
-    root = etree.fromstring(svg_str.encode())
     existing = [c for c in root.get("class", "").split() if not c.startswith("layout-")]
     new_classes = [f"layout-{p.stem}" for p in [*chain, src]]
     root.set("class", " ".join(existing + new_classes))
-    return etree.tostring(root, encoding="unicode")
+    return root
 
 
 def process_slide(

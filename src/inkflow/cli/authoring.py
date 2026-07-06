@@ -35,6 +35,7 @@ from inkflow.layout import (
 )
 from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import with_namespaces
+from inkflow.svgio import parse_svg_file
 
 
 @main.command()
@@ -107,7 +108,7 @@ def parent_get(files: tuple[Path, ...], deck_path: Path) -> None:
         project = Project.load(deck_path)
         for slide in project.deck.slides:
             svg_path = resolve_slide_src(slide.src, project.dir, project.theme)
-            root = _etree.parse(svg_path).getroot()
+            root = parse_svg_file(svg_path)
             value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
             click.echo(f"{slide.src!s:<45} {value}")
         return
@@ -115,7 +116,7 @@ def parent_get(files: tuple[Path, ...], deck_path: Path) -> None:
     targets = resolve_targets(files)
     multi = len(targets) > 1
     for target in targets:
-        root = _etree.parse(target.path).getroot()
+        root = parse_svg_file(target.path)
         value = root.get(ns.INKFLOW_PARENT)
         shown = value if value is not None else "(no parent)"
         click.echo(f"{target.label}: {shown}" if multi else shown)
@@ -146,8 +147,7 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    tree = _etree.parse(svg_path)
-    root = tree.getroot()
+    root = parse_svg_file(svg_path)
     old_parent = root.get(ns.INKFLOW_PARENT)
 
     root = with_namespaces(root, {"inkflow": ns.INKFLOW})

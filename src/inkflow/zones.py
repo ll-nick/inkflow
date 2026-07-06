@@ -12,6 +12,7 @@ from inkflow.markdown import (
     markdown_to_html,
     render_md_with_steps,
 )
+from inkflow.svgio import SvgElement
 
 # This module owns inkflow's own ``::zone::`` / ``::step::`` marker grammar and
 # the assembly of parsed Markdown into per-zone slide content. It parses .md text
@@ -207,8 +208,8 @@ def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
                 child.insert(idx, wrapper)
         elif tag == "dl":
             # Group each <dt> with its following <dd> elements as one step unit.
-            groups: list[list[etree._Element]] = []  # pyright: ignore[reportPrivateUsage]
-            current: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+            groups: list[list[SvgElement]] = []
+            current: list[SvgElement] = []
             for el in list(child):
                 if el.tag == "dt":
                     if current:
