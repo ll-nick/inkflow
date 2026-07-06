@@ -9,6 +9,36 @@ inkflow --version
 
 ---
 
+## `inkflow init`
+
+Scaffold a new presentation project.
+
+```bash
+inkflow init [DIRECTORY] [--theme PATH] [--no-git]
+```
+
+| Argument/Option | Default | Description |
+|---|---|---|
+| `DIRECTORY` | `.` (current directory) | Directory to scaffold into (created if missing) |
+| `--theme` | built-in theme | Path to a custom theme directory |
+| `--no-git` | off | Skip git hook setup even when inside a git repository |
+
+Creates a starter project:
+
+```
+my-deck/
+  deck.py
+  slides/
+    01-title.svg      # from the builtin:cover layout
+    02-content.md     # a Markdown slide with bullets and ::step:: reveals
+```
+
+Refuses to run if `deck.py` already exists in the target directory.
+Unless `--no-git` is passed, it runs `inkflow setup-git` automatically when the
+target is inside a git repository.
+
+---
+
 ## `inkflow serve`
 
 Start the presentation server with live reload.
@@ -81,13 +111,16 @@ inkflow clean [FILE ...] [--deck DECK] [--stdout] [--check]
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | all slides in deck | One or more SVG file paths |
+| `FILE` | project-local deck SVGs | One or more SVG file paths |
 | `-d`, `--deck` | `deck.py` | Path to `deck.py` (used only when FILE is omitted) |
 | `--stdout` | off | Write cleaned SVG to stdout instead of modifying files |
 | `--check` | off | Exit non-zero if any file would be modified, without writing changes |
 
-If `FILE` is omitted, every SVG-authored slide in the deck is cleaned.
-Pass explicit files (as the pre-commit hook does) to run without loading a deck.
+If `FILE` is omitted, the sweep covers every project-local SVG the deck resolves
+to: each slide's base plus its local layout ancestors, deduplicated. Built-in and
+theme layouts, and files referenced by a path outside the project, are left out —
+name them explicitly to include them. Pass explicit files (as the pre-commit hook
+does) to run without loading a deck.
 
 Removes elements and attributes in the Inkscape and Sodipodi namespaces that represent editor state
 (viewport position, zoom level, window geometry, etc.).
@@ -231,7 +264,7 @@ inkflow parent strip [FILES...] [--deck DECK] [-y]
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILES` | all slides in deck | One or more slide SVGs (glob-friendly) |
+| `FILES` | project-local deck SVGs | One or more slide SVGs (glob-friendly) |
 | `--deck` | `deck.py` | Path to `deck.py` |
 | `-y`, `--yes` | off | Skip the confirmation prompt |
 
@@ -253,11 +286,11 @@ inkflow sync [FILES...] [--deck DECK] [--check] [--no-deck] [--mode dark|light]
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILES` | all slides in deck | One or more slide SVGs (glob-friendly) |
+| `FILES` | project-local deck SVGs | One or more slide SVGs (glob-friendly) |
 | `--deck` | `deck.py` | Path to `deck.py` |
 | `--check` | off | Report stale files without rewriting. Exits 1 if any are stale |
 | `--no-deck` | off | Skip deck lookup (for theme authoring, see below) |
-| `--mode` | deck's `dark_mode` | Force `dark` or `light` color mode for the preview style |
+| `--mode` | deck's `mode` | Force `dark` or `light` color mode for the preview style |
 
 Writes each ancestor layout as a locked layer into each slide SVG.
 These layers are visible in Inkscape as a spatial reference
@@ -392,12 +425,14 @@ inkflow colorize [FILE ...] [--deck DECK] [--no-deck] [--mode dark|light]
 
 | Argument/Option | Default | Description |
 |---|---|---|
-| `FILE` | all slides in deck | One or more SVG file paths |
+| `FILE` | project-local deck SVGs | One or more SVG file paths |
 | `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
-| `--mode` | deck's `dark_mode` | Match `dark` or `light` mode palette hex values |
+| `--mode` | deck's `mode` | Match `dark` or `light` mode palette hex values |
 
-If `FILE` is omitted, every SVG-authored slide in the deck is colorized.
+If `FILE` is omitted, the sweep covers every project-local SVG the deck resolves
+to (each slide's base plus its local layout ancestors, deduplicated). Built-in and
+theme layouts are left untouched.
 `--no-deck` requires explicit `FILE` arguments.
 
 Reads the active theme's color tokens for the selected mode and scans each SVG for
@@ -429,7 +464,7 @@ inkflow palette [--deck DECK] [--no-deck] [--mode dark|light]
 |---|---|---|
 | `-d`, `--deck` | `deck.py` | Path to `deck.py` |
 | `--no-deck` | off | Use only the built-in theme (no project `deck.py`) |
-| `--mode` | deck's `dark_mode` | Generate `dark` or `light` mode palette |
+| `--mode` | deck's `mode` | Generate `dark` or `light` mode palette |
 
 Writes a GIMP Palette (`.gpl`) to stdout whose named colors correspond to the
 `inkflow-fill-*` / `inkflow-stroke-*` CSS token set.

@@ -59,6 +59,11 @@ Here are a few shortcuts to get you started:
 | `f` | Toggle fullscreen |
 | `?` | Show all shortcuts |
 
+!!! warning "Decks are executable code"
+    A `deck.py` is a Python program that Inkflow imports and runs. Serving,
+    building, or exporting a deck executes it. Only run decks you trust, the
+    same caution you would apply to any downloaded script.
+
 ## Create your first deck
 
 **1. Create the project directory:**

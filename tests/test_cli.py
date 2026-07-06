@@ -146,6 +146,34 @@ class TestDeckFallback:
         assert result.exit_code == 2
         assert "FILES required" in result.output
 
+    def test_sweep_includes_local_layout_once(self, runner: CliRunner) -> None:
+        # An md slide has no content SVG of its own; its base is a local layout.
+        # The sweep must reach that layout (once, even when referenced by several
+        # slides) but leave its built-in ancestor alone.
+        deck_py = textwrap.dedent("""\
+            from inkflow import Deck, Slide
+            def main():
+                return Deck(slides=[
+                    Slide("card", md="a.md"),
+                    Slide("card", md="b.md"),
+                ])
+        """)
+        with runner.isolated_filesystem():
+            Path("deck.py").write_text(deck_py, encoding="utf-8")
+            Path("slides").mkdir()
+            for name in ("a.md", "b.md"):
+                (Path("slides") / name).write_text("# hi", encoding="utf-8")
+            layouts = Path("layouts")
+            layouts.mkdir()
+            (layouts / "card.svg").write_text(_PARENTED_SVG, encoding="utf-8")
+
+            result = runner.invoke(main, ["clean"])
+            assert result.exit_code == 0
+            # The reused local layout appears exactly once in the sweep.
+            assert result.output.count("layouts/card.svg") == 1
+            # The built-in ancestor (builtin:base) is never touched.
+            assert "base.svg" not in result.output
+
 
 class TestAdd:
     @pytest.mark.usefixtures("project")

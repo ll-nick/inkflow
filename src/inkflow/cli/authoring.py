@@ -56,7 +56,8 @@ def clean(
 ) -> None:
     """Strip Inkscape editor metadata from SVG files.
 
-    If FILES is omitted, cleans all slides in the deck.
+    If FILES is omitted, cleans every project-local SVG the deck uses
+    (each slide and its local layout ancestors).
     """
     if check and to_stdout:
         raise click.UsageError("--check and --stdout are mutually exclusive")
@@ -176,7 +177,8 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
 def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> None:
     """Remove inkflow:parent and injected layout layers from slide SVG(s).
 
-    If FILES is omitted, strips all slides in the deck.
+    If FILES is omitted, strips every project-local SVG the deck uses
+    (each slide and its local layout ancestors).
     """
     if files:
         targets = resolve_targets(files)
@@ -267,7 +269,8 @@ def sync_cmd(
     Inkscape renders semantic CSS classes (e.g. inkflow-fill-accent) with the
     correct theme colors.
 
-    If FILES is omitted, refreshes all slides in the deck.
+    If FILES is omitted, refreshes every project-local SVG the deck uses
+    (each slide and its local layout ancestors).
     Use --no-deck when authoring a theme without a project deck.py.
     """
     project = load_project_or_none(deck_path, no_deck)

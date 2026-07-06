@@ -13,7 +13,8 @@ Generic family names (`sans-serif`, `serif`, `monospace`, etc.) are always skipp
 resolve to system fonts at render time and don't need embedding.
 
 ```python
-deck = Deck()  # embed_fonts=True by default
+def main() -> Deck:
+    return Deck()  # embed_fonts=True by default
 ```
 
 No configuration needed. Name the font in your SVG editor and it will be embedded.
@@ -68,7 +69,8 @@ Install the font (or add it to `fonts/`) and rebuild to resolve the warning.
 Set `embed_fonts=False` on the deck to disable embedding entirely:
 
 ```python
-deck = Deck(embed_fonts=False)
+def main() -> Deck:
+    return Deck(embed_fonts=False)
 ```
 
 This is rarely needed — subsetted fonts are small — but can be useful when the font is already
