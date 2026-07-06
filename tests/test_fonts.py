@@ -14,7 +14,6 @@ from inkflow.fonts import (
     _best_match,  # pyright: ignore[reportPrivateUsage]
     _build_index,  # pyright: ignore[reportPrivateUsage]
     _css_weight_to_int,  # pyright: ignore[reportPrivateUsage]
-    _extract_codepoints,  # pyright: ignore[reportPrivateUsage]
     _first_named_family,  # pyright: ignore[reportPrivateUsage]
     _FontRecord,  # pyright: ignore[reportPrivateUsage]
     _index_cache,  # pyright: ignore[reportPrivateUsage]
@@ -22,6 +21,7 @@ from inkflow.fonts import (
     embed_fonts_css,
     embed_fonts_css_subsetted,
     extract_font_specs,
+    extract_font_specs_and_codepoints,
 )
 from inkflow.pipeline import SlideData
 
@@ -153,12 +153,12 @@ def test_extract_specs_across_multiple_slides() -> None:
     assert families == {"Inter", "Roboto"}
 
 
-# ── _extract_codepoints ───────────────────────────────────────────────────────
+# ── extract_font_specs_and_codepoints ─────────────────────────────────────────
 
 
 def test_extract_codepoints_from_text() -> None:
     slides = [_slide(_svg("<text>Hello</text>"))]
-    cp = _extract_codepoints(slides)
+    _, cp = extract_font_specs_and_codepoints(slides)
     assert ord("H") in cp
     assert ord("e") in cp
     assert ord("o") in cp
@@ -166,7 +166,15 @@ def test_extract_codepoints_from_text() -> None:
 
 def test_extract_codepoints_empty_svg() -> None:
     slides = [_slide(_svg(""))]
-    assert isinstance(_extract_codepoints(slides), set)
+    assert isinstance(extract_font_specs_and_codepoints(slides)[1], set)
+
+
+def test_extract_specs_and_codepoints_single_pass() -> None:
+    # both specs and codepoints come back from one call over the same slides
+    slides = [_slide(_svg('<text font-family="Arial">Hi</text>'))]
+    specs, cp = extract_font_specs_and_codepoints(slides)
+    assert {s.family for s in specs} == {"Arial"}
+    assert ord("H") in cp and ord("i") in cp
 
 
 # ── _best_match ───────────────────────────────────────────────────────────────

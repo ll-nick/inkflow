@@ -9,10 +9,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from lxml import etree
-
 from inkflow import ns
 from inkflow.pipeline import SlideData
+from inkflow.svgio import SvgElement, parse_svg
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -233,61 +232,78 @@ def _specs_from_css_text(css: str) -> list[_FontSpec]:
     return specs
 
 
-def extract_font_specs(slides: list[SlideData]) -> list[_FontSpec]:
+def _spec_collector() -> tuple[list[_FontSpec], Callable[[_FontSpec], None]]:
+    """A (result, add) pair accumulating unique specs in first-seen order."""
     seen: set[_FontSpec] = set()
     result: list[_FontSpec] = []
 
-    def _add(spec: _FontSpec) -> None:
+    def add(spec: _FontSpec) -> None:
         if spec not in seen:
             seen.add(spec)
             result.append(spec)
 
-    for slide in slides:
-        root = etree.fromstring(slide["svg"].encode())
+    return result, add
 
-        # Walk all elements for font-family attributes
-        for el in root.iter():
-            family_attr = el.get("font-family")
-            if family_attr:
-                family = _first_named_family(family_attr)
-                if family:
-                    weight_raw = el.get("font-weight", "normal")
-                    style_raw = el.get("font-style", "normal")
-                    weight_class = _css_weight_to_int(weight_raw) or 400
-                    is_italic = style_raw.lower() in ("italic", "oblique")
-                    _add(
-                        _FontSpec(
-                            family=family,
-                            weight_class=weight_class,
-                            is_italic=is_italic,
-                        )
+
+def _collect_specs(root: SvgElement, add: Callable[[_FontSpec], None]) -> None:
+    """Feed `add` every font spec referenced in one slide SVG root."""
+    # font-family attributes and inline styles on each element
+    for el in root.iter():
+        family_attr = el.get("font-family")
+        if family_attr:
+            family = _first_named_family(family_attr)
+            if family:
+                weight_raw = el.get("font-weight", "normal")
+                style_raw = el.get("font-style", "normal")
+                weight_class = _css_weight_to_int(weight_raw) or 400
+                is_italic = style_raw.lower() in ("italic", "oblique")
+                add(
+                    _FontSpec(
+                        family=family,
+                        weight_class=weight_class,
+                        is_italic=is_italic,
                     )
+                )
 
-            # Inline style attribute
-            style_attr = el.get("style", "")
-            if style_attr and "font-family" in style_attr:
-                for spec in _specs_from_css_text(style_attr):
-                    _add(spec)
+        style_attr = el.get("style", "")
+        if style_attr and "font-family" in style_attr:
+            for spec in _specs_from_css_text(style_attr):
+                add(spec)
 
-        # <style> blocks
-        for style_el in root.iter(f"{{{ns.SVG}}}style"):
-            if style_el.text and "font-family" in style_el.text:
-                for spec in _specs_from_css_text(style_el.text):
-                    _add(spec)
+    # <style> blocks
+    for style_el in root.iter(f"{{{ns.SVG}}}style"):
+        if style_el.text and "font-family" in style_el.text:
+            for spec in _specs_from_css_text(style_el.text):
+                add(spec)
 
+
+def _collect_codepoints(root: SvgElement, codepoints: set[int]) -> None:
+    """Add every character codepoint in the text/tail of one slide SVG root."""
+    for el in root.iter():
+        if el.text:
+            codepoints.update(ord(c) for c in el.text)
+        if el.tail:
+            codepoints.update(ord(c) for c in el.tail)
+
+
+def extract_font_specs(slides: list[SlideData]) -> list[_FontSpec]:
+    result, add = _spec_collector()
+    for slide in slides:
+        _collect_specs(parse_svg(slide["svg"]), add)
     return result
 
 
-def _extract_codepoints(slides: list[SlideData]) -> set[int]:
+def extract_font_specs_and_codepoints(
+    slides: list[SlideData],
+) -> tuple[list[_FontSpec], set[int]]:
+    """Font specs and codepoints in a single parse per slide (build/export path)."""
+    result, add = _spec_collector()
     codepoints: set[int] = set()
     for slide in slides:
-        root = etree.fromstring(slide["svg"].encode())
-        for el in root.iter():
-            if el.text:
-                codepoints.update(ord(c) for c in el.text)
-            if el.tail:
-                codepoints.update(ord(c) for c in el.tail)
-    return codepoints
+        root = parse_svg(slide["svg"])
+        _collect_specs(root, add)
+        _collect_codepoints(root, codepoints)
+    return result, codepoints
 
 
 # ── Font subsetting ───────────────────────────────────────────────────────────
@@ -396,10 +412,10 @@ def embed_fonts_css_subsetted(
     Subsets each font to only the codepoints present in the slides, then encodes
     as WOFF2. Falls back to the full font file if subsetting fails.
     """
-    specs = extract_font_specs(slides)
+    specs, codepoint_set = extract_font_specs_and_codepoints(slides)
     if not specs:
         return "", []
-    codepoints = frozenset(_extract_codepoints(slides))
+    codepoints = frozenset(codepoint_set)
     index = _build_index(project_dir)
     warnings: list[str] = []
     rules: list[str] = []
