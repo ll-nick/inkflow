@@ -6,13 +6,40 @@ import pytest
 from lxml import etree
 
 from inkflow import ns
-from inkflow.content import (
-    inject_style,
-    remove_unreferenced_zones,
-    substitute_content,
-    substitute_zone_numbers,
-)
+from inkflow.content import inject_style as _inject_style_el
+from inkflow.content import remove_unreferenced_zones as _remove_unreferenced_zones_el
+from inkflow.content import substitute_content as _substitute_content_el
+from inkflow.content import substitute_zone_numbers as _substitute_zone_numbers_el
 from inkflow.manifest import Align, Media, MediaAlign, MediaFit, TextBox, VAlign
+from inkflow.svgio import parse_svg, serialize_svg
+
+# String adapters: the content DOM functions now take and return an element (parse
+# once). These same-named wrappers keep the string-in / string-out call sites below.
+
+
+def substitute_content(
+    svg: str,
+    content: dict[str, TextBox | Media],
+    font_size: int = 36,
+    dark_mode: bool = True,
+) -> str:
+    root = _substitute_content_el(parse_svg(svg), content, font_size, dark_mode)
+    return serialize_svg(root)
+
+
+def substitute_zone_numbers(svg: str, slide_number: int, total: int) -> str:
+    return serialize_svg(
+        _substitute_zone_numbers_el(parse_svg(svg), slide_number, total)
+    )
+
+
+def remove_unreferenced_zones(svg: str) -> str:
+    return serialize_svg(_remove_unreferenced_zones_el(parse_svg(svg)))
+
+
+def inject_style(svg: str, css: str) -> str:
+    return serialize_svg(_inject_style_el(parse_svg(svg), css))
+
 
 _NUMBER_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg">

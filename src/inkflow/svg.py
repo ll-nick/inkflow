@@ -8,12 +8,11 @@ from typing import cast
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg, strip_layout_layers
+from inkflow.clean import clean_inkscape_tree, strip_layout_layers
+from inkflow.svgio import SvgElement
 
 
-def ensure_defs(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+def ensure_defs(root: SvgElement) -> SvgElement:
     """Return the ``<defs>`` child of root, creating and prepending it if absent."""
     defs = root.find(f"{{{ns.SVG}}}defs")
     if defs is None:
@@ -23,9 +22,9 @@ def ensure_defs(
 
 
 def with_namespaces(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    root: SvgElement,
     additions: dict[str, str],
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
+) -> SvgElement:
     """Return root with extra namespace prefixes declared.
 
     lxml nsmap is immutable after construction, so adding prefixes requires
@@ -44,18 +43,15 @@ def with_namespaces(
     return new_root
 
 
-def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
-    """Prepend ancestor SVG content below the slide's own content."""
-    slide_root = etree.fromstring(svg_str.encode())
+def compose_with_ancestors(slide_root: SvgElement, chain: list[Path]) -> SvgElement:
+    """Prepend ancestor SVG content below the slide's own, mutating slide_root."""
     strip_layout_layers(slide_root)
 
-    ancestor_groups: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
-    merged_defs: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+    ancestor_groups: list[SvgElement] = []
+    merged_defs: list[SvgElement] = []
 
     for ancestor_path in chain:
-        anc_str = clean_inkscape_svg(ancestor_path)
-        anc_root = etree.fromstring(anc_str.encode())
-        strip_layout_layers(anc_root)
+        anc_root = clean_inkscape_tree(ancestor_path)
 
         for defs_el in anc_root.findall(f"{{{ns.SVG}}}defs"):
             merged_defs.extend(list(defs_el))
@@ -82,4 +78,4 @@ def compose_with_ancestors(svg_str: str, chain: list[Path]) -> str:
     for i, group in enumerate(ancestor_groups):
         slide_root.insert(insert_pos + i, group)
 
-    return etree.tostring(slide_root, encoding="unicode")
+    return slide_root

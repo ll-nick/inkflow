@@ -4,7 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.manifest import Align, Media, MediaAlign, MediaFit, TextBox, VAlign
+from inkflow.manifest import (
+    Align,
+    Media,
+    MediaAlign,
+    MediaFit,
+    TextBox,
+    VAlign,
+    ZoneContent,
+)
 from inkflow.markdown import markdown_to_html
 from inkflow.zones import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
@@ -12,11 +20,25 @@ from inkflow.zones import (
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
     _reroute_zones,  # pyright: ignore[reportPrivateUsage]
     _StepsBlock,  # pyright: ignore[reportPrivateUsage]
-    build_slide_content,
     chunks_to_html,
     parse_markdown_zones,
     steps_wrap_content,
 )
+from inkflow.zones import build_slide_content as _build_slide_content_parsed
+
+
+# Adapter: build_slide_content now takes a pre-parsed ParsedMarkdown (parse markdown
+# once per rebuild). This same-named wrapper keeps the str / None call sites below.
+def build_slide_content(
+    content: str | None,
+    extra: dict[str, ZoneContent],
+    available_zones: set[str] | None = None,
+    default_zone: str = "",
+) -> SlideContent:
+    parsed = parse_markdown_zones(content) if isinstance(content, str) else None
+    return _build_slide_content_parsed(
+        parsed, extra, available_zones=available_zones, default_zone=default_zone
+    )
 
 
 class TestParseMarkdownZones:

@@ -5,6 +5,8 @@ import re
 
 from lxml import etree
 
+from inkflow.svgio import SvgElement, parse_svg
+
 # ── Token registry ────────────────────────────────────────────────────────────
 
 # All --inkflow-* variable names that get SVG utility classes (fill + stroke).
@@ -251,7 +253,7 @@ def serialize_style(decls: list[tuple[str, str]]) -> str:
 
 
 def colorize_element(
-    el: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    el: SvgElement,
     hex_map: dict[str, list[tuple[str, str]]],
 ) -> bool:
     """Replace fill/stroke attributes on one element with semantic CSS classes.
@@ -313,7 +315,7 @@ def colorize_svg(
     Returns ``(result_svg, was_changed)``.  When nothing changed the original
     string is returned unchanged so the caller can skip the write.
     """
-    root = etree.fromstring(svg_str.encode())
+    root = parse_svg(svg_str)
     changed = False
     for el in root.iter():
         if colorize_element(el, hex_map):

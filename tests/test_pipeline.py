@@ -15,21 +15,34 @@ from inkflow.animations import (
     ZoomIn,
 )
 from inkflow.manifest import (
+    Animation,
     Deck,
     Direction,
     Inline,
     Slide,
 )
+from inkflow.pipeline import _add_layout_classes as _add_layout_classes_el
 from inkflow.pipeline import (
-    _add_layout_classes,
     _deduplicate_ids,
     _infer_slide_id,
-    annotate_svg,
     process_deck,
     resolve_slide_src,
     resolve_transitions,
 )
+from inkflow.pipeline import annotate_svg as _annotate_svg_el
+from inkflow.svgio import parse_svg, serialize_svg
 from inkflow.transitions import Crossfade, Cut, Morph
+
+
+# String adapters: these pipeline DOM functions now take and return an element
+# (parse once). These same-named wrappers keep the string call sites below.
+def annotate_svg(svg: str, anims: list[Animation]) -> str:
+    return serialize_svg(_annotate_svg_el(parse_svg(svg), anims))
+
+
+def _add_layout_classes(svg: str, chain: list[Path], src: Path) -> str:
+    return serialize_svg(_add_layout_classes_el(parse_svg(svg), chain, src))
+
 
 _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -397,3 +410,51 @@ class TestSlideId:
         results = process_deck(deck, tmp_path)
         assert results[0]["id"] == "plain"
         assert results[1]["id"] == "plain-2"
+
+
+class TestParseMarkdownOnce:
+    def test_markdown_parsed_once_per_md_slide(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from inkflow.zones import parse_markdown_zones as real
+
+        (tmp_path / "slides").mkdir()
+        for name in ("a.svg", "b.svg"):
+            (tmp_path / "slides" / name).write_text(_LAYOUT_SVG, encoding="utf-8")
+
+        calls: list[str] = []
+
+        def counting(text: str) -> object:
+            calls.append(text)
+            return real(text)
+
+        monkeypatch.setattr("inkflow.pipeline.parse_markdown_zones", counting)
+        deck = Deck(
+            slides=[
+                Slide("slides/a.svg", md=Inline("# A\n\nbody")),
+                Slide("slides/b.svg", md=Inline("# B\n\nbody")),
+            ]
+        )
+        process_deck(deck, tmp_path)
+        # once per md slide
+        assert len(calls) == 2
+
+
+class TestSlideSvg:
+    def test_cleaned_round_trips(self, tmp_path: Path) -> None:
+        from inkflow.pipeline import SlideSvg
+
+        src = tmp_path / "s.svg"
+        src.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
+        assert "zone-content" in SlideSvg.cleaned(src).to_svg()
+
+    def test_methods_mutate_in_place_like_list_sort(self, tmp_path: Path) -> None:
+        from inkflow.pipeline import SlideSvg
+
+        src = tmp_path / "s.svg"
+        src.write_text(_LAYOUT_SVG, encoding="utf-8")
+        doc = SlideSvg.cleaned(src)
+        assert doc.zone_ids() == {"zone-title", "zone-content"}
+        assert doc.number_slides(2, 5) is None  # returns None, mutates self
+        doc.scope_styles(2)
+        assert 'id="inkflow-slide-2"' in doc.to_svg()

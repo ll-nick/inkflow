@@ -9,7 +9,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg, strip_layout_layers
+from inkflow.clean import clean_inkscape_svg, clean_inkscape_tree, strip_layout_layers
 from inkflow.ns import (
     INKFLOW_DEFAULT_ZONE,
     INKFLOW_LAYOUT_HASH,
@@ -17,6 +17,7 @@ from inkflow.ns import (
     INKFLOW_PARENT,
 )
 from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
+from inkflow.svgio import SvgElement, parse_svg_file
 
 # ── Zone routing constants ────────────────────────────────────────────────────
 
@@ -47,8 +48,7 @@ def resolve_theme_dir(theme: str, project_root: Path) -> Path:
 
 
 def _read_parent_attr(svg_path: Path) -> str | None:
-    tree = etree.parse(svg_path)
-    return tree.getroot().get(INKFLOW_PARENT)
+    return parse_svg_file(svg_path).get(INKFLOW_PARENT)
 
 
 # ── Path resolution ───────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ def strip_parent(svg_path: Path) -> bool:
 
     Returns True if the file had an inkflow:parent attribute.
     """
-    root = etree.parse(svg_path).getroot()
+    root = parse_svg_file(svg_path)
     had_parent = INKFLOW_PARENT in root.attrib
     if had_parent:
         del root.attrib[INKFLOW_PARENT]
@@ -226,7 +226,7 @@ _LAYER_ATTRS: dict[str, str] = {
 
 def is_layout_current(svg_path: Path, chain: list[Path], preview_css: str = "") -> bool:
     """Return True if svg_path has up-to-date layout layers and preview style."""
-    root = etree.parse(svg_path).getroot()
+    root = parse_svg_file(svg_path)
     existing = [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]
     if len(existing) != len(chain):
         return False
@@ -248,8 +248,8 @@ def is_layout_current(svg_path: Path, chain: list[Path], preview_css: str = "") 
 
 def _build_layer_group(
     ancestor_path: Path, ref: str, hashes: dict[str, str]
-) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
-    anc_root = etree.parse(ancestor_path).getroot()
+) -> SvgElement:
+    anc_root = parse_svg_file(ancestor_path)
     strip_layout_layers(anc_root)
 
     g = etree.Element(
@@ -263,7 +263,7 @@ def _build_layer_group(
         },
     )
 
-    defs_children: list[etree._Element] = []  # pyright: ignore[reportPrivateUsage]
+    defs_children: list[SvgElement] = []
     for defs_el in anc_root.findall(f"{{{ns.SVG}}}defs"):
         defs_children.extend(list(defs_el))
     if defs_children:
@@ -305,7 +305,7 @@ def create_slide(
 
     view_box, width, height = "0 0 1920 1080", "1920", "1080"
     if parent_abs.exists():
-        root = etree.parse(parent_abs).getroot()
+        root = parse_svg_file(parent_abs)
         view_box = root.get("viewBox", view_box)
         width = root.get("width", width)
         height = root.get("height", height)
@@ -325,7 +325,7 @@ def create_slide(
 
 
 def _update_preview_style(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    root: SvgElement,
     preview_css: str,
 ) -> None:
     for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
@@ -352,7 +352,7 @@ def inject_layout_layers(
     if is_layout_current(svg_path, chain, preview_css):
         return False
 
-    root = etree.parse(svg_path).getroot()
+    root = parse_svg_file(svg_path)
     hashes = _layer_hashes(chain)
 
     for el in [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]:
@@ -385,7 +385,7 @@ class LayoutInfo:
 
 
 def resolve_default_zone(
-    root: etree._Element,  # pyright: ignore[reportPrivateUsage]
+    root: SvgElement,
     available_zone_ids: set[str] | None = None,
 ) -> str:
     """Return the effective default zone for a layout SVG.
@@ -440,11 +440,10 @@ def layout_zones(
     ``zone-`` prefix stripped, excluding the slide-number and slide-total zones
     (those are indicated by ``numbered``).
     """
-    svg_str = clean_inkscape_svg(layout_path)
+    root = clean_inkscape_tree(layout_path)
     chain = resolve_chain(layout_path, project_dir, theme)
     if chain:
-        svg_str = compose_with_ancestors(svg_str, chain)
-    root = etree.fromstring(svg_str.encode())
+        root = compose_with_ancestors(root, chain)
 
     all_zone_ids: set[str] = set()
     for el in root.iter():

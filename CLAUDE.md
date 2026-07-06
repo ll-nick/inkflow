@@ -60,7 +60,8 @@ src/
     git_setup.py      git hook + SVG diff driver setup
     init.py           project scaffolding (inkflow init)
     loaders.py        deck style / script loading helpers
-    svg.py            SVG namespace utilities
+    svg.py            SVG tree utilities (ensure_defs, with_namespaces, compose_with_ancestors)
+    svgio.py          SVG parse/serialize primitives: one hardened parser, SvgElement alias
     verify.py         slide authoring checks (inkflow verify)
     ns.py             XML namespace constants
     tui.py            terminal UI (Rich)
@@ -203,11 +204,13 @@ SVG files on disk are never modified by the serve/build pipeline.
 
 ## Animation pipeline
 
-`pipeline.py`:
-1. `clean_inkscape_svg(src)` — parse with lxml, remove elements/attrs in `http://www.inkscape.org/namespaces/inkscape` and `http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd`, call `etree.cleanup_namespaces()`, serialize to string
-2. `annotate_svg(svg_str, animations)` — find elements by id (stripping leading `#`), set `class`, `data-step`, and merge `--anim-*` custom properties into `style`
+`pipeline.py` processes each slide as a single lxml tree: parsed once via the hardened parser in `svgio.py`, threaded through the pipeline, serialized once at the end. `SlideSvg` wraps the tree and each pipeline step is a method that mutates it in place (like `list.sort()`), delegating the DOM work to `content.py`/`svg.py` functions that take and return the root element. Key steps:
+1. `clean_inkscape_tree(src)` — parse with the hardened lxml parser, remove elements/attrs in `http://www.inkscape.org/namespaces/inkscape` and `http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd`, call `etree.cleanup_namespaces()`. (`clean_inkscape_svg` wraps this and serializes to a pretty-printed string for the CLI/pre-commit hook.)
+2. `annotate_svg(root, animations)` — find elements by id (stripping leading `#`), set `class`, `data-step`, and merge `--anim-*` custom properties into `style`
 
-The CSS class is derived from the type name (`_camel_to_kebab`): `FadeIn → anim-fade-in`, `SlideIn → anim-slide-in`, `Highlight → anim-highlight`. There is no per-type registry. `_anim_style` emits one `--anim-<field>` custom property per non-`None` parameter (iterating `vars(anim)`, with a unit table for `duration`/`delay`/`distance`); the `direction` field instead becomes an `anim-from-<value>` modifier class (`_anim_classes`). CSS in `src/css/shared/animations.css` consumes the custom props via `var(--anim-…, default)`.
+The CSS class is `anim-<slug>`, where the slug is the kebab-cased type name (`Animation.slug()` / `Transition.slug()`, a `_Slugged` mixin in `manifest.py`): `FadeIn → anim-fade-in`, `SlideIn → anim-slide-in`, `Highlight → anim-highlight`. There is no per-type registry. `_anim_style` emits one `--anim-<field>` custom property per non-`None` parameter (via the shared `_set_fields` field-walk, with a unit table for `duration`/`delay`/`distance`); the `direction` field instead becomes an `anim-from-<value>` modifier class (`_anim_classes`). CSS in `src/css/shared/animations.css` consumes the custom props via `var(--anim-…, default)`.
+
+All SVG parsing routes through `svgio.py` (`parse_svg`, `parse_svg_file`, `serialize_svg`), which uses one hardened parser config (`resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False`, constructed per call since lxml parsers are not thread-safe). This is defense-in-depth plus crash-robustness: an SVG referencing an external/DTD entity degrades to an inert node instead of crashing the rebuild. `svgio.py` also exports the `SvgElement` type alias used across the backend.
 
 ## JS toolchain
 

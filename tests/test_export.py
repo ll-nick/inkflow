@@ -5,7 +5,9 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 
+from inkflow.cli import main
 from inkflow.export import _find_chromium, build_pdf, build_static_html
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -86,9 +88,6 @@ def _write_deck(project_dir: Path, body: str) -> Path:
     return deck_path
 
 
-# ── F-023: asset copying ──────────────────────────────────────────────────────
-
-
 class TestBuildCopiesAssets:
     def test_copies_media_markdown_and_svg_image_assets(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _ASSET_SLIDE_SVG)
@@ -128,9 +127,6 @@ class TestBuildCopiesAssets:
         assert copied == []
 
 
-# ── F-026: empty deck ─────────────────────────────────────────────────────────
-
-
 class TestEmptyDeck:
     def test_static_html_handles_empty_deck(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
@@ -160,3 +156,26 @@ class TestBuildPdf:
         build_pdf(deck_path, out, no_sandbox=True)
         assert out.exists()
         assert out.stat().st_size > 0
+
+
+_MALFORMED_SVG = "<svg><rect></svg>"
+
+
+class TestMalformedSvg:
+    def test_build_static_html_raises_naming_the_file(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _MALFORMED_SVG)
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+        with pytest.raises(ValueError, match=r"s\.svg"):
+            build_static_html(deck_path, tmp_path / "out")
+
+    def test_build_cli_reports_clean_error(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _MALFORMED_SVG)
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+        result = CliRunner().invoke(
+            main, ["build", "--deck", str(deck_path), "-o", str(tmp_path / "out")]
+        )
+        assert result.exit_code != 0
+        # click renders the ClickException as "Error: invalid SVG ..." naming the file,
+        # rather than letting a raw XMLSyntaxError traceback escape
+        assert "invalid SVG" in result.output
+        assert not isinstance(result.exception, ValueError)

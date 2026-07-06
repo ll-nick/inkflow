@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lxml import etree
-
-from inkflow.clean import clean_inkscape_svg
+from inkflow.clean import clean_inkscape_tree
 from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
 from inkflow.loaders import load_md, resolve_content_src
 from inkflow.manifest import Inline, Media, Slide
@@ -19,11 +17,10 @@ def composed_svg_ids(
     src: Path, project_dir: Path | None, theme: str | None
 ) -> set[str]:
     """Return all element IDs from an SVG after compositing its ancestor chain."""
-    svg_str = clean_inkscape_svg(src)
+    root = clean_inkscape_tree(src)
     chain = resolve_chain(src, project_dir, theme)
     if chain:
-        svg_str = compose_with_ancestors(svg_str, chain)
-    root = etree.fromstring(svg_str.encode())
+        root = compose_with_ancestors(root, chain)
     ids: set[str] = set()
     for el in root.iter():
         eid = el.get("id")
@@ -122,7 +119,7 @@ def _check_default_zone(
         return []
     try:
         build_slide_content(
-            md_text,
+            parse_markdown_zones(md_text),
             slide.zones,
             available_zones=zone_ids,
             default_zone=default_zone,
@@ -158,11 +155,10 @@ def verify_slide(
     issues = _check_files(slide, project_dir)
 
     try:
-        svg_str = clean_inkscape_svg(src)
+        root = clean_inkscape_tree(src)
         chain = resolve_chain(src, project_dir, theme)
         if chain:
-            svg_str = compose_with_ancestors(svg_str, chain)
-        root = etree.fromstring(svg_str.encode())
+            root = compose_with_ancestors(root, chain)
     except Exception as exc:
         return [*issues, ("error", f"could not parse SVG: {exc}")]
 
