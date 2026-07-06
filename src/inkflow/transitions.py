@@ -3,11 +3,11 @@
 Each type is a thin subclass of :class:`inkflow.manifest.Transition`, adding only
 its own fields. The shared params (``duration``, ``easing``) come from the base.
 
-How a type maps to the JS handler (see ``pipeline.py``):
+How a type maps to the JS handler:
 
-- The handler key is derived from the type name via kebab-case:
+- The handler key is the kebab-cased class name (:meth:`Transition.slug`):
   ``SomeTransition`` → ``"some-transition"``
-- All fields are serialized via ``vars(t)`` into the transition JSON, so
+- Every set (non-``None``) field is serialized into the transition JSON, so
   ``direction``, ``color`` etc. arrive on the JS ``TransitionData`` object
   automatically without per-type pipeline code required.
 - Register a custom handler from user JS:

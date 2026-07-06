@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inkflow.animations import Bounce, FadeIn, FadeOut
+from inkflow.animations import Bounce, FadeIn, FadeOut, SlideIn
 from inkflow.manifest import (
     Align,
     ColorMode,
@@ -12,8 +12,26 @@ from inkflow.manifest import (
     MediaFit,
     Slide,
     TextBox,
+    camel_to_kebab,
 )
 from inkflow.transitions import Crossfade, Cut, Morph
+
+
+def test_camel_to_kebab() -> None:
+    assert camel_to_kebab("FadeIn") == "fade-in"
+    assert camel_to_kebab("Highlight") == "highlight"
+
+
+def test_animation_slug() -> None:
+    assert FadeIn("#x").slug() == "fade-in"
+    assert SlideIn("#x").slug() == "slide-in"
+    assert Bounce("#x").slug() == "bounce"
+
+
+def test_transition_slug() -> None:
+    assert Crossfade().slug() == "crossfade"
+    assert Cut().slug() == "cut"
+    assert Morph().slug() == "morph"
 
 
 def test_slide_step_count_no_animations() -> None:

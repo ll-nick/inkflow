@@ -90,7 +90,7 @@ def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> 
     return resolve_parent_path(src, project_dir, project_dir, theme)
 
 
-# ── Animation classes ─────────────────────────────────────────────────────────
+# ── Animation / transition serialization ──────────────────────────────────────
 
 # Fields that map to a modifier class instead of a CSS custom property, because
 # CSS cannot branch on a custom-property *value* (e.g. pick a slide axis).
@@ -102,14 +102,15 @@ _ANIM_MODIFIER_FIELDS: frozenset[str] = frozenset({"direction"})
 _ANIM_UNIT: dict[str, str] = {"duration": "s", "delay": "s", "distance": "px"}
 
 
-def _camel_to_kebab(name: str) -> str:
-    """`FadeIn` -> `fade-in`, `SlideIn` -> `slide-in`, `Highlight` -> `highlight`."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
+def _set_fields(obj: object) -> dict[str, object]:
+    """Dataclass fields whose value is not None (None means 'defer to the default')."""
+    fields = cast("dict[str, object]", vars(obj))
+    return {k: v for k, v in fields.items() if v is not None}
 
 
 def _anim_classes(anim: Animation) -> list[str]:
     """CSS classes for an animation: a name-derived base plus modifier classes."""
-    classes = [f"anim-{_camel_to_kebab(type(anim).__name__)}"]
+    classes = [f"anim-{anim.slug()}"]
     direction = getattr(anim, "direction", None)
     if direction is not None:
         classes.append(f"anim-from-{direction}")
@@ -122,12 +123,9 @@ def _anim_style(anim: Animation) -> str:
     Generic over fields: anything beyond `element`/`step`/modifier fields that is
     not `None` becomes a custom property. `None` means "let the CSS default win".
     """
-    fields: dict[str, object] = vars(anim)
     decls: list[str] = []
-    for name, value in fields.items():
+    for name, value in _set_fields(anim).items():
         if name in ("element", "step") or name in _ANIM_MODIFIER_FIELDS:
-            continue
-        if value is None:
             continue
         decls.append(f"--anim-{name}: {value}{_ANIM_UNIT.get(name, '')}")
     return "; ".join(decls)
@@ -157,9 +155,7 @@ def annotate_svg(root: SvgElement, animations: list[Animation]) -> SvgElement:
 def _serialize_transition(t: Transition | None) -> dict[str, object]:
     if t is None:
         return {"type": "cut", "duration": 0.0}
-    all_fields = cast(dict[str, object], vars(t))
-    fields = {k: v for k, v in all_fields.items() if v is not None}
-    return {"type": _camel_to_kebab(type(t).__name__), **fields}
+    return {"type": t.slug(), **_set_fields(t)}
 
 
 def resolve_transitions(deck: Deck) -> list[dict[str, object]]:

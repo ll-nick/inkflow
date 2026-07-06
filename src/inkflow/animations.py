@@ -4,11 +4,12 @@ Each type is a thin subclass of :class:`inkflow.manifest.Animation`, adding only
 its own fields. The shared params (``duration``, ``easing``, ``delay``) and the
 ``element``/``step`` fields come from the base.
 
-How a type maps to CSS (see ``pipeline.py``):
+How a type maps to CSS:
 
-- The CSS class is derived from the type name: ``FadeIn`` → ``anim-fade-in``,
-  ``SlideIn`` → ``anim-slide-in``, ``Highlight`` → ``anim-highlight``. Defining a
-  new type is "add a subclass here + write a matching CSS rule," nothing else.
+- The CSS class is ``anim-<slug>``, where the slug is the kebab-cased class name
+  (:meth:`Animation.slug`): ``FadeIn`` → ``anim-fade-in``, ``SlideIn`` →
+  ``anim-slide-in``, ``Highlight`` → ``anim-highlight``. Defining a new type is
+  "add a subclass here + write a matching CSS rule," nothing else.
 - Continuous params become ``--anim-<field>`` custom properties on the element.
 - Discrete params that CSS cannot branch on by value become modifier classes —
   currently ``direction`` → ``anim-from-{direction}``.

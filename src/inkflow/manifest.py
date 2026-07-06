@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import TypeAlias
@@ -13,6 +14,22 @@ class _KebabStrEnum(StrEnum):
         name: str, start: int, count: int, last_values: list[str]
     ) -> str:
         return name.lower().replace("_", "-")
+
+
+# ── Type-name slug ────────────────────────────────────────────────────────────
+
+
+def camel_to_kebab(name: str) -> str:
+    """`FadeIn` -> `fade-in`, `SlideIn` -> `slide-in`, `Highlight` -> `highlight`."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
+
+
+class _Slugged:
+    """Mixin giving a DSL type a kebab-case slug derived from its class name."""
+
+    @classmethod
+    def slug(cls) -> str:
+        return camel_to_kebab(cls.__name__)
 
 
 # ── Content marker ────────────────────────────────────────────────────────────
@@ -47,7 +64,7 @@ class Direction(_KebabStrEnum):
 
 
 @dataclass
-class Animation:
+class Animation(_Slugged):
     """Data-only base for every animation type.
 
     Concrete types live in ``inkflow.animations`` and subclass this, adding only
@@ -72,7 +89,7 @@ class Animation:
 
 
 @dataclass
-class Transition:
+class Transition(_Slugged):
     """Data-only base for every transition type.
 
     Concrete types live in ``inkflow.transitions`` and subclass this.
