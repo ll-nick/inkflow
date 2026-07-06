@@ -60,7 +60,8 @@ src/
     git_setup.py      git hook + SVG diff driver setup
     init.py           project scaffolding (inkflow init)
     loaders.py        deck style / script loading helpers
-    svg.py            SVG namespace utilities
+    svg.py            SVG tree utilities (ensure_defs, with_namespaces, compose_with_ancestors)
+    svgio.py          SVG parse/serialize primitives: one hardened parser, SvgElement alias
     verify.py         slide authoring checks (inkflow verify)
     ns.py             XML namespace constants
     tui.py            terminal UI (Rich)
