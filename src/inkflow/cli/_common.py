@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+from inkflow.layout import resolve_chain
 from inkflow.manifest import ColorMode, Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
@@ -60,12 +61,26 @@ class Project:
         return self.deck.theme
 
     def slide_targets(self) -> list[Target]:
-        """The SVG-authored slides of the deck as operation targets."""
-        return [
-            Target(resolve_slide_src(s.src, self.dir, self.theme), str(s.src))
-            for s in self.deck.slides
-            if s.md is None
-        ]
+        """Every project-local SVG the deck resolves to, deduplicated.
+
+        For each slide this collects its base SVG plus every ancestor in its layout
+        chain, then keeps only files inside the project directory. Built-in and
+        theme layouts, and anything referenced by a path outside the project,
+        are left out of the default sweep — name them explicitly to touch them.
+        """
+        seen: dict[Path, Target] = {}
+        for slide in self.deck.slides:
+            base = resolve_slide_src(slide.src, self.dir, self.theme)
+            try:
+                chain = resolve_chain(base, self.dir, self.theme)
+            except ValueError as exc:
+                raise click.ClickException(str(exc)) from exc
+            for path in (base, *chain):
+                resolved = path.resolve()
+                if resolved in seen or not resolved.is_relative_to(self.dir):
+                    continue
+                seen[resolved] = Target(resolved, str(resolved.relative_to(self.dir)))
+        return list(seen.values())
 
 
 def load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
@@ -75,9 +90,11 @@ def load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
 def targets_or_deck_slides(
     files: tuple[Path, ...], project: Project | None
 ) -> list[Target]:
-    """Explicit FILES if given, else every SVG slide in the deck.
+    """Explicit FILES if given, else every project-local SVG the deck uses.
 
-    Raises if FILES is omitted with no deck to fall back on (``--no-deck``).
+    The fallback covers each slide's base SVG plus its local layout ancestors
+    (see ``Project.slide_targets``). Raises if FILES is omitted with no deck to
+    fall back on (``--no-deck``).
     """
     if files:
         return resolve_targets(files)
