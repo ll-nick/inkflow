@@ -34,7 +34,8 @@ def colorize_cmd(
     attributes and inline style declarations with inkflow-fill-* / inkflow-stroke-*
     classes. The hardcoded attributes are removed after replacement.
 
-    If FILES is omitted, colorizes all slides in the deck.
+    If FILES is omitted, colorizes every project-local SVG the deck uses
+    (each slide and its local layout ancestors).
     """
     project = load_project_or_none(deck_path, no_deck)
     deck_obj = project.deck if project else None
