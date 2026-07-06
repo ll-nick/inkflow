@@ -40,7 +40,10 @@ def build_cmd(deck_path: Path, output: str | None) -> None:
     """Export a self-contained presentation directory for offline use."""
     resolved = resolve_deck_path(deck_path)
     out_dir = Path(output).resolve() if output else resolved.parent / "build"
-    warnings = build_static_html(resolved, out_dir)
+    try:
+        warnings = build_static_html(resolved, out_dir)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
     for w in warnings:
         click.echo(click.style(f" ⚠  {w}", fg="yellow"))
     click.echo(f"[inkflow] built {out_dir / 'index.html'}")
@@ -92,7 +95,7 @@ def export_cmd(
             ) from None
     try:
         warnings = build_pdf(resolved, out, chromium, no_sandbox, size=parsed_size)
-    except RuntimeError as exc:
+    except (RuntimeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     for w in warnings:
         click.echo(click.style(f" ⚠  {w}", fg="yellow"))
