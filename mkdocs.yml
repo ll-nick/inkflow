@@ -37,6 +37,7 @@ extra_css:
 plugins:
   - search
   - mkdocstrings:
+      custom_templates: docs/theme_overrides
       handlers:
         python:
           paths: [src]
