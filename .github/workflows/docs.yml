@@ -21,7 +21,7 @@ jobs:
 
       - run: uv sync --group docs
 
-      - run: uv run inkflow build --deck demo/deck.py --output docs/demo/presentation
+      - run: uv run inkflow build --deck demo/deck.py --output docs/demo
 
       - run: uv run inkflow build --deck src/inkflow/theme/showcase/deck.py --output docs/built-in-theme/presentation
 
@@ -38,7 +38,7 @@ jobs:
 
       - run: uv sync --group docs
 
-      - run: uv run inkflow build --deck demo/deck.py --output docs/demo/presentation
+      - run: uv run inkflow build --deck demo/deck.py --output docs/demo
 
       - run: uv run inkflow build --deck src/inkflow/theme/showcase/deck.py --output docs/built-in-theme/presentation
 

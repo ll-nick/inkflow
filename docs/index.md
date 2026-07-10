@@ -67,7 +67,7 @@ inkflow serve   # open http://localhost:7777
 ---
 
 <div align="center" markdown>
-[Demo](demo/index.md){ .md-button .md-button--primary }
+[Demo](demo/index.html){ .md-button .md-button--primary }
 [Get started](getting-started.md){ .md-button }
 </div>
 

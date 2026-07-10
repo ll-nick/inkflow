@@ -6,6 +6,7 @@ __pycache__/
 build/
 deck.pdf
 dist/
-docs/demo/presentation/
+docs/demo/index.html
+docs/demo/assets/
 docs/built-in-theme/presentation/
 site/

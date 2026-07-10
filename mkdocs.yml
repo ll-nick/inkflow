@@ -68,7 +68,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Demo: demo/index.md
+  - Demo: demo/index.html
   - Getting started: getting-started.md
   - Concepts: concepts.md
   - Guides:
