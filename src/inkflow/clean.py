@@ -67,6 +67,6 @@ def clean_inkscape_tree(src: Path, keep_preview: bool = False) -> SvgElement:
 
 
 def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
-    """Cleaned SVG as a pretty-printed string. See :func:`clean_inkscape_tree`."""
+    """Cleaned SVG as a pretty-printed string. See ``clean_inkscape_tree``."""
     root = clean_inkscape_tree(src, keep_preview)
     return etree.tostring(root, encoding="unicode", pretty_print=True)
