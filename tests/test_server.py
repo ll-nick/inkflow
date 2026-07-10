@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import cast
 
-from inkflow.manifest import ColorMode
+from inkflow.enums import ColorMode
 from inkflow.server import (
     State,
     _coerce_nav_position,  # pyright: ignore[reportPrivateUsage]

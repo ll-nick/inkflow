@@ -18,7 +18,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from inkflow.manifest import Direction, Transition
+from inkflow.enums import Direction
+from inkflow.manifest import Transition
 
 __all__ = [
     "Cover",

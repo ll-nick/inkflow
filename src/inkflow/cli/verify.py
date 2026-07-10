@@ -8,7 +8,7 @@ from rich.console import Console
 
 from inkflow import colors, loaders
 from inkflow.cli._common import Project, deck_option, main
-from inkflow.manifest import ColorMode
+from inkflow.enums import ColorMode
 from inkflow.pipeline import resolve_slide_src
 from inkflow.verify import verify_slide
 

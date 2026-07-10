@@ -19,7 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from inkflow.manifest import Animation, Direction
+from inkflow.enums import Direction
+from inkflow.manifest import Animation
 
 __all__ = [
     "Bounce",

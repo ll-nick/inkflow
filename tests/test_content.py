@@ -10,7 +10,8 @@ from inkflow.content import inject_style as _inject_style_el
 from inkflow.content import remove_unreferenced_zones as _remove_unreferenced_zones_el
 from inkflow.content import substitute_content as _substitute_content_el
 from inkflow.content import substitute_zone_numbers as _substitute_zone_numbers_el
-from inkflow.manifest import Align, Media, MediaAlign, MediaFit, TextBox, VAlign
+from inkflow.enums import Align, MediaAlign, MediaFit, VAlign
+from inkflow.manifest import Media, TextBox
 from inkflow.svgio import parse_svg, serialize_svg
 
 # String adapters: the content DOM functions now take and return an element (parse

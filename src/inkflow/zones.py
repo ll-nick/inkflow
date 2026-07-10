@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 
 from lxml import etree
 
-from inkflow.manifest import Align, Media, TextBox, VAlign, ZoneContent
+from inkflow.enums import Align, VAlign
+from inkflow.manifest import Media, TextBox, ZoneContent
 from inkflow.markdown import (
     html_fragment_to_xml,
     markdown_to_html,

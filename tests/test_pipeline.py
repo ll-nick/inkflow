@@ -14,10 +14,10 @@ from inkflow.animations import (
     SlideIn,
     ZoomIn,
 )
+from inkflow.enums import Direction
 from inkflow.manifest import (
     Animation,
     Deck,
-    Direction,
     Inline,
     Slide,
 )

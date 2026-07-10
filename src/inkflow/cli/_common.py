@@ -6,8 +6,9 @@ from pathlib import Path
 
 import click
 
+from inkflow.enums import ColorMode
 from inkflow.layout import resolve_chain
-from inkflow.manifest import ColorMode, Deck
+from inkflow.manifest import Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 

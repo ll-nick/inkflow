@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 from inkflow.animations import Bounce, FadeIn, SlideIn
+from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit
 from inkflow.manifest import (
-    Align,
-    ColorMode,
     Deck,
-    Direction,
     Inline,
     Media,
-    MediaAlign,
-    MediaFit,
     Slide,
     TextBox,
     camel_to_kebab,

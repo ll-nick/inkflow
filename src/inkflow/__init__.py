@@ -1,19 +1,14 @@
 from inkflow import animations, transitions
+from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit, VAlign
 from inkflow.manifest import (
-    Align,
     Animation,
-    ColorMode,
     Content,
     Deck,
-    Direction,
     Inline,
     Media,
-    MediaAlign,
-    MediaFit,
     Slide,
     TextBox,
     Transition,
-    VAlign,
     ZoneContent,
 )
 

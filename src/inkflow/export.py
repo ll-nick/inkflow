@@ -8,9 +8,10 @@ import tempfile
 from pathlib import Path
 from typing import cast
 
+from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
-from inkflow.manifest import ColorMode, Deck, Media
+from inkflow.manifest import Deck, Media
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
 
