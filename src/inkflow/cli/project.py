@@ -24,7 +24,12 @@ from inkflow.cli._common import main
     help="Skip git hook setup even when inside a git repository.",
 )
 def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
-    """Scaffold a new presentation project."""
+    """Scaffold a new presentation project in DIRECTORY (default: current).
+
+    Writes a starter `deck.py`, a title SVG, and a Markdown content slide. When run
+    inside a git repository it also configures the SVG git hooks (skip with
+    `--no-git`). Pass `--theme` to start from a custom theme directory.
+    """
     target = directory.resolve()
     if (target / "deck.py").exists():
         raise click.ClickException(f"deck.py already exists: {target / 'deck.py'}")
@@ -49,12 +54,12 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
 def completion_cmd(shell: str) -> None:
     """Print shell completion script for SHELL.
 
-    \b
     Add to your shell config:
-      bash:     eval "$(inkflow completion bash)"
-      zsh:      eval "$(inkflow completion zsh)"
-      fish:     inkflow completion fish | source
-      carapace: inkflow completion carapace > ~/.config/carapace/specs/inkflow.yaml
+
+    - bash: `eval "$(inkflow completion bash)"`
+    - zsh: `eval "$(inkflow completion zsh)"`
+    - fish: `inkflow completion fish | source`
+    - carapace: `inkflow completion carapace > ~/.config/carapace/specs/inkflow.yaml`
     """
     if shell == "carapace":
         spec = files("inkflow").joinpath("completions/inkflow.yaml")
@@ -68,7 +73,13 @@ def completion_cmd(shell: str) -> None:
 
 @main.command("setup-git")
 def setup_git() -> None:
-    """Configure git hooks and SVG diff driver for any git repository."""
+    """Configure git hooks and the SVG diff driver for the current repository.
+
+    Run once per clone. Installs a pre-commit hook that strips Inkscape editor
+    metadata from staged SVGs, and registers a diff driver so `git diff` and
+    GitHub show only visual changes for SVGs. Both git-config entries are local to
+    the clone (never committed).
+    """
     try:
         root = git_setup.git_root()
         git_setup.run_git_setup(root, verbose=True, log=click.echo)
