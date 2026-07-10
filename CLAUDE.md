@@ -82,7 +82,7 @@ src/
     shared/           theme variables, animation keyframes
     presenter/        presenter partials including pv.css (sidebar panel)
 demo/
-  deck.py             11-slide demo deck (SVG slides + Markdown via md=)
+  deck.py             11-slide demo deck (SVG slides, some filling zones with Markdown via md=)
   slides/             source SVGs and Markdown content files
 mise.toml             task runner + tool versions (replaces poethepoet)
 package.json          JS devDependencies: biome, esbuild, typescript

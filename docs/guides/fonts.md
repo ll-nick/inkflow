@@ -39,7 +39,7 @@ my-talk/
     Inter-Regular.ttf
     Inter-Bold.ttf
   slides/
-    01-title.svg
+    title.svg
 ```
 
 Fonts in `fonts/` take precedence over system fonts, so you always get exactly the

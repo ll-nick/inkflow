@@ -8,7 +8,7 @@ from rich.console import Console
 
 from inkflow import colors, loaders
 from inkflow.cli._common import Project, deck_option, main
-from inkflow.manifest import ColorMode
+from inkflow.enums import ColorMode
 from inkflow.pipeline import resolve_slide_src
 from inkflow.verify import verify_slide
 
@@ -26,7 +26,17 @@ def verify_cmd(
     include_hidden: bool,
     strict: bool,
 ) -> None:
-    """Check slides for authoring errors before presenting or building."""
+    """Check slides for authoring errors before presenting or building.
+
+    Runs per-slide checks and prints an `ok` / `error` / `warn` line for each.
+    Errors: the SVG source, `.md`, notes file, or `Media.src` is missing; a zone id
+    (from `zones` keys or `::zone::` markers) or an animation element id is absent
+    from the composed SVG. Warnings: animation steps are not contiguous from 1, or
+    layout layers are stale (run `inkflow sync`).
+
+    Exits 1 on any error, or on any warning when `--strict` is set. Hidden slides
+    (`visible=False`) are skipped unless `--all` is passed.
+    """
 
     project = Project.load(deck_path)
     deck_obj = project.deck

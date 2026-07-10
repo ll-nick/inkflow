@@ -1,4 +1,4 @@
-# Theme showcase
+# Built-in theme
 
 Inkflow ships with a built-in theme so a deck looks polished before you touch any
 styling. The theme provides a base layout SVG (background + brand frame), a set of
@@ -41,9 +41,9 @@ from inkflow import Deck, Slide
 
 def main() -> Deck:
     return Deck(slides=[
-        Slide("cover", md="slides/title.md"),
-        Slide("two-cols", md="slides/compare.md"),
-        Slide("end", md="slides/thanks.md"),
+        Slide("cover", md="title"),
+        Slide("two-cols", md="compare"),
+        Slide("end", md="thanks"),
     ])
 ```
 

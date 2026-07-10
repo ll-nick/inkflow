@@ -9,7 +9,7 @@
 <p align="center"><strong>Beautiful slides from SVG. Your editor, your style.</strong></p>
 
 <p align="center">
-  <a href="https://ll-nick.github.io/inkflow/demo/presentation/">
+  <a href="https://ll-nick.github.io/inkflow/demo/">
     <img src="docs/assets/demo-button.svg" alt="Try the live demo">
   </a>
 </p>

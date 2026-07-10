@@ -34,6 +34,23 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+plugins:
+  - search
+  - mkdocstrings:
+      custom_templates: docs/theme_overrides
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_section_style: table
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            separate_signature: true
+            show_signature_annotations: true
+            inherited_members: false
+            members_order: source
+
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -45,23 +62,27 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - attr_list
   - md_in_html
+  - mkdocs-click
   - toc:
       permalink: true
 
 nav:
   - Home: index.md
+  - Demo: demo/index.html
   - Getting started: getting-started.md
   - Concepts: concepts.md
   - Guides:
-    - SVG slides: guides/svg-slides.md
-    - Markdown slides: guides/markdown-slides.md
+    - Authoring slides: guides/slides.md
     - Layout system: guides/layout-system.md
     - Transitions: guides/transitions.md
     - Themes: guides/themes.md
+    - Fonts: guides/fonts.md
     - Export: guides/export.md
     - Presenter view: guides/presenter-view.md
   - Reference:
     - Manifest: reference/manifest.md
+    - Enums: reference/enums.md
+    - Animations: reference/animations.md
+    - Transitions: reference/transitions.md
     - CLI: reference/cli.md
-  - Demo: demo/index.md
-  - Theme showcase: showcase/index.md
+    - Built-in theme: built-in-theme/index.md

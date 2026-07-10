@@ -10,7 +10,8 @@ from inkflow.animations import (
     ZoomIn,
     ZoomOut,
 )
-from inkflow.manifest import Animation, Direction
+from inkflow.enums import Direction
+from inkflow.manifest import Animation
 
 
 def test_shared_params_default_none() -> None:

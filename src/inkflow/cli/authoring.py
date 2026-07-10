@@ -214,8 +214,8 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
 def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) -> None:
     """Create a new slide SVG, optionally wired to a layout parent.
 
-    OUTPUT is the path for the new SVG file. With -p/--parent, the slide is wired
-    to that layout (bare name, 'local:foo', 'theme:foo', 'builtin:foo', or a
+    OUTPUT is the path for the new SVG file. With `-p`/`--parent`, the slide is
+    wired to that layout (bare name, 'local:foo', 'theme:foo', 'builtin:foo', or a
     relative path) and given preview layers. Without it, a blank slide is created.
     """
     if parent is not None and not no_deck:
@@ -271,7 +271,7 @@ def sync_cmd(
 
     If FILES is omitted, refreshes every project-local SVG the deck uses
     (each slide and its local layout ancestors).
-    Use --no-deck when authoring a theme without a project deck.py.
+    Use `--no-deck` when authoring a theme without a project deck.py.
     """
     project = load_project_or_none(deck_path, no_deck)
     deck_obj = project.deck if project else None
@@ -334,7 +334,14 @@ class _LayoutRow:
 @deck_option
 @no_deck_option
 def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
-    """List available layouts with their zones."""
+    """List available layouts with their zones and parent chain.
+
+    Discovers layouts from three sources — built-in, theme, then project-local —
+    and prints a table per source with each layout's parent chain and zone names.
+    The default zone is underlined; a checkmark marks layouts that carry a slide
+    number (a `zone-slide-number` or `zone-slide-total`). Pass `--no-deck` to list
+    only the built-in layouts.
+    """
 
     project = load_project_or_none(deck_path, no_deck)
     project_dir = project.dir if project else None

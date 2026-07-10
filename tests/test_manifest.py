@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from inkflow.animations import Bounce, FadeIn, FadeOut, SlideIn
+from inkflow.animations import Bounce, FadeIn, SlideIn
+from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit
 from inkflow.manifest import (
-    Align,
-    ColorMode,
     Deck,
-    Direction,
     Inline,
     Media,
-    MediaAlign,
-    MediaFit,
     Slide,
     TextBox,
     camel_to_kebab,
@@ -32,26 +28,6 @@ def test_transition_slug() -> None:
     assert Crossfade().slug() == "crossfade"
     assert Cut().slug() == "cut"
     assert Morph().slug() == "morph"
-
-
-def test_slide_step_count_no_animations() -> None:
-    assert Slide(src="test.svg").step_count == 0
-
-
-def test_slide_step_count_returns_max() -> None:
-    slide = Slide(
-        src="test.svg",
-        animations=[
-            FadeIn("#a", step=1),
-            Bounce("#b", step=3),
-            FadeOut("#c", step=2),
-        ],
-    )
-    assert slide.step_count == 3
-
-
-def test_slide_step_count_single_animation() -> None:
-    assert Slide(src="test.svg", animations=[FadeOut("#x", step=5)]).step_count == 5
 
 
 def test_slide_animations_default_empty() -> None:

@@ -23,8 +23,8 @@ The build output is the same presenter you see during `inkflow serve`, packaged 
 All local assets referenced by the deck are copied into the output directory: `Media` zones plus images referenced from Markdown (`![](...)`) or SVG (`<image href>`). Paths are resolved relative to the project root (the directory containing `deck.py`), and remote (`https://`) and `data:` URIs are left untouched. Fonts are embedded directly into the HTML, so they need no separate files.
 
 !!! tip "Live demo in these docs"
-    The interactive demo on this site was produced with `inkflow build` and embedded as an `<iframe>`.
-    See the [Demo](../demo/index.md) page.
+    The interactive demo linked from this site was produced with `inkflow build` and
+    served as a static build. See the [Demo](../demo/index.html) page.
 
 ## PDF export (`inkflow export`)
 

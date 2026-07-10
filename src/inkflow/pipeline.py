@@ -13,11 +13,11 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
+from inkflow.enums import ColorMode
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.manifest import (
     Animation,
-    ColorMode,
     Deck,
     Inline,
     Media,

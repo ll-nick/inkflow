@@ -24,15 +24,22 @@ Creativity suffers when moving a box means editing a number.
 Draw in any SVG editor.
 Keep everything in plain text.
 
-## Core ideas
+## How it works
 
-| Concept | What it means |
-|---|---|
-| **SVG source** | One SVG file per slide. Works with Inkscape, Figma, or any other SVG editor. |
-| **`deck.py` manifest** | A plain Python file that declares slide order, animations, and transitions. |
-| **Pipeline** | Strips editor metadata, injects animation classes, serves everything over HTTP + WebSocket. |
-| **Live reload** | Save a file in your editor. The browser updates in place, preserving your slide position. |
-| **Layouts** | Reusable SVG templates with content zones. Write the text in Markdown, not in the SVG. |
+1. **Draw each slide as an SVG.** Use Inkscape, Figma, or any editor that exports SVG.
+   No special markup, no plugin — draw exactly as you normally would.
+2. **List your slides in `deck.py`.** A small Python file says which slides to show,
+   in what order, and which elements animate or transition in.
+3. **Run `inkflow serve`.** A browser tab opens with your presentation. Save a change
+   in your editor and it appears instantly, without losing your place.
+
+That's the core loop — the rest is there once you need it:
+reusable layouts that inherit from each other like master slides,
+Markdown-filled zones for text-heavy slides,
+a presenter view with speaker notes,
+one-command export to static HTML or PDF,
+and more.
+Browse the [guides](guides/slides.md) or read [Concepts](concepts.md) for the full picture.
 
 ## Quick example
 
@@ -41,15 +48,15 @@ from inkflow import Deck, Slide, animations, transitions
 
 def main() -> Deck:
     return Deck(slides=[
-        Slide("slides/01-title.svg", animations=[
+        Slide("title.svg", animations=[
             animations.FadeIn("#headline", step=1),
             animations.FadeIn("#subtitle", step=2),
         ]),
-        Slide("slides/02-diagram.svg", animations=[
+        Slide("diagram.svg", animations=[
             animations.Bounce("#box-a", step=1),
             animations.Bounce("#box-b", step=2),
         ], transition=transitions.Crossfade()),
-        Slide("slides/03-summary.svg", transition=transitions.Morph(duration=0.7)),
+        Slide("summary.svg", transition=transitions.Morph(duration=0.7)),
     ])
 ```
 
@@ -59,9 +66,14 @@ inkflow serve   # open http://localhost:7777
 
 ---
 
+<div align="center" markdown>
+[Demo](demo/index.html){ .md-button .md-button--primary }
+[Get started](getting-started.md){ .md-button }
+</div>
+
+---
+
 !!! note
-    The docs are currently AI-generated drafts and may contain inaccuracies or incomplete information.
+    All guides are currently AI-generated drafts and may contain inaccuracies or incomplete information.
     I'll review them once the API stabilizes 
 
-[Get started →](getting-started.md){ .md-button .md-button--primary }
-[Read the concepts →](concepts.md){ .md-button }

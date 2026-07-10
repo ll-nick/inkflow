@@ -4,15 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.manifest import (
-    Align,
-    Media,
-    MediaAlign,
-    MediaFit,
-    TextBox,
-    VAlign,
-    ZoneContent,
-)
+from inkflow.enums import Align, MediaAlign, MediaFit, VAlign
+from inkflow.manifest import Media, TextBox, ZoneContent
 from inkflow.markdown import markdown_to_html
 from inkflow.zones import (
     _STEP,  # pyright: ignore[reportPrivateUsage]

@@ -8,25 +8,12 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.manifest import Media, MediaAlign, TextBox
+from inkflow.manifest import Media, TextBox
 from inkflow.markdown import html_fragment_to_xml
 from inkflow.svg import ensure_defs
 from inkflow.svgio import SvgElement
 
 _VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
-
-
-_ALIGN_MAP: dict[MediaAlign, tuple[int, int]] = {
-    MediaAlign.CENTER: (50, 50),
-    MediaAlign.TOP: (50, 0),
-    MediaAlign.BOTTOM: (50, 100),
-    MediaAlign.LEFT: (0, 50),
-    MediaAlign.RIGHT: (100, 50),
-    MediaAlign.TOP_LEFT: (0, 0),
-    MediaAlign.TOP_RIGHT: (100, 0),
-    MediaAlign.BOTTOM_LEFT: (0, 100),
-    MediaAlign.BOTTOM_RIGHT: (100, 100),
-}
 
 _VALIGN_CSS: dict[str, str] = {
     "top": "start",
@@ -370,7 +357,7 @@ def _replace_with_media(
     geom = _zone_geometry(el)
     rect = geom.rect
 
-    base_x, base_y = _ALIGN_MAP[item.align]
+    base_x, base_y = item.align.position
     width = _parse_dimension(rect.width)
     height = _parse_dimension(rect.height)
     x_pct = item.x / width * 100 if width else 0.0

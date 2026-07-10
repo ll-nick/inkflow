@@ -167,7 +167,7 @@ Deck(style="""
 **Slide-level**: applied to one slide only:
 
 ```python
-Slide("slides/01-title.svg", style="""
+Slide("title", style="""
     #headline { fill: hotpink; }
 """)
 ```

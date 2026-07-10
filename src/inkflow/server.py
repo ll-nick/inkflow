@@ -26,9 +26,10 @@ from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
+from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
-from inkflow.manifest import ColorMode, Deck
+from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.tui import LiveUI
 

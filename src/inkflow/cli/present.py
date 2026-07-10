@@ -22,7 +22,19 @@ from inkflow.server import serve as _serve
 @click.option("--port", default=7777, show_default=True, help="HTTP port")
 @click.option("--ws-port", default=7778, show_default=True, help="WebSocket port")
 def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
-    """Start the presentation server."""
+    """Start the presentation server with live reload.
+
+    Serves the deck at `http://{host}:{port}` and pushes slide updates over a
+    WebSocket whenever a source file changes, swapping content in place without a
+    full page reload. Use `--host 0.0.0.0` to expose the server on all interfaces.
+
+    Keyboard shortcuts in the terminal:
+
+    - `o`: open the presentation in a browser
+    - `r`: force a rebuild
+    - `t`: toggle the error trace
+    - `q`: quit (Ctrl-D and Ctrl-C also work)
+    """
     resolved = resolve_deck_path(deck_path)
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(_serve(resolved, host, port, ws_port))
@@ -37,7 +49,12 @@ def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
     help="Output directory (default: build/ next to deck.py)",
 )
 def build_cmd(deck_path: Path, output: str | None) -> None:
-    """Export a self-contained presentation directory for offline use."""
+    """Export a self-contained presentation directory for offline use.
+
+    Produces an `index.html` with every slide inlined and copies any assets the
+    deck references into the output directory. No server is required to view it.
+    Defaults to a `build/` directory next to `deck.py`.
+    """
     resolved = resolve_deck_path(deck_path)
     out_dir = Path(output).resolve() if output else resolved.parent / "build"
     try:
@@ -81,7 +98,12 @@ def export_cmd(
     no_sandbox: bool,
     size: str | None,
 ) -> None:
-    """Export a PDF via headless Chromium (one page per slide)."""
+    """Export a PDF via headless Chromium — one page per slide, no animations.
+
+    Requires a Chromium-based browser on the system; point `--chromium` at it if
+    it is not auto-detected. Pass `--no-sandbox` when running as root or in
+    Docker. Defaults to `<deck-stem>.pdf` next to `deck.py`.
+    """
     resolved = resolve_deck_path(deck_path)
     out = Path(output).resolve() if output else resolved.with_suffix(".pdf")
     parsed_size: tuple[int, int] | None = None

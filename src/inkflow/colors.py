@@ -310,7 +310,7 @@ def colorize_svg(
     svg_str: str,
     hex_map: dict[str, list[tuple[str, str]]],
 ) -> tuple[str, bool]:
-    """Apply :func:`colorize_element` to every element in an SVG string.
+    """Apply ``colorize_element`` to every element in an SVG string.
 
     Returns ``(result_svg, was_changed)``.  When nothing changed the original
     string is returned unchanged so the caller can skip the write.

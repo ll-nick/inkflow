@@ -31,7 +31,7 @@ from inkflow import Deck, Slide, animations
 
 def main() -> Deck:
     return Deck(slides=[
-        Slide("slides/01-title.svg", animations=[
+        Slide("title.svg", animations=[
             animations.FadeIn("#headline", step=1),
             animations.FadeIn("#subtitle", step=2),
         ]),
@@ -42,16 +42,21 @@ The manifest records intent, not rendering.
 "Fade in element `#headline` at step 1" is a declaration.
 The pipeline handles the CSS classes and timing.
 
+!!! warning "Decks are executable code"
+    A `deck.py` is a Python program that Inkflow imports and runs. Serving,
+    building, or exporting a deck executes it. Only run decks you trust.
+
 ## Slides and steps
 
 A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
 Elements targeted by an animation start hidden and appear when their step is reached.
 
-## SVG slides vs Markdown slides
+## Zones and Markdown
 
-The simplest slide is just an SVG file.
-You draw everything in your editor, and Inkflow serves it as-is.
+`Slide.src` always points at an SVG file.
+The simplest slide is just that SVG: you draw everything in your editor, and
+Inkflow serves it as-is.
 
 Two things SVG editors do not handle well: formatted text and video.
 Text reflow, bullet lists, tables, and code blocks have no equivalent in SVG.
@@ -59,21 +64,19 @@ Video is simply not something an SVG file contains.
 For both cases, Inkflow lets you mark a rectangular area in the SVG as a zone
 by giving it an ID like `zone-title` or `zone-content`.
 Inkflow replaces that rectangle with your content at build time.
-You fill zones from `deck.py` using `TextBox` for text or `Media` for images and video.
-
-When most of the slide content is text, pass a layout name and a `.md` file path to `Slide`:
+You fill zones from `deck.py` using `TextBox` for text or `Media` for images and
+video — or, when most of the slide content is text, by pointing `md=` at a
+Markdown file instead:
 
 ```python
-Slide("default", md="slides/02-intro.md")
+Slide("default", md="intro")
 ```
 
-Instead of a source SVG, the `src` is a layout name (or path) that defines zones but little else.
-Inkflow renders the Markdown and fills the zones automatically.
-Within the Markdown file, `::zone-name::` markers route sections to different zones,
+`"default"` here is still an SVG — a reusable **layout** (see below) that defines
+zones and little else. Any SVG can define zones, whether it's a one-off slide or
+a shared layout; `md=` fills whatever zones the referenced SVG defines. Within
+the Markdown file, `::zone-name::` markers route sections to different zones,
 and `::step::` markers split content into reveal steps.
-
-Use `Slide` with an SVG path when the visual design is the point.
-Use `Slide` with `md=` when the text content is the point.
 
 ## The layout system
 
@@ -82,21 +85,21 @@ A slide points to a parent layout SVG via the `inkflow:parent` attribute on the 
 During the build process, Inkflow adds the layout as a background layer of the slide.
 Inkflow's layout system is hierarchical: a layout can itself inherit from another layout.
 ```
-slides/05-some-slide.svg   ← your slide, with content and animations
+slides/some-slide.svg   ← your slide, with content and animations
   ↑ inkflow:parent
-layouts/content.svg         ← defines zone-title, zone-content
+layouts/content.svg     ← defines zone-title, zone-content
   ↑ inkflow:parent
-theme/main.svg              ← background, brand elements (chain ends here)
+theme/main.svg          ← background, brand elements (chain ends here)
 ```
 
 Inkflow resolves the full chain at build time and composites the layers in memory.
 The SVG files on disk are not modified.
-`inject-layout` can optionally write locked preview layers into each SVG
+`inkflow sync` can optionally write locked preview layers into each SVG
 so you can see the inherited background while editing in Inkscape.
 
 ## Themes
 
-A theme is a directory that bundles a set of layouts and a CSS stylesheet.
+A theme is a directory that bundles a set of layouts, a CSS stylesheet, and/or custom JavaScript.
 It defines the visual identity of a deck: background, color palette, typography.
 Inkflow ships with a built-in theme.
 To use your own, point `Deck` at the directory:
@@ -106,7 +109,8 @@ Deck(theme="./my-theme")
 ```
 
 The CSS stylesheet is injected into every slide.
-You can override individual variables or rules at the deck or slide level using the `style` parameter,
+You can override individual variables or rules at the deck using the `style` parameter,
+or at the slide level using the `extra_style` parameter,
 without touching the theme files.
 Themes can opt-in to provide light/dark-mode variants which can be toggled in the presenter.
 
@@ -126,7 +130,8 @@ Any SVG editor that exports well-formed SVG works as an authoring environment.
 
 ## The presenter
 
-The browser presenter is a single HTML file with vanilla JS. No framework is used.
+The browser presenter is a single HTML file with vanilla JavaScript.
+No framework is used.
 Slides are embedded as JSON.
 Navigation and step animation are handled client-side.
 The WebSocket connection listens for file changes and swaps slide content in place

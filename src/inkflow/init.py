@@ -21,8 +21,8 @@ _DECK_PY = (
     "from inkflow import Deck, Slide\n\n"
     "def main() -> Deck:\n"
     "    return Deck({deck_arg}slides=[\n"
-    '        Slide("slides/01-title.svg"),\n'
-    '        Slide("builtin:default", md="slides/02-content.md"),\n'
+    '        Slide("title"),\n'
+    '        Slide("builtin:default", md="content"),\n'
     "    ])\n"
 )
 
@@ -41,10 +41,10 @@ def scaffold(target: Path, theme_path: str | None) -> None:
     slides_dir = target / "slides"
     slides_dir.mkdir(exist_ok=True)
 
-    title_svg = slides_dir / "01-title.svg"
+    title_svg = slides_dir / "title.svg"
     create_slide("builtin:cover", title_svg, target, theme_path)
 
-    (slides_dir / "02-content.md").write_text(_MD_CONTENT, encoding="utf-8")
+    (slides_dir / "content.md").write_text(_MD_CONTENT, encoding="utf-8")
 
     deck_arg = f'theme="{theme_path}", ' if theme_path else ""
     (target / "deck.py").write_text(
