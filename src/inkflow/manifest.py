@@ -181,10 +181,6 @@ class Slide:
     visible: bool = True
     font_size: int | None = None
 
-    @property
-    def step_count(self) -> int:
-        return max((a.step for a in self.animations), default=0)
-
 
 @dataclass
 class Deck:
