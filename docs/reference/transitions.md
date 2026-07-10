@@ -2,8 +2,7 @@
 
 Transition types live in the `inkflow.transitions` namespace. Each takes the shared
 [`Transition`](#transition-base) params (`duration`, `easing`) plus any of its own.
-`direction` fields use the [`Direction`](manifest.md#enums) enum from the
-[manifest reference](manifest.md).
+`direction` fields use the [`Direction`](enums.md#inkflow.enums.Direction) enum.
 
 ```python
 from inkflow import transitions, Direction

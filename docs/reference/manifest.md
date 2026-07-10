@@ -7,8 +7,9 @@ The deck DSL you use in `deck.py`. Everything here is imported from the top-leve
 from inkflow import Deck, Slide, Media, TextBox, Align, VAlign, Inline
 ```
 
-Animation and transition types live in their own namespaces and have their own
-reference pages: [Animations](animations.md), [Transitions](transitions.md).
+Refer to the [Enums](enums.md) reference page for the shared value types used across this section.
+For the implemented animation and transition types,
+see the [Animations](animations.md) and [Transitions](transitions.md) reference pages.
 
 ::: inkflow.manifest.Deck
 
@@ -23,47 +24,3 @@ reference pages: [Animations](animations.md), [Transitions](transitions.md).
 ::: inkflow.manifest.Content
 
 ::: inkflow.manifest.ZoneContent
-
-## Enums
-
-::: inkflow.manifest.Align
-    options:
-      heading_level: 3
-      docstring_section_style: spacy
-      summary:
-        attributes: true
-
-::: inkflow.manifest.VAlign
-    options:
-      heading_level: 3
-      docstring_section_style: spacy
-      summary:
-        attributes: true
-
-::: inkflow.manifest.Direction
-    options:
-      heading_level: 3
-      docstring_section_style: spacy
-      summary:
-        attributes: true
-
-::: inkflow.manifest.MediaFit
-    options:
-      heading_level: 3
-      docstring_section_style: spacy
-      summary:
-        attributes: true
-
-::: inkflow.manifest.MediaAlign
-    options:
-      heading_level: 3
-      docstring_section_style: spacy
-      summary:
-        attributes: true
-
-::: inkflow.manifest.ColorMode
-    options:
-      heading_level: 3
-      docstring_section_style: spacy
-      summary:
-        attributes: true
