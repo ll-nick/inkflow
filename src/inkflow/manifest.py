@@ -135,8 +135,24 @@ class MediaAlign(_KebabStrEnum):
     BOTTOM_LEFT = auto()
     BOTTOM_RIGHT = auto()
 
+    @property
+    def position(self) -> tuple[int, int]:
+        """The ``object-position`` percentage pair ``(x, y)`` for this alignment."""
+        return _MEDIA_ALIGN_POSITIONS[self]
 
-class ColorMode(_KebabStrEnum):
+
+_MEDIA_ALIGN_POSITIONS: dict[MediaAlign, tuple[int, int]] = {
+    MediaAlign.CENTER: (50, 50),
+    MediaAlign.TOP: (50, 0),
+    MediaAlign.BOTTOM: (50, 100),
+    MediaAlign.LEFT: (0, 50),
+    MediaAlign.RIGHT: (100, 50),
+    MediaAlign.TOP_LEFT: (0, 0),
+    MediaAlign.TOP_RIGHT: (100, 0),
+    MediaAlign.BOTTOM_LEFT: (0, 100),
+    MediaAlign.BOTTOM_RIGHT: (100, 100),
+}
+
     DARK = auto()
     LIGHT = auto()
 
