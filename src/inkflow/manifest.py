@@ -43,24 +43,45 @@ class Inline(str):
     content — rendered as Markdown for ``notes``/``md``, or used as CSS for
     ``style``/``extra_style``.
 
-    .. code-block:: python
+    ``Inline`` subclasses ``str``, so ``isinstance(Inline("x"), str)`` is ``True``
+    and it compares equal to its content. The distinction only matters at pipeline
+    resolution time.
 
-        Slide("content", notes=Inline("Talk through the diagram."))
-        Slide("content", md=Inline("# Quick slide\\n\\nNo .md file needed."))
-        Deck(style=Inline("rect { fill: red; }"))
+    ```python
+    Slide("content", notes=Inline("Talk through the diagram."))
+    Slide("content", md=Inline("# Quick slide\\n\\nNo .md file needed."))
+    Deck(style=Inline("rect { fill: red; }"))
+    ```
     """
 
 
 Content: TypeAlias = "str | Inline | None"
+"""A field that accepts either a file path or literal content.
+
+A bare ``str`` is treated as a path to read; an ``Inline`` value is used
+verbatim. ``None`` means "nothing". Used by ``Slide.md``, ``Slide.notes``,
+``Slide.extra_style``, and ``Deck.style``.
+"""
 
 # ── Animation ────────────────────────────────────────────────────────────────
 
 
 class Direction(_KebabStrEnum):
+    """Direction for animations and transitions that move along an axis.
+
+    Used by ``SlideIn``, ``SlideOut``, ``Push``, ``Cover``, and ``Wipe``. The
+    member value (``"left"``, ``"right"``, …) is the wire value sent to the
+    presenter and the ``anim-from-*`` modifier class suffix.
+    """
+
     LEFT = auto()
+    """Leftward."""
     RIGHT = auto()
+    """Rightward."""
     UP = auto()
+    """Upward."""
     DOWN = auto()
+    """Downward."""
 
 
 @dataclass
@@ -76,13 +97,31 @@ class Animation(_Slugged):
     A value of ``None`` means "emit no CSS custom property" so the stylesheet's
     ``var(--anim-…, default)`` fallback wins. The CSS is the single source of
     default values.
+
+    **Custom animations.** Subclass this directly in ``deck.py`` — no changes to
+    inkflow are needed. The CSS class is derived from the type name via
+    ``camel_to_kebab`` (``MyGlow`` → ``anim-my-glow``); any extra fields you add
+    become ``--anim-<field>`` custom properties on the element. Put the matching CSS
+    in a ``styles.css`` next to ``deck.py`` (loaded automatically).
+
+    ```python
+    @dataclass
+    class MyGlow(Animation):
+        intensity: float | None = None   # → --anim-intensity on the element
+    ```
     """
 
     element: str
+    """CSS ID selector of the target element, e.g. ``"#headline"``."""
     step: int = 1
+    """The keypress on which the animation plays."""
     duration: float | None = field(default=None, kw_only=True)
+    """Duration in seconds. ``None`` keeps the animation's CSS default."""
     easing: str | None = field(default=None, kw_only=True)
+    """Any CSS easing (``"ease"``, ``"ease-in-out"``, ``"cubic-bezier(...)"``,
+    ``"linear"``). ``None`` keeps the CSS default."""
     delay: float | None = field(default=None, kw_only=True)
+    """Seconds to wait before the animation starts. ``None`` keeps the CSS default."""
 
 
 # ── Transition ────────────────────────────────────────────────────────────────
@@ -92,48 +131,93 @@ class Animation(_Slugged):
 class Transition(_Slugged):
     """Data-only base for every transition type.
 
-    Concrete types live in ``inkflow.transitions`` and subclass this.
-    A value of ``None`` for ``easing`` means the JS handler's built-in default wins.
+    Concrete types live in ``inkflow.transitions`` and subclass this. Every field
+    is serialized into the transition JSON, so ``direction``, ``color`` etc. arrive
+    on the JS ``TransitionData`` object automatically.
+
+    **Custom transitions.** Subclass this in ``deck.py``; the type name becomes the
+    JS handler key via ``camel_to_kebab`` (``MyWarp`` → ``"my-warp"``). Register
+    the matching handler from a ``scripts.js`` next to ``deck.py`` with
+    ``window.inkflow.registerProgressTransition(name, render, opts)`` (or the
+    lower-level ``registerTransition``).
     """
 
     duration: float = 0.5
+    """Duration in seconds. Defaults to ``0.5``; ``Cut`` overrides it to ``0.0``."""
     easing: str | None = field(default=None, kw_only=True)
+    """Any CSS easing string. ``None`` keeps the JS handler's built-in default."""
 
 
 # ── Content types ─────────────────────────────────────────────────────────────
 
 
 class Align(_KebabStrEnum):
+    """Horizontal text alignment for a ``TextBox`` or Markdown zone."""
+
     LEFT = auto()
+    """Left-aligned (the default when no override is set)."""
     CENTER = auto()
+    """Centered."""
     RIGHT = auto()
+    """Right-aligned."""
     JUSTIFY = auto()
+    """Justified."""
 
 
-class VAlign(_KebabStrEnum):
+class VAlign(StrEnum):
+    """Vertical alignment of the content block inside a zone."""
+
     TOP = auto()
+    """Anchored to the top of the zone (the default when no override is set)."""
     CENTER = auto()
+    """Centered vertically."""
     BOTTOM = auto()
+    """Anchored to the bottom of the zone."""
 
 
 class MediaFit(_KebabStrEnum):
+    """CSS ``object-fit`` preset for a ``Media`` asset.
+
+    The member value is the literal ``object-fit`` value emitted into the style.
+    """
+
     CONTAIN = auto()
+    """Scale to fit inside the zone, preserving aspect ratio (``contain``)."""
     COVER = auto()
+    """Fill the zone, cropping overflow, preserving aspect ratio (``cover``)."""
     FILL = auto()
+    """Stretch to fill the zone, ignoring aspect ratio (``fill``)."""
     NONE = auto()
+    """Keep intrinsic size, no scaling (``none``)."""
     SCALE_DOWN = auto()
+    """The smaller of ``none`` and ``contain`` (``scale-down``)."""
 
 
 class MediaAlign(_KebabStrEnum):
+    """``object-position`` preset for a ``Media`` asset.
+
+    Each member maps to an ``(x, y)`` percentage pair via ``position``, used to
+    build the ``object-position`` declaration.
+    """
+
     CENTER = auto()
+    """Centered (50% 50%)."""
     TOP = auto()
+    """Top edge, horizontally centered (50% 0%)."""
     BOTTOM = auto()
+    """Bottom edge, horizontally centered (50% 100%)."""
     LEFT = auto()
+    """Left edge, vertically centered (0% 50%)."""
     RIGHT = auto()
+    """Right edge, vertically centered (100% 50%)."""
     TOP_LEFT = auto()
+    """Top-left corner (0% 0%)."""
     TOP_RIGHT = auto()
+    """Top-right corner (100% 0%)."""
     BOTTOM_LEFT = auto()
+    """Bottom-left corner (0% 100%)."""
     BOTTOM_RIGHT = auto()
+    """Bottom-right corner (100% 100%)."""
 
     @property
     def position(self) -> tuple[int, int]:
@@ -153,29 +237,71 @@ _MEDIA_ALIGN_POSITIONS: dict[MediaAlign, tuple[int, int]] = {
     MediaAlign.BOTTOM_RIGHT: (100, 100),
 }
 
+
+class ColorMode(StrEnum):
+    """Color mode for the presentation. Sets the ``data-theme`` attribute on
+    ``<html>``, which selects the active theme CSS."""
+
     DARK = auto()
+    """Dark theme (``data-theme=""``)."""
     LIGHT = auto()
+    """Light theme (``data-theme="light"``)."""
 
 
 @dataclass
 class TextBox:
+    """Explicit text content and alignment for a named zone in an SVG slide.
+
+    Pass it as a value in a slide's ``zones`` dict to inject HTML into that zone
+    with alignment control. Each alignment param defaults to ``None``, meaning
+    "defer to the layout's CSS variable".
+
+    ```python
+    TextBox(text="<p>My content</p>", align=Align.CENTER, valign=VAlign.CENTER)
+    ```
+    """
+
     text: str | None = None
+    """HTML content to inject into the zone."""
     align: Align | None = None
+    """Horizontal text alignment. ``None`` defers to the layout CSS variable."""
     valign: VAlign | None = None
-    padding: float | None = None  # SVG user units. Fall back to CSS if not set.
+    """Vertical alignment of the content block. ``None`` defers to the CSS variable."""
+    padding: float | None = None
+    """Inner padding in SVG user units. ``None`` defers to the CSS variable."""
 
 
 @dataclass
 class Media:
+    """A media asset (image or video) for injection into a zone.
+
+    Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
+
+    ```python
+    Slide("media-right", md="03-feature.md", zones={"media": Media("demo.mp4")})
+    ```
+    """
+
     src: str
+    """Path to an image or video file, or a URL."""
     alt_src: str | None = None
+    """Alternative source used in the other color mode."""
     fit: MediaFit = MediaFit.CONTAIN
+    """CSS ``object-fit`` value."""
     align: MediaAlign = MediaAlign.CENTER
+    """CSS ``object-position`` preset."""
     x: float = 0.0
+    """Horizontal offset in pixels."""
     y: float = 0.0
+    """Vertical offset in pixels."""
 
 
 ZoneContent = str | Media | TextBox
+"""A value accepted in ``Slide.zones``.
+
+A ``str`` is rendered as inline Markdown; a ``TextBox`` gives explicit
+alignment and padding control; a ``Media`` injects an image or video.
+"""
 
 
 # ── Slide / Deck ──────────────────────────────────────────────────────────────
@@ -183,27 +309,101 @@ ZoneContent = str | Media | TextBox
 
 @dataclass
 class Slide:
-    src: str  # SVG path or bare layout name
-    id: str | None = None  # stable identifier; auto-inferred from md/src stem if unset
-    md: Content = None  # .md file path, or Inline("...") for inline markdown
-    zones: dict[str, ZoneContent] = field(
-        default_factory=dict
-    )  # per-zone overrides; str = inline markdown
+    """A single slide.
+
+    ``src`` is a reference to an SVG file. Any SVG can define named zones, and
+    if it does, ``md``/``zones`` inject content into them — whether that SVG is
+    a one-off slide in ``slides/`` or a reusable layout in ``layouts/`` shared
+    across many slides.
+
+    Markdown content can link to another slide by id with the ``slide:`` scheme
+    (``[overview](slide:02-overview)``); clicking it jumps to that slide with a cut
+    transition. Unresolved ids are silently ignored.
+
+    ```python
+    # One-off SVG with animations, no zones
+    Slide("01-title.svg", animations=[animations.FadeIn("#headline", step=1)])
+
+    # Reusable layout with Markdown-filled zones
+    Slide("default", md="02-bullets.md", zones={"media": Media("photo.jpg")})
+    ```
+    """
+
+    src: str
+    """Reference to the slide's SVG file. A bare name (e.g. ``"default"``) is
+    looked up in ``slides/`` first, then searched across layouts (project →
+    theme → built-in); prefix with ``local:``, ``theme:``, or ``builtin:`` to
+    pin to one of those directly."""
+    id: str | None = None
+    """Stable identifier, used as the ``slide:`` link target. Auto-inferred from the
+    ``.md`` filename stem or the ``src`` stem when unset. Must be unique across the
+    deck; collisions are resolved by appending ``-2``, ``-3``, …"""
+    md: Content = None
+    """Path to a ``.md`` file, or ``Inline("...")`` for inline Markdown. Content is
+    routed into ``src``'s zones, if it defines any."""
+    zones: dict[str, ZoneContent] = field(default_factory=dict)
+    """Per-zone overrides. Keys are zone names without the ``zone-`` prefix; values
+    are ``ZoneContent`` (inline Markdown ``str``, ``TextBox``, or
+    ``Media``)."""
     animations: list[Animation] = field(default_factory=list)
+    """Animation declarations for this slide."""
     transition: Transition | None = None
-    extra_style: Content = None  # CSS string or path; appended to Deck.style
+    """Transition into this slide. ``None`` inherits the deck default."""
+    extra_style: Content = None
+    """CSS appended to the deck style for this slide. A bare ``str`` is a file path;
+    ``Inline(...)`` is a literal CSS string."""
     title: str | None = None
-    notes: Content = None  # speaker notes: Inline("...") or path to .md file
+    """Optional slide title. Auto-inferred from the filename or a leading
+    ``# heading`` when unset."""
+    notes: Content = None
+    """Speaker notes rendered as Markdown. A bare ``str`` is a file path;
+    ``Inline("...")`` is literal content. Concatenated with any ``::notes::`` marker
+    in the Markdown file."""
     visible: bool = True
+    """When ``False``, the slide is excluded from the presentation entirely."""
     font_size: int | None = None
+    """Per-slide base font size in px. ``None`` inherits ``Deck.font_size``."""
 
 
 @dataclass
 class Deck:
+    """The top-level presentation container.
+
+    Define a ``main() -> Deck`` function in ``deck.py``; inkflow calls it at serve
+    time.
+
+    **Deck → Slide inheritance:**
+
+    - ``transition``, ``font_size`` — *override*: a slide value replaces the deck
+      default; ``None`` on the slide inherits.
+    - ``style`` / ``extra_style`` — *additive*: ``Deck.style`` is emitted first,
+      then ``Slide.extra_style``; the slide CSS wins on equal-specificity rules via
+      cascade order.
+    - ``theme``, ``mode``, ``embed_fonts`` — deck-only; no per-slide override.
+
+    ```python
+    def main() -> Deck:
+        return Deck(
+            transition=transitions.Crossfade(),
+            theme="./my-theme",
+            mode=ColorMode.DARK,
+            slides=[...],
+        )
+    ```
+    """
+
     slides: list[Slide] = field(default_factory=list)
+    """The ordered slide list."""
     transition: Transition | None = None
+    """Default transition for all slides. A ``Cut`` (instant) is used when unset."""
     theme: str | None = None
+    """Path to a theme directory. ``None`` uses the built-in theme."""
     mode: ColorMode = ColorMode.DARK
-    style: Content = None  # CSS applied to every slide; Inline("...") or path
+    """Dark or light color mode for the presentation."""
+    style: Content = None
+    """CSS injected into every slide. A bare ``str`` is a file path; ``Inline(...)``
+    is a literal CSS string."""
     font_size: int = 36
+    """Base font size for zone content, in px."""
     embed_fonts: bool = True
+    """Auto-discover and embed the fonts used in slides. Set ``False`` to opt out."""
