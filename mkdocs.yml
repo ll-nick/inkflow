@@ -34,6 +34,22 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_section_style: table
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            separate_signature: true
+            show_signature_annotations: true
+            inherited_members: false
+            members_order: source
+
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -45,6 +61,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - attr_list
   - md_in_html
+  - mkdocs-click
   - toc:
       permalink: true
 
@@ -58,6 +75,7 @@ nav:
     - Layout system: guides/layout-system.md
     - Transitions: guides/transitions.md
     - Themes: guides/themes.md
+    - Fonts: guides/fonts.md
     - Export: guides/export.md
     - Presenter view: guides/presenter-view.md
   - Reference:
