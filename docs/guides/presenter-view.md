@@ -59,8 +59,8 @@ They support **Markdown**, including lists and `code`.
 You can also pass notes directly via the `notes=` parameter on any `Slide`:
 
 ```python
-Slide("slides/03-diagram.svg", notes="Walk through the diagram top to bottom.")
-Slide("slides/04-results.svg", notes=Path("slides/04-notes.md"))
+Slide("diagram", notes="Walk through the diagram top to bottom.")
+Slide("results", notes=Path("slides/results-notes.md"))
 ```
 
 See [Authoring slides](slides.md#speaker-notes) and

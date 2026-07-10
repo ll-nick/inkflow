@@ -69,7 +69,7 @@ video — or, when most of the slide content is text, by pointing `md=` at a
 Markdown file instead:
 
 ```python
-Slide("default", md="intro.md")
+Slide("default", md="intro")
 ```
 
 `"default"` here is still an SVG — a reusable **layout** (see below) that defines

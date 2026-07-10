@@ -6,11 +6,11 @@ def main() -> Deck:
     # A deck is a list of slides
     return Deck(slides=[ 
         # A slide can just be an SVG file you drew
-        Slide("01-title.svg"), 
+        Slide("title"), 
         # Or a layout injected with Markdown content
-        Slide("builtin:content", md="02-overview.md"),
+        Slide("builtin:content", md="overview"),
         # This is how you define the transition and animations for a slide
-        Slide("slides/04-diagram.svg",
+        Slide("diagram",
               transition=transitions.Crossfade(),
               animations=[animations.FadeIn("#box-deck", step=1)]
         ),

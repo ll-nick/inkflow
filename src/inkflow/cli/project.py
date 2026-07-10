@@ -37,8 +37,8 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
         init.scaffold(target, theme_path)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
-    click.echo("[inkflow] created slides/01-title.svg")
-    click.echo("[inkflow] created slides/02-content.md")
+    click.echo("[inkflow] created slides/title.svg")
+    click.echo("[inkflow] created slides/content.md")
     click.echo("[inkflow] created deck.py")
     if not no_git:
         git_root_path = git_setup.detect_git_root(target)

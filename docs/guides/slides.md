@@ -18,10 +18,14 @@ from inkflow import Deck, Slide
 
 def main() -> Deck:
     return Deck(slides=[
-        Slide("slides/01-title.svg"),
+        Slide("title"),
     ])
 ```
 
+A bare name like `"title"` is looked up in `slides/` first (as `slides/title.svg`),
+then searched across layouts if not found there — see the
+[`Slide.src`](../reference/manifest.md#inkflow.manifest.Slide) reference for the
+full order. You can also write the path out in full, or point elsewhere entirely.
 The SVG file is loaded as-is, stripped of editor metadata, and served.
 No animations, no transition. Just the slide.
 
@@ -47,7 +51,7 @@ Each animation targets a single element by CSS selector (the `#id` form):
 ```python
 from inkflow import Slide, animations
 
-Slide("slides/01-title.svg", animations=[
+Slide("title", animations=[
     animations.FadeIn("#headline", step=1),
     animations.FadeIn("#subtitle", step=2),
     animations.FadeIn("#byline", step=3),
@@ -107,8 +111,8 @@ def main() -> Deck:
     return Deck(
         transition=transitions.Crossfade(),  # default for all slides
         slides=[
-            Slide("slides/01-title.svg"),                                   # uses Crossfade
-            Slide("slides/02-diagram.svg", transition=transitions.Morph()), # overrides to Morph
+            Slide("title"),                                    # uses Crossfade
+            Slide("diagram", transition=transitions.Morph()),  # overrides to Morph
         ],
     )
 ```
@@ -134,7 +138,7 @@ Pass content into named zones directly:
 from inkflow import Media, Slide
 
 Slide(
-    "slides/01-title.svg",
+    "title",
     zones={
         "title": "My talk title",
         "media": Media("assets/headshot.jpg", fit="cover"),
@@ -159,13 +163,14 @@ from inkflow import Deck, Slide
 
 def main() -> Deck:
     return Deck(slides=[
-        Slide("default", md="slides/01-intro.md"),
+        Slide("default", md="intro"),
     ])
 ```
 
 `"default"` is the name of a built-in layout — an SVG that defines zones and little
 else (see [Built-in layouts](#built-in-layouts) below).
-`md` points to a Markdown file relative to the deck.
+`md` takes the same kind of path as `Slide.src`: a bare name like `"intro"` resolves
+to `slides/intro.md`, or write the path out in full.
 Nothing about `md=` is special to layouts, though: it fills whatever zones the
 referenced SVG defines, one-off slide file or shared layout alike.
 
@@ -383,8 +388,8 @@ in the presenter view.
 You can also set notes directly on `Slide` via the `notes=` parameter:
 
 ```python
-Slide("slides/01-title.svg", notes="Remember to greet the audience.")
-Slide("default", md="slides/02-bullets.md", notes=Path("notes/02.md"))
+Slide("title", notes="Remember to greet the audience.")
+Slide("default", md="bullets", notes=Path("notes/bullets.md"))
 ```
 
 `str` is used as-is (inline HTML/text). `Path` pointing to a `.md` file is rendered as Markdown; any other extension is read as-is.
@@ -412,7 +417,7 @@ from inkflow import Media, Slide
 
 Slide(
     "media-right",
-    md="slides/03-feature.md",
+    md="feature",
     zones={"media": Media("assets/screenshot.png", fit="cover")},
 )
 ```
@@ -427,7 +432,7 @@ Slide(
 | `x`, `y` | `0.0` | Fine-tune position offset (px) |
 
 ```python
-Slide("media-right", md="slides/04-demo.md", zones={"media": Media("assets/demo.mp4")})
+Slide("media-right", md="demo", zones={"media": Media("assets/demo.mp4")})
 ```
 
 ## Built-in layouts
@@ -458,7 +463,7 @@ name, or pin explicitly with `local:`/`theme:`/`builtin:`, or point at a path
 directly:
 
 ```python
-Slide("local:my-layout", md="slides/05-custom.md")
+Slide("local:my-layout", md="custom")
 ```
 
 See [Layout system](layout-system.md#path-resolution) for the full resolution rules
@@ -474,7 +479,7 @@ from inkflow import animations, Deck, Slide
 
 Slide(
     "default",
-    md="slides/06-mixed.md",
+    md="mixed",
     animations=[
         animations.FadeIn("#extra-element", step=1),
     ],
@@ -497,7 +502,7 @@ Use it as an escape hatch for one-off tweaks.
 For systematic visual changes, use a theme.
 
 ```python
-Slide("slides/01-title.svg", style="""
+Slide("title", style="""
     #headline { font-size: 72px; fill: var(--inkflow-accent); }
 """)
 ```

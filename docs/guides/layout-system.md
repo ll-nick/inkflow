@@ -114,7 +114,7 @@ Layouts chain to their parents via an `inkflow:parent` attribute on the SVG root
 A typical chain looks like:
 
 ```
-slides/05-bullets.svg
+slides/bullets.svg
   └─ inkflow:parent="content"         → layouts/content.svg
        └─ inkflow:parent="theme:main" → theme/main.svg  (chain terminates — no parent)
 ```
@@ -147,17 +147,17 @@ The `inkflow add` command creates a new SVG file, optionally wired to a layout
 parent via `-p/--parent`:
 
 ```bash
-inkflow add slides/07-new.svg -p content
+inkflow add slides/new.svg -p content
 ```
 
-This creates `slides/07-new.svg` with `inkflow:parent="content"` set,
+This creates `slides/new.svg` with `inkflow:parent="content"` set,
 then automatically runs `inkflow sync` to add preview layers.
 Omit `-p` to create a blank slide with no parent.
 
 Add it to `deck.py`:
 
 ```python
-Slide("slides/07-new.svg"),
+Slide("slides/new.svg"),
 ```
 
 ## Changing or removing a parent
@@ -165,13 +165,13 @@ Slide("slides/07-new.svg"),
 To rewire an existing slide to a different layout:
 
 ```bash
-inkflow parent set slides/07-new.svg builtin:content
+inkflow parent set slides/new.svg builtin:content
 ```
 
 To detach a slide from all layout parents:
 
 ```bash
-inkflow parent strip slides/07-new.svg
+inkflow parent strip slides/new.svg
 ```
 
 ## Previewing layouts in Inkscape
@@ -228,7 +228,7 @@ Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediat
 5. Reference it in `deck.py`:
 
 ```python
-Slide("my-layout", md="slides/03-custom.md")
+Slide("my-layout", md="custom")
 ```
 
 ### Example layout

@@ -77,13 +77,13 @@ cd my-talk
 inkflow serve
 ```
 
-This creates `slides/01-title.svg` (a title slide from the built-in theme),
-`slides/02-content.md` (Markdown content — example bullets with two reveal steps),
+This creates `slides/title.svg` (a title slide from the built-in theme),
+`slides/content.md` (Markdown content — example bullets with two reveal steps),
 and a `deck.py` that lists both.
 
 **Make it yours:**
 
-- `slides/01-title.svg` only defines empty zones from the built-in cover layout —
+- `slides/title.svg` only defines empty zones from the built-in cover layout —
   fill them in from `deck.py`:
 
   ```python
@@ -91,21 +91,21 @@ and a `deck.py` that lists both.
 
   def main() -> Deck:
       return Deck(slides=[
-          Slide("slides/01-title.svg", zones={
+          Slide("title", zones={
               "title": TextBox("My Talk"),
               "subtitle": TextBox("A subtitle"),
           }),
-          Slide("builtin:default", md="slides/02-content.md"),
+          Slide("builtin:default", md="content"),
       ])
   ```
 
-- Edit `slides/02-content.md` to change the bullets.
-- Draw your own shapes directly in `slides/01-title.svg` and give one an ID (in
+- Edit `slides/content.md` to change the bullets.
+- Draw your own shapes directly in `slides/title.svg` and give one an ID (in
   Inkscape, select it and open Object Properties via the Object menu or
   <kbd>Ctrl+Shift+O</kbd>) to animate it:
 
   ```python
-  Slide("slides/01-title.svg", animations=[animations.FadeIn("#my-shape", step=1)])
+  Slide("title", animations=[animations.FadeIn("#my-shape", step=1)])
   ```
 
 Save, and the presenter updates automatically. No refresh needed.

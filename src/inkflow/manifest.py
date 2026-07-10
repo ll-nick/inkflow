@@ -153,7 +153,7 @@ class Media:
     Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
 
     ```python
-    Slide("media-right", md="03-feature.md", zones={"media": Media("demo.mp4")})
+    Slide("media-right", md="feature", zones={"media": Media("demo.mp4")})
     ```
     """
 
@@ -192,15 +192,15 @@ class Slide:
     across many slides.
 
     Markdown content can link to another slide by id with the ``slide:`` scheme
-    (``[overview](slide:02-overview)``); clicking it jumps to that slide with a cut
+    (``[overview](slide:overview)``); clicking it jumps to that slide with a cut
     transition. Unresolved ids are silently ignored.
 
     ```python
     # One-off SVG with animations, no zones
-    Slide("01-title.svg", animations=[animations.FadeIn("#headline", step=1)])
+    Slide("title", animations=[animations.FadeIn("#headline", step=1)])
 
     # Reusable layout with Markdown-filled zones
-    Slide("default", md="02-bullets.md", zones={"media": Media("photo.jpg")})
+    Slide("default", md="bullets", zones={"media": Media("photo.jpg")})
     ```
     """
 

@@ -14,9 +14,9 @@ def main() -> Deck:
     return Deck(
         transition=transitions.Crossfade(),  # default
         slides=[
-            Slide("slides/01-title.svg"),                                    # Crossfade (default)
-            Slide("slides/02-diagram.svg", transition=transitions.Cut()),    # override: instant cut
-            Slide("slides/03-morph.svg", transition=transitions.Morph(1.0)), # override: morph
+            Slide("title"),                                     # Crossfade (default)
+            Slide("diagram", transition=transitions.Cut()),      # override: instant cut
+            Slide("morph", transition=transitions.Morph(1.0)),   # override: morph
         ],
     )
 ```

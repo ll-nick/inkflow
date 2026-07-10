@@ -41,9 +41,9 @@ from inkflow import Deck, Slide
 
 def main() -> Deck:
     return Deck(slides=[
-        Slide("cover", md="slides/title.md"),
-        Slide("two-cols", md="slides/compare.md"),
-        Slide("end", md="slides/thanks.md"),
+        Slide("cover", md="title"),
+        Slide("two-cols", md="compare"),
+        Slide("end", md="thanks"),
     ])
 ```
 
