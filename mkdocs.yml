@@ -68,6 +68,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Demo: demo/index.md
   - Getting started: getting-started.md
   - Concepts: concepts.md
   - Guides:
@@ -86,4 +87,3 @@ nav:
     - Transitions: reference/transitions.md
     - CLI: reference/cli.md
     - Built-in theme: built-in-theme/index.md
-  - Demo: demo/index.md
