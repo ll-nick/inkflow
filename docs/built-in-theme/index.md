@@ -1,4 +1,4 @@
-# Theme showcase
+# Built-in theme
 
 Inkflow ships with a built-in theme so a deck looks polished before you touch any
 styling. The theme provides a base layout SVG (background + brand frame), a set of
