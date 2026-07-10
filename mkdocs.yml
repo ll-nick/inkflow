@@ -72,8 +72,7 @@ nav:
   - Getting started: getting-started.md
   - Concepts: concepts.md
   - Guides:
-    - SVG slides: guides/svg-slides.md
-    - Markdown slides: guides/markdown-slides.md
+    - Authoring slides: guides/slides.md
     - Layout system: guides/layout-system.md
     - Transitions: guides/transitions.md
     - Themes: guides/themes.md

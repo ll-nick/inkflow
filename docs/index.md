@@ -39,7 +39,7 @@ Markdown-filled zones for text-heavy slides,
 a presenter view with speaker notes,
 one-command export to static HTML or PDF,
 and more.
-Browse the [guides](guides/svg-slides.md) or read [Concepts](concepts.md) for the full picture.
+Browse the [guides](guides/slides.md) or read [Concepts](concepts.md) for the full picture.
 
 ## Quick example
 

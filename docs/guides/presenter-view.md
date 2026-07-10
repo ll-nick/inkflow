@@ -63,7 +63,7 @@ Slide("slides/03-diagram.svg", notes="Walk through the diagram top to bottom.")
 Slide("slides/04-results.svg", notes=Path("slides/04-notes.md"))
 ```
 
-See [Markdown slides](markdown-slides.md) and
+See [Authoring slides](slides.md#speaker-notes) and
 [Manifest reference](../reference/manifest.md) for details.
 
 ## Using a second screen
