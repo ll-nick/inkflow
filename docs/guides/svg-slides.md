@@ -53,7 +53,7 @@ Elements targeted by an entrance animation (`FadeIn`, `Bounce`, `SlideIn`, `Zoom
 ### Animation types
 
 Every type accepts `duration`, `easing`, and `delay` (keyword-only); some add their own
-parameters. See the [manifest reference](../reference/manifest.md#animations) for the full
+parameters. See the [animations reference](../reference/animations.md) for the full
 table.
 
 | Class | Effect | Starting state |

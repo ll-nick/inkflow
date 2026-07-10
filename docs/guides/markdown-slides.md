@@ -87,7 +87,7 @@ set CSS variables directly in the layout SVG's `<defs><style>` (see [Layout syst
 ```
 
 For programmatic control from `deck.py`, pass `align`, `valign`, and `padding` directly to `TextBox`.
-See the [manifest reference](../reference/manifest.md#textbox).
+See the [manifest reference](../reference/manifest.md#inkflow.manifest.TextBox).
 
 ## Step markers
 
