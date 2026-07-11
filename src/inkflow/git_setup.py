@@ -91,7 +91,20 @@ def ensure_hook(hooks_dir: Path) -> bool:
     return created
 
 
-def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> None:
+def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> bool:
+    """Set a local git config key, returning True only if it changed.
+
+    Reading the current value first keeps a re-run quiet: an already-correct key is
+    left untouched and reported as unchanged rather than re-set every time.
+    """
+    existing = subprocess.run(
+        ["git", "config", "--get", key],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+    )
+    if existing.returncode == 0 and existing.stdout.strip() == value:
+        return False
     try:
         subprocess.run(
             ["git", "config", key, value],
@@ -103,6 +116,7 @@ def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> None:
         raw = cast(bytes | None, exc.stderr)
         msg = raw.decode().strip() if isinstance(raw, bytes) else str(exc)
         raise RuntimeError(f"git config {key} failed: {msg}") from exc
+    return True
 
 
 def ensure_gitattributes(root: Path) -> str:
@@ -120,11 +134,19 @@ def ensure_gitattributes(root: Path) -> str:
     return "updated"
 
 
+def _report_config(changed: bool, detail: str) -> None:
+    if changed:
+        report("Set", detail)
+    else:
+        report("Unchanged", detail, style="dim")
+
+
 def run_git_setup(root: Path, *, verbose: bool) -> None:
     """Configure git hooks and SVG diff driver.
 
     verbose=True (the ``setup-git`` command) narrates every step and raises on failure;
     verbose=False (init's best-effort setup) narrates only key steps and swallows it.
+    Idempotent: a re-run leaves already-correct settings untouched and says so.
     """
     try:
         textconv_cmd = resolve_textconv(root)
@@ -140,17 +162,20 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
         report("Unchanged", ".githooks/pre-commit", style="dim")
 
     try:
-        run_git_config("core.hooksPath", ".githooks", cwd=root)
-        if verbose:
-            report("Set", "git config core.hooksPath = .githooks")
-        run_git_config("diff.inkscape-svg.textconv", textconv_cmd, cwd=root)
-        if verbose:
-            report("Set", f"git config diff.inkscape-svg.textconv = {textconv_cmd}")
+        hooks_set = run_git_config("core.hooksPath", ".githooks", cwd=root)
+        textconv_set = run_git_config(
+            "diff.inkscape-svg.textconv", textconv_cmd, cwd=root
+        )
     except RuntimeError as exc:
         if verbose:
             raise
         logger.warning(f"git config failed: {exc}")
         return
+    if verbose:
+        _report_config(hooks_set, "git config core.hooksPath = .githooks")
+        _report_config(
+            textconv_set, f"git config diff.inkscape-svg.textconv = {textconv_cmd}"
+        )
 
     attr_result = ensure_gitattributes(root)
     if verbose:
@@ -159,4 +184,7 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
         else:
             report(attr_result.capitalize(), ".gitattributes")
 
-    report("Configured", "git hooks and SVG diff driver")
+    if hook_created or hooks_set or textconv_set or attr_result != "ok":
+        report("Configured", "git hooks and SVG diff driver")
+    else:
+        report("Up to date", "git hooks and SVG diff driver", style="dim")
