@@ -25,6 +25,14 @@ export interface TransitionData {
     [key: string]: unknown;
 }
 
+// A non-fatal log record surfaced to the presenter banner. `level` is one of
+// debug/info/warning/error (the coarse band from inkflow.logging), used to style
+// the entry. Fatal build errors are not logs — they use the `error` message overlay.
+export interface LogEntry {
+    level: string;
+    message: string;
+}
+
 export interface NavMessage {
     type: "nav";
     slideIndex: number;
@@ -34,7 +42,12 @@ export interface NavMessage {
 }
 
 export type WsMessage =
-    | { type: "update"; slides: SlideData[]; transitions: TransitionData[] }
+    | {
+          type: "update";
+          slides: SlideData[];
+          transitions: TransitionData[];
+          logs: LogEntry[];
+      }
     | { type: "error"; message: string }
     | {
           type: "position";
