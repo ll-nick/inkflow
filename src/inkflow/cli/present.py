@@ -8,6 +8,7 @@ import click
 
 from inkflow.cli._common import deck_option, main, resolve_deck_path
 from inkflow.export import build_pdf, build_static_html
+from inkflow.logging import Levels, report
 from inkflow.server import serve as _serve
 
 
@@ -21,7 +22,8 @@ from inkflow.server import serve as _serve
 )
 @click.option("--port", default=7777, show_default=True, help="HTTP port")
 @click.option("--ws-port", default=7778, show_default=True, help="WebSocket port")
-def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
+@click.pass_obj
+def serve(levels: Levels, deck_path: Path, host: str, port: int, ws_port: int) -> None:
     """Start the presentation server with live reload.
 
     Serves the deck at `http://{host}:{port}` and pushes slide updates over a
@@ -37,7 +39,7 @@ def serve(deck_path: Path, host: str, port: int, ws_port: int) -> None:
     """
     resolved = resolve_deck_path(deck_path)
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(_serve(resolved, host, port, ws_port))
+        asyncio.run(_serve(resolved, host, port, ws_port, levels))
 
 
 @main.command("build")
@@ -58,12 +60,10 @@ def build_cmd(deck_path: Path, output: str | None) -> None:
     resolved = resolve_deck_path(deck_path)
     out_dir = Path(output).resolve() if output else resolved.parent / "build"
     try:
-        warnings = build_static_html(resolved, out_dir)
+        build_static_html(resolved, out_dir)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
-    for w in warnings:
-        click.echo(click.style(f" ⚠  {w}", fg="yellow"))
-    click.echo(f"[inkflow] built {out_dir / 'index.html'}")
+    report("Built", str(out_dir / "index.html"))
 
 
 @main.command("export")
@@ -116,9 +116,7 @@ def export_cmd(
                 f"--size must be WxH (e.g. 1920x1080), got: {size!r}"
             ) from None
     try:
-        warnings = build_pdf(resolved, out, chromium, no_sandbox, size=parsed_size)
+        build_pdf(resolved, out, chromium, no_sandbox, size=parsed_size)
     except (RuntimeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
-    for w in warnings:
-        click.echo(click.style(f" ⚠  {w}", fg="yellow"))
-    click.echo(f"[inkflow] exported {out}")
+    report("Exported", str(out))

@@ -6,17 +6,74 @@ from pathlib import Path
 
 import click
 
+from inkflow import logging as inkflow_logging
 from inkflow.enums import ColorMode
 from inkflow.layout import resolve_chain
 from inkflow.manifest import Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 
+_level_choice = click.Choice(inkflow_logging.LEVEL_NAMES)
+
 
 @click.group()
 @click.version_option()
-def main() -> None:
+@click.option(
+    "--log-level",
+    type=_level_choice,
+    default=None,
+    help="Baseline level for every sink (console, file, browser).",
+)
+@click.option(
+    "--log-level-console",
+    type=_level_choice,
+    default=None,
+    help="Console/TUI level [default: warning]. Overrides --log-level.",
+)
+@click.option(
+    "--log-level-file",
+    type=_level_choice,
+    default=None,
+    help="File level [default: off]. Overrides --log-level.",
+)
+@click.option(
+    "--log-level-browser",
+    type=_level_choice,
+    default=None,
+    help="Presenter banner level [default: warning]. Overrides --log-level.",
+)
+@click.option(
+    "--log-file",
+    type=click.Path(dir_okay=False),
+    default=None,
+    metavar="PATH",
+    help="File-sink destination (default: per-user log dir). Does not enable the sink.",
+)
+@click.pass_context
+def main(
+    ctx: click.Context,
+    log_level: str | None,
+    log_level_console: str | None,
+    log_level_file: str | None,
+    log_level_browser: str | None,
+    log_file: str | None,
+) -> None:
     """Beautiful slides from SVG. Your editor, your style."""
+    # `serve` owns the terminal with a Rich Live display, so it surfaces records
+    # itself (collected per rebuild, shown in the TUI and browser); every other
+    # command renders through the shared stderr console. Each sink resolves its own
+    # level (flags + INKFLOW_LOG_LEVEL* env, per-sink beating the --log-level baseline).
+    levels = inkflow_logging.resolve_levels(
+        log_level=log_level,
+        console=log_level_console,
+        file=log_level_file,
+        browser=log_level_browser,
+        log_file=log_file,
+    )
+    inkflow_logging.configure(levels, attach_console=ctx.invoked_subcommand != "serve")
+    # `serve` reads the resolved levels back to filter its per-rebuild log collection
+    # for the TUI and browser sinks.
+    ctx.obj = levels
 
 
 def resolve_deck_path(deck_path: Path) -> Path:

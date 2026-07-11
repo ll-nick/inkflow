@@ -124,7 +124,7 @@ class TestDeckFallback:
         Path("slides/01.svg").write_text(_DIRTY_SVG, encoding="utf-8")
         result = runner.invoke(main, ["clean"])
         assert result.exit_code == 0
-        assert "cleaned" in result.output
+        assert "Cleaned" in result.output
         # The deck slide was rewritten clean (no inkscape metadata left).
         assert "inkscape:" not in Path("slides/01.svg").read_text(encoding="utf-8")
 
