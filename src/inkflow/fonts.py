@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import base64
 import io
-import os
 import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+import platformdirs
 
 from inkflow import ns
 from inkflow.pipeline import SlideData
@@ -95,28 +96,17 @@ class _FontSpec:
 
 
 def _font_dirs(project_dir: Path) -> list[Path]:
-    dirs: list[Path] = [project_dir / "fonts"]
+    # Project fonts, then the per-user font dir (via platformdirs), then the
+    # OS-wide system dirs. platformdirs models the user dir on every platform but
+    # has no concept of system fonts, so those stay explicit.
+    dirs: list[Path] = [project_dir / "fonts", Path(platformdirs.user_fonts_dir())]
 
     if sys.platform == "win32":
-        local_app = Path(
-            os.environ.get("LOCALAPPDATA", r"C:\Users\Default\AppData\Local")
-        )
-        dirs += [
-            local_app / "Microsoft" / "Windows" / "Fonts",
-            Path(r"C:\Windows\Fonts"),
-        ]
+        dirs.append(Path(r"C:\Windows\Fonts"))
     elif sys.platform == "darwin":
-        dirs += [
-            Path.home() / "Library" / "Fonts",
-            Path("/Library/Fonts"),
-            Path("/System/Library/Fonts"),
-        ]
+        dirs += [Path("/Library/Fonts"), Path("/System/Library/Fonts")]
     else:
-        dirs += [
-            Path.home() / ".local" / "share" / "fonts",
-            Path("/usr/local/share/fonts"),
-            Path("/usr/share/fonts"),
-        ]
+        dirs += [Path("/usr/local/share/fonts"), Path("/usr/share/fonts")]
 
     return [d for d in dirs if d.exists()]
 
