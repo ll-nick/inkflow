@@ -136,6 +136,9 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
             )
         )
     except Exception:
+        # Outside collect_logs, so a fatal error reaches only the file sink. The overlay
+        # and TUI error phase show it instead, never the banner.
+        logger.exception("rebuild failed")
         tb = traceback.format_exc()
         _state["error"] = tb
         ui.set_error(tb)
@@ -188,6 +191,7 @@ def _coerce_nav_position(
 def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]:
     async def handler(websocket: ServerConnection) -> None:
         _state["ws_clients"].add(websocket)
+        logger.debug(f"client connected ({len(_state['ws_clients'])} total)")
         ui.refresh()
         try:
             pos = _state["position"]
@@ -240,6 +244,7 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
                     await broadcast(json.dumps(position_msg), sender=websocket)
         finally:
             _state["ws_clients"].discard(websocket)
+            logger.debug(f"client disconnected ({len(_state['ws_clients'])} total)")
             ui.refresh()
 
     return handler
@@ -345,7 +350,8 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 
             await writer.drain()
         except Exception:
-            # TODO: add logging on top of server response errors
+            # File sink only, never the TUI. The client still gets the 500 body below.
+            logger.exception("error handling HTTP request")
             body = traceback.format_exc().encode()
             try:
                 header = (
@@ -464,11 +470,11 @@ async def serve(
             http_server = await asyncio.start_server(http_handler, host, http_port)
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
-                msg = (
-                    f"[red]error:[/red] port {http_port} is already in use."
-                    f" Pass [dim]--port PORT[/dim] to serve on a different port."
+                report(
+                    "Error",
+                    f"port {http_port} in use — pass --port to use another",
+                    style="red",
                 )
-                console.print(msg)
                 return
             raise
 
@@ -509,11 +515,11 @@ async def serve(
                     await asyncio.gather(*tasks, return_exceptions=True)
             except OSError as e:
                 if e.errno == errno.EADDRINUSE:
-                    msg = (
-                        f"[red]error:[/red] port {ws_port} is already in use."
-                        f" Pass [dim]--ws-port PORT[/dim] to use a different one."
+                    report(
+                        "Error",
+                        f"port {ws_port} in use — pass --ws-port to use another",
+                        style="red",
                     )
-                    console.print(msg)
                 else:
                     raise
     finally:
