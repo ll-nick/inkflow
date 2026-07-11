@@ -60,6 +60,12 @@ src/
     git_setup.py      git hook + SVG diff driver setup
     init.py           project scaffolding (inkflow init)
     loaders.py        deck style / script loading helpers
+    logging.py        unified log sink over stdlib logging: `logger`, shared Rich
+                               `console`, `report` (cargo-style status), `collect_logs`
+                               (per-rebuild capture), and three independent sinks
+                               (console/file/browser), each a level, resolved by
+                               `resolve_levels` (`--log-level*` flags + INKFLOW_LOG_LEVEL*
+                               env, `off` disables) and installed by `configure`
     svg.py            SVG tree utilities (ensure_defs, with_namespaces, compose_with_ancestors)
     svgio.py          SVG parse/serialize primitives: one hardened parser, SvgElement alias
     verify.py         slide authoring checks (inkflow verify)
@@ -98,8 +104,8 @@ strips Inkscape/Sodipodi editor namespaces, and annotates elements with animatio
 No GUI window flashes, instant processing.
 
 **Live reload pushes slides over WebSocket, not `location.reload()`.**
-When files change the server sends `{"type":"update","slides":[...],"transitions":[...]}` and the presenter swaps content in place, preserving the current slide index.
-Errors are sent as `{"type":"error","message":"..."}` and displayed as an overlay.
+When files change the server sends `{"type":"update","slides":[...],"transitions":[...],"logs":[{"level","message"},...]}` and the presenter swaps content in place, preserving the current slide index.
+Non-fatal records collected during the rebuild (`inkflow.logging.collect_logs`, filtered to the browser sink's level) ride along on the `update` message and show as a dismissible `#warning-banner`, each entry styled by level via a `log-<level>` class (dismissal sticks across rebuilds until the log set changes, keyed on a signature in `ui.ts`); a fatal build error is sent separately as `{"type":"error","message":"..."}` and displayed as the full-screen overlay (also logged to the file sink). Static `build` sends no logs to the page (they go to the CLI instead).
 The HTTP response includes `Cache-Control: no-store` so hard refreshes always get fresh content.
 
 **Position sync is a dumb relay with client-side authority + modes.**
@@ -230,6 +236,7 @@ Three tools, each with a distinct role:
 click>=8.0           CLI
 lxml>=5.0            SVG processing
 markdown-it-py>=3.0  Markdown rendering
+platformdirs>=4.0    per-user log + font directories (inkflow.logging, fonts.py)
 rich>=15.0           terminal UI
 watchfiles>=0.21     inotify-based file watcher
 websockets>=12.0     WebSocket server (uses 16.x asyncio API)
