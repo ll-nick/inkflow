@@ -1380,6 +1380,10 @@
   var help = document.getElementById("help");
   var errorOverlay = document.getElementById("error-overlay");
   var errorMsg = document.getElementById("error-msg");
+  var logBanner = document.getElementById("log-banner");
+  var logList = document.getElementById("log-list");
+  var logClose = document.getElementById("log-close");
+  var logIndicator = document.getElementById("log-indicator");
   var statusBarEl = document.getElementById("statusbar");
   var _doc = document;
   var _fsHideTimer;
@@ -1402,6 +1406,61 @@
   }
   function hideError() {
     errorOverlay.classList.remove("visible");
+  }
+  var LOG_LEVEL_ORDER = {
+    debug: 0,
+    info: 1,
+    warning: 2,
+    error: 3
+  };
+  var LOG_ICON = {
+    debug: "\u25E6",
+    info: "\u2139\uFE0E",
+    warning: "\u26A0\uFE0E",
+    error: "\u2716\uFE0E"
+  };
+  function highestLevel(logs) {
+    return logs.reduce(
+      (top, e) => (LOG_LEVEL_ORDER[e.level] ?? 0) > (LOG_LEVEL_ORDER[top] ?? 0) ? e.level : top,
+      logs[0].level
+    );
+  }
+  var logSignature = "";
+  function showLogs(logs) {
+    if (logs.length === 0) {
+      hideLogs();
+      logSignature = "";
+      logIndicator.removeAttribute("data-level");
+      return;
+    }
+    const signature = JSON.stringify(logs);
+    const changed = signature !== logSignature;
+    logSignature = signature;
+    logList.replaceChildren(
+      ...logs.map((entry) => {
+        const li = document.createElement("li");
+        li.className = `log-${entry.level}`;
+        const ico = document.createElement("span");
+        ico.className = "log-ico";
+        ico.textContent = LOG_ICON[entry.level] ?? LOG_ICON.warning;
+        const msg = document.createElement("span");
+        msg.textContent = entry.message;
+        li.append(ico, msg);
+        return li;
+      })
+    );
+    logIndicator.dataset.level = highestLevel(logs);
+    if (changed) logBanner.classList.add("visible");
+  }
+  function hideLogs() {
+    logBanner.classList.remove("visible");
+  }
+  function toggleLogs() {
+    if (logBanner.classList.contains("visible")) {
+      hideLogs();
+    } else if (logIndicator.hasAttribute("data-level")) {
+      logBanner.classList.add("visible");
+    }
   }
   function toggleTheme() {
     const html = document.documentElement;
@@ -1467,6 +1526,10 @@
     }
   }
   document.getElementById("mobile-hud").addEventListener("pointerdown", showMobileHud, { passive: true });
+  logClose.addEventListener("click", hideLogs);
+  logIndicator.addEventListener("click", () => {
+    logBanner.classList.add("visible");
+  });
   curtain.addEventListener("click", hideCurtain);
   help.addEventListener("click", (e) => {
     if (e.target === help) toggleHelp();
@@ -1551,6 +1614,7 @@
         state.slides = msg.slides;
         state.transitions = msg.transitions;
         hideError();
+        showLogs(msg.logs ?? []);
         if (overviewEl.classList.contains("visible")) {
           overviewEl.classList.remove("visible");
           overviewGridEl.innerHTML = "";
@@ -2235,12 +2299,14 @@
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
+    m: { action: toggleLogs },
     s: { action: cycleSyncMode }
   };
   var helpEl = document.getElementById("help");
   var overviewEl2 = document.getElementById("overview");
   var pickerEl = document.getElementById("picker");
   var curtainEl = document.getElementById("curtain");
+  var logBannerEl = document.getElementById("log-banner");
   document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
       if (e.key === "?" || e.key === "Escape" || e.key === "q") {
@@ -2290,6 +2356,10 @@
       hideCurtain();
       return;
     }
+    if ((e.key === "Escape" || e.key === "q") && logBannerEl.classList.contains("visible")) {
+      hideLogs();
+      return;
+    }
     const binding = KEYBINDINGS[e.key];
     if (binding) {
       if (binding.preventDefault) e.preventDefault();
@@ -2302,6 +2372,7 @@
   var INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
   var WS_PORT = __WS_PORT__;
   var INITIAL_ERROR = __ERROR_JSON__;
+  var INITIAL_LOGS = __LOGS_JSON__;
   state.slides = INITIAL_SLIDES;
   state.transitions = INITIAL_TRANSITIONS;
   window.inkflow = {
@@ -2322,5 +2393,6 @@
   updatePvClock();
   setInterval(updatePvClock, 1e3);
   if (INITIAL_ERROR) showError(INITIAL_ERROR);
+  if (INITIAL_LOGS.length) showLogs(INITIAL_LOGS);
   connectWS(WS_PORT, deepLinked);
 })();
