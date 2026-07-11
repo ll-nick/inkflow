@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 import textwrap
 
-import pytest
 from lxml import etree
 
 from inkflow import ns
@@ -11,6 +11,7 @@ from inkflow.content import remove_unreferenced_zones as _remove_unreferenced_zo
 from inkflow.content import substitute_content as _substitute_content_el
 from inkflow.content import substitute_zone_numbers as _substitute_zone_numbers_el
 from inkflow.enums import Align, MediaAlign, MediaFit, VAlign
+from inkflow.logging import collect_logs
 from inkflow.manifest import Media, TextBox
 from inkflow.svgio import parse_svg, serialize_svg
 
@@ -161,17 +162,16 @@ class TestSubstituteContent:
         )
         assert "calc(50% + 25%" in result
 
-    def test_missing_zone_warns_and_continues(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        result = substitute_content(
-            _ZONE_SVG,
-            {
-                "zone-nonexistent": TextBox(text="x"),
-                "zone-content": TextBox(text="kept"),
-            },
-        )
-        assert "zone-nonexistent" in capsys.readouterr().out
+    def test_missing_zone_warns_and_continues(self) -> None:
+        with collect_logs(logging.WARNING) as warnings:
+            result = substitute_content(
+                _ZONE_SVG,
+                {
+                    "zone-nonexistent": TextBox(text="x"),
+                    "zone-content": TextBox(text="kept"),
+                },
+            )
+        assert any("zone-nonexistent" in w.message for w in warnings)
         assert "kept" in result
 
     def test_returns_valid_svg_string(self) -> None:

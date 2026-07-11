@@ -11,6 +11,7 @@ from pathlib import Path
 import platformdirs
 
 from inkflow import ns
+from inkflow.logging import logger
 from inkflow.pipeline import SlideData
 from inkflow.svgio import SvgElement, parse_svg
 
@@ -342,20 +343,19 @@ def _embed_common(
     specs: list[_FontSpec],
     index: dict[str, list[_FontRecord]],
     get_font_bytes: Callable[[_FontRecord], tuple[bytes, str, str]],
-) -> tuple[str, list[str]]:
+) -> str:
     rules: list[str] = []
-    warnings: list[str] = []
 
     for spec in specs:
         records = index.get(spec.family.lower())
         if not records:
-            warnings.append(f'font "{spec.family}" not found in any font directory')
+            logger.warning(f'font "{spec.family}" not found in any font directory')
             continue
         record = _best_match(records, spec.weight_class, spec.is_italic)
         try:
             font_bytes, mime, fmt = get_font_bytes(record)
         except Exception as exc:
-            warnings.append(
+            logger.warning(
                 f'could not read font "{spec.family}" from {record.path}: {exc}'
             )
             continue
@@ -364,23 +364,25 @@ def _embed_common(
                 spec.family, spec.weight_class, spec.is_italic, font_bytes, mime, fmt
             )
         )
+        logger.debug(f'embedded "{spec.family}" from {record.path}')
 
-    return "\n\n".join(rules), warnings
+    if rules:
+        logger.info(f"embedded {len(rules)} font face(s)")
+    return "\n\n".join(rules)
 
 
 # ── Public entry points ───────────────────────────────────────────────────────
 
 
-def embed_fonts_css(
-    slides: list[SlideData], project_dir: Path
-) -> tuple[str, list[str]]:
+def embed_fonts_css(slides: list[SlideData], project_dir: Path) -> str:
     """Embed full (unsubsetted) fonts — for ``inkflow serve``.
 
     Font index is cached in-process; subsequent rebuilds pay only the file-read cost.
+    Unresolvable fonts are reported via ``inkflow.logging``.
     """
     specs = extract_font_specs(slides)
     if not specs:
-        return "", []
+        return ""
     index = _build_index(project_dir)
 
     def _full(record: _FontRecord) -> tuple[bytes, str, str]:
@@ -394,32 +396,30 @@ def embed_fonts_css(
     return _embed_common(specs, index, _full)
 
 
-def embed_fonts_css_subsetted(
-    slides: list[SlideData], project_dir: Path
-) -> tuple[str, list[str]]:
+def embed_fonts_css_subsetted(slides: list[SlideData], project_dir: Path) -> str:
     """Embed subsetted fonts — for ``inkflow build`` and PDF export.
 
     Subsets each font to only the codepoints present in the slides, then encodes
-    as WOFF2. Falls back to the full font file if subsetting fails.
+    as WOFF2. Falls back to the full font file if subsetting fails. Unresolvable
+    fonts and subsetting fallbacks are reported via ``inkflow.logging``.
     """
     specs, codepoint_set = extract_font_specs_and_codepoints(slides)
     if not specs:
-        return "", []
+        return ""
     codepoints = frozenset(codepoint_set)
     index = _build_index(project_dir)
-    warnings: list[str] = []
     rules: list[str] = []
 
     for spec in specs:
         records = index.get(spec.family.lower())
         if not records:
-            warnings.append(f'font "{spec.family}" not found in any font directory')
+            logger.warning(f'font "{spec.family}" not found in any font directory')
             continue
         record = _best_match(records, spec.weight_class, spec.is_italic)
         try:
             font_bytes, mime, fmt = _subset_font(record.path, codepoints)
         except Exception as exc:
-            warnings.append(
+            logger.warning(
                 f'subsetting failed for "{spec.family}" ({exc}), embedding full font'
             )
             suffix = record.path.suffix.lower()
@@ -431,5 +431,8 @@ def embed_fonts_css_subsetted(
                 spec.family, spec.weight_class, spec.is_italic, font_bytes, mime, fmt
             )
         )
+        logger.debug(f'subsetted "{spec.family}" to {len(font_bytes)} bytes')
 
-    return "\n\n".join(rules), warnings
+    if rules:
+        logger.info(f"embedded {len(rules)} subsetted font face(s)")
+    return "\n\n".join(rules)
