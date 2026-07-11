@@ -76,7 +76,7 @@ def load_deck(deck_path: Path) -> Deck:
 # ── Build pipeline ────────────────────────────────────────────────────────────
 
 
-async def rebuild(deck_path: Path, ui: LiveUI) -> None:
+async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
     ui.set_building()
 
     async def _animate() -> None:
@@ -353,10 +353,13 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 # ── File watcher ──────────────────────────────────────────────────────────────
 
 
-async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
-    async for _changes in awatch(str(deck_path.parent)):
+async def _watch(
+    deck_path: Path, ui: LiveUI, lock: asyncio.Lock, levels: Levels
+) -> None:
+    async for changes in awatch(str(deck_path.parent)):
+        logger.debug(f"change detected in {len(changes)} file(s), rebuilding")
         async with lock:
-            await rebuild(deck_path, ui)
+            await rebuild(deck_path, ui, levels)
 
 
 # ── Keyboard handler ──────────────────────────────────────────────────────────
@@ -387,6 +390,7 @@ async def _read_keys(
     ui: LiveUI,
     lock: asyncio.Lock,
     shutdown: asyncio.Event,
+    levels: Levels,
 ) -> None:
     if not sys.stdin.isatty():
         return
@@ -412,7 +416,7 @@ async def _read_keys(
                 _open_browser(f"http://{host}:{http_port}")
             elif ch == "r":
                 async with lock:
-                    await rebuild(deck_path, ui)
+                    await rebuild(deck_path, ui, levels)
             elif ch == "t":
                 ui.toggle_trace()
     finally:
@@ -423,7 +427,9 @@ async def _read_keys(
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
-async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> None:
+async def serve(
+    deck_path: Path, host: str, http_port: int, ws_port: int, levels: Levels
+) -> None:
     console = Console()
     rebuild_lock = asyncio.Lock()
     shutdown = asyncio.Event()
@@ -460,10 +466,12 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
                     http_server,
                     ws_serve(make_ws_handler(ui), host, ws_port),
                 ):
-                    await rebuild(deck_path, ui)
+                    await rebuild(deck_path, ui, levels)
                     tasks = [
                         asyncio.create_task(http_server.serve_forever()),
-                        asyncio.create_task(_watch(deck_path, ui, rebuild_lock)),
+                        asyncio.create_task(
+                            _watch(deck_path, ui, rebuild_lock, levels)
+                        ),
                         asyncio.create_task(
                             _read_keys(
                                 deck_path,
@@ -472,6 +480,7 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
                                 ui,
                                 rebuild_lock,
                                 shutdown,
+                                levels,
                             )
                         ),
                     ]
