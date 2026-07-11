@@ -28,11 +28,11 @@ run = [
 
 [tasks.docs]
 env = { NO_MKDOCS_2_WARNING = "1" }
-run = ["uv run inkflow build --deck demo/deck.py --output docs/demo/presentation", "uv run mkdocs serve"]
+run = ["uv run inkflow build --deck demo/deck.py --output docs/demo", "uv run mkdocs serve"]
 
 [tasks.docs-build]
 env = { NO_MKDOCS_2_WARNING = "1" }
-run = ["uv run inkflow build --deck demo/deck.py --output docs/demo/presentation", "uv run mkdocs build"]
+run = ["uv run inkflow build --deck demo/deck.py --output docs/demo", "uv run mkdocs build"]
 
 [tasks.test-js]
 run = "npx vitest run"
