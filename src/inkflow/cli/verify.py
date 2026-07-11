@@ -4,11 +4,11 @@ import sys
 from pathlib import Path
 
 import click
-from rich.console import Console
 
 from inkflow import colors, loaders
 from inkflow.cli._common import Project, deck_option, main
 from inkflow.enums import ColorMode
+from inkflow.logging import console
 from inkflow.pipeline import resolve_slide_src
 from inkflow.verify import verify_slide
 
@@ -73,7 +73,6 @@ def verify_cmd(
 
 
 def _print_slide_issues(label: str, issues: list[tuple[str, str]]) -> None:
-    console = Console()
     if not issues:
         console.print(f"[bold green]ok   [/bold green]  [dim]{label}[/dim]")
         return

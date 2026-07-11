@@ -4,7 +4,6 @@ Roughly ordered by priority
 
 - Composable layout components (multiple parents, parent filter)
 - Video playback parameters
-- `inkflow.logging`:  unified log/warn/error sink
 - Configurable step animations
 - `inkflow eject` copies a theme layout into the project and updates `deck.py` to point at the local copy.
 - Watch-only mode (just rebuild, no server)

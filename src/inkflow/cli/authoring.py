@@ -7,7 +7,6 @@ from pathlib import Path
 import click
 from lxml import etree as _etree
 from rich import box as rich_box
-from rich.console import Console
 from rich.table import Table
 
 from inkflow import colors, loaders, ns
@@ -33,6 +32,7 @@ from inkflow.layout import (
     resolve_parent_path,
     strip_parent,
 )
+from inkflow.logging import console, logger, report
 from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import with_namespaces
 from inkflow.svgio import parse_svg_file
@@ -73,17 +73,15 @@ def clean(
             cleaned = clean_inkscape_svg(target.path, keep_preview=True)
             if check:
                 if cleaned != target.path.read_text(encoding="utf-8"):
-                    click.echo(f"[inkflow] would clean: {target.label}", err=True)
+                    report("Would clean", target.label, style="yellow")
                     dirty = True
             elif to_stdout:
                 sys.stdout.write(cleaned)
             else:
                 target.path.write_text(cleaned, encoding="utf-8")
-                click.echo(f"[inkflow] cleaned {target.label}")
+                report("Cleaned", target.label)
         except Exception as exc:
-            click.echo(
-                f"[inkflow] clean: error processing {target.label}: {exc}", err=True
-            )
+            logger.error(f"clean: {target.label}: {exc}")
             errors = True
     if dirty or errors:
         sys.exit(1)
@@ -158,14 +156,14 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
     )
 
     if old_parent is not None:
-        click.echo(f"[inkflow] {svg_path.name}: parent {old_parent!r} → {parent_str!r}")
+        report("Set", f"{svg_path.name}: parent {old_parent!r} → {parent_str!r}")
     else:
-        click.echo(f"[inkflow] {svg_path.name}: parent set to {parent_str!r}")
+        report("Set", f"{svg_path.name}: parent {parent_str!r}")
 
     chain = resolve_chain(svg_path, project_dir, theme)
     if chain:
         inject_layout_layers(svg_path, chain)
-        click.echo(f"[injected]    {svg_path.name}")
+        report("Injected", svg_path.name)
 
 
 @parent.command("strip")
@@ -193,11 +191,10 @@ def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> N
         )
     for target in targets:
         had_parent = strip_parent(target.path)
-        click.echo(
-            f"[stripped]    {target.label}"
-            if had_parent
-            else f"[no parent]   {target.label}"
-        )
+        if had_parent:
+            report("Stripped", target.label)
+        else:
+            report("No parent", target.label, style="dim")
 
 
 @main.command("add")
@@ -241,9 +238,9 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
         output_rel = output_path.relative_to(base)
     except ValueError:
         output_rel = output_path
-    click.echo(f"[inkflow] created {output_rel}")
-    click.echo("[inkflow] add to deck.py:")
-    click.echo(f'    Slide("{output_rel}"),')
+    report("Created", str(output_rel))
+    console.print("  add to deck.py:", markup=False)
+    console.print(f'    Slide("{output_rel}"),', markup=False)
 
 
 @main.command("sync")
@@ -295,27 +292,26 @@ def sync_cmd(
                 continue
             if check:
                 if is_layout_current(target.path, [], preview_css):
-                    click.echo(f"[ok]          {target.label}")
+                    report("Ok", target.label)
                 else:
-                    click.echo(f"[stale]       {target.label}")
+                    report("Stale", target.label, style="yellow")
                     stale_found = True
             else:
                 inject_layout_layers(target.path, [], preview_css)
-                click.echo(f"[no parent]   {target.label}")
+                report("No parent", target.label, style="dim")
             continue
         if check:
             if is_layout_current(target.path, chain, preview_css):
-                click.echo(f"[ok]          {target.label}")
+                report("Ok", target.label)
             else:
-                click.echo(f"[stale]       {target.label}")
+                report("Stale", target.label, style="yellow")
                 stale_found = True
         else:
             changed = inject_layout_layers(target.path, chain, preview_css)
-            click.echo(
-                f"[injected]    {target.label}"
-                if changed
-                else f"[up to date]  {target.label}"
-            )
+            if changed:
+                report("Injected", target.label)
+            else:
+                report("Up to date", target.label, style="dim")
 
     if check and stale_found:
         sys.exit(1)
@@ -371,7 +367,6 @@ def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
         ("local", "green", "Local"),
     ]
 
-    console = Console()
     first = True
     for source_key, color, title in source_styles:
         rows = groups.get(source_key)

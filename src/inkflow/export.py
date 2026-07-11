@@ -18,15 +18,14 @@ from inkflow.server import State, build_html, load_deck
 # ── build ─────────────────────────────────────────────────────────────────────
 
 
-def build_static_html(deck_path: Path, out_dir: Path) -> list[str]:
+def build_static_html(deck_path: Path, out_dir: Path) -> None:
     deck = load_deck(deck_path)
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir)
     transitions = resolve_transitions(deck)
     styles_css = load_deck_styles(deck, project_dir)
-    warnings: list[str] = []
     if deck.embed_fonts:
-        font_css, warnings = embed_fonts_css_subsetted(slides, project_dir)
+        font_css = embed_fonts_css_subsetted(slides, project_dir)
         if font_css:
             styles_css = (font_css + "\n" + styles_css).strip()
     scripts_js = load_deck_scripts(deck, project_dir)
@@ -42,10 +41,10 @@ def build_static_html(deck_path: Path, out_dir: Path) -> list[str]:
         "ws_clients": set(),
         "error": None,
         "position": {"slideIndex": 0, "step": 0},
+        "logs": [],
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
-    return warnings
 
 
 def _is_local_ref(src: str) -> bool:
@@ -113,7 +112,7 @@ def build_pdf(
     chromium: str | None = None,
     no_sandbox: bool = False,
     size: tuple[int, int] | None = None,
-) -> list[str]:
+) -> None:
     exe = chromium or _find_chromium()
     if exe is None:
         raise RuntimeError(
@@ -127,9 +126,8 @@ def build_pdf(
     if not slides:
         raise RuntimeError("Cannot export a PDF: the deck has no visible slides.")
     styles_css = load_deck_styles(deck, project_dir)
-    warnings: list[str] = []
     if deck.embed_fonts:
-        font_css, warnings = embed_fonts_css_subsetted(slides, project_dir)
+        font_css = embed_fonts_css_subsetted(slides, project_dir)
         if font_css:
             styles_css = (font_css + "\n" + styles_css).strip()
 
@@ -165,7 +163,6 @@ def build_pdf(
         if no_sandbox:
             cmd.insert(1, "--no-sandbox")
         subprocess.run(cmd, check=True)
-    return warnings
 
 
 def _find_chromium() -> str | None:

@@ -14,6 +14,13 @@
       <pre id="error-msg"></pre>
     </div>
   </div>
+  <div id="log-banner" role="status">
+    <div id="log-head">
+      <span id="log-title">MESSAGES</span>
+      <button type="button" id="log-close" title="Dismiss" aria-label="Dismiss messages">×</button>
+    </div>
+    <ul id="log-list"></ul>
+  </div>
   <div id="curtain"></div>
   <div id="help" role="dialog" aria-modal="true">
     <div id="help-box">
@@ -36,6 +43,7 @@
         <tr class="kb-group"><td colspan="2">View</td></tr>
         <tr><td>t</td><td>Dark / light mode</td></tr>
         <tr><td>p</td><td>Presenter panel</td></tr>
+        <tr><td>m</td><td>Messages</td></tr>
         <tr id="help-sync-row"><td>s</td><td>Cycle sync mode</td></tr>
         <tr><td>?</td><td>This help</td></tr>
       </table>
@@ -203,6 +211,26 @@
     <span class="sep">|</span>
     <span id="step-info">step –</span>
     <span class="hud-sep"></span>
+    <button type="button" class="hud-btn" id="log-indicator" title="Show messages" aria-label="Show messages">
+      <svg class="log-ic log-ic-debug" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+        <circle cx="8" cy="8" r="4"/>
+      </svg>
+      <svg class="log-ic log-ic-info" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+        <circle cx="8" cy="8" r="6.5"/>
+        <line x1="8" y1="7.3" x2="8" y2="11.3"/>
+        <circle cx="8" cy="4.6" r="0.5" fill="currentColor" stroke="none"/>
+      </svg>
+      <svg class="log-ic log-ic-warning" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+        <path d="M8 2.2 15.2 14H0.8z"/>
+        <line x1="8" y1="6.5" x2="8" y2="10"/>
+        <circle cx="8" cy="11.8" r="0.5" fill="currentColor" stroke="none"/>
+      </svg>
+      <svg class="log-ic log-ic-error" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+        <circle cx="8" cy="8" r="6.5"/>
+        <line x1="5.8" y1="5.8" x2="10.2" y2="10.2"/>
+        <line x1="10.2" y1="5.8" x2="5.8" y2="10.2"/>
+      </svg>
+    </button>
     <span id="ws-dot"></span>
   </div>
 

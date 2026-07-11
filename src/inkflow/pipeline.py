@@ -16,6 +16,7 @@ from inkflow.content import (
 from inkflow.enums import ColorMode
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
+from inkflow.logging import logger
 from inkflow.manifest import (
     Animation,
     Deck,
@@ -145,7 +146,7 @@ def annotate_svg(root: SvgElement, animations: list[Animation]) -> SvgElement:
         eid = anim.element.lstrip("#")
         el = root.find(f'.//*[@id="{eid}"]')
         if el is None:
-            print(f"[inkflow] warning: element #{eid} not found in SVG")
+            logger.warning(f"element #{eid} not found in SVG")
             continue
 
         existing_class = el.get("class", "")
@@ -333,6 +334,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     slide_ids = _deduplicate_ids(raw_ids)
     results: list[SlideData] = []
     for i, (slide, slide_id) in enumerate(zip(visible_slides, slide_ids, strict=True)):
+        logger.debug(f"processing slide {i + 1}/{len(visible_slides)}: {slide_id}")
         md_text = load_md(slide.md, project_dir) if slide.md is not None else None
         parsed = parse_markdown_zones(md_text) if md_text is not None else None
         title = _infer_slide_title(slide, slide_id, parsed)
@@ -340,4 +342,5 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         svg, md_notes = process_slide(slide, ctx, i + 1, parsed)
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
+    logger.info(f"processed {len(results)} slide(s)")
     return results

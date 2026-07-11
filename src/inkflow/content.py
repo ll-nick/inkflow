@@ -8,6 +8,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
+from inkflow.logging import logger
 from inkflow.manifest import Media, TextBox
 from inkflow.markdown import html_fragment_to_xml
 from inkflow.svg import ensure_defs
@@ -398,7 +399,7 @@ def substitute_content(
     for zone_id, item in content.items():
         el = root.find(f'.//*[@id="{zone_id}"]')
         if el is None:
-            print(f"[inkflow] warning: zone #{zone_id} not found in SVG")
+            logger.warning(f"zone #{zone_id} not found in SVG")
             continue
 
         if isinstance(item, TextBox):

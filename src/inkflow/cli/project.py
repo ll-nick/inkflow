@@ -10,6 +10,7 @@ import click
 
 from inkflow import git_setup, init
 from inkflow.cli._common import main
+from inkflow.logging import console, report
 
 
 @main.command("init")
@@ -37,16 +38,16 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
         init.scaffold(target, theme_path)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
-    click.echo("[inkflow] created slides/title.svg")
-    click.echo("[inkflow] created slides/content.md")
-    click.echo("[inkflow] created deck.py")
+    report("Created", "slides/title.svg")
+    report("Created", "slides/content.md")
+    report("Created", "deck.py")
     if not no_git:
         git_root_path = git_setup.detect_git_root(target)
         if git_root_path:
-            git_setup.run_git_setup(git_root_path, verbose=False, log=click.echo)
+            git_setup.run_git_setup(git_root_path, verbose=False)
     rel = str(directory) if str(directory) not in (".", "./") else None
     suffix = f"cd {rel} && inkflow serve" if rel else "inkflow serve"
-    click.echo(f"\n[inkflow] run:  {suffix}")
+    console.print(f"\nrun:  {suffix}", markup=False)
 
 
 @main.command("completion")
@@ -82,6 +83,6 @@ def setup_git() -> None:
     """
     try:
         root = git_setup.git_root()
-        git_setup.run_git_setup(root, verbose=True, log=click.echo)
+        git_setup.run_git_setup(root, verbose=True)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc

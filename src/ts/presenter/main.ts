@@ -8,7 +8,7 @@ import {
     registerProgressTransition,
     registerTransition,
 } from "./transitions";
-import { showError } from "./ui";
+import { showError, showLogs } from "./ui";
 import { connectWS, loadSyncMode } from "./websocket";
 import "./keyboard";
 
@@ -17,6 +17,7 @@ const INITIAL_SLIDES = __SLIDES_JSON__;
 const INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
 const WS_PORT = __WS_PORT__;
 const INITIAL_ERROR = __ERROR_JSON__;
+const INITIAL_LOGS = __LOGS_JSON__;
 
 // ── Initialize state from server-injected globals ──
 state.slides = INITIAL_SLIDES;
@@ -44,4 +45,5 @@ renderPv();
 updatePvClock();
 setInterval(updatePvClock, 1000);
 if (INITIAL_ERROR) showError(INITIAL_ERROR);
+if (INITIAL_LOGS.length) showLogs(INITIAL_LOGS);
 connectWS(WS_PORT, deepLinked);

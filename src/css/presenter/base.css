@@ -121,6 +121,34 @@ body {
     font-size: 0.85rem;
 }
 
+/* ── Log indicator: present only when the deck has messages (JS sets data-level to
+   the highest level). Static builds export no logs, so it never appears there. The
+   icon shape and colour track that level; clicking re-opens the message banner. ── */
+#log-indicator:not([data-level]) {
+    display: none;
+}
+#log-indicator .log-ic {
+    display: none;
+}
+#log-indicator[data-level="debug"] {
+    color: var(--subtext);
+}
+#log-indicator[data-level="info"] {
+    color: var(--blue);
+}
+#log-indicator[data-level="warning"] {
+    color: var(--yellow);
+}
+#log-indicator[data-level="error"] {
+    color: var(--red);
+}
+#log-indicator[data-level="debug"] .log-ic-debug,
+#log-indicator[data-level="info"] .log-ic-info,
+#log-indicator[data-level="warning"] .log-ic-warning,
+#log-indicator[data-level="error"] .log-ic-error {
+    display: block;
+}
+
 #ws-dot {
     display: inline-block;
     width: 6px;

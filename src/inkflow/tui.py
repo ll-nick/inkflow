@@ -10,6 +10,17 @@ from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.text import Text
 
+from inkflow.logging import LogEntry
+
+# Icon + Rich style per log level for the build summary (colours match the console
+# handler). Only warnings get the triangle; lower levels are quieter marks.
+_LOG_MARK: dict[str, tuple[str, str]] = {
+    "debug": ("◦", "dim"),
+    "info": ("ℹ", "blue"),  # noqa: RUF001  intentional info glyph, not the letter i
+    "warning": ("⚠", "yellow"),
+    "error": ("✖", "bold red"),
+}
+
 
 class LiveUI:
     """Owns the entire terminal UI: header panel + status line."""
@@ -31,7 +42,7 @@ class LiveUI:
         self._slides: int = 0
         self._elapsed: float = 0.0
         self._built_at: str = ""
-        self._warnings: list[str] = []
+        self._logs: list[LogEntry] = []
         self._error_trace: str | None = None
         self._show_trace: bool = False
 
@@ -76,9 +87,10 @@ class LiveUI:
         if self._phase == "building":
             parts.append(Spinner("dots", text=" Building…"))
         elif self._phase == "ok":
-            for w in self._warnings:
-                parts.append(Text(f" ⚠  {w}", style="yellow"))
-            if self._warnings:
+            for entry in self._logs:
+                icon, style = _LOG_MARK.get(entry.level, ("⚠", "yellow"))
+                parts.append(Text(f" {icon}  {entry.message}", style=style))
+            if self._logs:
                 parts.append(Text(""))
 
             slide_word = "slide" if self._slides == 1 else "slides"
@@ -112,17 +124,17 @@ class LiveUI:
 
     def set_building(self) -> None:
         self._phase = "building"
-        self._warnings = []
+        self._logs = []
         self.refresh()
 
     def set_ok(
-        self, slides: int, elapsed: float, warnings: list[str] | None = None
+        self, slides: int, elapsed: float, logs: list[LogEntry] | None = None
     ) -> None:
         self._phase = "ok"
         self._slides = slides
         self._elapsed = elapsed
         self._built_at = datetime.now().strftime("%H:%M:%S")
-        self._warnings = warnings or []
+        self._logs = logs or []
         self._error_trace = None
         self._show_trace = False
         self.refresh()

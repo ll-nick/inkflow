@@ -20,6 +20,5 @@ DECK_PATHS = sorted(DECKS_DIR.glob("*.py"))
 )
 def test_deck_builds(deck_path: Path, tmp_path: Path) -> None:
     out_dir = tmp_path / deck_path.stem
-    warnings = build_static_html(deck_path, out_dir)
+    build_static_html(deck_path, out_dir)
     assert (out_dir / "index.html").exists()
-    assert isinstance(warnings, list)

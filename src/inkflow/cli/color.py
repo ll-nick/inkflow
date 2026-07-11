@@ -15,6 +15,7 @@ from inkflow.cli._common import (
     resolve_dark_mode,
     targets_or_deck_slides,
 )
+from inkflow.logging import logger, report
 
 
 @main.command("colorize")
@@ -53,13 +54,11 @@ def colorize_cmd(
             )
             if changed:
                 target.path.write_text(new_svg, encoding="utf-8")
-                click.echo(f"[colorized]   {target.label}")
+                report("Colorized", target.label)
             else:
-                click.echo(f"[no changes]  {target.label}")
+                report("Unchanged", target.label, style="dim")
         except Exception as exc:
-            click.echo(
-                f"[inkflow] colorize: error processing {target.label}: {exc}", err=True
-            )
+            logger.error(f"colorize: {target.label}: {exc}")
             errors = True
 
     if errors:

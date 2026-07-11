@@ -29,6 +29,7 @@ from websockets.asyncio.server import serve as ws_serve
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
+from inkflow.logging import Levels, collect_logs, logger, report
 from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.tui import LiveUI
@@ -45,6 +46,7 @@ class State(TypedDict):
     scripts_js: str
     mode: ColorMode
     position: dict[str, int]
+    logs: list[dict[str, str]]
 
 
 _state: State = {
@@ -56,6 +58,7 @@ _state: State = {
     "scripts_js": "",
     "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
+    "logs": [],
 }
 
 
@@ -76,7 +79,7 @@ def load_deck(deck_path: Path) -> Deck:
 # ── Build pipeline ────────────────────────────────────────────────────────────
 
 
-async def rebuild(deck_path: Path, ui: LiveUI) -> None:
+async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
     ui.set_building()
 
     async def _animate() -> None:
@@ -87,37 +90,55 @@ async def rebuild(deck_path: Path, ui: LiveUI) -> None:
     spin = asyncio.create_task(_animate())
     t0 = time.monotonic()
     try:
-        deck = await asyncio.to_thread(load_deck, deck_path)
-        project_dir = deck_path.parent
-        slides = await asyncio.to_thread(process_deck, deck, project_dir)
-        transitions = resolve_transitions(deck)
-        styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
-        if deck.embed_fonts:
-            font_css, font_warnings = await asyncio.to_thread(
-                embed_fonts_css, slides, project_dir
-            )
-        else:
-            font_css, font_warnings = "", []
-        if font_css:
-            styles_css = (font_css + "\n" + styles_css).strip()
-        scripts_js = await asyncio.to_thread(load_deck_scripts, deck, project_dir)
+        # Collected, not printed, so records reach the TUI/browser without racing the
+        # Live display. Floored at the lower surface level, then filtered per surface.
+        with collect_logs(min(levels.console, levels.browser)) as entries:
+            deck = await asyncio.to_thread(load_deck, deck_path)
+            project_dir = deck_path.parent
+            slides = await asyncio.to_thread(process_deck, deck, project_dir)
+            transitions = resolve_transitions(deck)
+            styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
+            if deck.embed_fonts:
+                font_css = await asyncio.to_thread(embed_fonts_css, slides, project_dir)
+            else:
+                font_css = ""
+            if font_css:
+                styles_css = (font_css + "\n" + styles_css).strip()
+            scripts_js = await asyncio.to_thread(load_deck_scripts, deck, project_dir)
+        tui_logs = [e for e in entries if e.levelno >= levels.console]
+        browser_logs = [
+            {"level": e.level, "message": e.message}
+            for e in entries
+            if e.levelno >= levels.browser
+        ]
         _state["slides"] = slides
         _state["transitions"] = transitions
         _state["styles_css"] = styles_css
         _state["scripts_js"] = scripts_js
         _state["mode"] = deck.mode
         _state["error"] = None
+        _state["logs"] = browser_logs
         if slides:
             cur = _state["position"]["slideIndex"]
             _state["position"]["slideIndex"] = max(0, min(len(slides) - 1, cur))
         else:
             _state["position"]["slideIndex"] = 0
         _state["position"]["step"] = 0
-        ui.set_ok(len(slides), time.monotonic() - t0, warnings=font_warnings)
+        ui.set_ok(len(slides), time.monotonic() - t0, logs=tui_logs)
         await broadcast(
-            json.dumps({"type": "update", "slides": slides, "transitions": transitions})
+            json.dumps(
+                {
+                    "type": "update",
+                    "slides": slides,
+                    "transitions": transitions,
+                    "logs": browser_logs,
+                }
+            )
         )
     except Exception:
+        # Outside collect_logs, so a fatal error reaches only the file sink. The overlay
+        # and TUI error phase show it instead, never the banner.
+        logger.exception("rebuild failed")
         tb = traceback.format_exc()
         _state["error"] = tb
         ui.set_error(tb)
@@ -170,6 +191,7 @@ def _coerce_nav_position(
 def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]:
     async def handler(websocket: ServerConnection) -> None:
         _state["ws_clients"].add(websocket)
+        logger.debug(f"client connected ({len(_state['ws_clients'])} total)")
         ui.refresh()
         try:
             pos = _state["position"]
@@ -222,6 +244,7 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
                     await broadcast(json.dumps(position_msg), sender=websocket)
         finally:
             _state["ws_clients"].discard(websocket)
+            logger.debug(f"client disconnected ({len(_state['ws_clients'])} total)")
             ui.refresh()
 
     return handler
@@ -249,6 +272,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("/* __SCRIPTS__ */", state["scripts_js"])
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
+        .replace("__LOGS_JSON__", json.dumps(state["logs"]))
     )
     return html.encode("utf-8")
 
@@ -326,7 +350,8 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 
             await writer.drain()
         except Exception:
-            # TODO: add logging on top of server response errors
+            # File sink only, never the TUI. The client still gets the 500 body below.
+            logger.exception("error handling HTTP request")
             body = traceback.format_exc().encode()
             try:
                 header = (
@@ -353,10 +378,13 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
 # ── File watcher ──────────────────────────────────────────────────────────────
 
 
-async def _watch(deck_path: Path, ui: LiveUI, lock: asyncio.Lock) -> None:
-    async for _changes in awatch(str(deck_path.parent)):
+async def _watch(
+    deck_path: Path, ui: LiveUI, lock: asyncio.Lock, levels: Levels
+) -> None:
+    async for changes in awatch(str(deck_path.parent)):
+        logger.debug(f"change detected in {len(changes)} file(s), rebuilding")
         async with lock:
-            await rebuild(deck_path, ui)
+            await rebuild(deck_path, ui, levels)
 
 
 # ── Keyboard handler ──────────────────────────────────────────────────────────
@@ -387,6 +415,7 @@ async def _read_keys(
     ui: LiveUI,
     lock: asyncio.Lock,
     shutdown: asyncio.Event,
+    levels: Levels,
 ) -> None:
     if not sys.stdin.isatty():
         return
@@ -412,7 +441,7 @@ async def _read_keys(
                 _open_browser(f"http://{host}:{http_port}")
             elif ch == "r":
                 async with lock:
-                    await rebuild(deck_path, ui)
+                    await rebuild(deck_path, ui, levels)
             elif ch == "t":
                 ui.toggle_trace()
     finally:
@@ -423,7 +452,9 @@ async def _read_keys(
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
-async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> None:
+async def serve(
+    deck_path: Path, host: str, http_port: int, ws_port: int, levels: Levels
+) -> None:
     console = Console()
     rebuild_lock = asyncio.Lock()
     shutdown = asyncio.Event()
@@ -439,11 +470,11 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
             http_server = await asyncio.start_server(http_handler, host, http_port)
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
-                msg = (
-                    f"[red]error:[/red] port {http_port} is already in use."
-                    f" Pass [dim]--port PORT[/dim] to serve on a different port."
+                report(
+                    "Error",
+                    f"port {http_port} in use — pass --port to use another",
+                    style="red",
                 )
-                console.print(msg)
                 return
             raise
 
@@ -460,10 +491,12 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
                     http_server,
                     ws_serve(make_ws_handler(ui), host, ws_port),
                 ):
-                    await rebuild(deck_path, ui)
+                    await rebuild(deck_path, ui, levels)
                     tasks = [
                         asyncio.create_task(http_server.serve_forever()),
-                        asyncio.create_task(_watch(deck_path, ui, rebuild_lock)),
+                        asyncio.create_task(
+                            _watch(deck_path, ui, rebuild_lock, levels)
+                        ),
                         asyncio.create_task(
                             _read_keys(
                                 deck_path,
@@ -472,6 +505,7 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
                                 ui,
                                 rebuild_lock,
                                 shutdown,
+                                levels,
                             )
                         ),
                     ]
@@ -481,11 +515,11 @@ async def serve(deck_path: Path, host: str, http_port: int, ws_port: int) -> Non
                     await asyncio.gather(*tasks, return_exceptions=True)
             except OSError as e:
                 if e.errno == errno.EADDRINUSE:
-                    msg = (
-                        f"[red]error:[/red] port {ws_port} is already in use."
-                        f" Pass [dim]--ws-port PORT[/dim] to use a different one."
+                    report(
+                        "Error",
+                        f"port {ws_port} in use — pass --ws-port to use another",
+                        style="red",
                     )
-                    console.print(msg)
                 else:
                     raise
     finally:

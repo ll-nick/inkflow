@@ -1,6 +1,7 @@
 # pyright: reportPrivateUsage=none
 from __future__ import annotations
 
+import logging
 import textwrap
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from inkflow.animations import (
     ZoomIn,
 )
 from inkflow.enums import Direction
+from inkflow.logging import collect_logs
 from inkflow.manifest import (
     Animation,
     Deck,
@@ -101,11 +103,10 @@ class TestAnnotateSvg:
         result = annotate_svg(svg, [FadeIn("#box", step=1)])
         assert 'class="my-class anim-fade-in"' in result
 
-    def test_missing_element_warns_and_continues(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        result = annotate_svg(_PLAIN_SVG, [FadeIn("#nonexistent", step=1)])
-        assert "nonexistent" in capsys.readouterr().out
+    def test_missing_element_warns_and_continues(self) -> None:
+        with collect_logs(logging.WARNING) as warnings:
+            result = annotate_svg(_PLAIN_SVG, [FadeIn("#nonexistent", step=1)])
+        assert any("nonexistent" in w.message for w in warnings)
         assert 'id="box"' in result  # rest of SVG intact
 
     def test_multiple_animations_applied(self) -> None:

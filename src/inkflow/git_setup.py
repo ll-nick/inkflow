@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Callable
 from pathlib import Path
 from typing import cast
+
+from inkflow.logging import logger, report
 
 HOOK_SCRIPT = """\
 #!/usr/bin/env bash
@@ -90,7 +91,20 @@ def ensure_hook(hooks_dir: Path) -> bool:
     return created
 
 
-def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> None:
+def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> bool:
+    """Set a local git config key, returning True only if it changed.
+
+    Reading the current value first keeps a re-run quiet: an already-correct key is
+    left untouched and reported as unchanged rather than re-set every time.
+    """
+    existing = subprocess.run(
+        ["git", "config", "--get", key],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+    )
+    if existing.returncode == 0 and existing.stdout.strip() == value:
+        return False
     try:
         subprocess.run(
             ["git", "config", key, value],
@@ -102,6 +116,7 @@ def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> None:
         raw = cast(bytes | None, exc.stderr)
         msg = raw.decode().strip() if isinstance(raw, bytes) else str(exc)
         raise RuntimeError(f"git config {key} failed: {msg}") from exc
+    return True
 
 
 def ensure_gitattributes(root: Path) -> str:
@@ -119,16 +134,19 @@ def ensure_gitattributes(root: Path) -> str:
     return "updated"
 
 
-def run_git_setup(
-    root: Path,
-    *,
-    verbose: bool,
-    log: Callable[[str], None] = lambda _: None,
-) -> None:
+def _report_config(changed: bool, detail: str) -> None:
+    if changed:
+        report("Set", detail)
+    else:
+        report("Unchanged", detail, style="dim")
+
+
+def run_git_setup(root: Path, *, verbose: bool) -> None:
     """Configure git hooks and SVG diff driver.
 
-    When verbose=True, raises RuntimeError on failure and logs every step.
-    When verbose=False, silently returns on failure and logs minimally.
+    verbose=True (the ``setup-git`` command) narrates every step and raises on failure;
+    verbose=False (init's best-effort setup) narrates only key steps and swallows it.
+    Idempotent: a re-run leaves already-correct settings untouched and says so.
     """
     try:
         textconv_cmd = resolve_textconv(root)
@@ -139,30 +157,34 @@ def run_git_setup(
 
     hook_created = ensure_hook(root / ".githooks")
     if hook_created:
-        log("[inkflow] created .githooks/pre-commit")
+        report("Created", ".githooks/pre-commit")
     elif verbose:
-        log("[inkflow] .githooks/pre-commit already exists, left unchanged")
+        report("Unchanged", ".githooks/pre-commit", style="dim")
 
     try:
-        run_git_config("core.hooksPath", ".githooks", cwd=root)
-        if verbose:
-            log("[inkflow] set git config: core.hooksPath = .githooks")
-        run_git_config("diff.inkscape-svg.textconv", textconv_cmd, cwd=root)
-        if verbose:
-            log(
-                f"[inkflow] set git config: diff.inkscape-svg.textconv = {textconv_cmd}"
-            )
+        hooks_set = run_git_config("core.hooksPath", ".githooks", cwd=root)
+        textconv_set = run_git_config(
+            "diff.inkscape-svg.textconv", textconv_cmd, cwd=root
+        )
     except RuntimeError as exc:
         if verbose:
             raise
-        log(f"[inkflow] warning: git config failed: {exc}")
+        logger.warning(f"git config failed: {exc}")
         return
+    if verbose:
+        _report_config(hooks_set, "git config core.hooksPath = .githooks")
+        _report_config(
+            textconv_set, f"git config diff.inkscape-svg.textconv = {textconv_cmd}"
+        )
 
     attr_result = ensure_gitattributes(root)
     if verbose:
         if attr_result == "ok":
-            log("[inkflow] .gitattributes already up to date")
+            report("Unchanged", ".gitattributes", style="dim")
         else:
-            log(f"[inkflow] {attr_result} .gitattributes")
+            report(attr_result.capitalize(), ".gitattributes")
 
-    log("[inkflow] git setup complete")
+    if hook_created or hooks_set or textconv_set or attr_result != "ok":
+        report("Configured", "git hooks and SVG diff driver")
+    else:
+        report("Up to date", "git hooks and SVG diff driver", style="dim")

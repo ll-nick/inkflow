@@ -3,7 +3,7 @@ import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
 import { applyCurrentStep, applyCurrentStepInstant, maxStep } from "./status";
 import { CUT, loadSlide, snapInflight } from "./transitions";
-import { hideError, showError } from "./ui";
+import { hideError, showError, showLogs } from "./ui";
 
 const wsDot = document.getElementById("ws-dot")!;
 // Direct DOM refs to avoid circular import with overview.ts
@@ -132,6 +132,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
             state.slides = msg.slides;
             state.transitions = msg.transitions;
             hideError();
+            showLogs(msg.logs ?? []);
             if (overviewEl.classList.contains("visible")) {
                 overviewEl.classList.remove("visible");
                 overviewGridEl.innerHTML = "";

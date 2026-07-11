@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -23,6 +24,7 @@ from inkflow.fonts import (
     extract_font_specs,
     extract_font_specs_and_codepoints,
 )
+from inkflow.logging import collect_logs
 from inkflow.pipeline import SlideData
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -247,13 +249,15 @@ def test_build_index_includes_project_local_fonts(tmp_path: Path) -> None:
 
 def test_embed_fonts_css_no_named_fonts(tmp_path: Path) -> None:
     slides = [_slide(_svg('<text font-family="sans-serif">X</text>'))]
-    css, warnings = embed_fonts_css(slides, tmp_path)
+    with collect_logs(logging.WARNING) as warnings:
+        css = embed_fonts_css(slides, tmp_path)
     assert css == ""
     assert warnings == []
 
 
 def test_embed_fonts_css_empty_slides(tmp_path: Path) -> None:
-    css, warnings = embed_fonts_css([], tmp_path)
+    with collect_logs(logging.WARNING) as warnings:
+        css = embed_fonts_css([], tmp_path)
     assert css == ""
     assert warnings == []
 
@@ -266,9 +270,10 @@ def test_embed_fonts_css_family_not_found_produces_warning(
 ) -> None:
     monkeypatch.setitem(_index_cache, tmp_path, {})
     slides = [_slide(_svg('<text font-family="NonExistentFont">X</text>'))]
-    css, warnings = embed_fonts_css(slides, tmp_path)
+    with collect_logs(logging.WARNING) as warnings:
+        css = embed_fonts_css(slides, tmp_path)
     assert css == ""
-    assert any("NonExistentFont" in w for w in warnings)
+    assert any("NonExistentFont" in w.message for w in warnings)
 
 
 # ── embed_fonts_css — success (mocked font file) ──────────────────────────────
@@ -286,7 +291,8 @@ def test_embed_fonts_css_success(
     monkeypatch.setitem(_index_cache, tmp_path, {"inter": [fake_record]})
 
     slides = [_slide(_svg('<text font-family="Inter">Hello</text>'))]
-    css, warnings = embed_fonts_css(slides, tmp_path)
+    with collect_logs(logging.WARNING) as warnings:
+        css = embed_fonts_css(slides, tmp_path)
 
     assert "@font-face" in css
     assert 'font-family: "Inter"' in css
@@ -305,7 +311,7 @@ def test_embed_fonts_css_success_sets_weight_and_style(
     monkeypatch.setitem(_index_cache, tmp_path, {"inter": [fake_record]})
 
     slides = [_slide(_svg('<text font-family="Inter" font-weight="bold">X</text>'))]
-    css, _ = embed_fonts_css(slides, tmp_path)
+    css = embed_fonts_css(slides, tmp_path)
     assert "font-weight: 700" in css
     assert "font-style: normal" in css
 
@@ -328,7 +334,8 @@ def test_embed_fonts_css_subsetted_success(
     )
 
     slides = [_slide(_svg('<text font-family="Inter">Hi</text>'))]
-    css, warnings = embed_fonts_css_subsetted(slides, tmp_path)
+    with collect_logs(logging.WARNING) as warnings:
+        css = embed_fonts_css_subsetted(slides, tmp_path)
 
     assert "@font-face" in css
     assert 'format("woff2")' in css
@@ -350,11 +357,12 @@ def test_embed_fonts_css_subsetted_fallback_on_failure(
     )
 
     slides = [_slide(_svg('<text font-family="Inter">Hi</text>'))]
-    css, warnings = embed_fonts_css_subsetted(slides, tmp_path)
+    with collect_logs(logging.WARNING) as warnings:
+        css = embed_fonts_css_subsetted(slides, tmp_path)
 
     # Falls back to full font embedding
     assert "@font-face" in css
-    assert any("subsetting failed" in w for w in warnings)
+    assert any("subsetting failed" in w.message for w in warnings)
 
 
 # ── _subset_font — real subsetting ───────────────────────────────────────────

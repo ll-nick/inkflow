@@ -1,7 +1,13 @@
+import type { LogEntry } from "../shared/types";
+
 const curtain = document.getElementById("curtain")!;
 const help = document.getElementById("help")!;
 const errorOverlay = document.getElementById("error-overlay")!;
 const errorMsg = document.getElementById("error-msg")!;
+const logBanner = document.getElementById("log-banner")!;
+const logList = document.getElementById("log-list")!;
+const logClose = document.getElementById("log-close")!;
+const logIndicator = document.getElementById("log-indicator")!;
 const statusBarEl = document.getElementById("statusbar")!;
 
 // biome-ignore lint/suspicious/noExplicitAny: webkit prefix not in TS DOM lib
@@ -33,6 +39,84 @@ export function showError(msg: string): void {
 }
 export function hideError(): void {
     errorOverlay.classList.remove("visible");
+}
+
+// ── Log banner + status-bar indicator ──
+// The banner is non-modal and dismissible. Every rebuild re-sends the current logs, so
+// we track a signature of the shown set: an identical set refreshes the content but
+// respects a dismissal the user already made, while a changed set (or a newly-appearing
+// entry) re-opens the banner. Whenever any messages exist the status-bar indicator
+// stays lit (its icon/colour track the highest level), so a dismissed banner can be
+// reopened by clicking it. An empty set hides both and clears the signature. Each entry
+// is styled by its level via a `log-<level>` class; fatal build errors are not logs and
+// use the full-screen error overlay instead.
+const LOG_LEVEL_ORDER: Record<string, number> = {
+    debug: 0,
+    info: 1,
+    warning: 2,
+    error: 3,
+};
+
+// Same glyphs as the terminal UI. The U+FE0E text-presentation selector keeps the
+// emoji-capable ones monochrome so they take the level colour via CSS.
+const LOG_ICON: Record<string, string> = {
+    debug: "◦",
+    info: "ℹ︎",
+    warning: "⚠︎",
+    error: "✖︎",
+};
+
+function highestLevel(logs: LogEntry[]): string {
+    return logs.reduce(
+        (top, e) =>
+            (LOG_LEVEL_ORDER[e.level] ?? 0) > (LOG_LEVEL_ORDER[top] ?? 0)
+                ? e.level
+                : top,
+        logs[0].level,
+    );
+}
+
+let logSignature = "";
+export function showLogs(logs: LogEntry[]): void {
+    if (logs.length === 0) {
+        hideLogs();
+        logSignature = "";
+        logIndicator.removeAttribute("data-level");
+        return;
+    }
+    const signature = JSON.stringify(logs);
+    const changed = signature !== logSignature;
+    logSignature = signature;
+    logList.replaceChildren(
+        ...logs.map((entry) => {
+            const li = document.createElement("li");
+            li.className = `log-${entry.level}`;
+            const ico = document.createElement("span");
+            ico.className = "log-ico";
+            ico.textContent = LOG_ICON[entry.level] ?? LOG_ICON.warning;
+            const msg = document.createElement("span");
+            msg.textContent = entry.message;
+            li.append(ico, msg);
+            return li;
+        }),
+    );
+    logIndicator.dataset.level = highestLevel(logs);
+    if (changed) logBanner.classList.add("visible");
+}
+
+// Dismissing hides only the banner; the indicator persists so it can be reopened.
+export function hideLogs(): void {
+    logBanner.classList.remove("visible");
+}
+
+// Keyboard toggle: close the banner if shown, else open it when there are messages
+// (the indicator carries a level only while messages exist). A no-op otherwise.
+export function toggleLogs(): void {
+    if (logBanner.classList.contains("visible")) {
+        hideLogs();
+    } else if (logIndicator.hasAttribute("data-level")) {
+        logBanner.classList.add("visible");
+    }
 }
 
 // ── Theme ──
@@ -119,6 +203,10 @@ document
     .addEventListener("pointerdown", showMobileHud, { passive: true });
 
 // ── Internal self-interaction listeners ──
+logClose.addEventListener("click", hideLogs);
+logIndicator.addEventListener("click", () => {
+    logBanner.classList.add("visible");
+});
 curtain.addEventListener("click", hideCurtain);
 help.addEventListener("click", (e) => {
     if (e.target === help) toggleHelp();
