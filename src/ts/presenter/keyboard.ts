@@ -20,9 +20,11 @@ import { state } from "./state";
 import { cycleSyncMode } from "./syncmenu";
 import {
     hideCurtain,
+    hideLogs,
     toggleCurtain,
     toggleFullscreen,
     toggleHelp,
+    toggleLogs,
     toggleMobileHud,
     toggleTheme,
 } from "./ui";
@@ -130,6 +132,7 @@ const KEYBINDINGS: Record<
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
+    m: { action: toggleLogs },
     s: { action: cycleSyncMode },
 };
 
@@ -138,6 +141,7 @@ const helpEl = document.getElementById("help")!;
 const overviewEl = document.getElementById("overview")!;
 const pickerEl = document.getElementById("picker")!;
 const curtainEl = document.getElementById("curtain")!;
+const logBannerEl = document.getElementById("log-banner")!;
 
 document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
@@ -186,6 +190,15 @@ document.addEventListener("keydown", (e) => {
     if (pickerEl.classList.contains("visible")) return;
     if (curtainEl.classList.contains("visible")) {
         hideCurtain();
+        return;
+    }
+    // The banner is non-modal, so it only claims Escape/q (and only while shown); the
+    // status-bar indicator still lets it be reopened.
+    if (
+        (e.key === "Escape" || e.key === "q") &&
+        logBannerEl.classList.contains("visible")
+    ) {
+        hideLogs();
         return;
     }
 
