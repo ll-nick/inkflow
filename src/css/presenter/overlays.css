@@ -126,3 +126,82 @@ kbd {
     word-break: break-all;
     line-height: 1.6;
 }
+
+/* ── Message banner (non-modal, dismissible) ── */
+#log-banner {
+    display: none;
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 40;
+    max-width: 32rem;
+    max-height: 40vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--yellow);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+#log-banner.visible {
+    display: block;
+}
+
+#log-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+#log-title {
+    color: var(--yellow);
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+}
+#log-close {
+    background: none;
+    border: none;
+    color: var(--subtext);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+#log-close:hover {
+    color: var(--text);
+}
+
+#log-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+/* Each entry: a level icon (same glyphs as the terminal UI) then the message, with the
+   whole line coloured by level. */
+#log-list li {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    word-break: break-word;
+    color: var(--text);
+}
+#log-list li + li {
+    margin-top: 0.25rem;
+}
+#log-list .log-ico {
+    flex-shrink: 0;
+}
+#log-list li.log-debug {
+    color: var(--subtext);
+}
+#log-list li.log-info {
+    color: var(--blue);
+}
+#log-list li.log-warning {
+    color: var(--yellow);
+}
+#log-list li.log-error {
+    color: var(--red);
+}
