@@ -29,6 +29,7 @@ from websockets.asyncio.server import serve as ws_serve
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
+from inkflow.logging import Levels, collect_logs, logger, report
 from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.tui import LiveUI
@@ -45,6 +46,7 @@ class State(TypedDict):
     scripts_js: str
     mode: ColorMode
     position: dict[str, int]
+    logs: list[dict[str, str]]
 
 
 _state: State = {
@@ -56,6 +58,7 @@ _state: State = {
     "scripts_js": "",
     "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
+    "logs": [],
 }
 
 
@@ -87,35 +90,50 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
     spin = asyncio.create_task(_animate())
     t0 = time.monotonic()
     try:
-        deck = await asyncio.to_thread(load_deck, deck_path)
-        project_dir = deck_path.parent
-        slides = await asyncio.to_thread(process_deck, deck, project_dir)
-        transitions = resolve_transitions(deck)
-        styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
-        if deck.embed_fonts:
-            font_css, font_warnings = await asyncio.to_thread(
-                embed_fonts_css, slides, project_dir
-            )
-        else:
-            font_css, font_warnings = "", []
-        if font_css:
-            styles_css = (font_css + "\n" + styles_css).strip()
-        scripts_js = await asyncio.to_thread(load_deck_scripts, deck, project_dir)
+        # Collected, not printed, so records reach the TUI/browser without racing the
+        # Live display. Floored at the lower surface level, then filtered per surface.
+        with collect_logs(min(levels.console, levels.browser)) as entries:
+            deck = await asyncio.to_thread(load_deck, deck_path)
+            project_dir = deck_path.parent
+            slides = await asyncio.to_thread(process_deck, deck, project_dir)
+            transitions = resolve_transitions(deck)
+            styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
+            if deck.embed_fonts:
+                font_css = await asyncio.to_thread(embed_fonts_css, slides, project_dir)
+            else:
+                font_css = ""
+            if font_css:
+                styles_css = (font_css + "\n" + styles_css).strip()
+            scripts_js = await asyncio.to_thread(load_deck_scripts, deck, project_dir)
+        tui_logs = [e for e in entries if e.levelno >= levels.console]
+        browser_logs = [
+            {"level": e.level, "message": e.message}
+            for e in entries
+            if e.levelno >= levels.browser
+        ]
         _state["slides"] = slides
         _state["transitions"] = transitions
         _state["styles_css"] = styles_css
         _state["scripts_js"] = scripts_js
         _state["mode"] = deck.mode
         _state["error"] = None
+        _state["logs"] = browser_logs
         if slides:
             cur = _state["position"]["slideIndex"]
             _state["position"]["slideIndex"] = max(0, min(len(slides) - 1, cur))
         else:
             _state["position"]["slideIndex"] = 0
         _state["position"]["step"] = 0
-        ui.set_ok(len(slides), time.monotonic() - t0, warnings=font_warnings)
+        ui.set_ok(len(slides), time.monotonic() - t0, logs=tui_logs)
         await broadcast(
-            json.dumps({"type": "update", "slides": slides, "transitions": transitions})
+            json.dumps(
+                {
+                    "type": "update",
+                    "slides": slides,
+                    "transitions": transitions,
+                    "logs": browser_logs,
+                }
+            )
         )
     except Exception:
         tb = traceback.format_exc()
@@ -249,6 +267,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("/* __SCRIPTS__ */", state["scripts_js"])
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
+        .replace("__LOGS_JSON__", json.dumps(state["logs"]))
     )
     return html.encode("utf-8")
 

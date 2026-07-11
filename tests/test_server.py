@@ -21,6 +21,7 @@ _EMPTY_STATE: State = {
     "scripts_js": "",
     "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
+    "logs": [],
 }
 
 
@@ -39,6 +40,7 @@ _TOKENS = [
     "__WS_PORT__",
     "__ERROR_JSON__",
     "__TRANSITIONS_JSON__",
+    "__LOGS_JSON__",
 ]
 
 
@@ -102,6 +104,14 @@ def test_build_html_null_error_when_no_error() -> None:
 def test_build_html_transitions_json_embedded() -> None:
     html = build_html(_state(transitions=[{"type": "fade"}]), ws_port=7778).decode()
     assert json.dumps([{"type": "fade"}]) in html
+
+
+def test_build_html_logs_json_embedded() -> None:
+    logs = [
+        {"level": "warning", "message": 'font "Inter" not found in any font directory'}
+    ]
+    html = build_html(_state(logs=logs), ws_port=7778).decode()
+    assert json.dumps(logs) in html
 
 
 # ── _resolve_asset ────────────────────────────────────────────────────────────
