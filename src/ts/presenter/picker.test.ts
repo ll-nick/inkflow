@@ -24,6 +24,8 @@ beforeAll(async () => {
         <div id="help"></div>
         <div id="error-overlay"></div>
         <div id="error-msg"></div>
+        <div id="log-banner"><ul id="log-list"></ul><button id="log-close"></button></div>
+        <button id="log-indicator"></button>
         <div id="statusbar"></div>
         <div id="mobile-hud"></div>
         <aside id="pv"></aside>
