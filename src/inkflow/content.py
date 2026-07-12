@@ -3,18 +3,16 @@ from __future__ import annotations
 import copy
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
 from lxml import etree
 
 from inkflow import ns
+from inkflow.enums import Muted
 from inkflow.logging import logger
-from inkflow.manifest import Media, TextBox
+from inkflow.manifest import Media, TextBox, Video
 from inkflow.markdown import html_fragment_to_xml
 from inkflow.svg import ensure_defs
 from inkflow.svgio import SvgElement
-
-_VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
 
 _VALIGN_CSS: dict[str, str] = {
     "top": "start",
@@ -328,22 +326,46 @@ def _parse_dimension(value: str) -> float:
         return 0.0
 
 
-def _make_media_element(src: str, style: str) -> SvgElement:
-    suffix = Path(src).suffix.lower()
-    if suffix in _VIDEO_SUFFIXES:
-        el = etree.Element(
-            f"{{{ns.XHTML}}}video",
-            {"src": src, "controls": ""},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
-        # prevent XML self-close: <video/> breaks HTML5 parsing
-        el.append(etree.Comment(""))
-    else:
-        el = etree.Element(
-            f"{{{ns.XHTML}}}img",
-            {"src": src},
-            nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
-        )
+def _make_image_element(src: str, style: str) -> SvgElement:
+    el = etree.Element(
+        f"{{{ns.XHTML}}}img",
+        {"src": src},
+        nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+    )
+    el.set("style", style)
+    return el
+
+
+def _make_video_element(src: str, style: str, item: Video) -> SvgElement:
+    """Build a ``<video>``. Playback (autoplay/loop/trim/step) is driven by the
+    presenter via ``data-*`` attributes, not the HTML ``autoplay``/``loop``
+    attributes, so outgoing transition-layer clips stay silent."""
+    el = etree.Element(
+        f"{{{ns.XHTML}}}video",
+        {"src": src},
+        nsmap={None: ns.XHTML},  # pyright: ignore[reportArgumentType]
+    )
+    if item.controls:
+        el.set("controls", "")
+    # AUTO mutes only when the clip autoplays (gesture-less), sidestepping the
+    # browser's autoplay block; ON always mutes; OFF never does.
+    muted = item.muted is Muted.ON or (item.muted is Muted.AUTO and item.autoplay)
+    if muted:
+        el.set("muted", "")
+    if item.poster is not None:
+        el.set("poster", item.poster)
+    if item.autoplay:
+        el.set("data-autoplay", "")
+    if item.loop:
+        el.set("data-loop", "")
+    if item.play_on_step is not None:
+        el.set("data-play-on-step", str(item.play_on_step))
+    if item.start is not None:
+        el.set("data-start", f"{item.start:g}")
+    if item.end is not None:
+        el.set("data-end", f"{item.end:g}")
+    # prevent XML self-close: <video/> breaks HTML5 parsing
+    el.append(etree.Comment(""))
     el.set("style", style)
     return el
 
@@ -369,20 +391,25 @@ def _replace_with_media(
         f"object-position:{_fmt_pos(base_x, x_pct)} {_fmt_pos(base_y, y_pct)};"
     )
 
+    def make(src: str, style: str) -> SvgElement:
+        if isinstance(item, Video):
+            return _make_video_element(src, style, item)
+        return _make_image_element(src, style)
+
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
     fo.set("overflow", "visible")
     if geom.clip_shape is not None:
         fo.set("clip-path", _add_clip_path(root, zone_id, geom.clip_shape))
 
     if item.alt_src is None:
-        fo.append(_make_media_element(item.src, base_style + "display:block;"))
+        fo.append(make(item.src, base_style + "display:block;"))
     else:
         # display is managed by CSS via [data-inkflow-theme] selectors
         primary_theme = "dark" if dark_mode else "light"
         alt_theme = "light" if dark_mode else "dark"
-        primary_el = _make_media_element(item.src, base_style)
+        primary_el = make(item.src, base_style)
         primary_el.set("data-inkflow-theme", primary_theme)
-        alt_el = _make_media_element(item.alt_src, base_style)
+        alt_el = make(item.alt_src, base_style)
         alt_el.set("data-inkflow-theme", alt_theme)
         fo.append(primary_el)
         fo.append(alt_el)
