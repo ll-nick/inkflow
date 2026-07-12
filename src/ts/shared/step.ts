@@ -4,6 +4,13 @@ export function maxStep(root: Element): number {
         const s = +(el.getAttribute("data-step") ?? "0");
         if (s > m) m = s;
     });
+    // A video that plays on a step extends the slide's step count, so forward
+    // navigation lands on that step (and triggers playback) instead of skipping
+    // to the next slide.
+    root.querySelectorAll("[data-play-on-step]").forEach((el) => {
+        const s = +(el.getAttribute("data-play-on-step") ?? "0");
+        if (s > m) m = s;
+    });
     root.querySelectorAll<HTMLElement>(
         ".inkflow-codeblock[data-hl-spec][data-base-step]",
     ).forEach((block) => {
