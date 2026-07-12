@@ -70,6 +70,13 @@ def load_deck(deck_path: Path) -> Deck:
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {deck_path}")
     mod = importlib.util.module_from_spec(spec)
+    # Keep the module in sys.modules for the process lifetime. Besides being the
+    # recommended importlib pattern, it keeps any custom Animation/Transition
+    # subclasses the deck defines strongly referenced, so `type=<Name>` markers
+    # can still resolve them via Animation.__subclasses__() (a marker only holds
+    # the class *name*, so nothing else keeps the class from being collected).
+    # A live-reload re-load replaces this entry with the fresh module.
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     if not hasattr(mod, "main"):
         raise AttributeError(f"{deck_path} must define a main() -> Deck function")

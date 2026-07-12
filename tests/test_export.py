@@ -150,6 +150,42 @@ class TestBuildCopiesAssets:
         assert copied == []
 
 
+class TestCustomTypeMarker:
+    def test_custom_animation_type_resolves_from_marker(self, tmp_path: Path) -> None:
+        # A ::step type=<Name>:: marker only holds the class *name*, so the deck
+        # module must stay alive for Animation.__subclasses__() to find a custom
+        # type. Regression for the module being GC'd after load_deck returns.
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        deck_path = tmp_path / "deck.py"
+        deck_path.write_text(
+            textwrap.dedent("""\
+                import gc
+                from dataclasses import dataclass
+                from inkflow import Deck, Inline, Slide
+                from inkflow.manifest import Animation
+
+
+                @dataclass
+                class Spark(Animation):
+                    intensity: float = 1.0
+
+
+                def main() -> Deck:
+                    gc.collect()  # collect before the pipeline resolves markers
+                    marker = "::content::\\n::step type=Spark intensity=4::\\nHi\\n"
+                    slide = Slide("slides/s.svg", md=Inline(marker))
+                    return Deck(embed_fonts=False, slides=[slide])
+            """),
+            encoding="utf-8",
+        )
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir)
+        html = (out_dir / "index.html").read_text(encoding="utf-8")
+        # Resolved to the custom type (not the FadeIn fallback).
+        assert "anim-spark" in html
+        assert "--anim-intensity: 4" in html
+
+
 class TestEmptyDeck:
     def test_static_html_handles_empty_deck(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
