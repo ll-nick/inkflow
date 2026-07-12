@@ -17,9 +17,9 @@ How a type maps to CSS:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from inkflow.enums import Direction
+from inkflow.enums import Direction, Easing
 from inkflow.manifest import Animation
 
 __all__ = [
@@ -48,6 +48,14 @@ class FadeOut(Animation):
 class Bounce(Animation):
     """Element starts hidden, appears with a scale-pulse bounce on its step."""
 
+    duration: float = field(default=0.35, kw_only=True)
+    """Duration in seconds."""
+    overshoot: Easing = field(
+        default=Easing.cubic_bezier(0.34, 1.56, 0.64, 1), kw_only=True
+    )
+    """Easing for the translate axis — the overshoot that gives the bounce its
+    spring. Independent of the opacity-axis ``easing``."""
+
 
 @dataclass
 class SlideIn(Animation):
@@ -55,8 +63,8 @@ class SlideIn(Animation):
 
     direction: Direction = Direction.LEFT
     """Edge the element slides in from."""
-    distance: float | None = None
-    """Travel distance in SVG user units. ``None`` keeps the CSS default."""
+    distance: float = 60.0
+    """Travel distance in SVG user units."""
 
 
 @dataclass
@@ -65,31 +73,33 @@ class SlideOut(Animation):
 
     direction: Direction = Direction.LEFT
     """Edge the element slides out toward."""
-    distance: float | None = None
-    """Travel distance in SVG user units. ``None`` keeps the CSS default."""
+    distance: float = 60.0
+    """Travel distance in SVG user units."""
 
 
 @dataclass
 class ZoomIn(Animation):
     """Element scales up into place from ``scale``."""
 
-    scale: float | None = None
-    """Starting scale, e.g. ``0.6``. ``None`` keeps the CSS default."""
+    scale: float = 0.8
+    """Starting scale, e.g. ``0.6``."""
 
 
 @dataclass
 class ZoomOut(Animation):
     """Element scales down out of place toward ``scale``."""
 
-    scale: float | None = None
-    """Ending scale. ``None`` keeps the CSS default."""
+    scale: float = 0.8
+    """Ending scale."""
 
 
 @dataclass
 class Highlight(Animation):
     """Pulse the element ``passes`` times without hiding it."""
 
-    color: str | None = None
-    """Glow color (any CSS color). ``None`` keeps the CSS default."""
-    passes: int | None = None
-    """Number of pulses. ``None`` keeps the CSS default."""
+    duration: float = field(default=0.6, kw_only=True)
+    """Duration of one pulse in seconds."""
+    color: str = "var(--accent)"
+    """Glow color (any CSS color or theme token)."""
+    passes: int = 1
+    """Number of pulses."""

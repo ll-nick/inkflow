@@ -1,6 +1,6 @@
-/* Animation parameters are passed as `--anim-*` custom properties on the element
- * (see pipeline.py `_anim_style`). Each rule reads them with `var(--x, default)`,
- * so the default value lives here and the deck only sets what it overrides. */
+/* Animation parameters arrive as `--anim-*` custom properties on the element,
+ * set by pipeline.py `_anim_style` from the Animation's Python fields; the rules
+ * read them with `var(--x)`. */
 
 /* Motion uses the individual `translate:` and `scale:` properties, NOT the
  * `transform` shorthand. SVG elements moved in an editor carry a `transform`
@@ -13,8 +13,8 @@
 
 .anim-fade-in {
     opacity: 0;
-    transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s);
+    transition: opacity var(--anim-duration) var(--anim-easing)
+        var(--anim-delay);
 }
 .anim-fade-in.active {
     opacity: 1;
@@ -22,26 +22,23 @@
 
 .anim-fade-out {
     opacity: 1;
-    transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s);
+    transition: opacity var(--anim-duration) var(--anim-easing)
+        var(--anim-delay);
 }
 .anim-fade-out.active {
     opacity: 0;
 }
 
 /* ── Bounce ───────────────────────────────────────────────────────────────── */
-/* Bounce-in from below. The overshoot is the translate's default easing; setting
- * --anim-easing overrides it along with the opacity easing. */
+/* Bounce-in from below. The translate axis uses its own `--anim-overshoot` easing
+ * (the spring), independent of the opacity axis's `--anim-easing`. */
 
 .anim-bounce {
     opacity: 0;
     translate: 0 14px;
     transition:
-        opacity var(--anim-duration, 0.35s) var(--anim-easing, ease)
-        var(--anim-delay, 0s),
-        translate var(--anim-duration, 0.35s)
-        var(--anim-easing, cubic-bezier(0.34, 1.56, 0.64, 1))
-        var(--anim-delay, 0s);
+        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
+        translate var(--anim-duration) var(--anim-overshoot) var(--anim-delay);
 }
 .anim-bounce.active {
     opacity: 1;
@@ -55,22 +52,20 @@
 .anim-slide-in {
     opacity: 0;
     transition:
-        opacity var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s),
-        translate var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s);
+        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
+        translate var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-slide-in.anim-from-left {
-    translate: calc(-1 * var(--anim-distance, 60px)) 0;
+    translate: calc(-1 * var(--anim-distance)) 0;
 }
 .anim-slide-in.anim-from-right {
-    translate: var(--anim-distance, 60px) 0;
+    translate: var(--anim-distance) 0;
 }
 .anim-slide-in.anim-from-up {
-    translate: 0 calc(-1 * var(--anim-distance, 60px));
+    translate: 0 calc(-1 * var(--anim-distance));
 }
 .anim-slide-in.anim-from-down {
-    translate: 0 var(--anim-distance, 60px);
+    translate: 0 var(--anim-distance);
 }
 .anim-slide-in.active {
     opacity: 1;
@@ -81,25 +76,23 @@
     opacity: 1;
     translate: 0 0;
     transition:
-        opacity var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s),
-        translate var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s);
+        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
+        translate var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-slide-out.active {
     opacity: 0;
 }
 .anim-slide-out.anim-from-left.active {
-    translate: calc(-1 * var(--anim-distance, 60px)) 0;
+    translate: calc(-1 * var(--anim-distance)) 0;
 }
 .anim-slide-out.anim-from-right.active {
-    translate: var(--anim-distance, 60px) 0;
+    translate: var(--anim-distance) 0;
 }
 .anim-slide-out.anim-from-up.active {
-    translate: 0 calc(-1 * var(--anim-distance, 60px));
+    translate: 0 calc(-1 * var(--anim-distance));
 }
 .anim-slide-out.anim-from-down.active {
-    translate: 0 var(--anim-distance, 60px);
+    translate: 0 var(--anim-distance);
 }
 
 /* ── Zoom ─────────────────────────────────────────────────────────────────── */
@@ -107,14 +100,12 @@
 
 .anim-zoom-in {
     opacity: 0;
-    scale: var(--anim-scale, 0.8);
+    scale: var(--anim-scale);
     transform-box: fill-box;
     transform-origin: center;
     transition:
-        opacity var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s),
-        scale var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s);
+        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
+        scale var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-zoom-in.active {
     opacity: 1;
@@ -127,14 +118,12 @@
     transform-box: fill-box;
     transform-origin: center;
     transition:
-        opacity var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s),
-        scale var(--anim-duration, 0.4s) var(--anim-easing, ease)
-        var(--anim-delay, 0s);
+        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
+        scale var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-zoom-out.active {
     opacity: 0;
-    scale: var(--anim-scale, 0.8);
+    scale: var(--anim-scale);
 }
 
 /* ── Highlight ────────────────────────────────────────────────────────────── */
@@ -143,10 +132,10 @@
 
 @keyframes anim-highlight-pulse {
     50% {
-        filter: drop-shadow(0 0 8px var(--anim-color, var(--accent)));
+        filter: drop-shadow(0 0 8px var(--anim-color));
     }
 }
 .anim-highlight.active {
-    animation: anim-highlight-pulse var(--anim-duration, 0.6s)
-        var(--anim-easing, ease) var(--anim-delay, 0s) var(--anim-passes, 1);
+    animation: anim-highlight-pulse var(--anim-duration) var(--anim-easing)
+        var(--anim-delay) var(--anim-passes);
 }
