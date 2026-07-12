@@ -34,7 +34,7 @@ return Deck(
     embed_fonts=False,
     slides=[
         Slide('slides/s.svg', zones={'content': '![cat](assets/cat.png)'}),
-        Slide('slides/s.svg', zones={'content': Media('media/photo.png')}),
+        Slide('slides/s.svg', zones={'content': Image('media/photo.png')}),
     ],
 )"""
 
@@ -61,6 +61,16 @@ return Deck(
     slides=[Slide('slides/s.svg', zones={'content': 'hi'})],
 )"""
 
+_POSTER_DECK = """\
+return Deck(
+    embed_fonts=False,
+    slides=[
+        Slide('slides/s.svg', zones={
+            'content': Video('media/clip.mp4', poster='assets/thumb.png'),
+        }),
+    ],
+)"""
+
 # Placeholder asset bytes; the copy path only cares that the file exists.
 _ASSET_BYTES = b"\x89PNG\r\n\x1a\n placeholder"
 
@@ -81,7 +91,7 @@ def _write_deck(project_dir: Path, body: str) -> Path:
     """Write a deck.py exposing main() -> Deck around `body`, return the deck path."""
     deck_path = project_dir / "deck.py"
     deck_path.write_text(
-        "from inkflow import Deck, Media, Slide\n\n\n"
+        "from inkflow import Deck, Image, Slide, Video\n\n\n"
         + f"def main() -> Deck:\n{textwrap.indent(body, '    ')}\n",
         encoding="utf-8",
     )
@@ -111,6 +121,19 @@ class TestBuildCopiesAssets:
         assert (out_dir / "assets" / "cat.png").exists()
         # Media zone (already worked, must not regress)
         assert (out_dir / "media" / "photo.png").exists()
+
+    def test_copies_video_source_and_poster(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        _write_asset(tmp_path, "media/clip.mp4")
+        _write_asset(tmp_path, "assets/thumb.png")
+        deck_path = _write_deck(tmp_path, _POSTER_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir)
+
+        assert (out_dir / "media" / "clip.mp4").exists()
+        # A video's poster is a local asset too and must be copied.
+        assert (out_dir / "assets" / "thumb.png").exists()
 
     def test_skips_remote_and_data_uri_refs(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)

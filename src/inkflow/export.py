@@ -11,7 +11,7 @@ from typing import cast
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
-from inkflow.manifest import Deck, Media
+from inkflow.manifest import Deck, Media, Video
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
 
@@ -58,9 +58,10 @@ def _collect_local_media_paths(deck: Deck) -> list[str]:
         for val in slide.zones.values():
             if not isinstance(val, Media):
                 continue
-            paths.extend(
-                src for src in [val.src, val.alt_src] if src and _is_local_ref(src)
-            )
+            srcs = [val.src, val.alt_src]
+            if isinstance(val, Video):
+                srcs.append(val.poster)
+            paths.extend(src for src in srcs if src and _is_local_ref(src))
     return paths
 
 
