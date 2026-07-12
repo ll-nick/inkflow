@@ -7,7 +7,7 @@ animations and transitions, ``Align``/``VAlign`` by text zones, ``MediaFit``/
 
 from __future__ import annotations
 
-from enum import StrEnum, auto
+from enum import Enum, StrEnum, auto
 
 __all__ = [
     "Align",
@@ -15,6 +15,7 @@ __all__ = [
     "Direction",
     "MediaAlign",
     "MediaFit",
+    "Muted",
     "VAlign",
 ]
 
@@ -140,3 +141,22 @@ class ColorMode(StrEnum):
     """Dark theme (``data-theme=""``)."""
     LIGHT = auto()
     """Light theme (``data-theme="light"``)."""
+
+
+class Muted(Enum):
+    """Audio muting policy for a ``Video``.
+
+    Unlike the other enums here this never becomes a CSS/HTML value; it is
+    resolved in Python to *whether* the ``<video>`` gets a ``muted`` attribute,
+    so it is a plain ``Enum``, not a ``_KebabStrEnum``.
+    """
+
+    AUTO = auto()
+    """Muted **iff** the video autoplays. Sidesteps the browser's autoplay block
+    by default while leaving gesture-triggered playback (``play_on_step``,
+    ``controls``) audible."""
+    ON = auto()
+    """Always muted."""
+    OFF = auto()
+    """Always unmuted. Explicit opt-in: an autoplaying clip may be blocked by the
+    browser on a cold load, which the author accepts."""
