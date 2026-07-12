@@ -4,7 +4,7 @@ Shared value types used across Inkflow.
 All are imported from the top-level `inkflow` package:
 
 ```python
-from inkflow import Align, ColorMode, Direction, MediaAlign, MediaFit, VAlign
+from inkflow import Align, ColorMode, Direction, MediaAlign, MediaFit, Muted, VAlign
 ```
 
 ::: inkflow.enums.Direction
@@ -32,6 +32,12 @@ from inkflow import Align, ColorMode, Direction, MediaAlign, MediaFit, VAlign
         attributes: true
 
 ::: inkflow.enums.MediaAlign
+    options:
+      docstring_section_style: spacy
+      summary:
+        attributes: true
+
+::: inkflow.enums.Muted
     options:
       docstring_section_style: spacy
       summary:

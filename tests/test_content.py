@@ -10,10 +10,10 @@ from inkflow.content import inject_style as _inject_style_el
 from inkflow.content import remove_unreferenced_zones as _remove_unreferenced_zones_el
 from inkflow.content import substitute_content as _substitute_content_el
 from inkflow.content import substitute_zone_numbers as _substitute_zone_numbers_el
-from inkflow.enums import Align, MediaAlign, MediaFit, VAlign
+from inkflow.enums import Align, MediaAlign, MediaFit, Muted, VAlign
 from inkflow.logging import collect_logs
-from inkflow.manifest import Media, TextBox
-from inkflow.svgio import parse_svg, serialize_svg
+from inkflow.manifest import Image, Media, TextBox, Video
+from inkflow.svgio import SvgElement, parse_svg, serialize_svg
 
 # String adapters: the content DOM functions now take and return an element (parse
 # once). These same-named wrappers keep the string-in / string-out call sites below.
@@ -119,46 +119,47 @@ class TestSubstituteContent:
         assert 'height="780"' in result
 
     def test_image_replaced_with_foreignobject(self) -> None:
-        result = substitute_content(_ZONE_SVG, {"zone-image": Media("photo.png")})
+        result = substitute_content(_ZONE_SVG, {"zone-image": Image("photo.png")})
         assert "foreignObject" in result
         assert "photo.png" in result
 
     def test_video_replaced_with_foreignobject(self) -> None:
-        result = substitute_content(_ZONE_SVG, {"zone-video": Media("video.mp4")})
+        result = substitute_content(_ZONE_SVG, {"zone-video": Video("video.mp4")})
         assert "foreignObject" in result
         assert "video.mp4" in result
+        assert "<video" in result
 
     def test_media_default_fit_is_contain(self) -> None:
-        result = substitute_content(_ZONE_SVG, {"zone-image": Media("photo.png")})
+        result = substitute_content(_ZONE_SVG, {"zone-image": Image("photo.png")})
         assert "object-fit:contain" in result
 
     def test_media_cover_fit(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, {"zone-image": Media("photo.png", fit=MediaFit.COVER)}
+            _ZONE_SVG, {"zone-image": Image("photo.png", fit=MediaFit.COVER)}
         )
         assert "object-fit:cover" in result
 
     def test_media_default_align_is_center(self) -> None:
-        result = substitute_content(_ZONE_SVG, {"zone-image": Media("photo.png")})
+        result = substitute_content(_ZONE_SVG, {"zone-image": Image("photo.png")})
         assert "object-position:50% 50%" in result
 
     def test_media_align_top(self) -> None:
         result = substitute_content(
-            _ZONE_SVG, {"zone-image": Media("photo.png", align=MediaAlign.TOP)}
+            _ZONE_SVG, {"zone-image": Image("photo.png", align=MediaAlign.TOP)}
         )
         assert "object-position:50% 0%" in result
 
     def test_media_y_offset_produces_calc(self) -> None:
         # zone-image height=300; y=-60 → -20%
         result = substitute_content(
-            _ZONE_SVG, {"zone-image": Media("photo.png", y=-60.0)}
+            _ZONE_SVG, {"zone-image": Image("photo.png", y=-60.0)}
         )
         assert "calc(50% - 20%" in result
 
     def test_media_x_offset_produces_calc(self) -> None:
         # zone-image width=400; x=100 → +25%
         result = substitute_content(
-            _ZONE_SVG, {"zone-image": Media("photo.png", x=100.0)}
+            _ZONE_SVG, {"zone-image": Image("photo.png", x=100.0)}
         )
         assert "calc(50% + 25%" in result
 
@@ -179,6 +180,95 @@ class TestSubstituteContent:
             _ZONE_SVG, {"zone-content": TextBox(text="<p>ok</p>")}
         )
         etree.fromstring(result.encode())  # should not raise
+
+
+def _video_el(result: str) -> SvgElement:
+    root = etree.fromstring(result.encode())
+    v = root.find(f".//{{{ns.XHTML}}}video")
+    assert v is not None
+    return v
+
+
+class TestVideoPlayback:
+    """Video-only rendering: playback attributes and mute resolution."""
+
+    def test_controls_on_by_default(self) -> None:
+        v = _video_el(substitute_content(_ZONE_SVG, {"zone-video": Video("v.mp4")}))
+        assert v.get("controls") is not None
+
+    def test_controls_can_be_disabled(self) -> None:
+        v = _video_el(
+            substitute_content(
+                _ZONE_SVG, {"zone-video": Video("v.mp4", controls=False)}
+            )
+        )
+        assert v.get("controls") is None
+
+    def test_poster_emitted(self) -> None:
+        v = _video_el(
+            substitute_content(
+                _ZONE_SVG, {"zone-video": Video("v.mp4", poster="p.jpg")}
+            )
+        )
+        assert v.get("poster") == "p.jpg"
+
+    def test_playback_intent_is_data_attributes_not_html(self) -> None:
+        # Playback is JS-driven: emit data-* only, never the native autoplay/loop
+        # attributes (which would start clips reconstructed in transition layers).
+        v = _video_el(
+            substitute_content(
+                _ZONE_SVG,
+                {
+                    "zone-video": Video(
+                        "v.mp4",
+                        autoplay=True,
+                        loop=True,
+                        play_on_step=2,
+                        start=0.5,
+                        end=1.5,
+                    )
+                },
+            )
+        )
+        assert v.get("data-autoplay") is not None
+        assert v.get("data-loop") is not None
+        assert v.get("data-play-on-step") == "2"
+        assert v.get("data-start") == "0.5"
+        assert v.get("data-end") == "1.5"
+        assert v.get("autoplay") is None
+        assert v.get("loop") is None
+
+    def test_not_self_closed(self) -> None:
+        # <video/> breaks HTML5 parsing; the empty-comment child forces a close tag.
+        result = substitute_content(_ZONE_SVG, {"zone-video": Video("v.mp4")})
+        assert "</video>" in result
+
+    def test_mute_auto_mutes_only_when_autoplaying(self) -> None:
+        muted = _video_el(
+            substitute_content(_ZONE_SVG, {"zone-video": Video("v.mp4", autoplay=True)})
+        )
+        assert muted.get("muted") is not None
+        unmuted = _video_el(
+            substitute_content(_ZONE_SVG, {"zone-video": Video("v.mp4")})
+        )
+        assert unmuted.get("muted") is None
+
+    def test_mute_on_always_mutes(self) -> None:
+        v = _video_el(
+            substitute_content(
+                _ZONE_SVG, {"zone-video": Video("v.mp4", muted=Muted.ON)}
+            )
+        )
+        assert v.get("muted") is not None
+
+    def test_mute_off_never_mutes_even_with_autoplay(self) -> None:
+        v = _video_el(
+            substitute_content(
+                _ZONE_SVG,
+                {"zone-video": Video("v.mp4", autoplay=True, muted=Muted.OFF)},
+            )
+        )
+        assert v.get("muted") is None
 
 
 class TestContentRobustness:
@@ -202,7 +292,7 @@ class TestContentRobustness:
             '<svg xmlns="http://www.w3.org/2000/svg">'
             '<rect id="zone-image" x="0" y="0" width="0" height="300"/></svg>'
         )
-        result = substitute_content(svg, {"zone-image": Media("photo.png", x=5.0)})
+        result = substitute_content(svg, {"zone-image": Image("photo.png", x=5.0)})
         # Offset is skipped for the degenerate axis: base position only, no calc().
         assert "object-position:50% 50%" in result
 
@@ -213,7 +303,7 @@ class TestContentRobustness:
             '<svg xmlns="http://www.w3.org/2000/svg">'
             '<rect id="zone-image" x="0" y="0" width="400px" height="300px"/></svg>'
         )
-        result = substitute_content(svg, {"zone-image": Media("photo.png", x=100.0)})
+        result = substitute_content(svg, {"zone-image": Image("photo.png", x=100.0)})
         assert "calc(" not in result
         assert "object-position:50% 50%" in result
 
@@ -285,14 +375,14 @@ class TestNonRectZones:
     def test_polygon_zone_bounding_box(self) -> None:
         # polygon points="100,0 500,0 400,300 0,300" → bbox x=0,y=0,w=500,h=300
         result = substitute_content(
-            _POLYGON_ZONE_SVG, {"zone-image": Media("photo.png")}
+            _POLYGON_ZONE_SVG, {"zone-image": Image("photo.png")}
         )
         assert 'width="500"' in result or 'width="500.0"' in result
         assert 'height="300"' in result or 'height="300.0"' in result
 
     def test_polygon_media_zone_gets_clip_path(self) -> None:
         result = substitute_content(
-            _POLYGON_ZONE_SVG, {"zone-image": Media("photo.png")}
+            _POLYGON_ZONE_SVG, {"zone-image": Image("photo.png")}
         )
         assert "clipPath" in result
         assert "inkflow-clip-zone-image" in result
@@ -307,7 +397,7 @@ class TestNonRectZones:
 
     def test_polygon_media_clip_shape_in_defs(self) -> None:
         result = substitute_content(
-            _POLYGON_ZONE_SVG, {"zone-image": Media("photo.png")}
+            _POLYGON_ZONE_SVG, {"zone-image": Image("photo.png")}
         )
         root = etree.fromstring(result.encode())
         defs = root.find("{http://www.w3.org/2000/svg}defs")
@@ -322,12 +412,12 @@ class TestNonRectZones:
 class TestPathZones:
     def test_path_zone_bounding_box(self) -> None:
         # M 100,0 L 500,0 400,300 0,300 Z → bbox x=0,y=0,w=500,h=300
-        result = substitute_content(_PATH_ZONE_SVG, {"zone-image": Media("photo.png")})
+        result = substitute_content(_PATH_ZONE_SVG, {"zone-image": Image("photo.png")})
         assert 'width="500"' in result or 'width="500.0"' in result
         assert 'height="300"' in result or 'height="300.0"' in result
 
     def test_path_media_zone_gets_clip_path(self) -> None:
-        result = substitute_content(_PATH_ZONE_SVG, {"zone-image": Media("photo.png")})
+        result = substitute_content(_PATH_ZONE_SVG, {"zone-image": Image("photo.png")})
         assert "clipPath" in result
         assert "inkflow-clip-zone-image" in result
         assert 'clip-path="url(#inkflow-clip-zone-image)"' in result
@@ -340,7 +430,7 @@ class TestPathZones:
         assert "clip-path" not in result
 
     def test_path_clip_shape_is_path_element(self) -> None:
-        result = substitute_content(_PATH_ZONE_SVG, {"zone-image": Media("photo.png")})
+        result = substitute_content(_PATH_ZONE_SVG, {"zone-image": Image("photo.png")})
         root = etree.fromstring(result.encode())
         defs = root.find("{http://www.w3.org/2000/svg}defs")
         assert defs is not None
@@ -357,7 +447,7 @@ class TestPathZones:
               <path id="zone-image" d="m 100,0 l 400,0 -100,300 -400,0 z"/>
             </svg>
         """)
-        result = substitute_content(svg, {"zone-image": Media("photo.png")})
+        result = substitute_content(svg, {"zone-image": Image("photo.png")})
         assert 'width="500"' in result or 'width="500.0"' in result
         assert 'height="300"' in result or 'height="300.0"' in result
 

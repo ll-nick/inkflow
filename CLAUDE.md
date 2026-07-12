@@ -27,21 +27,29 @@ SVG source files should be kept clean (no Inkscape metadata) in the repository. 
 ```
 src/
   inkflow/
-    __init__.py       exports: Deck, Slide, Media, TextBox, Animation, Transition,
-                               Align, VAlign, Direction, Inline, Content, ZoneContent,
-                               ColorMode, MediaFit, MediaAlign
+    __init__.py       exports: Deck, Slide, Image, Video, Media, TextBox, Animation,
+                               Transition, Align, VAlign, Direction, Inline, Content,
+                               ZoneContent, ColorMode, MediaFit, MediaAlign, Muted
                                and the `animations` and `transitions` namespaces
-    manifest.py       dataclasses for the deck DSL; Animation/Transition base + enums
+    manifest.py       dataclasses for the deck DSL; Animation/Transition base.
+                               Media is a `_MediaBase` shared by Image + Video; `Media`
+                               is the `Image | Video` union alias (not callable).
+                               Video adds playback fields (controls, autoplay, muted,
+                               loop, poster, start, end, play_on_step)
                                Deck params: slides, transition, theme, mode: ColorMode,
                                style, font_size, embed_fonts
                                Slide params: src, id, md, zones, animations, transition,
                                extra_style, title, notes, visible, font_size
+    enums.py          shared enums (Direction, Align, VAlign, MediaFit, MediaAlign,
+                               ColorMode, Muted); `_KebabStrEnum` base emits CSS token
+                               values (Muted is a plain Enum, resolved in Python)
     animations.py     concrete animation types (FadeIn, FadeOut, Bounce, SlideIn/Out,
                                ZoomIn/Out, Highlight) subclassing manifest.Animation
     transitions.py    concrete transition types (Cut, Crossfade, Morph, Push, Cover,
                                Zoom, Fade, Wipe) subclassing manifest.Transition
     pipeline.py       animation annotation + layout inlining
-    content.py        TextBox / Media injection into zone rects, with alignment support
+    content.py        TextBox / Image / Video injection into zone rects, with alignment
+                               support; Video emits data-* playback attrs (driven by video.ts)
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
     markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
                                HTML->well-formed-XML normalization (no inkflow-specific grammar)
@@ -82,8 +90,9 @@ src/
     shared/           types, step logic, step-ring SVG builder, cubic-bezier easing
     presenter/        main presenter modules — navigation, transitions (progress-driven
                       via progress-driver.ts), overview, picker, websocket, status bar,
-                      keyboard, syncmenu.ts (sync-mode status-bar control), and
-                      pv.ts (presenter panel sidebar)
+                      keyboard, syncmenu.ts (sync-mode status-bar control),
+                      pv.ts (presenter panel sidebar), and video.ts (step-driven
+                      <video> playback, wired in via status.ts)
   css/                CSS source
     shared/           theme variables, animation keyframes
     presenter/        presenter partials including pv.css (sidebar panel)

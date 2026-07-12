@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from inkflow.animations import Bounce, FadeIn, SlideIn
-from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit
+from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit, Muted
 from inkflow.manifest import (
     Deck,
+    Image,
     Inline,
     Media,
     Slide,
     TextBox,
+    Video,
     camel_to_kebab,
 )
 from inkflow.transitions import Crossfade, Cut, Morph
@@ -106,8 +108,8 @@ def test_textbox_defaults() -> None:
     assert tb.align is None
 
 
-def test_media_fields_defaults() -> None:
-    m = Media("photo.png")
+def test_image_fields_defaults() -> None:
+    m = Image("photo.png")
     assert m.src == "photo.png"
     assert m.fit == MediaFit.CONTAIN
     assert m.align == MediaAlign.CENTER
@@ -115,12 +117,58 @@ def test_media_fields_defaults() -> None:
     assert m.y == 0.0
 
 
-def test_media_fields_custom() -> None:
-    m = Media("hero.jpg", fit=MediaFit.COVER, align=MediaAlign.TOP, x=10.0, y=-80.0)
+def test_image_fields_custom() -> None:
+    m = Image("hero.jpg", fit=MediaFit.COVER, align=MediaAlign.TOP, x=10.0, y=-80.0)
     assert m.fit == MediaFit.COVER
     assert m.align == MediaAlign.TOP
     assert m.x == 10.0
     assert m.y == -80.0
+
+
+def test_video_playback_defaults() -> None:
+    v = Video("clip.mp4")
+    assert v.src == "clip.mp4"
+    assert v.fit == MediaFit.CONTAIN  # shares the media geometry fields
+    assert v.controls is True
+    assert v.autoplay is False
+    assert v.muted is Muted.AUTO
+    assert v.loop is False
+    assert v.poster is None
+    assert v.start is None
+    assert v.end is None
+    assert v.play_on_step is None
+
+
+def test_video_playback_custom() -> None:
+    v = Video(
+        "clip.mp4",
+        controls=False,
+        autoplay=True,
+        muted=Muted.OFF,
+        loop=True,
+        poster="thumb.png",
+        start=1.0,
+        end=4.5,
+        play_on_step=2,
+    )
+    assert v.controls is False
+    assert v.autoplay is True
+    assert v.muted is Muted.OFF
+    assert v.loop is True
+    assert v.poster == "thumb.png"
+    assert v.start == 1.0
+    assert v.end == 4.5
+    assert v.play_on_step == 2
+
+
+def test_media_alias_is_image_or_video() -> None:
+    assert isinstance(Image("photo.png"), Media)
+    assert isinstance(Video("clip.mp4"), Media)
+    assert not isinstance(TextBox(text="x"), Media)
+
+
+def test_muted_members() -> None:
+    assert {m.name for m in Muted} == {"AUTO", "ON", "OFF"}
 
 
 def test_slide_zones_defaults_empty() -> None:
@@ -171,7 +219,7 @@ def test_slide_animations_stored() -> None:
 
 
 def test_slide_zones_stored() -> None:
-    s = Slide("layout.svg", zones={"image": Media("photo.png"), "label": "hello"})
+    s = Slide("layout.svg", zones={"image": Image("photo.png"), "label": "hello"})
     assert isinstance(s.zones["image"], Media)
     assert s.zones["label"] == "hello"
 

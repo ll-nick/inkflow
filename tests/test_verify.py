@@ -4,7 +4,7 @@ import textwrap
 from pathlib import Path
 
 from inkflow.animations import FadeIn
-from inkflow.manifest import Media, Slide
+from inkflow.manifest import Image, Slide
 from inkflow.verify import verify_slide
 
 _LAYOUT_SVG = textwrap.dedent("""\
@@ -68,7 +68,7 @@ class TestVerifyFiles:
 class TestVerifyMedia:
     def test_missing_local_media_is_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
-        slide = Slide(str(src), zones={"content": Media("assets/missing.jpg")})
+        slide = Slide(str(src), zones={"content": Image("assets/missing.jpg")})
         issues = verify_slide(slide, tmp_path, None, "")
         assert any("media not found" in msg for _, msg in issues)
 
@@ -78,21 +78,21 @@ class TestVerifyMedia:
         assets.mkdir()
         img = assets / "photo.jpg"
         img.write_bytes(b"")
-        slide = Slide(str(src), zones={"content": Media("assets/photo.jpg")})
+        slide = Slide(str(src), zones={"content": Image("assets/photo.jpg")})
         issues = verify_slide(slide, tmp_path, None, "")
         assert not any("media" in msg for _, msg in issues)
 
     def test_url_media_skipped(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
         slide = Slide(
-            str(src), zones={"content": Media("https://example.com/photo.jpg")}
+            str(src), zones={"content": Image("https://example.com/photo.jpg")}
         )
         issues = verify_slide(slide, tmp_path, None, "")
         assert not any("media" in msg for _, msg in issues)
 
     def test_protocol_relative_url_skipped(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
-        slide = Slide(str(src), zones={"content": Media("//example.com/photo.jpg")})
+        slide = Slide(str(src), zones={"content": Image("//example.com/photo.jpg")})
         issues = verify_slide(slide, tmp_path, None, "")
         assert not any("media" in msg for _, msg in issues)
 

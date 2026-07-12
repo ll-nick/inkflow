@@ -71,4 +71,17 @@ describe("maxStep", () => {
     test("returns 0 when there are no steps", () => {
         expect(maxStep(buildSvg("<rect></rect>"))).toBe(0);
     });
+
+    test("counts a video's data-play-on-step so it gets its own step", () => {
+        expect(maxStep(buildSvg(`<video data-play-on-step="1"></video>`))).toBe(
+            1,
+        );
+    });
+
+    test("data-play-on-step raises maxStep past authored data-step", () => {
+        const root = buildSvg(
+            `<rect data-step="1"></rect><video data-play-on-step="3"></video>`,
+        );
+        expect(maxStep(root)).toBe(3);
+    });
 });

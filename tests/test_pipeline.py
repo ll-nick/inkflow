@@ -20,6 +20,7 @@ from inkflow.logging import collect_logs
 from inkflow.manifest import (
     Animation,
     Deck,
+    Image,
     Inline,
     Slide,
 )
@@ -288,9 +289,7 @@ class TestLayoutBackedSlideExpansion:
 
     def test_zones_media_injected(self, tmp_path: Path) -> None:
         self._setup(tmp_path)
-        from inkflow.manifest import Media
-
-        deck = Deck(slides=[Slide("layout", zones={"content": Media("photo.jpg")})])
+        deck = Deck(slides=[Slide("layout", zones={"content": Image("photo.jpg")})])
         results = process_deck(deck, tmp_path)
         assert "photo.jpg" in results[0]["svg"]
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from inkflow.enums import Align, MediaAlign, MediaFit, VAlign
-from inkflow.manifest import Media, TextBox, ZoneContent
+from inkflow.manifest import Image, Media, TextBox, ZoneContent
 from inkflow.markdown import markdown_to_html
 from inkflow.zones import (
     _STEP,  # pyright: ignore[reportPrivateUsage]
@@ -351,7 +351,7 @@ class TestBuildSlideContent:
     def test_media_kwarg_accepts_media_object_with_tuning(self) -> None:
         result = build_slide_content(
             None,
-            {"image": Media("photo.png", fit=MediaFit.COVER, align=MediaAlign.TOP)},
+            {"image": Image("photo.png", fit=MediaFit.COVER, align=MediaAlign.TOP)},
         )
         assert "zone-image" in result.content
         m = result.content["zone-image"]

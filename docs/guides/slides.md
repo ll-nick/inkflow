@@ -7,7 +7,7 @@ and sets how the slide transitions in from the previous one.
 You draw a slide in your SVG editor and serve it as-is.
 When part of a slide should hold formatted text, images, or video,
 mark a rectangular area in the SVG as a **zone** and fill it at build time —
-from `deck.py` with `TextBox` or `Media`, or by pointing `md=` at a Markdown file.
+from `deck.py` with `TextBox`, `Image`, or `Video`, or by pointing `md=` at a Markdown file.
 A single slide can freely combine hand-drawn artwork, animated elements, and
 zones filled with Markdown.
 
@@ -135,13 +135,13 @@ Fill them the same way in either case.
 Pass content into named zones directly:
 
 ```python
-from inkflow import Media, Slide
+from inkflow import Image, Slide
 
 Slide(
     "title",
     zones={
         "title": "My talk title",
-        "media": Media("assets/headshot.jpg", fit="cover"),
+        "media": Image("assets/headshot.jpg", fit="cover"),
     },
 )
 ```
@@ -149,7 +149,7 @@ Slide(
 Keys in `zones` are zone names without the `zone-` prefix.
 A `str` value is rendered as inline Markdown.
 A `TextBox` value gives explicit control over alignment and padding from Python.
-A `Media` value injects an image or video.
+An `Image` or `Video` value injects media.
 The pipeline replaces the matching `zone-*` element with the injected content at build time.
 
 ### From a Markdown file with `md=`
@@ -410,30 +410,55 @@ Local image paths are copied into the output of `inkflow build` and `inkflow exp
 ## Media zones
 
 For images and video that should fill a zone (rather than sit inline in text),
-pass a `Media` value through the `zones` dict:
+pass an `Image` or a `Video` through the `zones` dict:
 
 ```python
-from inkflow import Media, Slide
+from inkflow import Image, Slide
 
 Slide(
     "media-right",
     md="feature",
-    zones={"media": Media("assets/screenshot.png", fit="cover")},
+    zones={"media": Image("assets/screenshot.png", fit="cover")},
 )
 ```
 
-`Media` accepts:
+`Image` and `Video` share placement fields (`fit`, `align`, `x`, `y`, `alt_src`);
+see the [manifest reference](../reference/manifest.md#inkflow.manifest.Image) for
+the full list.
 
-| Parameter | Default | Description |
-|---|---|---|
-| `src` | required | Path to the image or video file |
-| `fit` | `"contain"` | CSS `object-fit`: `"contain"` or `"cover"` |
-| `align` | `"center"` | CSS `object-position` value |
-| `x`, `y` | `0.0` | Fine-tune position offset (px) |
+### Video playback
+
+`Video` adds playback control on top of those fields:
 
 ```python
-Slide("media-right", md="demo", zones={"media": Media("assets/demo.mp4")})
+from inkflow import Muted, Slide, Video
+
+Slide(
+    "media-right",
+    md="demo",
+    zones={"media": Video("assets/demo.mp4", autoplay=True, loop=True)},
+)
 ```
+
+See the [manifest reference](../reference/manifest.md#inkflow.manifest.Video) for
+the full list of playback parameters (`controls`, `autoplay`, `muted`, `loop`,
+`poster`, `start`/`end`, `play_on_step`).
+
+**Muting and autoplay.** Browsers block autoplaying video with sound unless the
+user has interacted with the page. `Muted.AUTO` (the default) sidesteps that by
+muting a clip **only** when it autoplays, so autoplay always works and everything
+else (controls, `play_on_step`) keeps its sound. `Muted.ON` always mutes;
+`Muted.OFF` never mutes — with `autoplay=True` that clip may be blocked on a cold
+load, which you accept by opting in explicitly.
+
+Playback is driven by the presenter, so a `play_on_step` clip ties into the
+slide's step sequence like any other stepped element, and leaving a slide pauses
+and rewinds its video.
+
+!!! note "Zones only"
+    Playback control applies to `Video` passed through the `zones` dict. A video
+    embedded from Markdown with `![](clip.mp4)` renders as a plain, uncontrolled
+    element.
 
 ## Built-in layouts
 

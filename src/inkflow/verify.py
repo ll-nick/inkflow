@@ -5,7 +5,7 @@ from pathlib import Path
 from inkflow.clean import clean_inkscape_tree
 from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
 from inkflow.loaders import load_md, resolve_content_src
-from inkflow.manifest import Inline, Media, Slide
+from inkflow.manifest import Inline, Media, Slide, Video
 from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import compose_with_ancestors
 from inkflow.zones import build_slide_content, parse_markdown_zones
@@ -48,7 +48,10 @@ def _check_media(slide: Slide, project_dir: Path) -> list[Issue]:
     issues: list[Issue] = []
     for _key, content in slide.zones.items():
         if isinstance(content, Media):
-            for src_field in filter(None, [content.src, content.alt_src]):
+            refs = [content.src, content.alt_src]
+            if isinstance(content, Video):
+                refs.append(content.poster)
+            for src_field in filter(None, refs):
                 if src_field.startswith(("http://", "https://", "//")):
                     continue
                 media_p = (
