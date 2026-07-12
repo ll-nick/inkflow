@@ -42,7 +42,7 @@ Your source files are SVG, Markdown, and Python: open formats, plain text, not t
 A deck is a plain Python file:
 
 ```python
-from inkflow import Deck, Media, MediaFit, Slide, animations, transitions
+from inkflow import Deck, Image, MediaFit, Slide, Video, animations, transitions
 
 def main() -> Deck:
     return Deck(
@@ -70,8 +70,14 @@ def main() -> Deck:
                 # Reuse a built-in, theme or project-local layout
                 "media-right",
                 md="image.md",
-                # Fill a named zone with an image or a video
-                zones={"media": Media("assets/photo.jpg", fit=MediaFit.COVER)},
+                # Fill a named zone with an image, or a video with playback control
+                # (autoplay, loop, mute, trim, play-on-step)
+                zones={"media": Image("assets/photo.jpg", fit=MediaFit.COVER)},
+            ),
+            Slide(
+                "media-left",
+                md="clip.md",
+                zones={"media": Video("assets/demo.mp4", autoplay=True, loop=True)},
             ),
         ]
     )
