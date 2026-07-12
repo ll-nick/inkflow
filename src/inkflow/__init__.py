@@ -1,14 +1,24 @@
 from inkflow import animations, transitions
-from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit, VAlign
+from inkflow.enums import (
+    Align,
+    ColorMode,
+    Direction,
+    MediaAlign,
+    MediaFit,
+    Muted,
+    VAlign,
+)
 from inkflow.manifest import (
     Animation,
     Content,
     Deck,
+    Image,
     Inline,
     Media,
     Slide,
     TextBox,
     Transition,
+    Video,
     ZoneContent,
 )
 
@@ -19,14 +29,17 @@ __all__ = [
     "Content",
     "Deck",
     "Direction",
+    "Image",
     "Inline",
     "Media",
     "MediaAlign",
     "MediaFit",
+    "Muted",
     "Slide",
     "TextBox",
     "Transition",
     "VAlign",
+    "Video",
     "ZoneContent",
     "animations",
     "transitions",

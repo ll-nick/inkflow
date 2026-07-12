@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
-from inkflow.enums import Align, ColorMode, MediaAlign, MediaFit, VAlign
+from inkflow.enums import Align, ColorMode, MediaAlign, MediaFit, Muted, VAlign
 
 # ── Type-name slug ────────────────────────────────────────────────────────────
 
@@ -147,35 +147,89 @@ class TextBox:
 
 
 @dataclass
-class Media:
-    """A media asset (image or video) for injection into a zone.
+class _MediaBase:
+    """Shared geometry/placement fields for `Image` and `Video`.
 
-    Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
-
-    ```python
-    Slide("media-right", md="feature", zones={"media": Media("demo.mp4")})
-    ```
+    Private: this exists only so the two concrete media types don't repeat the
+    same fields. It is never used for dispatch (that goes through the ``Media``
+    union + ``isinstance``) and is not part of the public API.
     """
 
     src: str
-    """Path to an image or video file, or a URL."""
+    """Path to a media file, or a URL."""
     alt_src: str | None = None
     """Alternative source used in the other color mode."""
     fit: MediaFit = MediaFit.CONTAIN
     """CSS ``object-fit`` value."""
     align: MediaAlign = MediaAlign.CENTER
-    """CSS ``object-position`` preset."""
+    """CSS ``object-position`` preset (spatial crop/anchor)."""
     x: float = 0.0
     """Horizontal offset in pixels."""
     y: float = 0.0
     """Vertical offset in pixels."""
 
 
+@dataclass
+class Image(_MediaBase):
+    """An image asset for injection into a zone.
+
+    Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
+
+    ```python
+    Slide("default", md="bullets", zones={"media": Image("photo.jpg")})
+    ```
+    """
+
+
+@dataclass
+class Video(_MediaBase):
+    """A video asset for injection into a zone, with playback control.
+
+    Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
+    Playback is driven by the presenter, so ``play_on_step`` ties a clip into the
+    slide's step sequence exactly like any other stepped element.
+
+    ```python
+    Slide(
+        "media-right",
+        md="feature",
+        zones={"media": Video("demo.mp4", autoplay=True, loop=True)},
+    )
+    ```
+    """
+
+    controls: bool = True
+    """Show the browser's native playback controls."""
+    autoplay: bool = False
+    """Start playing when the slide loads."""
+    muted: Muted = Muted.AUTO
+    """Audio muting policy. ``AUTO`` mutes only when ``autoplay`` is set, so the
+    browser never blocks autoplay by default; ``ON`` always mutes; ``OFF`` never
+    mutes."""
+    loop: bool = False
+    """Restart from ``start`` when the clip ends."""
+    poster: str | None = None
+    """Path/URL of a still image shown before playback begins."""
+    start: float | None = None
+    """Trim-in time in seconds (temporal trim, distinct from the spatial
+    ``fit``/``align`` crop)."""
+    end: float | None = None
+    """Trim-out time in seconds."""
+    play_on_step: int | None = None
+    """Step at which the clip starts playing. Active when
+    ``play_on_step <= current_step``; stepping back below it resets to ``start``.
+    ``None`` means playback is governed by ``autoplay``/``controls`` alone."""
+
+
+Media = Image | Video
+"""A media asset of either kind — the union of `Image` and `Video`."""
+
+
 ZoneContent = str | Media | TextBox
 """A value accepted in ``Slide.zones``.
 
 A ``str`` is rendered as inline Markdown; a ``TextBox`` gives explicit
-alignment and padding control; a ``Media`` injects an image or video.
+alignment and padding control; an ``Image`` or ``Video`` injects media.
 """
 
 
@@ -200,7 +254,7 @@ class Slide:
     Slide("title", animations=[animations.FadeIn("#headline", step=1)])
 
     # Reusable layout with Markdown-filled zones
-    Slide("default", md="bullets", zones={"media": Media("photo.jpg")})
+    Slide("default", md="bullets", zones={"media": Image("photo.jpg")})
     ```
     """
 
