@@ -1,7 +1,15 @@
 from __future__ import annotations
 
 from inkflow.animations import Bounce, FadeIn, SlideIn
-from inkflow.enums import Align, ColorMode, Direction, MediaAlign, MediaFit, Muted
+from inkflow.enums import (
+    Align,
+    ColorMode,
+    Direction,
+    Easing,
+    MediaAlign,
+    MediaFit,
+    Muted,
+)
 from inkflow.manifest import (
     Deck,
     Image,
@@ -9,10 +17,11 @@ from inkflow.manifest import (
     Media,
     Slide,
     TextBox,
+    Transition,
     Video,
     camel_to_kebab,
 )
-from inkflow.transitions import Crossfade, Cut, Morph
+from inkflow.transitions import Crossfade, Cut, Morph, Push
 
 
 def test_camel_to_kebab() -> None:
@@ -70,13 +79,40 @@ def test_transition_defaults() -> None:
 
 def test_transition_base_default_duration() -> None:
     # A bare custom subclass animates without overriding duration.
-    from inkflow.manifest import Transition
-
     assert Transition().duration == 0.5
+
+
+def test_transition_easing_defaults() -> None:
+    # Easing defaults live in Python now (no JS-side fallback). Crossfade/Fade
+    # inherit the base "ease"; Push/Cover/Zoom/Wipe override to "ease-in-out".
+
+    assert Transition().easing == "ease"
+    assert Crossfade().easing == "ease"
+    assert Push().easing == "ease-in-out"
 
 
 def test_transition_custom_duration() -> None:
     assert Crossfade(duration=0.8).duration == 0.8
+
+
+def test_easing_value_object() -> None:
+    import json
+
+    # presets equal their CSS token
+    assert Easing.EASE == "ease"
+    assert Easing.EASE_IN_OUT == "ease-in-out"
+    assert Easing.LINEAR == "linear"
+    # factories build the CSS string
+    assert (
+        Easing.cubic_bezier(0.34, 1.56, 0.64, 1) == "cubic-bezier(0.34, 1.56, 0.64, 1)"
+    )
+    assert Easing.raw("steps(4, end)") == "steps(4, end)"
+    # str subclass → JSON-serialises as its string (the transitions payload relies
+    # on this) and is a real str
+    assert json.loads(json.dumps({"easing": Easing.EASE_IN_OUT})) == {
+        "easing": "ease-in-out"
+    }
+    assert isinstance(Easing.EASE, str)
 
 
 def test_deck_transition_default_none() -> None:

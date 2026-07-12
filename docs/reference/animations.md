@@ -2,7 +2,8 @@
 
 Animation types live in the `inkflow.animations` namespace. Each takes the shared
 [`Animation`](#animation-base) params (`element`, `step`, `duration`, `easing`,
-`delay`) plus any of its own. `direction` fields use the [`Direction`](enums.md#inkflow.enums.Direction) enum.
+`delay`) plus any of its own. `direction` fields use the [`Direction`](enums.md#inkflow.enums.Direction) enum
+and `easing` the [`Easing`](enums.md#inkflow.enums.Easing) type.
 
 ```python
 from inkflow import animations, Direction
