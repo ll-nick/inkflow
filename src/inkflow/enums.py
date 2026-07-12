@@ -8,11 +8,13 @@ animations and transitions, ``Align``/``VAlign`` by text zones, ``MediaFit``/
 from __future__ import annotations
 
 from enum import Enum, StrEnum, auto
+from typing import ClassVar
 
 __all__ = [
     "Align",
     "ColorMode",
     "Direction",
+    "Easing",
     "MediaAlign",
     "MediaFit",
     "Muted",
@@ -141,6 +143,54 @@ class ColorMode(StrEnum):
     """Dark theme (``data-theme=""``)."""
     LIGHT = auto()
     """Light theme (``data-theme="light"``)."""
+
+
+class Easing(str):
+    """A CSS easing curve for animations and transitions.
+
+    Use a named preset for the common curves, or build a custom one with
+    `cubic_bezier` or `raw`.
+
+    ```python
+    FadeIn("#a", easing=Easing.EASE_IN_OUT)
+    SlideIn("#a", easing=Easing.cubic_bezier(0.2, 0, 0.3, 1))
+    Highlight("#a", easing=Easing.raw("steps(4, end)"))
+    ```
+    """
+
+    EASE: ClassVar[Easing]
+    """The CSS ``ease`` curve (slow start, fast middle, slow end)."""
+    EASE_IN: ClassVar[Easing]
+    """The CSS ``ease-in`` curve (slow start)."""
+    EASE_OUT: ClassVar[Easing]
+    """The CSS ``ease-out`` curve (slow end)."""
+    EASE_IN_OUT: ClassVar[Easing]
+    """The CSS ``ease-in-out`` curve (slow start and end)."""
+    LINEAR: ClassVar[Easing]
+    """The CSS ``linear`` curve (constant rate)."""
+    STEP_START: ClassVar[Easing]
+    """The CSS ``step-start`` curve (jump to the end state immediately)."""
+    STEP_END: ClassVar[Easing]
+    """The CSS ``step-end`` curve (hold, then jump at the end)."""
+
+    @classmethod
+    def cubic_bezier(cls, x1: float, y1: float, x2: float, y2: float) -> Easing:
+        """A custom cubic-bézier curve as an ``Easing`` (the CSS function string)."""
+        return cls(f"cubic-bezier({x1}, {y1}, {x2}, {y2})")
+
+    @classmethod
+    def raw(cls, css: str) -> Easing:
+        """Any CSS easing string verbatim, e.g. ``Easing.raw("steps(4, end)")``."""
+        return cls(css)
+
+
+Easing.EASE = Easing("ease")
+Easing.EASE_IN = Easing("ease-in")
+Easing.EASE_OUT = Easing("ease-out")
+Easing.EASE_IN_OUT = Easing("ease-in-out")
+Easing.LINEAR = Easing("linear")
+Easing.STEP_START = Easing("step-start")
+Easing.STEP_END = Easing("step-end")
 
 
 class Muted(Enum):

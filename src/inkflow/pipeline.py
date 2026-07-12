@@ -291,6 +291,7 @@ def process_slide(
     doc.number_slides(slide_number, ctx.total_slides)
 
     md_notes = ""
+    reveal_animations: list[Animation] = []
     if parsed is not None or slide.zones:
         zone_ids = doc.zone_ids()
         default_zone = resolve_default_zone(doc.root, zone_ids)
@@ -301,14 +302,16 @@ def process_slide(
             default_zone=default_zone,
         )
         md_notes = result.notes
+        reveal_animations = result.animations
         if result.content:
             font_size = (
                 slide.font_size if slide.font_size is not None else ctx.font_size
             )
             doc.inject_content(result.content, font_size, ctx.mode == ColorMode.DARK)
 
-    if slide.animations:
-        doc.annotate(slide.animations)
+    animations = slide.animations + reveal_animations
+    if animations:
+        doc.annotate(animations)
 
     slide_style_css = load_style(slide.extra_style, ctx.project_dir)
     combined_css = "\n".join(filter(None, [ctx.deck_style, slide_style_css]))

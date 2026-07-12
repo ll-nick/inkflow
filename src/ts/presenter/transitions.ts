@@ -190,10 +190,7 @@ class ProgressTransition implements Transition {
     // ignored for painting.
     private startParams!: TransitionData;
 
-    constructor(
-        private readonly render: Render,
-        private readonly defaultEasing?: string,
-    ) {}
+    constructor(private readonly render: Render) {}
 
     prepare(): void {
         this.outgoingHtml = stage.innerHTML;
@@ -213,7 +210,7 @@ class ProgressTransition implements Transition {
         if (params.duration <= 0) return;
         this.startParams = params;
         this.buildLayers();
-        this.ease = cubicBezierEasing(params.easing ?? this.defaultEasing);
+        this.ease = cubicBezierEasing(params.easing);
         this.paint(0);
         await this.driver.animateTo(1, params.duration, signal, (value) =>
             this.paint(value),
@@ -284,17 +281,11 @@ class ProgressTransition implements Transition {
     }
 }
 
-// Register a progress-driven transition by its per-frame render. `options.easing`
-// is the default timing curve used when a slide does not specify `params.easing`.
-export function registerProgressTransition(
-    name: string,
-    render: Render,
-    options?: { easing?: string },
-): void {
-    registerTransition(
-        name,
-        () => new ProgressTransition(render, options?.easing),
-    );
+// Register a progress-driven transition by its per-frame render. The easing
+// default lives in the Python transition subclass, so it always arrives on
+// `params.easing`; there is no JS-side default.
+export function registerProgressTransition(name: string, render: Render): void {
+    registerTransition(name, () => new ProgressTransition(render));
 }
 
 // ── Built-in transitions ──────────────────────────────────────────────────────
@@ -421,12 +412,12 @@ const wipeRender: Render = ({ oldLayer }, progress, params) => {
 // ── Register built-ins ────────────────────────────────────────────────────────
 
 registerTransition("cut", () => new CutTransition());
-registerProgressTransition("crossfade", crossfadeRender, { easing: "ease" });
-registerProgressTransition("push", pushRender, { easing: "ease-in-out" });
-registerProgressTransition("cover", coverRender, { easing: "ease-in-out" });
-registerProgressTransition("zoom", zoomRender, { easing: "ease-in-out" });
-registerProgressTransition("fade", fadeRender, { easing: "ease" });
-registerProgressTransition("wipe", wipeRender, { easing: "ease-in-out" });
+registerProgressTransition("crossfade", crossfadeRender);
+registerProgressTransition("push", pushRender);
+registerProgressTransition("cover", coverRender);
+registerProgressTransition("zoom", zoomRender);
+registerProgressTransition("fade", fadeRender);
+registerProgressTransition("wipe", wipeRender);
 registerTransition("morph", () => new MorphTransition());
 
 // ── loadSlide ─────────────────────────────────────────────────────────────────

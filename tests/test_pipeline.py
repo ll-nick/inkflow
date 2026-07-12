@@ -137,9 +137,12 @@ class TestAnnotateSvg:
         assert "--anim-duration: 0.8s" in result
         assert "--anim-delay: 0.2s" in result
 
-    def test_none_params_emit_no_style(self) -> None:
+    def test_default_params_emit_python_defaults(self) -> None:
+        # Defaults live in Python and are always emitted (no CSS fallback).
         result = annotate_svg(_PLAIN_SVG, [FadeIn("#box")])
-        assert "--anim-" not in result
+        assert "--anim-duration: 0.4s" in result
+        assert "--anim-easing: ease" in result
+        assert "--anim-delay: 0.0s" in result
 
     def test_distance_uses_px_unit(self) -> None:
         result = annotate_svg(_PLAIN_SVG, [SlideIn("#box", distance=120)])
@@ -181,19 +184,22 @@ class TestResolveTransitions:
         d = self._deck(deck_t=Crossfade(0.6), slide_ts=[None, None])
         result = resolve_transitions(d)
         assert result == [
-            {"type": "crossfade", "duration": 0.6},
-            {"type": "crossfade", "duration": 0.6},
+            {"type": "crossfade", "duration": 0.6, "easing": "ease"},
+            {"type": "crossfade", "duration": 0.6, "easing": "ease"},
         ]
 
     def test_slide_overrides_deck(self) -> None:
         d = self._deck(deck_t=Crossfade(), slide_ts=[Cut(), None])
         result = resolve_transitions(d)
-        assert result[0] == {"type": "cut", "duration": 0.0}
-        assert result[1] == {"type": "crossfade", "duration": 0.5}
+        # Cut is an explicit object here, so it carries the base easing default.
+        assert result[0] == {"type": "cut", "duration": 0.0, "easing": "ease"}
+        assert result[1] == {"type": "crossfade", "duration": 0.5, "easing": "ease"}
 
     def test_morph_serialized(self) -> None:
         d = self._deck(slide_ts=[Morph(0.8)])
-        assert resolve_transitions(d) == [{"type": "morph", "duration": 0.8}]
+        assert resolve_transitions(d) == [
+            {"type": "morph", "duration": 0.8, "easing": "ease"}
+        ]
 
 
 _ZONE_SLIDE_SVG = textwrap.dedent("""\

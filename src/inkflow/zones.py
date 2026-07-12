@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import itertools
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
+from enum import Enum
+from types import UnionType
+from typing import get_args, get_origin, get_type_hints
 
 from lxml import etree
 
+from inkflow.animations import FadeIn
 from inkflow.enums import Align, VAlign
-from inkflow.manifest import Media, TextBox, ZoneContent
+from inkflow.logging import logger
+from inkflow.manifest import Animation, Media, TextBox, ZoneContent
 from inkflow.markdown import (
     html_fragment_to_xml,
     markdown_to_html,
@@ -30,13 +36,11 @@ _ZONE_PATTERN = re.compile(
     rf"^::({_NOT_STEP}{_WORD})({_PARAM})::\s*$",
     re.MULTILINE,
 )
-_STEP_PATTERN = re.compile(r"^::step::\s*$", re.MULTILINE)
+_STEP_PATTERN = re.compile(rf"^::step({_PARAM})::\s*$", re.MULTILINE)
 _STEPS_BLOCK_RE = re.compile(
-    r"^::steps::\s*\n(.*?)(?:^::steps end::\s*$|\Z)",
+    rf"^::steps({_PARAM})::\s*\n(.*?)(?:^::steps end::\s*$|\Z)",
     re.MULTILINE | re.DOTALL,
 )
-
-_STEP = "\x00step\x00"
 
 
 # ── Public output types ───────────────────────────────────────────────────────
@@ -46,18 +50,32 @@ _STEP = "\x00step\x00"
 class SlideContent:
     content: dict[str, TextBox | Media]  # zone-id (e.g. "zone-content") → content
     notes: str
+    animations: list[Animation] = field(default_factory=list)
+    """Reveal animations generated for ``::step::`` markers, keyed to the
+    ``inkflow-step-*`` ids stamped on the wrapper divs. The pipeline routes these
+    through the same annotate pass as deck.py animations."""
+
+
+_ParamMap = dict[str, str]
+
+
+@dataclass
+class _StepMarker:
+    """A ``::step::`` boundary, carrying the marker's ``type=``/param overrides."""
+
+    params: _ParamMap = field(default_factory=dict)
 
 
 @dataclass
 class _StepsBlock:
-    text: str  # markdown content inside as ::steps:: block
+    text: str  # markdown content inside a ::steps:: block
+    params: _ParamMap = field(default_factory=dict)
 
 
 # ── Internal types ────────────────────────────────────────────────────────────
 
-Chunk = str | _StepsBlock
+Chunk = str | _StepMarker | _StepsBlock
 _ZoneChunks = dict[str, list[Chunk]]
-_ParamMap = dict[str, str]
 _ZoneParams = dict[str, _ParamMap]
 
 
@@ -71,12 +89,27 @@ class ParsedMarkdown:
 # ── Step / steps parsing ──────────────────────────────────────────────────────
 
 
+def _split_on_steps(segment: str) -> list[Chunk]:
+    """Split a segment into text chunks separated by ``_StepMarker`` boundaries.
+
+    ``_STEP_PATTERN`` has a capture group (the marker's params), so ``re.split``
+    interleaves the captured param string between the text parts:
+    ``[text, params, text, params, …, text]``.
+    """
+    parts = _STEP_PATTERN.split(segment)
+    chunks: list[Chunk] = [parts[0]]
+    for i in range(1, len(parts), 2):
+        chunks.append(_StepMarker(_parse_zone_params(parts[i] or "")))
+        chunks.append(parts[i + 1])
+    return chunks
+
+
 def _split_steps(text: str) -> list[Chunk]:
     """Split text on ::step:: markers and ::steps:: blocks.
 
     Returns a list of Chunk values where:
     - str values are regular text segments (may be empty)
-    - _STEP sentinel strings mark step boundaries
+    - _StepMarker values mark a step boundary and carry its ``type=``/params
     - _StepsBlock values carry a block whose items reveal individually
     """
     result: list[Chunk] = []
@@ -85,22 +118,15 @@ def _split_steps(text: str) -> list[Chunk]:
     for m in _STEPS_BLOCK_RE.finditer(text):
         before = text[pos : m.start()]
         if before.strip():
-            parts = _STEP_PATTERN.split(before)
-            for i, part in enumerate(parts):
-                if i > 0:
-                    result.append(_STEP)
-                result.append(part)
-        block_text = _STEP_PATTERN.sub("", m.group(1)).strip()
+            result.extend(_split_on_steps(before))
+        # Inner ::step:: markers are stripped;
+        # the block-level type applies to all items.
+        block_text = _STEP_PATTERN.sub("", m.group(2)).strip()
         if block_text:
-            result.append(_StepsBlock(block_text))
+            result.append(_StepsBlock(block_text, _parse_zone_params(m.group(1))))
         pos = m.end()
 
-    tail = text[pos:]
-    parts = _STEP_PATTERN.split(tail)
-    for i, part in enumerate(parts):
-        if i > 0:
-            result.append(_STEP)
-        result.append(part)
+    result.extend(_split_on_steps(text[pos:]))
 
     return result
 
@@ -112,6 +138,100 @@ def _parse_zone_params(params_str: str) -> _ParamMap:
             key, _, value = token.partition("=")
             params[key.strip()] = value.strip()
     return params
+
+
+# ── Reveal animation resolution ───────────────────────────────────────────────
+
+_RevealSpec = tuple[type[Animation], dict[str, object]]
+"""A resolved reveal: the animation type plus its coerced constructor kwargs."""
+
+# Marker keys the resolver never forwards as constructor kwargs: ``type`` selects
+# the class, and ``element``/``step`` are bound by the resolver, not the author.
+_RESERVED_MARKER_KEYS = frozenset({"type", "element", "step"})
+
+
+def _all_animation_subclasses() -> Iterator[type[Animation]]:
+    """Every ``Animation`` subclass currently defined — built-ins plus any custom
+    types the deck declared (they register as subclasses when ``deck.py`` runs)."""
+    seen: set[type[Animation]] = set()
+    stack = list(Animation.__subclasses__())
+    while stack:
+        cls = stack.pop()
+        if cls in seen:
+            continue
+        seen.add(cls)
+        yield cls
+        stack.extend(cls.__subclasses__())
+
+
+def _resolve_animation_type(name: str) -> type[Animation]:
+    for cls in _all_animation_subclasses():
+        if cls.__name__ == name:
+            return cls
+    raise ValueError(f"unknown animation type {name!r}")
+
+
+def _strip_optional(tp: object) -> object:
+    """``X | None`` → ``X``; other types unchanged."""
+    if get_origin(tp) is UnionType:
+        # Contain get_args's Any at the boundary.
+        args: tuple[object, ...] = get_args(tp)
+        non_none = [a for a in args if a is not type(None)]
+        if len(non_none) == 1:
+            return non_none[0]
+    return tp
+
+
+def _coerce_value(tp: object, raw: str) -> object:
+    """Coerce a marker's string value to the field's annotated type."""
+    tp = _strip_optional(tp)
+    if isinstance(tp, type):
+        if issubclass(tp, Enum):  # Direction etc. resolve by member value
+            return tp(raw)
+        if issubclass(tp, bool):  # before int: bool is a subclass of int
+            return raw.strip().lower() in ("true", "1", "yes")
+        if issubclass(tp, str):  # str, Easing, Inline — wrap verbatim
+            return tp(raw)
+        if issubclass(tp, int):
+            return int(raw)
+        if issubclass(tp, float):
+            return float(raw)
+    return raw
+
+
+def _coerce_params(cls: type[Animation], params: _ParamMap) -> dict[str, object]:
+    hints: dict[str, object] = get_type_hints(cls)  # contain Any at the boundary
+    out: dict[str, object] = {}
+    for key, raw in params.items():
+        if key not in hints:
+            logger.warning(f"unknown parameter {key!r} for {cls.__name__}")
+            continue
+        try:
+            out[key] = _coerce_value(hints[key], raw)
+        except (ValueError, TypeError):
+            logger.warning(f"invalid value {raw!r} for {key!r} on {cls.__name__}")
+    return out
+
+
+def _resolve_reveal(params: _ParamMap) -> _RevealSpec:
+    """Turn a marker's params into a ``(type, kwargs)`` reveal spec.
+
+    ``type=`` selects the animation class (default ``FadeIn``); the remaining
+    params become coerced constructor kwargs. Both ``::step::`` and ``::steps::``
+    resolve through here, so their grammar is identical.
+    """
+    type_name = params.get("type")
+    try:
+        cls: type[Animation] = (
+            _resolve_animation_type(type_name) if type_name else FadeIn
+        )
+    except ValueError:
+        logger.warning(f"unknown animation type {type_name!r}; using FadeIn")
+        cls = FadeIn
+    kwargs = _coerce_params(
+        cls, {k: v for k, v in params.items() if k not in _RESERVED_MARKER_KEYS}
+    )
+    return cls, kwargs
 
 
 # ── Zone parsing ──────────────────────────────────────────────────────────────
@@ -186,13 +306,35 @@ def parse_markdown_zones(source: str) -> ParsedMarkdown:
 # ── HTML rendering from chunks ────────────────────────────────────────────────
 
 
-def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
-    """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped fade-in div."""
+_REVEAL_ID_PREFIX = "inkflow-step-"
 
+
+def steps_wrap_content(
+    html: str, base_step: int, ids: Iterator[int], spec: _RevealSpec
+) -> tuple[str, int, list[Animation]]:
+    """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped reveal div.
+
+    Each wrapped item gets a unique ``inkflow-step-*`` id and a matching reveal
+    ``Animation`` of the block's resolved type (``spec``, default ``FadeIn``); the
+    caller routes those through the annotate pass to apply the animation.
+    """
+
+    cls, kwargs = spec
     wrapped = f"<div>{html_fragment_to_xml(html)}</div>"
     root = etree.fromstring(wrapped.encode())
 
     step = base_step
+    anims: list[Animation] = []
+
+    def new_wrapper(step: int) -> SvgElement:
+        rid = f"{_REVEAL_ID_PREFIX}{next(ids)}"
+        wrapper = etree.Element("div")
+        wrapper.set("id", rid)
+        # kwargs was coerced to each field's type at resolution time, but the
+        # class is only known dynamically, so the unpack cannot be proven typed.
+        anims.append(cls(element=rid, step=step, **kwargs))  # pyright: ignore[reportArgumentType]
+        return wrapper
+
     for child in list(root):
         tag = child.tag
         if tag in ("ul", "ol"):
@@ -200,9 +342,7 @@ def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
                 if li.tag != "li":
                     continue
                 step += 1
-                wrapper = etree.Element("div")
-                wrapper.set("class", "anim-fade-in")
-                wrapper.set("data-step", str(step))
+                wrapper = new_wrapper(step)
                 idx = list(child).index(li)
                 child.remove(li)
                 wrapper.append(li)
@@ -224,17 +364,13 @@ def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
                 child.remove(el)
             for group in groups:
                 step += 1
-                wrapper = etree.Element("div")
-                wrapper.set("class", "anim-fade-in")
-                wrapper.set("data-step", str(step))
+                wrapper = new_wrapper(step)
                 for el in group:
                     wrapper.append(el)
                 child.append(wrapper)
         elif tag == "p":
             step += 1
-            wrapper = etree.Element("div")
-            wrapper.set("class", "anim-fade-in")
-            wrapper.set("data-step", str(step))
+            wrapper = new_wrapper(step)
             idx = list(root).index(child)
             root.remove(child)
             wrapper.append(child)
@@ -242,39 +378,47 @@ def steps_wrap_content(html: str, base_step: int) -> tuple[str, int]:
 
     inner = etree.tostring(root, encoding="unicode")
     inner = inner[len("<div>") : -len("</div>")]
-    return inner, step
+    return inner, step, anims
 
 
-def chunks_to_html(chunks: Sequence[Chunk], base_step: int) -> tuple[str, int]:
+def chunks_to_html(
+    chunks: Sequence[Chunk], base_step: int, ids: Iterator[int]
+) -> tuple[str, int, list[Animation]]:
     parts: list[str] = []
     step = base_step
-    needs_step_wrap = False  # True only after a ::step:: marker
+    anims: list[Animation] = []
+    pending: _RevealSpec | None = None  # set by a ::step:: marker, used next chunk
 
     for item in chunks:
-        if item == _STEP:
+        if isinstance(item, _StepMarker):
             step += 1
-            needs_step_wrap = True
+            pending = _resolve_reveal(item.params)
             continue
 
         if isinstance(item, _StepsBlock):
             html = markdown_to_html(item.text)
-            html, step = steps_wrap_content(html, step)
+            html, step, block_anims = steps_wrap_content(
+                html, step, ids, _resolve_reveal(item.params)
+            )
+            anims.extend(block_anims)
             parts.append(html)
-            needs_step_wrap = False
+            pending = None
             continue
 
         # Regular string chunk: wrap only when an explicit ::step:: preceded it
         chunk_step = step
         html, step = render_md_with_steps(item, chunk_step)
-        if needs_step_wrap:
-            parts.append(
-                f'<div class="anim-fade-in" data-step="{chunk_step}">{html}</div>'
-            )
+        if pending is not None:
+            cls, kwargs = pending
+            rid = f"{_REVEAL_ID_PREFIX}{next(ids)}"
+            # See steps_wrap_content: dynamic class, kwargs coerced per field.
+            anims.append(cls(element=rid, step=chunk_step, **kwargs))  # pyright: ignore[reportArgumentType]
+            parts.append(f'<div id="{rid}">{html}</div>')
         else:
             parts.append(html)
-        needs_step_wrap = False
+        pending = None
 
-    return "".join(parts), step
+    return "".join(parts), step, anims
 
 
 # ── Zone routing ─────────────────────────────────────────────────────────────
@@ -338,16 +482,21 @@ def build_slide_content(
     notes_chunks = zones.pop("notes", None)
     notes_html = ""
     if notes_chunks:
-        notes_html, _ = chunks_to_html(notes_chunks, 0)
+        # Notes render to static HTML in the presenter panel, never into the slide
+        # SVG, so their reveal animations are discarded (own throwaway id space).
+        notes_html, _, _ = chunks_to_html(notes_chunks, 0, itertools.count(1))
 
     if available_zones is not None:
         zones = _reroute_zones(zones, auto_zones, available_zones, default_zone)
 
     result: dict[str, TextBox | Media] = {}
+    animations: list[Animation] = []
     base_step = 0
+    ids = itertools.count(1)
 
     for zone_name, chunks in zones.items():
-        html, base_step = chunks_to_html(chunks, base_step)
+        html, base_step, zone_anims = chunks_to_html(chunks, base_step, ids)
+        animations.extend(zone_anims)
         p = zone_params.get(zone_name, {})
         result[f"zone-{zone_name}"] = TextBox(
             text=html,
@@ -362,4 +511,4 @@ def build_slide_content(
         else:
             result[f"zone-{key}"] = val
 
-    return SlideContent(content=result, notes=notes_html)
+    return SlideContent(content=result, notes=notes_html, animations=animations)

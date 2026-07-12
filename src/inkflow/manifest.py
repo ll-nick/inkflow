@@ -4,7 +4,15 @@ import re
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
-from inkflow.enums import Align, ColorMode, MediaAlign, MediaFit, Muted, VAlign
+from inkflow.enums import (
+    Align,
+    ColorMode,
+    Easing,
+    MediaAlign,
+    MediaFit,
+    Muted,
+    VAlign,
+)
 
 # ── Type-name slug ────────────────────────────────────────────────────────────
 
@@ -66,20 +74,16 @@ class Animation(_Slugged):
     subclass's own fields (e.g. ``SlideIn("#box", Direction.RIGHT)`` sets
     ``direction``).
 
-    A value of ``None`` means "emit no CSS custom property" so the stylesheet's
-    ``var(--anim-…, default)`` fallback wins. The CSS is the single source of
-    default values.
-
     **Custom animations.** Subclass this directly in ``deck.py`` — no changes to
-    inkflow are needed. The CSS class is derived from the type name via
-    ``camel_to_kebab`` (``MyGlow`` → ``anim-my-glow``); any extra fields you add
-    become ``--anim-<field>`` custom properties on the element. Put the matching CSS
-    in a ``styles.css`` next to ``deck.py`` (loaded automatically).
+    inkflow are needed. The CSS class is the kebab-cased type name (``MyGlow`` →
+    ``anim-my-glow``), and each extra field becomes a ``--anim-<field>`` custom
+    property on the element. Put the matching CSS in a ``styles.css`` next to
+    ``deck.py`` (loaded automatically).
 
     ```python
     @dataclass
     class MyGlow(Animation):
-        intensity: float | None = None   # → --anim-intensity on the element
+        intensity: float = 1.0   # → --anim-intensity on the element
     ```
     """
 
@@ -87,13 +91,13 @@ class Animation(_Slugged):
     """CSS ID selector of the target element, e.g. ``"#headline"``."""
     step: int = 1
     """The keypress on which the animation plays."""
-    duration: float | None = field(default=None, kw_only=True)
-    """Duration in seconds. ``None`` keeps the animation's CSS default."""
-    easing: str | None = field(default=None, kw_only=True)
-    """Any CSS easing (``"ease"``, ``"ease-in-out"``, ``"cubic-bezier(...)"``,
-    ``"linear"``). ``None`` keeps the CSS default."""
-    delay: float | None = field(default=None, kw_only=True)
-    """Seconds to wait before the animation starts. ``None`` keeps the CSS default."""
+    duration: float = field(default=0.4, kw_only=True)
+    """Duration in seconds."""
+    easing: Easing = field(default=Easing.EASE, kw_only=True)
+    """Easing curve — an ``Easing`` preset (e.g. ``Easing.EASE_IN_OUT``) or a
+    custom curve via ``Easing.cubic_bezier(...)``."""
+    delay: float = field(default=0.0, kw_only=True)
+    """Seconds to wait before the animation starts."""
 
 
 # ── Transition ────────────────────────────────────────────────────────────────
@@ -110,14 +114,15 @@ class Transition(_Slugged):
     **Custom transitions.** Subclass this in ``deck.py``; the type name becomes the
     JS handler key via ``camel_to_kebab`` (``MyWarp`` → ``"my-warp"``). Register
     the matching handler from a ``scripts.js`` next to ``deck.py`` with
-    ``window.inkflow.registerProgressTransition(name, render, opts)`` (or the
+    ``window.inkflow.registerProgressTransition(name, render)`` (or the
     lower-level ``registerTransition``).
     """
 
     duration: float = 0.5
     """Duration in seconds. Defaults to ``0.5``; ``Cut`` overrides it to ``0.0``."""
-    easing: str | None = field(default=None, kw_only=True)
-    """Any CSS easing string. ``None`` keeps the JS handler's built-in default."""
+    easing: Easing = field(default=Easing.EASE, kw_only=True)
+    """Easing curve — an ``Easing`` preset or a custom curve via
+    ``Easing.cubic_bezier(...)``."""
 
 
 # ── Content types ─────────────────────────────────────────────────────────────

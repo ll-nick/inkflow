@@ -1191,12 +1191,10 @@
     return { left: "right", right: "left", up: "down", down: "up" }[dir] ?? dir;
   }
   var ProgressTransition = class {
-    constructor(render, defaultEasing) {
+    constructor(render) {
       this.render = render;
-      this.defaultEasing = defaultEasing;
     }
     render;
-    defaultEasing;
     oldLayer;
     newLayer;
     outgoingHtml = "";
@@ -1220,7 +1218,7 @@
       if (params.duration <= 0) return;
       this.startParams = params;
       this.buildLayers();
-      this.ease = cubicBezierEasing(params.easing ?? this.defaultEasing);
+      this.ease = cubicBezierEasing(params.easing);
       this.paint(0);
       await this.driver.animateTo(
         1,
@@ -1279,11 +1277,8 @@
       stage2.style.cssText = this.stageStyleText;
     }
   };
-  function registerProgressTransition(name, render, options) {
-    registerTransition(
-      name,
-      () => new ProgressTransition(render, options?.easing)
-    );
+  function registerProgressTransition(name, render) {
+    registerTransition(name, () => new ProgressTransition(render));
   }
   var CutTransition = class {
     async start() {
@@ -1365,12 +1360,12 @@
     oldLayer.style.clipPath = clip(progress * 100);
   };
   registerTransition("cut", () => new CutTransition());
-  registerProgressTransition("crossfade", crossfadeRender, { easing: "ease" });
-  registerProgressTransition("push", pushRender, { easing: "ease-in-out" });
-  registerProgressTransition("cover", coverRender, { easing: "ease-in-out" });
-  registerProgressTransition("zoom", zoomRender, { easing: "ease-in-out" });
-  registerProgressTransition("fade", fadeRender, { easing: "ease" });
-  registerProgressTransition("wipe", wipeRender, { easing: "ease-in-out" });
+  registerProgressTransition("crossfade", crossfadeRender);
+  registerProgressTransition("push", pushRender);
+  registerProgressTransition("cover", coverRender);
+  registerProgressTransition("zoom", zoomRender);
+  registerProgressTransition("fade", fadeRender);
+  registerProgressTransition("wipe", wipeRender);
   registerTransition("morph", () => new MorphTransition());
   function loadSlide(then = null, transition = null) {
     const params = transition ?? state.transitions[state.slideIndex] ?? CUT;

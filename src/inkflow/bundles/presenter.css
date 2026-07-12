@@ -752,14 +752,14 @@ body.pv-open #pv {
 /* src/css/shared/animations.css */
 .anim-fade-in {
   opacity: 0;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-fade-in.active {
   opacity: 1;
 }
 .anim-fade-out {
   opacity: 1;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-fade-out.active {
   opacity: 0;
@@ -767,7 +767,7 @@ body.pv-open #pv {
 .anim-bounce {
   opacity: 0;
   translate: 0 14px;
-  transition: opacity var(--anim-duration, 0.35s) var(--anim-easing, ease) var(--anim-delay, 0s), translate var(--anim-duration, 0.35s) var(--anim-easing, cubic-bezier(0.34, 1.56, 0.64, 1)) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay), translate var(--anim-duration) var(--anim-overshoot) var(--anim-delay);
 }
 .anim-bounce.active {
   opacity: 1;
@@ -775,19 +775,19 @@ body.pv-open #pv {
 }
 .anim-slide-in {
   opacity: 0;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), translate var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay), translate var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-slide-in.anim-from-left {
-  translate: calc(-1 * var(--anim-distance, 60px)) 0;
+  translate: calc(-1 * var(--anim-distance)) 0;
 }
 .anim-slide-in.anim-from-right {
-  translate: var(--anim-distance, 60px) 0;
+  translate: var(--anim-distance) 0;
 }
 .anim-slide-in.anim-from-up {
-  translate: 0 calc(-1 * var(--anim-distance, 60px));
+  translate: 0 calc(-1 * var(--anim-distance));
 }
 .anim-slide-in.anim-from-down {
-  translate: 0 var(--anim-distance, 60px);
+  translate: 0 var(--anim-distance);
 }
 .anim-slide-in.active {
   opacity: 1;
@@ -796,29 +796,29 @@ body.pv-open #pv {
 .anim-slide-out {
   opacity: 1;
   translate: 0 0;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), translate var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay), translate var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-slide-out.active {
   opacity: 0;
 }
 .anim-slide-out.anim-from-left.active {
-  translate: calc(-1 * var(--anim-distance, 60px)) 0;
+  translate: calc(-1 * var(--anim-distance)) 0;
 }
 .anim-slide-out.anim-from-right.active {
-  translate: var(--anim-distance, 60px) 0;
+  translate: var(--anim-distance) 0;
 }
 .anim-slide-out.anim-from-up.active {
-  translate: 0 calc(-1 * var(--anim-distance, 60px));
+  translate: 0 calc(-1 * var(--anim-distance));
 }
 .anim-slide-out.anim-from-down.active {
-  translate: 0 var(--anim-distance, 60px);
+  translate: 0 var(--anim-distance);
 }
 .anim-zoom-in {
   opacity: 0;
-  scale: var(--anim-scale, 0.8);
+  scale: var(--anim-scale);
   transform-box: fill-box;
   transform-origin: center;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), scale var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay), scale var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-zoom-in.active {
   opacity: 1;
@@ -829,19 +829,19 @@ body.pv-open #pv {
   scale: 1;
   transform-box: fill-box;
   transform-origin: center;
-  transition: opacity var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s), scale var(--anim-duration, 0.4s) var(--anim-easing, ease) var(--anim-delay, 0s);
+  transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay), scale var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
 .anim-zoom-out.active {
   opacity: 0;
-  scale: var(--anim-scale, 0.8);
+  scale: var(--anim-scale);
 }
 @keyframes anim-highlight-pulse {
   50% {
-    filter: drop-shadow(0 0 8px var(--anim-color, var(--accent)));
+    filter: drop-shadow(0 0 8px var(--anim-color));
   }
 }
 .anim-highlight.active {
-  animation: anim-highlight-pulse var(--anim-duration, 0.6s) var(--anim-easing, ease) var(--anim-delay, 0s) var(--anim-passes, 1);
+  animation: anim-highlight-pulse var(--anim-duration) var(--anim-easing) var(--anim-delay) var(--anim-passes);
 }
 
 /* src/css/presenter/laser.css */

@@ -16,9 +16,9 @@ How a type maps to the JS handler:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from inkflow.enums import Direction
+from inkflow.enums import Direction, Easing
 from inkflow.manifest import Transition
 
 __all__ = [
@@ -69,6 +69,8 @@ class Push(Transition):
 
     direction: Direction = Direction.LEFT
     """Edge the incoming slide enters from."""
+    easing: Easing = field(default=Easing.EASE_IN_OUT, kw_only=True)
+    """Easing curve."""
 
 
 @dataclass
@@ -77,6 +79,8 @@ class Cover(Transition):
 
     direction: Direction = Direction.LEFT
     """Edge the incoming slide enters from."""
+    easing: Easing = field(default=Easing.EASE_IN_OUT, kw_only=True)
+    """Easing curve."""
 
 
 @dataclass
@@ -89,6 +93,8 @@ class Zoom(Transition):
 
     amount: float = 0.6
     """How far the slides scale past their normal size."""
+    easing: Easing = field(default=Easing.EASE_IN_OUT, kw_only=True)
+    """Easing curve."""
 
 
 @dataclass
@@ -105,3 +111,5 @@ class Wipe(Transition):
 
     direction: Direction = Direction.LEFT
     """Edge the reveal starts from."""
+    easing: Easing = field(default=Easing.EASE_IN_OUT, kw_only=True)
+    """Easing curve."""
