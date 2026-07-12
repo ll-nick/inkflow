@@ -4,10 +4,11 @@ from inkflow import (
     Animation,
     Deck,
     Direction,
-    Media,
+    Image,
     MediaFit,
     Slide,
     Transition,
+    Video,
     animations,
     transitions,
 )
@@ -36,7 +37,7 @@ def main() -> Deck:
             Slide(
                 "title.svg",
                 zones={
-                    "media": Media(
+                    "media": Image(
                         src="assets/cover-dark.webp",
                         alt_src="assets/cover-light.webp",
                         fit=MediaFit.COVER,
@@ -128,13 +129,18 @@ def main() -> Deck:
                 "media.svg",
                 zones={
                     "title": "# Media",
-                    "image": Media(
+                    "image": Image(
                         src="assets/cover-dark.webp",
                         alt_src="assets/cover-light.webp",
                         fit=MediaFit.COVER,
                         y=-100,
                     ),
-                    "video": Media("assets/logo.mp4", fit=MediaFit.COVER),
+                    "video": Video(
+                        "assets/logo.mp4",
+                        fit=MediaFit.COVER,
+                        play_on_step=1,
+                        loop=True,
+                    ),
                 },
                 transition=transitions.Crossfade(),
                 animations=[animations.FadeIn("#video-section", step=1)],
