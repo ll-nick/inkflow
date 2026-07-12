@@ -47,6 +47,10 @@
       const s = +(el.getAttribute("data-step") ?? "0");
       if (s > m) m = s;
     });
+    root.querySelectorAll("[data-play-on-step]").forEach((el) => {
+      const s = +(el.getAttribute("data-play-on-step") ?? "0");
+      if (s > m) m = s;
+    });
     root.querySelectorAll(
       ".inkflow-codeblock[data-hl-spec][data-base-step]"
     ).forEach((block) => {
@@ -94,6 +98,71 @@
     }
   }
 
+  // src/ts/presenter/video.ts
+  var armed = /* @__PURE__ */ new WeakSet();
+  var activeState = /* @__PURE__ */ new WeakMap();
+  function readSpec(v) {
+    const step = v.getAttribute("data-play-on-step");
+    const start = v.getAttribute("data-start");
+    const end = v.getAttribute("data-end");
+    return {
+      autoplay: v.hasAttribute("data-autoplay"),
+      loop: v.hasAttribute("data-loop"),
+      playOnStep: step === null ? null : Number(step),
+      start: start === null ? 0 : Number(start),
+      end: end === null ? null : Number(end)
+    };
+  }
+  function arm(v, spec) {
+    if (armed.has(v)) return;
+    armed.add(v);
+    if (spec.start > 0) {
+      const seek = () => {
+        if (v.currentTime < spec.start) v.currentTime = spec.start;
+      };
+      if (v.readyState >= 1) seek();
+      else v.addEventListener("loadedmetadata", seek, { once: true });
+    }
+    if (spec.end !== null || spec.loop) {
+      v.addEventListener("timeupdate", () => {
+        if (spec.end !== null && v.currentTime >= spec.end) {
+          if (spec.loop) v.currentTime = spec.start;
+          else v.pause();
+        }
+      });
+    }
+    if (spec.loop) {
+      v.addEventListener("ended", () => playFrom(v, spec.start));
+    }
+  }
+  function playFrom(v, start) {
+    const go = () => {
+      v.currentTime = start;
+      void v.play().catch(() => {
+      });
+    };
+    if (start > 0 && v.readyState < 1) {
+      v.addEventListener("loadedmetadata", go, { once: true });
+    } else {
+      go();
+    }
+  }
+  function syncVideos(root, step) {
+    root.querySelectorAll("video").forEach((v) => {
+      const spec = readSpec(v);
+      arm(v, spec);
+      const shouldPlay = spec.autoplay || spec.playOnStep !== null && step >= spec.playOnStep;
+      const wasActive = activeState.get(v) ?? false;
+      if (shouldPlay && !wasActive) {
+        playFrom(v, spec.start);
+      } else if (!shouldPlay && wasActive) {
+        v.pause();
+        v.currentTime = spec.start;
+      }
+      activeState.set(v, shouldPlay);
+    });
+  }
+
   // src/ts/presenter/status.ts
   var stage = document.getElementById("stage");
   var slideInfo = document.getElementById("slide-info");
@@ -115,10 +184,12 @@
   }
   function applyCurrentStep() {
     applyStep(stage, state.step);
+    syncVideos(stage, state.step);
     updateStatus();
   }
   function applyCurrentStepInstant() {
     applyStepInstant(stage, state.step);
+    syncVideos(stage, state.step);
     updateStatus();
   }
   function syncURL() {
