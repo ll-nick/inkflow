@@ -5,6 +5,7 @@ import {
     maxStep as computeMaxStep,
 } from "../shared/step";
 import { state } from "./state";
+import { syncVideos } from "./video";
 
 const stage = document.getElementById("stage")!;
 const slideInfo = document.getElementById("slide-info")!;
@@ -37,6 +38,7 @@ export function maxStep(): number {
 // Never touches innerHTML, so transitions fire correctly.
 export function applyCurrentStep(): void {
     applyStep(stage, state.step);
+    syncVideos(stage, state.step);
     updateStatus();
 }
 
@@ -45,6 +47,7 @@ export function applyCurrentStep(): void {
 // instead of replaying. See applyStepInstant.
 export function applyCurrentStepInstant(): void {
     applyStepInstant(stage, state.step);
+    syncVideos(stage, state.step);
     updateStatus();
 }
 
