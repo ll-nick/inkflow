@@ -4,7 +4,7 @@ No proprietary formats, no black magic and fully hackable
 
 <br>
 
-::steps::
+::steps type=SlideIn direction=left distance=500::
 
 Custom animations
 : Like the `Flicker` from earlier
