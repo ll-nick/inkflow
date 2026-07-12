@@ -305,6 +305,40 @@ If omitted, the block extends to the end of the zone — everything after `::ste
 
 `::step::` markers inside a `::steps::` block are ignored — every item already steps.
 
+#### Choosing the animation with `type=`
+
+By default a reveal fades in. Give a marker a `type=<ClassName>` plus any of that
+type's parameters to use a different animation — the same class names and
+parameter names you'd write in `deck.py`:
+
+```markdown
+::step type=SlideIn direction=right distance=200::
+
+Slides in from the right.
+
+::step type=Bounce::
+
+Bounces in.
+```
+
+The same grammar works on `::steps::`, where the type and parameters apply to
+every item in the block:
+
+```markdown
+::steps type=SlideIn direction=up::
+
+- Each bullet slides up
+- one after another
+::steps end::
+```
+
+`type=` resolves against the [built-in animation types](../reference/animations.md)
+and any custom `Animation` subclass your `deck.py` defines (matched by class
+name). Parameters are coerced to each field's type, so `distance=200` becomes a
+number and `direction=right` becomes the [`Direction`](../reference/enums.md)
+value. Values cannot contain spaces, so an `easing=ease-in-out` preset works in a
+marker but a `cubic-bezier(...)` curve is a `deck.py`-only thing.
+
 ### Code blocks
 
 All fenced code blocks are syntax-highlighted automatically using Pygments.

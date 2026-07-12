@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import itertools
+from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
-from inkflow.enums import Align, MediaAlign, MediaFit, VAlign
-from inkflow.manifest import Image, Media, TextBox, ZoneContent
+from inkflow.animations import Bounce, FadeIn, SlideIn
+from inkflow.enums import Align, Direction, Easing, MediaAlign, MediaFit, VAlign
+from inkflow.manifest import Animation, Image, Media, TextBox, ZoneContent
 from inkflow.markdown import markdown_to_html
 from inkflow.zones import (
-    _STEP,  # pyright: ignore[reportPrivateUsage]
     SlideContent,
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
     _reroute_zones,  # pyright: ignore[reportPrivateUsage]
+    _RevealSpec,  # pyright: ignore[reportPrivateUsage]
+    _StepMarker,  # pyright: ignore[reportPrivateUsage]
     _StepsBlock,  # pyright: ignore[reportPrivateUsage]
     chunks_to_html,
     parse_markdown_zones,
@@ -32,6 +37,25 @@ def build_slide_content(
     return _build_slide_content_parsed(
         parsed, extra, available_zones=available_zones, default_zone=default_zone
     )
+
+
+# Reveals now become Animation objects (the fade-in class + data-step are applied
+# later by the annotate pass, keyed to the inkflow-step-* ids these functions
+# stamp). So the step tests assert on the returned animations and the ids.
+def _c2h(
+    chunks: Sequence[str | _StepMarker | _StepsBlock], base: int = 0
+) -> tuple[str, int, list[Animation]]:
+    return chunks_to_html(chunks, base, itertools.count(1))
+
+
+def _swc(
+    html: str, base: int = 0, spec: _RevealSpec | None = None
+) -> tuple[str, int, list[Animation]]:
+    return steps_wrap_content(html, base, itertools.count(1), spec or (FadeIn, {}))
+
+
+def _steps(anims: list[Animation]) -> list[int]:
+    return [a.step for a in anims]
 
 
 class TestParseMarkdownZones:
@@ -82,7 +106,7 @@ class TestParseMarkdownZones:
         md = tmp_path / "slide.md"
         md.write_text("::body::\nFirst.\n::step::\nSecond.\n", encoding="utf-8")
         zones = parse_markdown_zones(md.read_text(encoding="utf-8")).zones
-        assert _STEP in zones["body"]
+        assert any(isinstance(c, _StepMarker) for c in zones["body"])
 
     def test_empty_zone_section_excluded(self, tmp_path: Path) -> None:
         md = tmp_path / "slide.md"
@@ -134,7 +158,7 @@ class TestParseMarkdownZones:
         )
         zones = parse_markdown_zones(md.read_text(encoding="utf-8")).zones
         chunks = zones["content"]
-        assert _STEP in chunks
+        assert any(isinstance(c, _StepMarker) for c in chunks)
         blocks = [c for c in chunks if isinstance(c, _StepsBlock)]
         assert len(blocks) == 1
 
@@ -168,83 +192,73 @@ class TestAutoExtract:
 
 class TestChunksToHtml:
     def test_single_chunk_rendered_without_wrapper(self) -> None:
-        html, step = chunks_to_html(["Hello **world**"], 0)
+        html, step, anims = _c2h(["Hello **world**"])
         assert "<p>" in html or "Hello" in html
-        assert "anim-fade-in" not in html
+        assert "inkflow-step-" not in html
+        assert anims == []
         assert step == 0
 
-    def test_second_chunk_wrapped_with_data_step(self) -> None:
-        html, step = chunks_to_html(["First", _STEP, "Second"], 0)
-        assert 'class="anim-fade-in"' in html
-        assert 'data-step="1"' in html
+    def test_second_chunk_wrapped_with_reveal(self) -> None:
+        html, step, anims = _c2h(["First", _StepMarker(), "Second"])
+        assert _steps(anims) == [1]
+        assert isinstance(anims[0], FadeIn)
+        assert f'id="{anims[0].element}"' in html
         assert step == 1
 
     def test_base_step_offset_applied(self) -> None:
-        html, step = chunks_to_html(["First", _STEP, "Second"], 5)
-        assert 'data-step="6"' in html
+        _html, step, anims = _c2h(["First", _StepMarker(), "Second"], 5)
+        assert _steps(anims) == [6]
         assert step == 6
 
     def test_multiple_steps_increment(self) -> None:
-        chunks = ["A", _STEP, "B", _STEP, "C"]
-        html, step = chunks_to_html(chunks, 0)
-        assert 'data-step="1"' in html
-        assert 'data-step="2"' in html
+        _html, step, anims = _c2h(["A", _StepMarker(), "B", _StepMarker(), "C"])
+        assert _steps(anims) == [1, 2]
         assert step == 2
 
     def test_stepsblock_wraps_list_items(self) -> None:
-        chunks = [_StepsBlock("- One\n- Two\n")]
-        html, step = chunks_to_html(chunks, 0)
-        assert 'data-step="1"' in html
-        assert 'data-step="2"' in html
+        _html, step, anims = _c2h([_StepsBlock("- One\n- Two\n")])
+        assert _steps(anims) == [1, 2]
         assert step == 2
 
     def test_stepsblock_wraps_paragraphs(self) -> None:
-        chunks = [_StepsBlock("First para.\n\nSecond para.\n")]
-        html, step = chunks_to_html(chunks, 0)
-        assert 'data-step="1"' in html
-        assert 'data-step="2"' in html
+        _html, step, anims = _c2h([_StepsBlock("First para.\n\nSecond para.\n")])
+        assert _steps(anims) == [1, 2]
         assert step == 2
 
     def test_stepsblock_counter_continues_from_base(self) -> None:
-        chunks = ["Intro", _STEP, _StepsBlock("- A\n- B\n")]
-        html, step = chunks_to_html(chunks, 0)
-        # _STEP increments to 1, then _StepsBlock items land at 2 and 3
-        assert 'data-step="2"' in html
-        assert 'data-step="3"' in html
+        # _StepMarker increments to 1, then _StepsBlock items land at 2 and 3
+        _html, step, anims = _c2h(["Intro", _StepMarker(), _StepsBlock("- A\n- B\n")])
+        assert _steps(anims) == [2, 3]
         assert step == 3
 
     def test_stepsblock_and_step_interleave(self) -> None:
-        chunks = [_StepsBlock("- A\n"), _STEP, "After"]
-        html, step = chunks_to_html(chunks, 0)
-        # block item at step 1, then _STEP → 2, "After" wrapped at 2
-        assert 'data-step="1"' in html
-        assert 'data-step="2"' in html
+        # block item at step 1, then ::step:: → 2, "After" wrapped at 2
+        _html, step, anims = _c2h([_StepsBlock("- A\n"), _StepMarker(), "After"])
+        assert _steps(anims) == [1, 2]
         assert step == 2
 
     def test_content_after_stepsblock_is_always_visible(self) -> None:
-        # Content after ::steps end:: must NOT get a data-step wrapper
-        chunks = [_StepsBlock("- A\n"), "Footer"]
-        html, step = chunks_to_html(chunks, 0)
+        # Content after ::steps end:: must NOT get a reveal
+        html, step, anims = _c2h([_StepsBlock("- A\n"), "Footer"])
         assert "Footer" in html
-        assert html.count("data-step") == 1  # only the block item
+        assert len(anims) == 1  # only the block item
         assert step == 1
 
 
 class TestChunksToHtmlCodeblocks:
     def test_fence_with_spec_advances_step(self) -> None:
-        html, step = chunks_to_html(["```text {1|2}\na\nb\n```"], 0)
+        html, step, _anims = _c2h(["```text {1|2}\na\nb\n```"])
         assert "data-hl-spec" in html
         assert step == 1
 
     def test_step_marker_after_spec_fence_accounts_for_stages(self) -> None:
         # fence consumes steps 0→1, ::step:: bumps to 2, "After" wrapped at 2
-        chunks = ["```text {1|2}\na\nb\n```", _STEP, "After"]
-        html, step = chunks_to_html(chunks, 0)
-        assert 'data-step="2"' in html
+        _html, step, anims = _c2h(["```text {1|2}\na\nb\n```", _StepMarker(), "After"])
+        assert _steps(anims) == [2]
         assert step == 2
 
     def test_spec_fence_at_nonzero_base_step(self) -> None:
-        html, step = chunks_to_html(["```text {1|2|3}\na\nb\nc\n```"], 3)
+        html, step, _anims = _c2h(["```text {1|2|3}\na\nb\nc\n```"], 3)
         assert 'data-base-step="3"' in html
         assert step == 5  # 3 + (3 - 1)
 
@@ -253,65 +267,66 @@ class TestStepsWrapContent:
     def test_raw_void_html_does_not_crash(self) -> None:
         # Regression for F-021: raw <br> in a stepped zone must not raise.
         html = markdown_to_html("Intro line<br>second line")
-        result, step = steps_wrap_content(html, 0)
+        result, step, anims = _swc(html)
         assert "<br/>" in result
-        assert 'data-step="1"' in result
+        assert _steps(anims) == [1]
+        assert f'id="{anims[0].element}"' in result
         assert step == 1
 
     def test_list_items_each_wrapped(self) -> None:
-        html = "<ul><li>One</li><li>Two</li></ul>"
-        result, step = steps_wrap_content(html, 0)
-        assert 'data-step="1"' in result
-        assert 'data-step="2"' in result
+        _result, step, anims = _swc("<ul><li>One</li><li>Two</li></ul>")
+        assert _steps(anims) == [1, 2]
         assert step == 2
 
     def test_paragraphs_each_wrapped(self) -> None:
-        html = "<p>First</p><p>Second</p>"
-        result, step = steps_wrap_content(html, 0)
-        assert 'data-step="1"' in result
-        assert 'data-step="2"' in result
+        _result, step, anims = _swc("<p>First</p><p>Second</p>")
+        assert _steps(anims) == [1, 2]
         assert step == 2
 
     def test_mixed_list_and_paragraph(self) -> None:
-        html = "<ul><li>A</li><li>B</li></ul><p>Para</p>"
-        result, step = steps_wrap_content(html, 0)
-        assert 'data-step="1"' in result
-        assert 'data-step="2"' in result
-        assert 'data-step="3"' in result
+        _result, step, anims = _swc("<ul><li>A</li><li>B</li></ul><p>Para</p>")
+        assert _steps(anims) == [1, 2, 3]
         assert step == 3
 
     def test_base_step_offset(self) -> None:
-        html = "<p>Only</p>"
-        result, step = steps_wrap_content(html, 4)
-        assert 'data-step="5"' in result
+        _result, step, anims = _swc("<p>Only</p>", 4)
+        assert _steps(anims) == [5]
         assert step == 5
 
     def test_non_steppable_elements_left_alone(self) -> None:
-        html = "<h2>Heading</h2>"
-        result, step = steps_wrap_content(html, 0)
-        assert "data-step" not in result
+        result, step, anims = _swc("<h2>Heading</h2>")
+        assert anims == []
+        assert "inkflow-step-" not in result
         assert "Heading" in result
         assert step == 0
 
+    def test_reveal_type_from_spec(self) -> None:
+        # The block's resolved type/params flow to every wrapped item.
+        _result, _step, anims = _swc(
+            "<ul><li>A</li><li>B</li></ul>", spec=(SlideIn, {"distance": 120.0})
+        )
+        assert all(isinstance(a, SlideIn) for a in anims)
+        assert all(a.distance == 120.0 for a in anims if isinstance(a, SlideIn))
+
     def test_deflist_each_dt_dd_group_wrapped(self) -> None:
         html = "<dl><dt>Term 1</dt><dd>Def 1</dd><dt>Term 2</dt><dd>Def 2</dd></dl>"
-        result, step = steps_wrap_content(html, 0)
-        assert 'data-step="1"' in result
-        assert 'data-step="2"' in result
+        result, step, anims = _swc(html)
+        assert _steps(anims) == [1, 2]
         assert step == 2
         assert "Term 1" in result
         assert "Def 1" in result
 
     def test_deflist_dt_with_multiple_dd_is_one_step(self) -> None:
-        html = "<dl><dt>Term</dt><dd>First</dd><dd>Second</dd></dl>"
-        result, step = steps_wrap_content(html, 0)
-        assert 'data-step="1"' in result
-        assert 'data-step="2"' not in result
+        _result, step, anims = _swc(
+            "<dl><dt>Term</dt><dd>First</dd><dd>Second</dd></dl>"
+        )
+        assert _steps(anims) == [1]
         assert step == 1
 
     def test_deflist_mixed_with_paragraph(self) -> None:
-        html = "<p>Intro</p><dl><dt>A</dt><dd>a</dd><dt>B</dt><dd>b</dd></dl>"
-        _, step = steps_wrap_content(html, 0)
+        _result, step, _anims = _swc(
+            "<p>Intro</p><dl><dt>A</dt><dd>a</dd><dt>B</dt><dd>b</dd></dl>"
+        )
         assert step == 3
 
 
@@ -377,7 +392,10 @@ class TestBuildSlideContent:
         result = build_slide_content(md.read_text(encoding="utf-8"), {})
         box = next(v for v in result.content.values() if isinstance(v, TextBox))
         assert box.text is not None
-        assert "data-step" in box.text
+        # Reveals are Animation objects keyed to inkflow-step-* ids in the html.
+        assert _steps(result.animations) == [1, 2, 3]
+        for anim in result.animations:
+            assert f'id="{anim.element}"' in box.text
 
     def test_no_content_no_extra_returns_empty(self) -> None:
         result = build_slide_content(None, {})
@@ -405,6 +423,67 @@ class TestBuildSlideContent:
         md.write_text("# Title\n\nSome content.\n", encoding="utf-8")
         result = build_slide_content(md.read_text(encoding="utf-8"), {})
         assert result.notes == ""
+
+
+@dataclass
+class _CustomGlow(Animation):
+    intensity: float = 1.0
+
+
+class TestMarkerGrammar:
+    def test_default_reveal_is_fade_in(self) -> None:
+        result = build_slide_content("::content::\n::step::\nX.\n", {})
+        assert [type(a) for a in result.animations] == [FadeIn]
+
+    def test_step_type_and_params(self) -> None:
+        md = (
+            "::content::\nIntro.\n\n"
+            + "::step type=SlideIn distance=120 direction=right::\nX.\n"
+        )
+        result = build_slide_content(md, {})
+        (a,) = result.animations
+        assert isinstance(a, SlideIn)
+        assert a.distance == 120.0
+        assert a.direction == Direction.RIGHT
+
+    def test_steps_block_type_applies_to_all_items(self) -> None:
+        md = (
+            "::content::\n::steps type=Bounce duration=0.5::\n"
+            + "- one\n- two\n::steps end::\n"
+        )
+        result = build_slide_content(md, {})
+        assert all(isinstance(a, Bounce) for a in result.animations)
+        assert [a.duration for a in result.animations] == [0.5, 0.5]
+        assert _steps(result.animations) == [1, 2]
+
+    def test_easing_param_coerced_to_easing(self) -> None:
+        result = build_slide_content(
+            "::content::\n::step type=FadeIn easing=ease-in-out::\nX.\n", {}
+        )
+        (a,) = result.animations
+        assert a.easing == Easing.EASE_IN_OUT
+        assert isinstance(a.easing, Easing)
+
+    def test_unknown_type_falls_back_to_fade_in(self) -> None:
+        result = build_slide_content("::content::\n::step type=Nope::\nX.\n", {})
+        assert [type(a) for a in result.animations] == [FadeIn]
+
+    def test_custom_type_resolved_by_name(self) -> None:
+        result = build_slide_content(
+            "::content::\n::step type=_CustomGlow intensity=3::\nX.\n", {}
+        )
+        (a,) = result.animations
+        assert isinstance(a, _CustomGlow)
+        assert a.intensity == 3.0
+
+    def test_reserved_keys_not_forwarded(self) -> None:
+        # element/step in a marker must not collide with the resolver-injected ones
+        result = build_slide_content(
+            "::content::\n::step type=FadeIn element=x step=9::\nX.\n", {}
+        )
+        (a,) = result.animations
+        assert a.element.startswith("inkflow-step-")
+        assert a.step == 1
 
 
 class TestZoneParams:
