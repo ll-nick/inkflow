@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#222831"/>
+  <rect id="zone-caption" x="80" y="48" width="1760" height="130" fill="none"/>
+  <rect id="zone-media" x="80" y="200" width="1760" height="820" fill="none"/>
+</svg>
