@@ -319,6 +319,7 @@ dependencies = [
     { name = "platformdirs" },
     { name = "pygments" },
     { name = "rich" },
+    { name = "typing-extensions" },
     { name = "watchfiles" },
     { name = "websockets" },
 ]
@@ -348,6 +349,7 @@ requires-dist = [
     { name = "platformdirs", specifier = ">=4.0" },
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "rich", specifier = ">=15.0.0" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
     { name = "watchfiles", specifier = ">=0.21" },
     { name = "websockets", specifier = ">=12.0" },
 ]
