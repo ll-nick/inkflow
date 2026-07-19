@@ -27,6 +27,7 @@ dependencies = [
     "platformdirs>=4.0",
     "pygments>=2.20.0",
     "rich>=15.0.0",
+    "typing-extensions>=4.15.0",
     "watchfiles>=0.21",
     "websockets>=12.0",
 ]
@@ -50,6 +51,7 @@ exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**
 [dependency-groups]
 dev = [
     "basedpyright>=1.39.5",
+    "deptry>=0.25.1",
     "lxml-stubs>=0.5",
     "pytest>=9.0.3",
     "ruff>=0.15.13",
@@ -67,3 +69,11 @@ reportMissingTypeStubs = "none"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.deptry.package_module_name_map]
+fonttools = "fontTools"
+"markdown-it-py" = "markdown_it"
+
+[tool.deptry.per_rule_ignores]
+# brotli is never imported directly; fontTools' WOFF2 encoder picks it up at runtime.
+DEP002 = ["brotli"]
