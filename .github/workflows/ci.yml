@@ -32,6 +32,8 @@ jobs:
 
       - run: uv run basedpyright
 
+      - run: uv run deptry src
+
       - run: uv run pytest
 
       - run: git ls-files '*.svg' | xargs --no-run-if-empty uv run inkflow clean --check
