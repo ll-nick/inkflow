@@ -1,4 +1,6 @@
+import { cubicBezierEasing } from "../shared/easing";
 import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
+import { ProgressDriver } from "./progress-driver";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { maxStep } from "./status";
@@ -8,6 +10,10 @@ import { sendNav } from "./websocket";
 const overview = document.getElementById("overview")!;
 const overviewGrid = document.getElementById("overview-grid")!;
 const stage = document.getElementById("stage")!;
+
+function nextFrame(): Promise<void> {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
 
 function firstSlideViewBox(): [number, number] {
     const svg = state.slides[0]?.svg ?? "";
@@ -109,7 +115,47 @@ function computeStageFlip(): { s: number; ox: number; oy: number } | null {
     return { s, ox, oy };
 }
 
-export function openOverview(): void {
+// ── Progress-driven open/close ──────────────────────────────────────────────
+// Two ProgressDrivers (as in transitions.ts) own the grid-scale and
+// backdrop-opacity animations. A reversal is another `animateTo` toward the
+// other end, resuming from the current `.value`. Scale and opacity are driven
+// separately so open can zoom the grid over an already-visible backdrop, and
+// close can fade the backdrop out only after the zoom lands.
+
+const scaleDriver = new ProgressDriver();
+const fadeDriver = new ProgressDriver();
+let controller: AbortController | null = null;
+// Reused across a reversal so a mid-transform measurement never feeds back into
+// the FLIP math.
+let geometry: { s: number; ox: number; oy: number } | null = null;
+
+function paintScale(progress: number): void {
+    if (!geometry) return;
+    const scale = geometry.s + (1 - geometry.s) * progress;
+    overviewGrid.style.transformOrigin = `${geometry.ox}px ${geometry.oy}px`;
+    overviewGrid.style.transform = `scale(${scale})`;
+}
+
+// Fades the active cell's highlight ring/number in/out over the zoom duration,
+// so it doesn't show while the cell stands in for the stage. A plain CSS
+// transition retargets correctly on interruption, so it needs no driving.
+function setActiveHighlight(visible: boolean, durationSeconds: number): void {
+    const activeCell = overviewGrid.children[
+        state._overviewActive
+    ] as HTMLElement;
+    const thumb = activeCell?.querySelector<HTMLElement>(".overview-thumb");
+    const num = activeCell?.querySelector<HTMLElement>(".overview-num");
+    if (thumb) {
+        thumb.style.transition = `outline-color ${durationSeconds}s ease`;
+        thumb.style.outlineColor = visible ? "" : "transparent";
+    }
+    if (num) {
+        num.style.transition = `color ${durationSeconds}s ease`;
+        num.style.color = visible ? "" : "transparent";
+    }
+}
+
+export async function openOverview(): Promise<void> {
     overviewGrid.innerHTML = "";
     overviewGrid.style.cssText = "";
     const [vbW, vbH] = firstSlideViewBox();
@@ -130,98 +176,76 @@ export function openOverview(): void {
     overviewGrid.querySelectorAll(".overview-thumb").forEach((thumb) => {
         applyStepInstant(thumb, computeMaxStep(thumb));
     });
-    requestAnimationFrame(() => {
-        applyOptimalCols();
-        requestAnimationFrame(() => {
-            overviewGrid
-                .querySelectorAll(".overview-thumb")
-                .forEach(scaleThumb);
-            computeCols();
-            overviewSetActive(state._overviewActive);
-            // Snap to the same FLIP transform used by close, so open/close are mirrors
-            const flip = computeStageFlip();
-            const activeCell = overviewGrid.children[
-                state._overviewActive
-            ] as HTMLElement;
-            const activeThumb =
-                activeCell?.querySelector<HTMLElement>(".overview-thumb");
-            const activeNum =
-                activeCell?.querySelector<HTMLElement>(".overview-num");
-            if (flip) {
-                overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
-                overviewGrid.style.transition = "none";
-                overviewGrid.style.transform = `scale(${flip.s})`;
-            }
-            if (activeThumb) activeThumb.style.outlineColor = "transparent";
-            if (activeNum) activeNum.style.color = "transparent";
-            requestAnimationFrame(() => {
-                // Snap is committed — reveal the overlay instantly and start zoom-out.
-                overview.style.transition = "none";
-                overview.classList.add("visible");
-                overviewGrid.style.transition =
-                    "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)";
-                overviewGrid.style.transform = "scale(1)";
-                if (activeThumb) {
-                    activeThumb.style.transition = "outline-color 0.6s ease";
-                    activeThumb.style.outlineColor = "";
-                }
-                if (activeNum) {
-                    activeNum.style.transition = "color 0.6s ease";
-                    activeNum.style.color = "";
-                }
-                const cleanup = (e: TransitionEvent) => {
-                    if (e.propertyName !== "transform") return;
-                    overviewGrid.removeEventListener("transitionend", cleanup);
-                    overviewGrid.style.cssText = overviewGrid.style
-                        .gridTemplateColumns
-                        ? `grid-template-columns:${overviewGrid.style.gridTemplateColumns}`
-                        : "";
-                    if (activeThumb) activeThumb.style.transition = "";
-                    if (activeNum) activeNum.style.transition = "";
-                    overview.style.transition = "";
-                };
-                overviewGrid.addEventListener("transitionend", cleanup);
-            });
-        });
-    });
-}
+    await nextFrame();
+    applyOptimalCols();
+    await nextFrame();
+    overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+    computeCols();
+    overviewSetActive(state._overviewActive);
 
-function zoomGridToStage(): void {
+    // The grid was just rebuilt, so recompute geometry from the fresh layout.
+    geometry = computeStageFlip();
     const activeCell = overviewGrid.children[
         state._overviewActive
     ] as HTMLElement;
-    if (!activeCell) return;
-    const thumb = activeCell.querySelector<HTMLElement>(".overview-thumb");
-    const num = activeCell.querySelector<HTMLElement>(".overview-num");
-    const flip = computeStageFlip();
-    if (!flip) return;
-    if (thumb) {
-        thumb.style.transition = "outline-color 0.35s ease";
-        thumb.style.outlineColor = "transparent";
-    }
-    if (num) {
-        num.style.transition = "color 0.35s ease";
-        num.style.color = "transparent";
-    }
-    overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
-    overviewGrid.style.transition =
-        "transform 0.35s cubic-bezier(0.55, 0, 1, 0.45)";
-    overviewGrid.style.transform = `scale(${flip.s})`;
+    const activeThumb =
+        activeCell?.querySelector<HTMLElement>(".overview-thumb");
+    const activeNum = activeCell?.querySelector<HTMLElement>(".overview-num");
+    if (activeThumb) activeThumb.style.outlineColor = "transparent";
+    if (activeNum) activeNum.style.color = "transparent";
+
+    // Snap to the stage-matched scale, so the zoom below starts from a frame
+    // that looks identical to the stage.
+    scaleDriver.value = 0;
+    paintScale(0);
+    await nextFrame();
+
+    controller?.abort();
+    const myController = new AbortController();
+    controller = myController;
+
+    // Backdrop is shown at once; only the grid zoom animates.
+    overview.classList.add("visible");
+    overview.style.opacity = "1";
+    fadeDriver.value = 1;
+    setActiveHighlight(true, 0.6);
+
+    const ease = cubicBezierEasing("cubic-bezier(0.22, 1, 0.36, 1)");
+    await scaleDriver.animateTo(1, 0.6, myController.signal, (v) =>
+        paintScale(ease(v)),
+    );
+    if (controller === myController) controller = null;
 }
 
-export function closeOverview(): void {
-    zoomGridToStage();
-    setTimeout(() => {
-        overview.style.transition = "opacity 0.28s ease, visibility 0s 0.28s";
-        overview.classList.remove("visible");
-        setTimeout(() => {
-            overview.style.transition = "";
-            if (!overview.classList.contains("visible")) {
-                overviewGrid.innerHTML = "";
-                overviewGrid.style.cssText = "";
-            }
-        }, 300);
-    }, 370);
+export async function closeOverview(): Promise<void> {
+    // Zoom back into the current slide, not whichever cell was last browsed to.
+    state._overviewActive = state.slideIndex;
+    // When settled, recompute against the current active cell; when interrupting
+    // an in-flight animation, keep the captured geometry to avoid measuring a
+    // grid that's mid-transform.
+    if (controller === null) geometry = computeStageFlip();
+
+    controller?.abort();
+    const myController = new AbortController();
+    controller = myController;
+    const { signal } = myController;
+
+    setActiveHighlight(false, 0.35);
+    const ease = cubicBezierEasing("cubic-bezier(0.55, 0, 1, 0.45)");
+    await scaleDriver.animateTo(0, 0.35, signal, (v) => paintScale(ease(v)));
+    if (signal.aborted) return;
+
+    // Fade the backdrop out only once the zoom has landed on the stage.
+    await fadeDriver.animateTo(0, 0.28, signal, (v) => {
+        overview.style.opacity = String(v);
+    });
+    if (signal.aborted) return;
+
+    overview.classList.remove("visible");
+    overview.style.opacity = "";
+    overviewGrid.innerHTML = "";
+    overviewGrid.style.cssText = "";
+    if (controller === myController) controller = null;
 }
 
 export function toggleOverview(): void {
