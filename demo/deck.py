@@ -33,6 +33,7 @@ class Flip(Transition):
 
 def main() -> Deck:
     return Deck(
+        title="Inkflow Demo",
         slides=[
             Slide(
                 "title.svg",
@@ -160,5 +161,5 @@ def main() -> Deck:
                 transition=transitions.Crossfade(),
                 notes="notes/end.md",
             ),
-        ]
+        ],
     )
