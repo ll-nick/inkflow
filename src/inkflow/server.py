@@ -15,6 +15,7 @@ import traceback
 import tty
 import webbrowser
 from collections.abc import Awaitable, Callable
+from html import escape as escape_html
 from pathlib import Path
 from typing import TypedDict, cast
 from urllib.parse import unquote
@@ -32,6 +33,7 @@ from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.logging import Levels, collect_logs, logger, report
 from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
+from inkflow.titles import resolve_deck_title
 from inkflow.tui import LiveUI
 
 # ── Shared mutable state ──────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ class State(TypedDict):
     mode: ColorMode
     position: dict[str, int]
     logs: list[dict[str, str]]
+    title: str
 
 
 _state: State = {
@@ -59,6 +62,7 @@ _state: State = {
     "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
     "logs": [],
+    "title": "Inkflow",
 }
 
 
@@ -123,6 +127,7 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
         _state["styles_css"] = styles_css
         _state["scripts_js"] = scripts_js
         _state["mode"] = deck.mode
+        _state["title"] = resolve_deck_title(deck, project_dir)
         _state["error"] = None
         _state["logs"] = browser_logs
         if slides:
@@ -280,6 +285,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
         .replace("__LOGS_JSON__", json.dumps(state["logs"]))
+        .replace("__TITLE__", escape_html(state["title"]))
     )
     return html.encode("utf-8")
 

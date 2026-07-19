@@ -28,6 +28,7 @@ from inkflow.manifest import (
 )
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
+from inkflow.titles import humanize
 from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ def _infer_slide_title(
         if chunks and isinstance(chunks[0], str):
             return chunks[0].lstrip("#").strip()
     stem = re.sub(r"^\d+-", "", slide_id)
-    return stem.replace("-", " ").replace("_", " ").title()
+    return humanize(stem)
 
 
 def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> Path:

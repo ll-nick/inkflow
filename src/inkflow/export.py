@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from html import escape as escape_html
 from pathlib import Path
 from typing import cast
 
@@ -14,6 +15,7 @@ from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.manifest import Deck, Media, Video
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
+from inkflow.titles import resolve_deck_title
 
 # ── build ─────────────────────────────────────────────────────────────────────
 
@@ -42,6 +44,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
         "error": None,
         "position": {"slideIndex": 0, "step": 0},
         "logs": [],
+        "title": resolve_deck_title(deck, project_dir),
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
@@ -143,10 +146,12 @@ def build_pdf(
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")
     data_theme = "" if deck.mode == ColorMode.DARK else "light"
     slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
+    title = resolve_deck_title(deck, project_dir)
     html = (
         template.replace("/* __STYLES__ */", styles_css)
         .replace("__DATA_THEME__", data_theme)
         .replace("__SLIDES__", slides_html)
+        .replace("__TITLE__", escape_html(title))
     )
 
     with tempfile.TemporaryDirectory() as tmp:
