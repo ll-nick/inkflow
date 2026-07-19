@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import errno
+import functools
 import importlib.resources
 import importlib.util
 import json
@@ -15,6 +17,7 @@ import traceback
 import tty
 import webbrowser
 from collections.abc import Awaitable, Callable
+from html import escape as escape_html
 from pathlib import Path
 from typing import TypedDict, cast
 from urllib.parse import unquote
@@ -32,6 +35,7 @@ from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.logging import Levels, collect_logs, logger, report
 from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
+from inkflow.titles import resolve_deck_title
 from inkflow.tui import LiveUI
 
 # ── Shared mutable state ──────────────────────────────────────────────────────
@@ -47,6 +51,7 @@ class State(TypedDict):
     mode: ColorMode
     position: dict[str, int]
     logs: list[dict[str, str]]
+    title: str
 
 
 _state: State = {
@@ -59,6 +64,7 @@ _state: State = {
     "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
     "logs": [],
+    "title": "Inkflow",
 }
 
 
@@ -123,6 +129,7 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
         _state["styles_css"] = styles_css
         _state["scripts_js"] = scripts_js
         _state["mode"] = deck.mode
+        _state["title"] = resolve_deck_title(deck, project_dir)
         _state["error"] = None
         _state["logs"] = browser_logs
         if slides:
@@ -262,6 +269,15 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
 _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
 
 
+@functools.cache
+def favicon_data_uri() -> str:
+    """Base64 data URI for the built-in adaptive favicon, computed once."""
+    pkg = importlib.resources.files("inkflow")
+    svg_bytes = pkg.joinpath("theme", "icon.svg").read_bytes()
+    b64 = base64.b64encode(svg_bytes).decode()
+    return f"data:image/svg+xml;base64,{b64}"
+
+
 def build_html(state: State, ws_port: int | None) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
@@ -280,6 +296,8 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
         .replace("__LOGS_JSON__", json.dumps(state["logs"]))
+        .replace("__FAVICON__", favicon_data_uri())
+        .replace("__TITLE__", escape_html(state["title"]))
     )
     return html.encode("utf-8")
 

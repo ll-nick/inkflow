@@ -231,6 +231,7 @@
 
   // src/ts/presenter/pv.ts
   var pvPanel = document.getElementById("pv");
+  var pvResizeHandle = document.getElementById("pv-resize-handle");
   var pvClock = document.getElementById("pv-clock");
   var pvElapsed = document.getElementById("pv-elapsed");
   var pvSlideInfo = document.getElementById("pv-slide-info");
@@ -314,6 +315,26 @@
     pvPanel.addEventListener("transitionend", _scalePvNext, { once: true });
   }
   window.addEventListener("resize", _scalePvNext);
+  function _onPvResizeMove(e) {
+    pvPanel.style.setProperty(
+      "--pv-width",
+      `${window.innerWidth - e.clientX}px`
+    );
+    _scalePvNext();
+  }
+  function _onPvResizeUp(e) {
+    pvResizeHandle.releasePointerCapture(e.pointerId);
+    pvResizeHandle.removeEventListener("pointermove", _onPvResizeMove);
+    pvResizeHandle.removeEventListener("pointerup", _onPvResizeUp);
+    pvPanel.style.transition = "";
+  }
+  pvResizeHandle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    pvPanel.style.transition = "none";
+    pvResizeHandle.setPointerCapture(e.pointerId);
+    pvResizeHandle.addEventListener("pointermove", _onPvResizeMove);
+    pvResizeHandle.addEventListener("pointerup", _onPvResizeUp);
+  });
 
   // src/ts/shared/easing.ts
   var NAMED_CURVES = {
@@ -1987,6 +2008,9 @@
   var overview = document.getElementById("overview");
   var overviewGrid = document.getElementById("overview-grid");
   var stage3 = document.getElementById("stage");
+  function nextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
   function firstSlideViewBox() {
     const svg = state.slides[0]?.svg ?? "";
     const m = svg.match(/viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"/);
@@ -2065,7 +2089,30 @@
     const oy = (stageCY - thumbCY * s) / (1 - s);
     return { s, ox, oy };
   }
-  function openOverview() {
+  var scaleDriver = new ProgressDriver();
+  var fadeDriver = new ProgressDriver();
+  var controller = null;
+  var geometry = null;
+  function paintScale(progress) {
+    if (!geometry) return;
+    const scale = geometry.s + (1 - geometry.s) * progress;
+    overviewGrid.style.transformOrigin = `${geometry.ox}px ${geometry.oy}px`;
+    overviewGrid.style.transform = `scale(${scale})`;
+  }
+  function setActiveHighlight(visible, durationSeconds) {
+    const activeCell = overviewGrid.children[state._overviewActive];
+    const thumb = activeCell?.querySelector(".overview-thumb");
+    const num = activeCell?.querySelector(".overview-num");
+    if (thumb) {
+      thumb.style.transition = `outline-color ${durationSeconds}s ease`;
+      thumb.style.outlineColor = visible ? "" : "transparent";
+    }
+    if (num) {
+      num.style.transition = `color ${durationSeconds}s ease`;
+      num.style.color = visible ? "" : "transparent";
+    }
+  }
+  async function openOverview() {
     overviewGrid.innerHTML = "";
     overviewGrid.style.cssText = "";
     const [vbW, vbH] = firstSlideViewBox();
@@ -2081,81 +2128,57 @@
     overviewGrid.querySelectorAll(".overview-thumb").forEach((thumb) => {
       applyStepInstant(thumb, maxStep(thumb));
     });
-    requestAnimationFrame(() => {
-      applyOptimalCols();
-      requestAnimationFrame(() => {
-        overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
-        computeCols();
-        overviewSetActive(state._overviewActive);
-        const flip = computeStageFlip();
-        const activeCell = overviewGrid.children[state._overviewActive];
-        const activeThumb = activeCell?.querySelector(".overview-thumb");
-        const activeNum = activeCell?.querySelector(".overview-num");
-        if (flip) {
-          overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
-          overviewGrid.style.transition = "none";
-          overviewGrid.style.transform = `scale(${flip.s})`;
-        }
-        if (activeThumb) activeThumb.style.outlineColor = "transparent";
-        if (activeNum) activeNum.style.color = "transparent";
-        requestAnimationFrame(() => {
-          overview.style.transition = "none";
-          overview.classList.add("visible");
-          overviewGrid.style.transition = "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)";
-          overviewGrid.style.transform = "scale(1)";
-          if (activeThumb) {
-            activeThumb.style.transition = "outline-color 0.6s ease";
-            activeThumb.style.outlineColor = "";
-          }
-          if (activeNum) {
-            activeNum.style.transition = "color 0.6s ease";
-            activeNum.style.color = "";
-          }
-          const cleanup = (e) => {
-            if (e.propertyName !== "transform") return;
-            overviewGrid.removeEventListener("transitionend", cleanup);
-            overviewGrid.style.cssText = overviewGrid.style.gridTemplateColumns ? `grid-template-columns:${overviewGrid.style.gridTemplateColumns}` : "";
-            if (activeThumb) activeThumb.style.transition = "";
-            if (activeNum) activeNum.style.transition = "";
-            overview.style.transition = "";
-          };
-          overviewGrid.addEventListener("transitionend", cleanup);
-        });
-      });
-    });
-  }
-  function zoomGridToStage() {
+    await nextFrame();
+    applyOptimalCols();
+    await nextFrame();
+    overviewGrid.querySelectorAll(".overview-thumb").forEach(scaleThumb);
+    computeCols();
+    overviewSetActive(state._overviewActive);
+    geometry = computeStageFlip();
     const activeCell = overviewGrid.children[state._overviewActive];
-    if (!activeCell) return;
-    const thumb = activeCell.querySelector(".overview-thumb");
-    const num = activeCell.querySelector(".overview-num");
-    const flip = computeStageFlip();
-    if (!flip) return;
-    if (thumb) {
-      thumb.style.transition = "outline-color 0.35s ease";
-      thumb.style.outlineColor = "transparent";
-    }
-    if (num) {
-      num.style.transition = "color 0.35s ease";
-      num.style.color = "transparent";
-    }
-    overviewGrid.style.transformOrigin = `${flip.ox}px ${flip.oy}px`;
-    overviewGrid.style.transition = "transform 0.35s cubic-bezier(0.55, 0, 1, 0.45)";
-    overviewGrid.style.transform = `scale(${flip.s})`;
+    const activeThumb = activeCell?.querySelector(".overview-thumb");
+    const activeNum = activeCell?.querySelector(".overview-num");
+    if (activeThumb) activeThumb.style.outlineColor = "transparent";
+    if (activeNum) activeNum.style.color = "transparent";
+    scaleDriver.value = 0;
+    paintScale(0);
+    await nextFrame();
+    controller?.abort();
+    const myController = new AbortController();
+    controller = myController;
+    overview.classList.add("visible");
+    overview.style.opacity = "1";
+    fadeDriver.value = 1;
+    setActiveHighlight(true, 0.6);
+    const ease = cubicBezierEasing("cubic-bezier(0.22, 1, 0.36, 1)");
+    await scaleDriver.animateTo(
+      1,
+      0.6,
+      myController.signal,
+      (v) => paintScale(ease(v))
+    );
+    if (controller === myController) controller = null;
   }
-  function closeOverview() {
-    zoomGridToStage();
-    setTimeout(() => {
-      overview.style.transition = "opacity 0.28s ease, visibility 0s 0.28s";
-      overview.classList.remove("visible");
-      setTimeout(() => {
-        overview.style.transition = "";
-        if (!overview.classList.contains("visible")) {
-          overviewGrid.innerHTML = "";
-          overviewGrid.style.cssText = "";
-        }
-      }, 300);
-    }, 370);
+  async function closeOverview() {
+    state._overviewActive = state.slideIndex;
+    if (controller === null) geometry = computeStageFlip();
+    controller?.abort();
+    const myController = new AbortController();
+    controller = myController;
+    const { signal } = myController;
+    setActiveHighlight(false, 0.35);
+    const ease = cubicBezierEasing("cubic-bezier(0.55, 0, 1, 0.45)");
+    await scaleDriver.animateTo(0, 0.35, signal, (v) => paintScale(ease(v)));
+    if (signal.aborted) return;
+    await fadeDriver.animateTo(0, 0.28, signal, (v) => {
+      overview.style.opacity = String(v);
+    });
+    if (signal.aborted) return;
+    overview.classList.remove("visible");
+    overview.style.opacity = "";
+    overviewGrid.innerHTML = "";
+    overviewGrid.style.cssText = "";
+    if (controller === myController) controller = null;
   }
   function toggleOverview() {
     overview.classList.contains("visible") ? closeOverview() : openOverview();

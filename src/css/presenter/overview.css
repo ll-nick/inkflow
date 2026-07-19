@@ -12,15 +12,10 @@
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition:
-        opacity 0.45s ease,
-        visibility 0s 0.45s;
 }
 #overview.visible {
-    opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 0.3s ease;
 }
 
 #overview-grid {

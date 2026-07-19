@@ -553,13 +553,10 @@ kbd {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.45s ease, visibility 0s 0.45s;
 }
 #overview.visible {
-  opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.3s ease;
 }
 #overview-grid {
   display: grid;
@@ -608,6 +605,7 @@ kbd {
 
 /* src/css/presenter/pv.css */
 #pv {
+  position: relative;
   width: 0;
   overflow: hidden;
   flex-shrink: 0;
@@ -619,8 +617,23 @@ kbd {
   border-left: 1px solid var(--overlay);
 }
 body.pv-open #pv {
-  width: 30%;
+  width: var(--pv-width, 30%);
+  min-width: 260px;
+  max-width: 60vw;
   padding: 0.75rem;
+}
+#pv-resize-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1;
+}
+body.pv-open #pv-resize-handle {
+  display: block;
 }
 #pv-strip {
   flex-shrink: 0;
@@ -697,6 +710,8 @@ body.pv-open #pv {
   overflow-y: auto;
   min-height: 0;
   line-height: 1.5;
+  user-select: text;
+  cursor: text;
 }
 #pv-notes:empty::before {
   content: "No notes";

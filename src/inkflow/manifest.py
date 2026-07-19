@@ -313,7 +313,8 @@ class Deck:
     - ``style`` / ``extra_style`` — *additive*: ``Deck.style`` is emitted first,
       then ``Slide.extra_style``; the slide CSS wins on equal-specificity rules via
       cascade order.
-    - ``theme``, ``mode``, ``embed_fonts`` — deck-only; no per-slide override.
+    - ``theme``, ``mode``, ``embed_fonts``, ``title`` — deck-only; no per-slide
+      override.
 
     ```python
     def main() -> Deck:
@@ -341,3 +342,6 @@ class Deck:
     """Base font size for zone content, in px."""
     embed_fonts: bool = True
     """Auto-discover and embed the fonts used in slides. Set ``False`` to opt out."""
+    title: str | None = None
+    """Presentation title, used for the browser tab, static build page, and PDF
+    metadata. ``None`` infers a title from the project directory name."""

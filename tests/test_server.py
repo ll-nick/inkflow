@@ -22,6 +22,7 @@ _EMPTY_STATE: State = {
     "mode": ColorMode.DARK,
     "position": {"slideIndex": 0, "step": 0},
     "logs": [],
+    "title": "Inkflow",
 }
 
 

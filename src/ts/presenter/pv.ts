@@ -4,6 +4,7 @@ import { maxStep } from "./status";
 
 // ── DOM refs ──
 const pvPanel = document.getElementById("pv")!;
+const pvResizeHandle = document.getElementById("pv-resize-handle")!;
 const pvClock = document.getElementById("pv-clock")!;
 const pvElapsed = document.getElementById("pv-elapsed")!;
 const pvSlideInfo = document.getElementById("pv-slide-info")!;
@@ -102,3 +103,34 @@ export function togglePv(): void {
 }
 
 window.addEventListener("resize", _scalePvNext);
+
+// ── Resize handle ──
+// The panel is anchored to the right edge, so its width is just the distance
+// from the pointer to the viewport's right edge. This feeds the --pv-width
+// custom property that the open state reads (pv.css); min/max-width there clamp
+// it, so a raw value is fine, and it persists across open/close since only the
+// open rule consumes it. The open/close CSS transition on `width` would ease
+// every intermediate width during a drag, lagging the pointer — so it's
+// disabled for the drag's duration and restored on release.
+function _onPvResizeMove(e: PointerEvent): void {
+    pvPanel.style.setProperty(
+        "--pv-width",
+        `${window.innerWidth - e.clientX}px`,
+    );
+    _scalePvNext();
+}
+
+function _onPvResizeUp(e: PointerEvent): void {
+    pvResizeHandle.releasePointerCapture(e.pointerId);
+    pvResizeHandle.removeEventListener("pointermove", _onPvResizeMove);
+    pvResizeHandle.removeEventListener("pointerup", _onPvResizeUp);
+    pvPanel.style.transition = "";
+}
+
+pvResizeHandle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    pvPanel.style.transition = "none";
+    pvResizeHandle.setPointerCapture(e.pointerId);
+    pvResizeHandle.addEventListener("pointermove", _onPvResizeMove);
+    pvResizeHandle.addEventListener("pointerup", _onPvResizeUp);
+});
