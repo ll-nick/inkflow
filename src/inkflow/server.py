@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import errno
+import functools
 import importlib.resources
 import importlib.util
 import json
@@ -267,6 +269,15 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
 _StreamHandler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]
 
 
+@functools.cache
+def favicon_data_uri() -> str:
+    """Base64 data URI for the built-in adaptive favicon, computed once."""
+    pkg = importlib.resources.files("inkflow")
+    svg_bytes = pkg.joinpath("theme", "icon.svg").read_bytes()
+    b64 = base64.b64encode(svg_bytes).decode()
+    return f"data:image/svg+xml;base64,{b64}"
+
+
 def build_html(state: State, ws_port: int | None) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
@@ -285,6 +296,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("__WS_PORT__", ws_port_js)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
         .replace("__LOGS_JSON__", json.dumps(state["logs"]))
+        .replace("__FAVICON__", favicon_data_uri())
         .replace("__TITLE__", escape_html(state["title"]))
     )
     return html.encode("utf-8")
