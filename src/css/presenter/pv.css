@@ -1,6 +1,7 @@
 /* ── Presenter panel ── */
 
 #pv {
+    position: relative;
     width: 0;
     overflow: hidden;
     flex-shrink: 0;
@@ -13,8 +14,31 @@
 }
 
 body.pv-open #pv {
-    width: 30%;
+    /* --pv-width is set by the resize drag (pv.ts); unset it falls back to 30%.
+       Because only the open state reads it, a closed panel still collapses to
+       the base `width: 0` and the drag width survives across open/close. The
+       min/max here own the clamping, so the drag can set a raw value. */
+    width: var(--pv-width, 30%);
+    min-width: 260px;
+    max-width: 60vw;
     padding: 0.75rem;
+}
+
+/* Straddles the stage/panel boundary — the intuitive place to grab, unlike a
+   native `resize` handle, which only ever grips a small corner. */
+#pv-resize-handle {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+    z-index: 1;
+}
+
+body.pv-open #pv-resize-handle {
+    display: block;
 }
 
 /* ── Info strip: matches statusbar design ── */

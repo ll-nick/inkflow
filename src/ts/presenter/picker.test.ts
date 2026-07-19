@@ -29,6 +29,7 @@ beforeAll(async () => {
         <div id="statusbar"></div>
         <div id="mobile-hud"></div>
         <aside id="pv"></aside>
+        <div id="pv-resize-handle"></div>
         <div id="pv-clock"></div>
         <div id="pv-elapsed"></div>
         <div id="pv-slide-info"></div>
