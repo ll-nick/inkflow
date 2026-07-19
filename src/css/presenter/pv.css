@@ -107,6 +107,8 @@ body.pv-open #pv {
     overflow-y: auto;
     min-height: 0;
     line-height: 1.5;
+    user-select: text;
+    cursor: text;
 }
 
 #pv-notes:empty::before {
