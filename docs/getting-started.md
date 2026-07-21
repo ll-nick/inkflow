@@ -24,21 +24,6 @@ This page takes you from zero to a running presentation in about five minutes.
     pip install inkflow
     ```
 
-!!! note "Early release"
-    Inkflow is early-stage.
-    The package is on PyPI as a pre-release,
-    so you may need to opt in to pre-release versions explicitly:
-
-    ```bash
-    uv add inkflow --prerelease allow
-    ```
-
-    or
-
-    ```bash
-    pip install inkflow --pre
-    ```
-
 ## Run the demo
 
 The repository ships with a working demo deck:

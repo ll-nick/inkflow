@@ -10,6 +10,7 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
+      contents: write
 
     steps:
       - uses: actions/checkout@v6
@@ -31,3 +32,8 @@ jobs:
         run: uv run --with dist/*.whl --no-project -- inkflow build demo/deck.py -o /tmp/inkflow-smoke
 
       - run: uv publish
+
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes
