@@ -29,7 +29,7 @@ jobs:
       - run: uv build
 
       - name: Smoke test
-        run: uv run --with dist/*.whl --no-project -- inkflow build demo/deck.py -o /tmp/inkflow-smoke
+        run: uv run --with dist/*.whl --no-project -- inkflow build --deck demo/deck.py --output /tmp/inkflow-smoke
 
       - run: uv publish
 
