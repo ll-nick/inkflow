@@ -14,7 +14,7 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.enums import ColorMode, Trigger
+from inkflow.enums import ColorMode
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
@@ -29,6 +29,7 @@ from inkflow.manifest import (
     Transition,
     Video,
 )
+from inkflow.steps import StepResolver
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
 from inkflow.titles import humanize
@@ -145,37 +146,13 @@ def _anim_style(anim: Animation) -> str:
     return "; ".join(decls)
 
 
-class _StepResolver:
-    """Assigns concrete step numbers to an ordered cue sequence.
-
-    ``high`` is the running max, ``current`` the last-assigned step; both start at the
-    base (0, or the markdown-reveal count when the ``animations=[...]`` list is
-    concatenated after the reveals). ``ON_CLICK`` advances the max, ``WITH_PREVIOUS``
-    reuses the last step, and a ``Trigger.at(n)`` pin lands on ``n`` and lifts the
-    max. The markdown counter in ``zones.py`` mirrors this rule (it must also fold
-    in code-highlight stages).
-    """
-
-    def __init__(self, base: int = 0) -> None:
-        self.high: int = base
-        self.current: int = base
-
-    def resolve(self, trigger: Trigger) -> int:
-        pinned = trigger.explicit_step
-        if pinned is not None:
-            self.current = pinned
-            self.high = max(self.high, pinned)
-        elif trigger == Trigger.WITH_PREVIOUS:
-            pass  # share the previous cue's step
-        else:  # ON_CLICK (and any unknown value falls here)
-            self.high += 1
-            self.current = self.high
-        return self.current
-
-
 def resolve_steps(cues: list[Cue], base: int = 0) -> list[tuple[Cue, int]]:
-    """Pair each cue with its resolved step, walking the sequence in order."""
-    resolver = _StepResolver(base)
+    """Pair each cue with its resolved step, walking the sequence in order.
+
+    ``base`` is the starting step — 0, or the markdown-reveal count when this
+    list is concatenated after the reveals.
+    """
+    resolver = StepResolver(base)
     return [(cue, resolver.resolve(cue.trigger)) for cue in cues]
 
 

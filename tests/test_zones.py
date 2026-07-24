@@ -11,13 +11,13 @@ from inkflow.animations import Bounce, FadeIn, SlideIn
 from inkflow.enums import Align, Direction, Easing, MediaAlign, MediaFit, VAlign
 from inkflow.manifest import Animation, Image, Media, TextBox, ZoneContent
 from inkflow.markdown import markdown_to_html
+from inkflow.steps import StepResolver
 from inkflow.zones import (
     SlideContent,
     _auto_extract,  # pyright: ignore[reportPrivateUsage]
     _reroute_zones,  # pyright: ignore[reportPrivateUsage]
     _RevealSpec,  # pyright: ignore[reportPrivateUsage]
     _StepMarker,  # pyright: ignore[reportPrivateUsage]
-    _Stepper,  # pyright: ignore[reportPrivateUsage]
     _StepsBlock,  # pyright: ignore[reportPrivateUsage]
     chunks_to_html,
     parse_markdown_zones,
@@ -51,12 +51,13 @@ def _c2h(
     return chunks_to_html(chunks, base, itertools.count(1))
 
 
-# steps_wrap_content now takes a shared _Stepper and returns just (html, pairs);
-# this adapter keeps the old (html, final-step, pairs) shape for the call sites.
+# steps_wrap_content now takes a shared StepResolver and returns just (html,
+# pairs); this adapter keeps the old (html, final-step, pairs) shape for the
+# call sites below.
 def _swc(
     html: str, base: int = 0, spec: _RevealSpec | None = None
 ) -> tuple[str, int, list[_Reveal]]:
-    stepper = _Stepper(high=base, current=base)
+    stepper = StepResolver(base)
     inner, anims = steps_wrap_content(
         html, stepper, itertools.count(1), spec or (FadeIn, {})
     )

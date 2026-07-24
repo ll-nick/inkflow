@@ -19,6 +19,7 @@ from inkflow.markdown import (
     markdown_to_html,
     render_md_with_steps,
 )
+from inkflow.steps import StepResolver
 from inkflow.svgio import SvgElement
 
 # This module owns inkflow's own ``::zone::`` / ``::step::`` marker grammar and
@@ -245,36 +246,6 @@ def _spec_trigger(spec: _RevealSpec) -> Trigger:
     return trigger if isinstance(trigger, Trigger) else Trigger.ON_CLICK
 
 
-@dataclass
-class _Stepper:
-    """Running step counter for a markdown zone's reveals.
-
-    Mirrors ``pipeline._StepResolver`` but also folds in code-highlight stages
-    via `bump`: those consume steps inside a chunk's rendered HTML,
-    outside the trigger rule.
-    """
-
-    high: int = 0  # running max
-    current: int = 0  # last-assigned step
-
-    def advance(self, trigger: Trigger) -> int:
-        pinned = trigger.explicit_step
-        if pinned is not None:
-            self.current = pinned
-            self.high = max(self.high, pinned)
-        elif trigger == Trigger.WITH_PREVIOUS:
-            pass  # share the previous step
-        else:  # ON_CLICK
-            self.high += 1
-            self.current = self.high
-        return self.current
-
-    def bump(self, reached: int) -> None:
-        """Fold in steps consumed by a chunk's code-highlight stages."""
-        self.high = max(self.high, reached)
-        self.current = self.high
-
-
 # ── Zone parsing ──────────────────────────────────────────────────────────────
 
 
@@ -351,7 +322,7 @@ _REVEAL_ID_PREFIX = "inkflow-step-"
 
 
 def steps_wrap_content(
-    html: str, stepper: _Stepper, ids: Iterator[int], spec: _RevealSpec
+    html: str, stepper: StepResolver, ids: Iterator[int], spec: _RevealSpec
 ) -> tuple[str, list[tuple[Animation, int]]]:
     """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped reveal div.
 
@@ -370,7 +341,7 @@ def steps_wrap_content(
     anims: list[tuple[Animation, int]] = []
 
     def new_wrapper() -> SvgElement:
-        step = stepper.advance(trigger)
+        step = stepper.resolve(trigger)
         rid = f"{_REVEAL_ID_PREFIX}{next(ids)}"
         wrapper = etree.Element("div")
         wrapper.set("id", rid)
@@ -426,14 +397,14 @@ def chunks_to_html(
     chunks: Sequence[Chunk], base_step: int, ids: Iterator[int]
 ) -> tuple[str, int, list[tuple[Animation, int]]]:
     parts: list[str] = []
-    stepper = _Stepper(high=base_step, current=base_step)
+    stepper = StepResolver(base_step)
     anims: list[tuple[Animation, int]] = []
     pending: _RevealSpec | None = None  # set by a ::step:: marker, used next chunk
 
     for item in chunks:
         if isinstance(item, _StepMarker):
             pending = _resolve_reveal(item.params)
-            stepper.advance(_spec_trigger(pending))
+            stepper.resolve(_spec_trigger(pending))
             continue
 
         if isinstance(item, _StepsBlock):
