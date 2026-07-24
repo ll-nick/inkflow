@@ -251,12 +251,18 @@ _MISSING_SRC_DECK = textwrap.dedent("""\
         return Deck(slides=[Slide('slides/missing.svg')])
 """)
 
-_STEP_GAP_DECK = textwrap.dedent("""\
-    from inkflow import Deck, Slide
-    from inkflow.animations import FadeIn
+_AUTOPLAY_CONFLICT_DECK = textwrap.dedent("""\
+    from inkflow import Deck, Slide, Video, animations
     def main():
-        return Deck(slides=[Slide('slides/01.svg', animations=[
-            FadeIn('#my-rect', step=1), FadeIn('#my-rect', step=3)])])
+        return Deck(slides=[Slide('slides/01.svg',
+            zones={'media': Video('clip.mp4', autoplay=True)},
+            animations=[animations.PlayVideo('media')])])
+""")
+
+_MEDIA_ZONE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="zone-media" x="0" y="0" width="100" height="100"/>
+    </svg>
 """)
 
 
@@ -309,8 +315,12 @@ class TestVerify:
             assert result.exit_code == 1
 
     @pytest.mark.usefixtures("project")
-    def test_step_gap_warns_only_with_strict(self, runner: CliRunner) -> None:
-        Path("deck.py").write_text(_STEP_GAP_DECK, encoding="utf-8")
+    def test_warning_fails_only_with_strict(self, runner: CliRunner) -> None:
+        # An autoplaying video also targeted by a PlayVideo cue is a warning
+        # (the cue wins). Warnings pass by default and fail under --strict.
+        Path("slides/01.svg").write_text(_MEDIA_ZONE_SVG, encoding="utf-8")
+        Path("clip.mp4").write_bytes(b"")
+        Path("deck.py").write_text(_AUTOPLAY_CONFLICT_DECK, encoding="utf-8")
         lenient = runner.invoke(main, ["verify"])
         assert lenient.exit_code == 0
         strict = runner.invoke(main, ["verify", "--strict"])
