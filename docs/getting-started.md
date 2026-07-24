@@ -53,8 +53,8 @@ Here are a few shortcuts to get you started:
 `inkflow init` scaffolds a starter project instead of you writing everything by hand:
 
 !!! note
-    Inside a git repository, `inkflow init` also configures git hooks automatically —
-    see [Git integration](#git-integration).
+    For a fresh project, `inkflow init` also runs `git init` and configures git
+    hooks automatically — see [Git integration](#git-integration).
 
 ```bash
 inkflow init my-talk
@@ -97,16 +97,18 @@ Save, and the presenter updates automatically. No refresh needed.
 
 ## Git integration
 
-`inkflow init` configures git hooks automatically whenever it detects a git
-repository — if `my-talk` was inside one, this already happened. It sets up two
-things:
+For a fresh project, `inkflow init` also runs `git init`, writes a `.gitignore`,
+and configures git hooks — so `inkflow init my-talk` gives you a version-controlled
+project out of the box. The hooks set up two things:
 
 - A pre-commit hook that strips Inkscape editor metadata (viewport position, zoom,
   window size) from staged SVGs, so that noise never lands in git history.
 - A diff driver so `git diff` and GitHub show only visual changes for SVGs.
 
-Skip it during scaffolding with `inkflow init --no-git`, or run it manually at any
-time:
+If you run `inkflow init` inside an *existing* repository, it leaves that repo's
+git configuration untouched and instead points you at `inkflow setup-git`. Skip all
+git steps during scaffolding with `inkflow init --no-git`, or run the hook setup
+manually at any time:
 
 ```bash
 inkflow setup-git
