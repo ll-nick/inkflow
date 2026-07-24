@@ -90,7 +90,7 @@ and a `deck.py` that lists both.
   <kbd>Ctrl+Shift+O</kbd>) to animate it:
 
   ```python
-  Slide("title", animations=[animations.FadeIn("#my-shape", step=1)])
+  Slide("title", animations=[animations.FadeIn("my-shape")])
   ```
 
 Save, and the presenter updates automatically. No refresh needed.

@@ -32,14 +32,15 @@ from inkflow import Deck, Slide, animations
 def main() -> Deck:
     return Deck(slides=[
         Slide("title.svg", animations=[
-            animations.FadeIn("#headline", step=1),
-            animations.FadeIn("#subtitle", step=2),
+            animations.FadeIn("headline"),
+            animations.FadeIn("subtitle"),
         ]),
     ])
 ```
 
 The manifest records intent, not rendering.
-"Fade in element `#headline` at step 1" is a declaration.
+"Fade in `headline`, then `subtitle`" is a declaration — you state each cue's
+intent through its `trigger` and Inkflow infers the concrete steps.
 The pipeline handles the CSS classes and timing.
 
 !!! warning "Decks are executable code"
@@ -50,7 +51,10 @@ The pipeline handles the CSS classes and timing.
 
 A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
-Elements targeted by an animation start hidden and appear when their step is reached.
+Elements targeted by an animation start hidden and appear when their step is
+reached. Each cue declares a `Trigger` (the default `ON_CLICK` takes the next
+step, `WITH_PREVIOUS` shares the previous one), and Inkflow works out the step
+numbers from the triggers and order.
 
 ## Zones and Markdown
 

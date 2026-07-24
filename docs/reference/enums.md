@@ -5,13 +5,15 @@ All are imported from the top-level `inkflow` package:
 
 ```python
 from inkflow import (
-    Align, ColorMode, Direction, Easing, MediaAlign, MediaFit, Muted, VAlign
+    Align, ColorMode, Direction, Easing, MediaAlign, MediaFit, Muted, Trigger, VAlign
 )
 ```
 
 Most are fixed sets of choices. `Easing` also accepts custom curves, so
 alongside its named presets (`Easing.EASE_IN_OUT`) it offers
-`Easing.cubic_bezier(...)` and `Easing.raw(...)`.
+`Easing.cubic_bezier(...)` and `Easing.raw(...)`. `Trigger` follows the same
+value-object shape: presets (`Trigger.ON_CLICK`, `Trigger.WITH_PREVIOUS`) plus a
+`Trigger.at(n)` constructor to pin an absolute step.
 
 ::: inkflow.enums.Direction
     options:
@@ -20,6 +22,12 @@ alongside its named presets (`Easing.EASE_IN_OUT`) it offers
         attributes: true
 
 ::: inkflow.enums.Easing
+    options:
+      docstring_section_style: spacy
+      summary:
+        attributes: true
+
+::: inkflow.enums.Trigger
     options:
       docstring_section_style: spacy
       summary:

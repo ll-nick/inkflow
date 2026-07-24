@@ -12,7 +12,7 @@ def main() -> Deck:
         # This is how you define the transition and animations for a slide
         Slide("diagram",
               transition=transitions.Crossfade(),
-              animations=[animations.FadeIn("#box-deck", step=1)]
+              animations=[animations.FadeIn("box-deck")]
         ),
     ])
 ```
