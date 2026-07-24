@@ -1,8 +1,9 @@
 """Built-in animation types for the deck DSL.
 
 Each type is a thin subclass of ``Animation``, adding only
-its own fields. The shared params (``duration``, ``easing``, ``delay``) and the
-``element``/``step`` fields come from the base.
+its own fields. The shared params (``duration``, ``easing``, ``delay``) come from
+``Animation``, and ``element``/``trigger`` from `Cue`. This namespace also holds
+`PlayVideo`, the non-animating video cue that shares the same step timeline.
 
 How a type maps to CSS:
 
@@ -20,18 +21,39 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from inkflow.enums import Direction, Easing
-from inkflow.manifest import Animation
+from inkflow.manifest import Animation, Cue
 
 __all__ = [
     "Bounce",
     "FadeIn",
     "FadeOut",
     "Highlight",
+    "PlayVideo",
     "SlideIn",
     "SlideOut",
     "ZoomIn",
     "ZoomOut",
 ]
+
+
+@dataclass
+class PlayVideo(Cue):
+    """Start a video on a step instead of on load.
+
+    ``element`` is the *zone key* of a `Video`, e.g. ``"media"`` for
+    ``zones={"media": Video(...)}``. At its step the clip plays; stepping back
+    resets it.
+
+    ```python
+    Slide(
+        "media",
+        zones={"media": Video("demo.mp4")},
+        animations=[animations.PlayVideo("media")],
+    )
+    ```
+
+    If the video also sets ``autoplay=True``, the cue wins and autoplay is dropped.
+    """
 
 
 @dataclass

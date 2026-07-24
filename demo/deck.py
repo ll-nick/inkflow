@@ -8,6 +8,7 @@ from inkflow import (
     MediaFit,
     Slide,
     Transition,
+    Trigger,
     Video,
     animations,
     transitions,
@@ -66,23 +67,29 @@ def main() -> Deck:
                 transition=transitions.Cut(),
                 animations=[
                     animations.SlideIn(
-                        "#box-svg", step=1, direction=Direction.LEFT, distance=300
+                        "box-svg", direction=Direction.LEFT, distance=300
                     ),
-                    animations.ZoomIn("#arrow-svg", step=2, scale=0.6),
-                    animations.ZoomIn("#box-deck", step=2, scale=0.6),
+                    animations.ZoomIn("arrow-svg", scale=0.6),
+                    animations.ZoomIn("box-deck", Trigger.WITH_PREVIOUS, scale=0.6),
                     animations.SlideIn(
-                        "#box-md", step=3, direction=Direction.DOWN, distance=300
-                    ),
-                    animations.SlideIn(
-                        "#arrow-md", step=3, direction=Direction.DOWN, distance=300
+                        "box-md", direction=Direction.DOWN, distance=300
                     ),
                     animations.SlideIn(
-                        "#arrow-render", step=4, direction=Direction.RIGHT, distance=500
+                        "arrow-md",
+                        Trigger.WITH_PREVIOUS,
+                        direction=Direction.DOWN,
+                        distance=300,
                     ),
                     animations.SlideIn(
-                        "#box-browser", step=4, direction=Direction.RIGHT, distance=500
+                        "arrow-render", direction=Direction.RIGHT, distance=500
                     ),
-                    animations.FadeIn("#inherit", step=5),
+                    animations.SlideIn(
+                        "box-browser",
+                        Trigger.WITH_PREVIOUS,
+                        direction=Direction.RIGHT,
+                        distance=500,
+                    ),
+                    animations.FadeIn("inherit"),
                 ],
                 notes="notes/how-it-works.md",
             ),
@@ -107,14 +114,12 @@ def main() -> Deck:
                 zones={"title": "# Animations"},
                 transition=transitions.Crossfade(),
                 animations=[
-                    animations.FadeIn("#shape-fade", step=1),
-                    animations.SlideIn(
-                        "#shape-slide", step=2, direction=Direction.DOWN
-                    ),
-                    animations.ZoomIn("#shape-zoom", step=3, scale=0.4),
-                    animations.Bounce("#shape-bounce", step=4),
-                    animations.Highlight("#shape-highlight", step=5),
-                    Flicker("#shape-flicker", step=6, delay=0.1),
+                    animations.FadeIn("shape-fade"),
+                    animations.SlideIn("shape-slide", direction=Direction.DOWN),
+                    animations.ZoomIn("shape-zoom", scale=0.4),
+                    animations.Bounce("shape-bounce"),
+                    animations.Highlight("shape-highlight"),
+                    Flicker("shape-flicker", delay=0.1),
                 ],
                 notes="notes/animations.md",
             ),
@@ -139,12 +144,14 @@ def main() -> Deck:
                     "video": Video(
                         "assets/logo.mp4",
                         fit=MediaFit.COVER,
-                        play_on_step=1,
                         loop=True,
                     ),
                 },
                 transition=transitions.Crossfade(),
-                animations=[animations.FadeIn("#video-section", step=1)],
+                animations=[
+                    animations.PlayVideo("video"),
+                    animations.FadeIn("video-section", Trigger.WITH_PREVIOUS),
+                ],
                 notes="notes/media.md",
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.

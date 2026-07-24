@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import textwrap
 from pathlib import Path
 
@@ -12,17 +13,19 @@ from inkflow.animations import (
     FadeIn,
     FadeOut,
     Highlight,
+    PlayVideo,
     SlideIn,
     ZoomIn,
 )
-from inkflow.enums import Direction
+from inkflow.enums import Direction, Trigger
 from inkflow.logging import collect_logs
 from inkflow.manifest import (
-    Animation,
+    Cue,
     Deck,
     Image,
     Inline,
     Slide,
+    Video,
 )
 from inkflow.pipeline import _add_layout_classes as _add_layout_classes_el
 from inkflow.pipeline import (
@@ -30,6 +33,7 @@ from inkflow.pipeline import (
     _infer_slide_id,
     process_deck,
     resolve_slide_src,
+    resolve_steps,
     resolve_transitions,
 )
 from inkflow.pipeline import annotate_svg as _annotate_svg_el
@@ -39,8 +43,9 @@ from inkflow.transitions import Crossfade, Cut, Morph
 
 # String adapters: these pipeline DOM functions now take and return an element
 # (parse once). These same-named wrappers keep the string call sites below.
-def annotate_svg(svg: str, anims: list[Animation]) -> str:
-    return serialize_svg(_annotate_svg_el(parse_svg(svg), anims))
+# annotate_svg takes (cue, resolved-step) pairs, matching the real signature.
+def annotate_svg(svg: str, cues: list[tuple[Cue, int]]) -> str:
+    return serialize_svg(_annotate_svg_el(parse_svg(svg), cues))
 
 
 def _add_layout_classes(svg: str, chain: list[Path], src: Path) -> str:
@@ -85,35 +90,33 @@ class TestResolveSlideSource:
 
 class TestAnnotateSvg:
     def test_fade_adds_class_and_step(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [FadeIn("#box", step=1)])
+        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1)])
         assert 'class="anim-fade-in"' in result
         assert 'data-step="1"' in result
 
     def test_fade_out_adds_class(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [FadeOut("#box", step=2)])
+        result = annotate_svg(_PLAIN_SVG, [(FadeOut("box"), 2)])
         assert 'class="anim-fade-out"' in result
         assert 'data-step="2"' in result
 
     def test_bounce_adds_class(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [Bounce("#dot", step=3)])
+        result = annotate_svg(_PLAIN_SVG, [(Bounce("dot"), 3)])
         assert 'class="anim-bounce"' in result
         assert 'data-step="3"' in result
 
     def test_preserves_existing_class(self) -> None:
         svg = _PLAIN_SVG.replace('<rect id="box"', '<rect id="box" class="my-class"')
-        result = annotate_svg(svg, [FadeIn("#box", step=1)])
+        result = annotate_svg(svg, [(FadeIn("box"), 1)])
         assert 'class="my-class anim-fade-in"' in result
 
     def test_missing_element_warns_and_continues(self) -> None:
         with collect_logs(logging.WARNING) as warnings:
-            result = annotate_svg(_PLAIN_SVG, [FadeIn("#nonexistent", step=1)])
+            result = annotate_svg(_PLAIN_SVG, [(FadeIn("nonexistent"), 1)])
         assert any("nonexistent" in w.message for w in warnings)
         assert 'id="box"' in result  # rest of SVG intact
 
     def test_multiple_animations_applied(self) -> None:
-        result = annotate_svg(
-            _PLAIN_SVG, [FadeIn("#box", step=1), Bounce("#dot", step=2)]
-        )
+        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1), (Bounce("dot"), 2)])
         assert "anim-fade-in" in result
         assert "anim-bounce" in result
 
@@ -123,44 +126,96 @@ class TestAnnotateSvg:
         assert 'id="box"' in result
 
     def test_class_derived_from_type_name(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [ZoomIn("#box")])
+        result = annotate_svg(_PLAIN_SVG, [(ZoomIn("box"), 1)])
         assert "anim-zoom-in" in result
 
     def test_direction_becomes_modifier_class_not_prop(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [SlideIn("#box", direction=Direction.RIGHT)])
+        result = annotate_svg(
+            _PLAIN_SVG, [(SlideIn("box", direction=Direction.RIGHT), 1)]
+        )
         assert "anim-slide-in" in result
         assert "anim-from-right" in result
         assert "--anim-direction" not in result
 
+    def test_trigger_not_emitted_as_custom_prop(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box", Trigger.WITH_PREVIOUS), 2)])
+        assert "--anim-trigger" not in result
+        assert 'data-step="2"' in result
+
     def test_params_emit_custom_props(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [FadeIn("#box", duration=0.8, delay=0.2)])
+        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box", duration=0.8, delay=0.2), 1)])
         assert "--anim-duration: 0.8s" in result
         assert "--anim-delay: 0.2s" in result
 
     def test_default_params_emit_python_defaults(self) -> None:
         # Defaults live in Python and are always emitted (no CSS fallback).
-        result = annotate_svg(_PLAIN_SVG, [FadeIn("#box")])
+        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1)])
         assert "--anim-duration: 0.4s" in result
         assert "--anim-easing: ease" in result
         assert "--anim-delay: 0.0s" in result
 
     def test_distance_uses_px_unit(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [SlideIn("#box", distance=120)])
+        result = annotate_svg(_PLAIN_SVG, [(SlideIn("box", distance=120), 1)])
         assert "--anim-distance: 120px" in result
 
     def test_scale_and_color_emitted_raw(self) -> None:
         result = annotate_svg(
             _PLAIN_SVG,
-            [Highlight("#box", color="#ff0000", passes=3)],
+            [(Highlight("box", color="#ff0000", passes=3), 1)],
         )
         assert "--anim-color: #ff0000" in result
         assert "--anim-passes: 3" in result
 
     def test_preserves_existing_style(self) -> None:
         svg = _PLAIN_SVG.replace('<rect id="box"', '<rect id="box" style="fill:red"')
-        result = annotate_svg(svg, [FadeIn("#box", duration=0.8)])
+        result = annotate_svg(svg, [(FadeIn("box", duration=0.8), 1)])
         assert "fill:red" in result
         assert "--anim-duration: 0.8s" in result
+
+
+class TestResolveSteps:
+    def test_on_click_advances(self) -> None:
+        pairs = resolve_steps([FadeIn("a"), FadeIn("b"), FadeIn("c")])
+        assert [s for _, s in pairs] == [1, 2, 3]
+
+    def test_with_previous_shares_step(self) -> None:
+        pairs = resolve_steps(
+            [FadeIn("a"), FadeIn("b", Trigger.WITH_PREVIOUS), FadeIn("c")]
+        )
+        assert [s for _, s in pairs] == [1, 1, 2]
+
+    def test_first_with_previous_is_slide_entry(self) -> None:
+        pairs = resolve_steps([FadeIn("a", Trigger.WITH_PREVIOUS), FadeIn("b")])
+        assert [s for _, s in pairs] == [0, 1]
+
+    def test_at_pins_and_lifts_max(self) -> None:
+        pairs = resolve_steps([FadeIn("a"), FadeIn("b", Trigger.at(5)), FadeIn("c")])
+        assert [s for _, s in pairs] == [1, 5, 6]
+
+    def test_base_offsets_the_sequence(self) -> None:
+        # The deck list concatenates after markdown reveals (base = reveal count).
+        pairs = resolve_steps([FadeIn("a"), FadeIn("b", Trigger.WITH_PREVIOUS)], base=3)
+        assert [s for _, s in pairs] == [4, 4]
+
+
+_VIDEO_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+      <foreignObject id="zone-media">
+        <video xmlns="http://www.w3.org/1999/xhtml" src="clip.mp4"></video>
+      </foreignObject>
+    </svg>
+""")
+
+
+class TestAnnotatePlayVideo:
+    def test_sets_play_on_step_on_video(self) -> None:
+        result = annotate_svg(_VIDEO_SVG, [(PlayVideo("media"), 2)])
+        assert 'data-play-on-step="2"' in result
+
+    def test_missing_video_warns(self) -> None:
+        with collect_logs(logging.WARNING) as warnings:
+            annotate_svg(_PLAIN_SVG, [(PlayVideo("media"), 1)])
+        assert any("PlayVideo" in w.message for w in warnings)
 
 
 class TestResolveTransitions:
@@ -284,11 +339,7 @@ class TestLayoutBackedSlideExpansion:
         _, slides_dir = self._setup(tmp_path)
         (slides_dir / "content.md").write_text("", encoding="utf-8")
         deck = Deck(
-            slides=[
-                Slide(
-                    "layout", md="content", animations=[FadeIn("#zone-title", step=1)]
-                )
-            ]
+            slides=[Slide("layout", md="content", animations=[FadeIn("zone-title")])]
         )
         results = process_deck(deck, tmp_path)
         assert "anim-fade-in" in results[0]["svg"]
@@ -298,6 +349,37 @@ class TestLayoutBackedSlideExpansion:
         deck = Deck(slides=[Slide("layout", zones={"content": Image("photo.jpg")})])
         results = process_deck(deck, tmp_path)
         assert "photo.jpg" in results[0]["svg"]
+
+    def test_deck_animations_concatenate_after_reveals(self, tmp_path: Path) -> None:
+        # A markdown reveal takes step 1, then the deck animation continues at 2.
+        _, slides_dir = self._setup(tmp_path)
+        (slides_dir / "content.md").write_text(
+            "::content::\n::step::\nReveal.\n", encoding="utf-8"
+        )
+        deck = Deck(
+            slides=[Slide("layout", md="content", animations=[FadeIn("zone-title")])]
+        )
+        svg = process_deck(deck, tmp_path)[0]["svg"]
+        assert re.search(r'id="inkflow-step-\d+"[^>]*data-step="1"', svg)
+        assert re.search(r'id="zone-title"[^>]*data-step="2"', svg)
+
+    def test_autoplay_overridden_by_play_video_cue(self, tmp_path: Path) -> None:
+        self._setup(tmp_path)
+        deck = Deck(
+            slides=[
+                Slide(
+                    "layout",
+                    zones={"content": Video("clip.mp4", autoplay=True)},
+                    animations=[PlayVideo("content")],
+                )
+            ]
+        )
+        with collect_logs(logging.WARNING) as warnings:
+            svg = process_deck(deck, tmp_path)[0]["svg"]
+        assert any("autoplay overridden" in w.message for w in warnings)
+        assert "data-autoplay" not in svg  # the cue wins, autoplay stripped
+        assert not re.search(r"<video[^>]*\bmuted\b", svg)  # Muted.AUTO -> audible
+        assert 'data-play-on-step="1"' in svg
 
     def test_zones_inline_markdown_injected(self, tmp_path: Path) -> None:
         self._setup(tmp_path)

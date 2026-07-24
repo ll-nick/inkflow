@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from inkflow.animations import PlayVideo
 from inkflow.clean import clean_inkscape_tree
 from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
 from inkflow.loaders import load_md, resolve_content_src
-from inkflow.manifest import Inline, Media, Slide, Video
+from inkflow.manifest import Animation, Inline, Media, Slide, Video
 from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import compose_with_ancestors
 from inkflow.zones import build_slide_content, parse_markdown_zones
@@ -92,16 +93,22 @@ def _check_zones(slide: Slide, project_dir: Path, zone_ids: set[str]) -> list[Is
 
 def _check_animations(slide: Slide, all_ids: set[str]) -> list[Issue]:
     issues: list[Issue] = []
-    for anim in slide.animations:
-        eid = anim.element.lstrip("#")
-        if eid not in all_ids:
-            issues.append(("error", f"animation element #{eid} not found in SVG"))
-    if slide.animations:
-        steps = sorted({a.step for a in slide.animations})
-        expected = list(range(1, len(steps) + 1))
-        if steps != expected:
+    for cue in slide.animations:
+        if isinstance(cue, PlayVideo):
+            zone_id = f"zone-{cue.element}"
+            if zone_id not in all_ids:
+                issues.append(
+                    ("error", f"PlayVideo target #{zone_id} not found in SVG")
+                )
+            target = slide.zones.get(cue.element)
+            if isinstance(target, Video) and target.autoplay:
+                msg = (
+                    f"video in zone {cue.element}: autoplay overridden by PlayVideo cue"
+                )
+                issues.append(("warn", msg))
+        elif isinstance(cue, Animation) and cue.element not in all_ids:
             issues.append(
-                ("warn", f"animation step gap: {steps} (expected {expected})")
+                ("error", f"animation element #{cue.element} not found in SVG")
             )
     return issues
 

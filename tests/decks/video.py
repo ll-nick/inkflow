@@ -76,23 +76,25 @@ def main() -> Deck:
                     y=-120,
                 ),
             ),
-            # play_on_step: idle on arrival, plays (with sound, AUTO) at step 1,
+            # PlayVideo cue: idle on arrival, plays (with sound, AUTO) at step 1,
             # resets to the start when you step back to 0.
             _slide(
-                "play_on_step=1 (audible)",
-                Video("assets/logo.mp4", play_on_step=1),
+                "PlayVideo cue on step 1 (audible)",
+                Video("assets/logo.mp4"),
+                animations=[animations.PlayVideo("media")],
             ),
-            # Video plays at step 1, then the slide keeps going: steps 2 and 3
-            # reveal more content while the clip keeps looping.
+            # The PlayVideo cue joins the timeline: it plays at step 1, then the
+            # slide keeps going — steps 2 and 3 reveal more content while it loops.
             Slide(
                 "slides/media-steps.svg",
                 zones={
-                    "caption": "## play_on_step=1, then more steps",
-                    "media": Video("assets/logo.mp4", play_on_step=1, loop=True),
+                    "caption": "## PlayVideo on step 1, then more steps",
+                    "media": Video("assets/logo.mp4", loop=True),
                 },
                 animations=[
-                    animations.FadeIn("#step-note-2", step=2),
-                    animations.FadeIn("#step-note-3", step=3),
+                    animations.PlayVideo("media"),
+                    animations.FadeIn("step-note-2"),
+                    animations.FadeIn("step-note-3"),
                 ],
             ),
             # Poster: the still shows on arrival; the clip plays only on press

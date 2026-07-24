@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypedDict, cast
 
 from inkflow import ns
+from inkflow.animations import PlayVideo
 from inkflow.clean import clean_inkscape_tree
 from inkflow.content import (
     inject_style,
@@ -19,13 +20,16 @@ from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
 from inkflow.manifest import (
     Animation,
+    Cue,
     Deck,
     Inline,
     Media,
     Slide,
     TextBox,
     Transition,
+    Video,
 )
+from inkflow.steps import StepResolver
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
 from inkflow.titles import humanize
@@ -131,35 +135,62 @@ def _anim_classes(anim: Animation) -> list[str]:
 def _anim_style(anim: Animation) -> str:
     """Inline `--anim-<field>` custom properties for an animation's set params.
 
-    Generic over fields: anything beyond `element`/`step`/modifier fields that is
-    not `None` becomes a custom property. `None` means "let the CSS default win".
+    Generic over fields: anything beyond `element`/`trigger`/modifier fields that
+    is not `None` becomes a custom property. `None` means "let the CSS default win".
     """
     decls: list[str] = []
     for name, value in _set_fields(anim).items():
-        if name in ("element", "step") or name in _ANIM_MODIFIER_FIELDS:
+        if name in ("element", "trigger") or name in _ANIM_MODIFIER_FIELDS:
             continue
         decls.append(f"--anim-{name}: {value}{_ANIM_UNIT.get(name, '')}")
     return "; ".join(decls)
 
 
-def annotate_svg(root: SvgElement, animations: list[Animation]) -> SvgElement:
-    for anim in animations:
-        eid = anim.element.lstrip("#")
-        el = root.find(f'.//*[@id="{eid}"]')
-        if el is None:
-            logger.warning(f"element #{eid} not found in SVG")
-            continue
+def resolve_steps(cues: list[Cue], base: int = 0) -> list[tuple[Cue, int]]:
+    """Pair each cue with its resolved step, walking the sequence in order.
 
-        existing_class = el.get("class", "")
-        classes = [c for c in [existing_class, *_anim_classes(anim)] if c]
-        el.set("class", " ".join(classes))
-        el.set("data-step", str(anim.step))
+    ``base`` is the starting step — 0, or the markdown-reveal count when this
+    list is concatenated after the reveals.
+    """
+    resolver = StepResolver(base)
+    return [(cue, resolver.resolve(cue.trigger)) for cue in cues]
 
-        style = _anim_style(anim)
-        if style:
-            existing_style = el.get("style", "").strip().rstrip(";")
-            el.set("style", f"{existing_style}; {style}" if existing_style else style)
 
+def _annotate_animation(root: SvgElement, anim: Animation, step: int) -> None:
+    el = root.find(f'.//*[@id="{anim.element}"]')
+    if el is None:
+        logger.warning(f"element #{anim.element} not found in SVG")
+        return
+
+    existing_class = el.get("class", "")
+    classes = [c for c in [existing_class, *_anim_classes(anim)] if c]
+    el.set("class", " ".join(classes))
+    el.set("data-step", str(step))
+
+    style = _anim_style(anim)
+    if style:
+        existing_style = el.get("style", "").strip().rstrip(";")
+        el.set("style", f"{existing_style}; {style}" if existing_style else style)
+
+
+def _annotate_play_video(root: SvgElement, cue: PlayVideo, step: int) -> None:
+    zone_id = f"zone-{cue.element}"
+    zone = root.find(f'.//*[@id="{zone_id}"]')
+    video = zone.find(f".//{{{ns.XHTML}}}video") if zone is not None else None
+    if video is None:
+        logger.warning(f"PlayVideo target #{zone_id} has no video in SVG")
+        return
+    video.set("data-play-on-step", str(step))
+
+
+def annotate_svg(root: SvgElement, cues: list[tuple[Cue, int]]) -> SvgElement:
+    for cue, step in cues:
+        if isinstance(cue, PlayVideo):
+            _annotate_play_video(root, cue, step)
+        elif isinstance(cue, Animation):
+            _annotate_animation(root, cue, step)
+        else:
+            logger.warning(f"cue with no annotation handler: {type(cue).__name__}")
     return root
 
 
@@ -248,8 +279,8 @@ class SlideSvg:
     ) -> None:
         self.root = substitute_content(self.root, content, font_size, dark_mode)
 
-    def annotate(self, animations: list[Animation]) -> None:
-        self.root = annotate_svg(self.root, animations)
+    def annotate(self, cues: list[tuple[Cue, int]]) -> None:
+        self.root = annotate_svg(self.root, cues)
 
     def add_style(self, css: str) -> None:
         self.root = inject_style(self.root, css)
@@ -276,6 +307,29 @@ class DeckContext:
     total_slides: int
 
 
+def _resolve_autoplay_conflicts(
+    content: dict[str, TextBox | Media], cues: list[Cue]
+) -> dict[str, TextBox | Media]:
+    """Drop ``autoplay`` from a video that a ``PlayVideo`` cue also targets.
+
+    Autoplay and a step cue are contradictory playback triggers; the cue wins.
+    Suppressing autoplay here (before injection) rather than stripping the DOM
+    attribute later also makes ``Muted.AUTO`` resolve to *unmuted*, so the
+    gesture-triggered clip is audible.
+    """
+    play_targets = {f"zone-{c.element}" for c in cues if isinstance(c, PlayVideo)}
+    if not play_targets:
+        return content
+    result = dict(content)
+    for zone_id in play_targets:
+        item = result.get(zone_id)
+        if isinstance(item, Video) and item.autoplay:
+            key = zone_id.removeprefix("zone-")
+            logger.warning(f"video in zone {key}: autoplay overridden by PlayVideo cue")
+            result[zone_id] = replace(item, autoplay=False)
+    return result
+
+
 def process_slide(
     slide: Slide,
     ctx: DeckContext,
@@ -292,7 +346,8 @@ def process_slide(
     doc.number_slides(slide_number, ctx.total_slides)
 
     md_notes = ""
-    reveal_animations: list[Animation] = []
+    reveal_pairs: list[tuple[Cue, int]] = []
+    reveal_max = 0
     if parsed is not None or slide.zones:
         zone_ids = doc.zone_ids()
         default_zone = resolve_default_zone(doc.root, zone_ids)
@@ -303,16 +358,21 @@ def process_slide(
             default_zone=default_zone,
         )
         md_notes = result.notes
-        reveal_animations = result.animations
+        reveal_pairs = [(anim, step) for anim, step in result.animations]
+        reveal_max = result.max_step
         if result.content:
             font_size = (
                 slide.font_size if slide.font_size is not None else ctx.font_size
             )
-            doc.inject_content(result.content, font_size, ctx.mode == ColorMode.DARK)
+            content = _resolve_autoplay_conflicts(result.content, slide.animations)
+            doc.inject_content(content, font_size, ctx.mode == ColorMode.DARK)
 
-    animations = slide.animations + reveal_animations
-    if animations:
-        doc.annotate(animations)
+    # The deck animations=[...] list continues the timeline after the markdown
+    # reveals (steps 1..reveal_max), so the two form one continuous count.
+    deck_pairs = resolve_steps(slide.animations, base=reveal_max)
+    cue_pairs = reveal_pairs + deck_pairs
+    if cue_pairs:
+        doc.annotate(cue_pairs)
 
     slide_style_css = load_style(slide.extra_style, ctx.project_dir)
     combined_css = "\n".join(filter(None, [ctx.deck_style, slide_style_css]))

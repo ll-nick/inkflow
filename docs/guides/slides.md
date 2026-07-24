@@ -46,17 +46,21 @@ The SVG is a standard vector file.
 ## Animations
 
 Animations reveal (or hide) elements on successive keypresses.
-Each animation targets a single element by CSS selector (the `#id` form):
+Each animation targets a single element by its `id` (no leading `#`):
 
 ```python
 from inkflow import Slide, animations
 
 Slide("title", animations=[
-    animations.FadeIn("#headline", step=1),
-    animations.FadeIn("#subtitle", step=2),
-    animations.FadeIn("#byline", step=3),
+    animations.FadeIn("headline"),
+    animations.FadeIn("subtitle"),
+    animations.FadeIn("byline"),
 ])
 ```
+
+Each cue's `trigger` says *when* it fires, and inkflow works out the concrete
+steps from the triggers and the order of the list. The default trigger is
+`ON_CLICK`, so the three fades above take steps 1, 2, 3 — one per keypress.
 
 Elements with no animation declaration start **visible**.
 Elements targeted by an entrance animation (`FadeIn`, `Bounce`, `SlideIn`, `ZoomIn`) start
@@ -65,8 +69,8 @@ Elements targeted by an entrance animation (`FadeIn`, `Bounce`, `SlideIn`, `Zoom
 ### Animation types
 
 Every type accepts `duration`, `easing`, and `delay` (keyword-only); some add their own
-parameters. See the [animations reference](../reference/animations.md) for the full
-table.
+parameters. `element` and `trigger` are the two shared positional slots. See the
+[animations reference](../reference/animations.md) for the full table.
 
 | Class | Effect | Starting state |
 |---|---|---|
@@ -78,26 +82,36 @@ table.
 | `Highlight` | Pulse a glow (`color`, `passes`), without hiding | Visible |
 
 ```python
-animations.SlideIn("#box", step=1, direction="left", duration=0.6)
-animations.ZoomIn("#logo", step=2, scale=0.6)
-animations.Highlight("#total", step=3, color="#cba6f7", passes=2)
+animations.SlideIn("box", direction="left", duration=0.6)
+animations.ZoomIn("logo", scale=0.6)
+animations.Highlight("total", color="#cba6f7", passes=2)
 ```
 
-### The step model
+### Triggers — the step model
 
-Steps are integers starting at 1.
-Multiple elements can share the same step and animate simultaneously:
+Each cue carries a `Trigger` that decides its step:
+
+| Trigger | Meaning |
+|---|---|
+| `Trigger.ON_CLICK` (default) | Takes the next step — needs a keypress |
+| `Trigger.WITH_PREVIOUS` | Shares the previous cue's step, firing together |
+| `Trigger.at(n)` | Pins the cue to an absolute step `n` |
+
+`trigger` is the second positional argument (after `element`):
 
 ```python
+from inkflow import Trigger
+
 animations=[
-    animations.FadeIn("#left-panel", step=1),
-    animations.FadeIn("#right-panel", step=1),  # same step → animate together
-    animations.FadeIn("#caption", step=2),
+    animations.FadeIn("left-panel"),                      # step 1
+    animations.FadeIn("right-panel", Trigger.WITH_PREVIOUS),  # step 1, together
+    animations.FadeIn("caption"),                         # step 2
 ]
 ```
 
-Step 0 (or omitting `step`) means the element is visible from the start
-and participates in no animation.
+A first-in-order `WITH_PREVIOUS` falls to the slide-entry step, so the element is
+visible from the start. `Trigger.at(n)` is the escape hatch for aligning cues on
+the shared step axis (see [combining reveals and animations](#combining-markdown-reveals-with-animations)).
 
 ## Transitions
 
@@ -339,6 +353,23 @@ number and `direction=right` becomes the [`Direction`](../reference/enums.md)
 value. Values cannot contain spaces, so an `easing=ease-in-out` preset works in a
 marker but a `cubic-bezier(...)` curve is a `deck.py`-only thing.
 
+#### Controlling the step with `trigger=`
+
+A reveal defaults to `ON_CLICK` (one keypress per reveal). Set `trigger=` to
+change that — `with-previous` fires a reveal together with the one before it, and
+a number pins it to an absolute step:
+
+```markdown
+::step::
+First point.
+
+::step trigger=with-previous::
+Appears together with the first point.
+
+::step trigger=3::
+Pinned to step 3.
+```
+
 ### Code blocks
 
 All fenced code blocks are syntax-highlighted automatically using Pygments.
@@ -476,18 +507,33 @@ Slide(
 
 See the [manifest reference](../reference/manifest.md#inkflow.manifest.Video) for
 the full list of playback parameters (`controls`, `autoplay`, `muted`, `loop`,
-`poster`, `start`/`end`, `play_on_step`).
+`poster`, `start`/`end`).
+
+**Play on a step.** To start a clip on a step rather than on load, add an
+`animations.PlayVideo` cue targeting the video's zone key to the slide's
+`animations=[...]`. It joins the step timeline like any other cue:
+
+```python
+from inkflow import Slide, Trigger, Video, animations
+
+Slide(
+    "media-right",
+    zones={"media": Video("assets/demo.mp4")},
+    animations=[animations.PlayVideo("media")],  # plays on the next click
+)
+```
+
+Leaving a slide pauses and rewinds its video, and stepping back below the cue's
+step resets it to the start. A video that both `autoplay`s and is targeted by a
+`PlayVideo` cue is contradictory — the cue wins (autoplay is dropped, with a
+warning), so the clip waits for its step and plays audibly on the gesture.
 
 **Muting and autoplay.** Browsers block autoplaying video with sound unless the
 user has interacted with the page. `Muted.AUTO` (the default) sidesteps that by
 muting a clip **only** when it autoplays, so autoplay always works and everything
-else (controls, `play_on_step`) keeps its sound. `Muted.ON` always mutes;
+else (controls, a `PlayVideo` cue) keeps its sound. `Muted.ON` always mutes;
 `Muted.OFF` never mutes — with `autoplay=True` that clip may be blocked on a cold
 load, which you accept by opting in explicitly.
-
-Playback is driven by the presenter, so a `play_on_step` clip ties into the
-slide's step sequence like any other stepped element, and leaving a slide pauses
-and rewinds its video.
 
 !!! note "Zones only"
     Playback control applies to `Video` passed through the `zones` dict. A video
@@ -528,31 +574,31 @@ Slide("local:my-layout", md="custom")
 See [Layout system](layout-system.md#path-resolution) for the full resolution rules
 and how to build your own layouts.
 
-## Mixing animations and Markdown steps
+## Combining Markdown reveals with animations
 
-The step counter is shared across the whole slide.
-`::step::` markers and `::steps::` blocks in Markdown continue from wherever SVG animations left off.
+When a slide has both Markdown reveals and a deck `animations=[...]` list, they
+form **one continuous timeline**: the Markdown reveals number first (in reading
+order), then the `animations=[...]` list continues from there.
+
+So with two reveals and two animations, the reveals take steps 1–2 and the
+animations take steps 3–4:
 
 ```python
-from inkflow import animations, Deck, Slide
+from inkflow import animations, Slide, Trigger
 
 Slide(
-    "default",
-    md="mixed",
+    "mixed",
+    md="bullets",   # two ::steps:: bullets → steps 1, 2
     animations=[
-        animations.FadeIn("#extra-element", step=1),
+        animations.FadeIn("badge-a"),                 # step 3
+        animations.FadeIn("badge-b", Trigger.at(5)),  # pinned to step 5
     ],
 )
 ```
 
-```markdown
-Visible from the start.
-
-::steps::
-
-- Revealed at step 2 (step 1 was the SVG animation above).
-- Revealed at step 3.
-```
+`Trigger.WITH_PREVIOUS` works across the boundary too — a first-in-list animation
+with it fires together with the last bullet. To place an animation at a specific
+reveal's step, pin it with `Trigger.at(n)`.
 
 ## Per-slide styling
 
@@ -586,7 +632,7 @@ inkflow export --size 2560x1440
 
 ## Tips
 
-- Keep element IDs short and semantic: `#title`, `#diagram-step-1`, `#callout`.
+- Keep element IDs short and semantic: `title`, `diagram-step-1`, `callout`.
 - Elements that should never animate don't need IDs.
 - The pipeline strips editor metadata on every load.
   No need to clean manually if you have the git hook set up.

@@ -28,23 +28,30 @@ SVG source files should be kept clean (no Inkscape metadata) in the repository. 
 src/
   inkflow/
     __init__.py       exports: Deck, Slide, Image, Video, Media, TextBox, Animation,
-                               Transition, Align, VAlign, Direction, Inline, Content,
-                               ZoneContent, ColorMode, MediaFit, MediaAlign, Muted
+                               Cue, Transition, Align, VAlign, Direction, Easing, Trigger,
+                               Inline, Content, ZoneContent, ColorMode, MediaFit,
+                               MediaAlign, Muted
                                and the `animations` and `transitions` namespaces
-    manifest.py       dataclasses for the deck DSL; Animation/Transition base.
-                               Media is a `_MediaBase` shared by Image + Video; `Media`
-                               is the `Image | Video` union alias (not callable).
-                               Video adds playback fields (controls, autoplay, muted,
-                               loop, poster, start, end, play_on_step)
+    manifest.py       dataclasses for the deck DSL; Cue/Animation/Transition base.
+                               `Cue` (element, trigger) is the base for `Animation` (adds
+                               duration/easing/delay) and `PlayVideo`; `Slide.animations`
+                               is `list[Cue]`. Media is a `_MediaBase` shared by Image +
+                               Video; `Media` is the `Image | Video` union alias (not
+                               callable). Video adds playback fields (controls, autoplay,
+                               muted, loop, poster, start, end)
                                Deck params: slides, transition, theme, mode: ColorMode,
                                style, font_size, embed_fonts
                                Slide params: src, id, md, zones, animations, transition,
                                extra_style, title, notes, visible, font_size
     enums.py          shared enums (Direction, Align, VAlign, MediaFit, MediaAlign,
-                               ColorMode, Muted); `_KebabStrEnum` base emits CSS token
-                               values (Muted is a plain Enum, resolved in Python)
+                               ColorMode, Muted, Trigger); `_KebabStrEnum` base emits CSS
+                               token values (Muted is a plain Enum, resolved in Python).
+                               `Easing`/`Trigger` are str value objects with named presets
+                               plus a constructor (`Easing.cubic_bezier(...)`, `Trigger.at(n)`)
     animations.py     concrete animation types (FadeIn, FadeOut, Bounce, SlideIn/Out,
-                               ZoomIn/Out, Highlight) subclassing manifest.Animation
+                               ZoomIn/Out, Highlight) subclassing manifest.Animation, plus
+                               `PlayVideo` (subclasses `Cue` directly, no timing) — starts a
+                               `Video` on a step instead of on load
     transitions.py    concrete transition types (Cut, Crossfade, Morph, Push, Cover,
                                Zoom, Fade, Wipe) subclassing manifest.Transition
     pipeline.py       animation annotation + layout inlining
@@ -53,6 +60,9 @@ src/
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
     markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
                                HTML->well-formed-XML normalization (no inkflow-specific grammar)
+    steps.py          `StepResolver` — the trigger-resolution rule (ON_CLICK/WITH_PREVIOUS/
+                               Trigger.at) shared by pipeline.py (the animations=[...] list)
+                               and zones.py (markdown reveals)
     zones.py          ::zone:: / ::step:: marker grammar, zone param extraction, and slide
                                assembly (parsed markdown -> per-zone TextBox/Media)
     server.py         HTTP server, WebSocket server, file watcher, build pipeline
@@ -221,9 +231,13 @@ SVG files on disk are never modified by the serve/build pipeline.
 
 `pipeline.py` processes each slide as a single lxml tree: parsed once via the hardened parser in `svgio.py`, threaded through the pipeline, serialized once at the end. `SlideSvg` wraps the tree and each pipeline step is a method that mutates it in place (like `list.sort()`), delegating the DOM work to `content.py`/`svg.py` functions that take and return the root element. Key steps:
 1. `clean_inkscape_tree(src)` — parse with the hardened lxml parser, remove elements/attrs in `http://www.inkscape.org/namespaces/inkscape` and `http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd`, call `etree.cleanup_namespaces()`. (`clean_inkscape_svg` wraps this and serializes to a pretty-printed string for the CLI/pre-commit hook.)
-2. `annotate_svg(root, animations)` — find elements by id (stripping leading `#`), set `class`, `data-step`, and merge `--anim-*` custom properties into `style`
+2. `annotate_svg(root, cues)` — `cues` are `(Cue, step)` pairs already resolved to concrete step numbers (see below). Finds elements by plain id (no leading `#`); for an `Animation` sets `class`/`data-step` and merges `--anim-*` custom properties into `style`, for a `PlayVideo` sets `data-play-on-step` on the target zone's `<video>`.
 
-The CSS class is `anim-<slug>`, where the slug is the kebab-cased type name (`Animation.slug()` / `Transition.slug()`, a `_Slugged` mixin in `manifest.py`): `FadeIn → anim-fade-in`, `SlideIn → anim-slide-in`, `Highlight → anim-highlight`. There is no per-type registry. `_anim_style` emits one `--anim-<field>` custom property per non-`None` parameter (via the shared `_set_fields` field-walk, with a unit table for `duration`/`delay`/`distance`); the `direction` field instead becomes an `anim-from-<value>` modifier class (`_anim_classes`). CSS in `src/css/shared/animations.css` consumes the custom props via `var(--anim-…, default)`.
+**Steps are inferred from triggers, never written by hand.** Every `Animation`/`PlayVideo` cue carries a `Trigger` (`ON_CLICK`, `WITH_PREVIOUS`, or a `Trigger.at(n)` pin). `steps.py`'s `StepResolver` walks a cue sequence in order and assigns concrete step numbers — `pipeline.resolve_steps` for the deck's `animations=[...]` list, the reveal counter in `zones.py` for markdown `::step::`/`::steps::` reveals. A slide's markdown reveals number first, then the `animations=[...]` list continues the count, so both form one timeline.
+
+**Autoplay vs. a `PlayVideo` cue.** If a `Video` sets `autoplay=True` and is also targeted by a `PlayVideo` cue, the cue wins: `process_slide` suppresses `autoplay` before content injection (so `Muted.AUTO` resolves to unmuted) and logs a warning.
+
+The CSS class is `anim-<slug>`, where the slug is the kebab-cased type name (`Animation.slug()` / `Transition.slug()`, a `_Slugged` mixin in `manifest.py`): `FadeIn → anim-fade-in`, `SlideIn → anim-slide-in`, `Highlight → anim-highlight`. There is no per-type registry. `_anim_style` emits one `--anim-<field>` custom property per non-`None` parameter (via the shared `_set_fields` field-walk, with a unit table for `duration`/`delay`/`distance`); the `direction` field instead becomes an `anim-from-<value>` modifier class (`_anim_classes`). All built-in animation/transition defaults are concrete Python dataclass field defaults — no CSS `var(--anim-x, default)` fallback; CSS in `src/css/shared/animations.css` consumes the custom props directly.
 
 All SVG parsing routes through `svgio.py` (`parse_svg`, `parse_svg_file`, `serialize_svg`), which uses one hardened parser config (`resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False`, constructed per call since lxml parsers are not thread-safe). This is defense-in-depth plus crash-robustness: an SVG referencing an external/DTD entity degrades to an inert node instead of crashing the rebuild. `svgio.py` also exports the `SvgElement` type alias used across the backend.
 

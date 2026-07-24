@@ -11,6 +11,7 @@ from inkflow.enums import (
     MediaAlign,
     MediaFit,
     Muted,
+    Trigger,
     VAlign,
 )
 
@@ -65,14 +66,22 @@ verbatim. ``None`` means "nothing". Used by ``Slide.md``, ``Slide.notes``,
 
 
 @dataclass
-class Animation(_Slugged):
-    """Data-only base for every animation type.
+class Cue:
+    """Base for anything on a slide's step timeline."""
 
-    Concrete types live in ``inkflow.animations`` and subclass this, adding only
-    their own fields. The shared timing params are ``kw_only`` so they stay out of
-    the positional argument order, leaving the natural positional slots to each
-    subclass's own fields (e.g. ``SlideIn("#box", Direction.RIGHT)`` sets
-    ``direction``).
+    element: str
+    """Id of the target element, e.g. ``"headline"``."""
+    trigger: Trigger = Trigger.ON_CLICK
+    """When the cue fires. Defaults to `Trigger.ON_CLICK`."""
+
+
+@dataclass
+class Animation(Cue, _Slugged):
+    """Base for every animation type.
+
+    Concrete types live in ``inkflow.animations`` and subclass this, adding their
+    own fields. ``duration``, ``easing``, and ``delay`` are shared keyword-only
+    timing params.
 
     **Custom animations.** Subclass this directly in ``deck.py`` — no changes to
     inkflow are needed. The CSS class is the kebab-cased type name (``MyGlow`` →
@@ -87,10 +96,6 @@ class Animation(_Slugged):
     ```
     """
 
-    element: str
-    """CSS ID selector of the target element, e.g. ``"#headline"``."""
-    step: int = 1
-    """The keypress on which the animation plays."""
     duration: float = field(default=0.4, kw_only=True)
     """Duration in seconds."""
     easing: Easing = field(default=Easing.EASE, kw_only=True)
@@ -191,8 +196,8 @@ class Video(_MediaBase):
     """A video asset for injection into a zone, with playback control.
 
     Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
-    Playback is driven by the presenter, so ``play_on_step`` ties a clip into the
-    slide's step sequence exactly like any other stepped element.
+    To start a clip on a step rather than on load, add an
+    ``animations.PlayVideo`` cue for its zone.
 
     ```python
     Slide(
@@ -220,10 +225,6 @@ class Video(_MediaBase):
     ``fit``/``align`` crop)."""
     end: float | None = None
     """Trim-out time in seconds."""
-    play_on_step: int | None = None
-    """Step at which the clip starts playing. Active when
-    ``play_on_step <= current_step``; stepping back below it resets to ``start``.
-    ``None`` means playback is governed by ``autoplay``/``controls`` alone."""
 
 
 Media = Image | Video
@@ -256,7 +257,7 @@ class Slide:
 
     ```python
     # One-off SVG with animations, no zones
-    Slide("title", animations=[animations.FadeIn("#headline", step=1)])
+    Slide("title", animations=[animations.FadeIn("headline")])
 
     # Reusable layout with Markdown-filled zones
     Slide("default", md="bullets", zones={"media": Image("photo.jpg")})
@@ -279,8 +280,9 @@ class Slide:
     """Per-zone overrides. Keys are zone names without the ``zone-`` prefix; values
     are ``ZoneContent`` (inline Markdown ``str``, ``TextBox``, or
     ``Media``)."""
-    animations: list[Animation] = field(default_factory=list)
-    """Animation declarations for this slide."""
+    animations: list[Cue] = field(default_factory=list)
+    """Animations and `PlayVideo` cues for this slide. They run after any markdown
+    reveals in the content."""
     transition: Transition | None = None
     """Transition into this slide. ``None`` inherits the deck default."""
     extra_style: Content = None

@@ -3,8 +3,8 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-from inkflow.animations import FadeIn
-from inkflow.manifest import Image, Slide
+from inkflow.animations import FadeIn, PlayVideo
+from inkflow.manifest import Image, Slide, Video
 from inkflow.verify import verify_slide
 
 _LAYOUT_SVG = textwrap.dedent("""\
@@ -18,6 +18,7 @@ _SLIDE_SVG = textwrap.dedent("""\
          xmlns:inkflow="urn:inkflow"
          viewBox="0 0 1920 1080">
       <rect id="my-rect" x="0" y="0" width="100" height="100"/>
+      <rect id="zone-media" x="0" y="0" width="100" height="100"/>
     </svg>
 """)
 
@@ -144,7 +145,7 @@ class TestVerifyZones:
 class TestVerifyAnimations:
     def test_missing_animation_element_is_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
-        slide = Slide(str(src), animations=[FadeIn("#nonexistent", step=1)])
+        slide = Slide(str(src), animations=[FadeIn("nonexistent")])
         issues = verify_slide(slide, tmp_path, None, "")
         assert any(
             "animation element #nonexistent not found" in msg for _, msg in issues
@@ -152,27 +153,34 @@ class TestVerifyAnimations:
 
     def test_present_animation_element_no_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
-        slide = Slide(str(src), animations=[FadeIn("#my-rect", step=1)])
+        slide = Slide(str(src), animations=[FadeIn("my-rect")])
         issues = verify_slide(slide, tmp_path, None, "")
         assert not any("animation element" in msg for _, msg in issues)
 
-    def test_step_gap_is_warning(self, tmp_path: Path) -> None:
+    def test_missing_play_video_target_is_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
-        slide = Slide(
-            str(src),
-            animations=[FadeIn("#my-rect", step=1), FadeIn("#my-rect", step=3)],
-        )
+        slide = Slide(str(src), animations=[PlayVideo("nope")])
         issues = verify_slide(slide, tmp_path, None, "")
-        assert any(level == "warn" and "step gap" in msg for level, msg in issues)
+        assert any("PlayVideo target #zone-nope not found" in msg for _, msg in issues)
 
-    def test_contiguous_steps_no_warning(self, tmp_path: Path) -> None:
+    def test_present_play_video_target_no_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
+        slide = Slide(str(src), animations=[PlayVideo("media")])
+        issues = verify_slide(slide, tmp_path, None, "")
+        assert not any("not found" in msg for _, msg in issues)
+
+    def test_autoplay_with_play_video_cue_warns(self, tmp_path: Path) -> None:
+        src = _setup(tmp_path)
+        (tmp_path / "clip.mp4").write_bytes(b"")
         slide = Slide(
             str(src),
-            animations=[FadeIn("#my-rect", step=1), FadeIn("#my-rect", step=2)],
+            zones={"media": Video("clip.mp4", autoplay=True)},
+            animations=[PlayVideo("media")],
         )
         issues = verify_slide(slide, tmp_path, None, "")
-        assert not any("step gap" in msg for _, msg in issues)
+        assert any(
+            level == "warn" and "autoplay overridden" in msg for level, msg in issues
+        )
 
 
 # ── Verify default zone ───────────────────────────────────────────────────────

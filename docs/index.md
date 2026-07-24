@@ -49,12 +49,12 @@ from inkflow import Deck, Slide, animations, transitions
 def main() -> Deck:
     return Deck(slides=[
         Slide("title.svg", animations=[
-            animations.FadeIn("#headline", step=1),
-            animations.FadeIn("#subtitle", step=2),
+            animations.FadeIn("headline"),
+            animations.FadeIn("subtitle"),
         ]),
         Slide("diagram.svg", animations=[
-            animations.Bounce("#box-a", step=1),
-            animations.Bounce("#box-b", step=2),
+            animations.Bounce("box-a"),
+            animations.Bounce("box-b"),
         ], transition=transitions.Crossfade()),
         Slide("summary.svg", transition=transitions.Morph(duration=0.7)),
     ])

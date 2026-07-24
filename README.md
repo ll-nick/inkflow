@@ -50,9 +50,10 @@ def main() -> Deck:
             # SVG slide: draw freely in Inkscape, animate elements by id
             Slide(
                 "title.svg",
+                # Each cue's Trigger decides when it fires (default: on next click)
                 animations=[
-                    animations.FadeIn("#headline", step=1),
-                    animations.FadeIn("#subtitle", step=2),
+                    animations.FadeIn("headline"),
+                    animations.FadeIn("subtitle"),
                 ],
             ),
             Slide(
@@ -62,8 +63,8 @@ def main() -> Deck:
                 # Set a transition for the whole slide, and multiple animations for individual elements
                 transition=transitions.Crossfade(),
                 animations=[
-                    animations.Bounce("#box-a", step=1),
-                    animations.Bounce("#box-b", step=2),
+                    animations.Bounce("box-a"),
+                    animations.Bounce("box-b"),
                 ],
             ),
             Slide(
@@ -71,7 +72,7 @@ def main() -> Deck:
                 "media-right",
                 md="image.md",
                 # Fill a named zone with an image, or a video with playback control
-                # (autoplay, loop, mute, trim, play-on-step)
+                # (autoplay, loop, mute, trim, and a PlayVideo cue to start on a step)
                 zones={"media": Image("assets/photo.jpg", fit=MediaFit.COVER)},
             ),
             Slide(
