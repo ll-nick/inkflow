@@ -11,7 +11,7 @@ from typing import get_args, get_origin, get_type_hints
 from lxml import etree
 
 from inkflow.animations import FadeIn
-from inkflow.enums import Align, VAlign
+from inkflow.enums import Align, Trigger, VAlign
 from inkflow.logging import logger
 from inkflow.manifest import Animation, Media, TextBox, ZoneContent
 from inkflow.markdown import (
@@ -50,10 +50,14 @@ _STEPS_BLOCK_RE = re.compile(
 class SlideContent:
     content: dict[str, TextBox | Media]  # zone-id (e.g. "zone-content") → content
     notes: str
-    animations: list[Animation] = field(default_factory=list)
-    """Reveal animations generated for ``::step::`` markers, keyed to the
-    ``inkflow-step-*`` ids stamped on the wrapper divs. The pipeline routes these
-    through the same annotate pass as deck.py animations."""
+    animations: list[tuple[Animation, int]] = field(default_factory=list)
+    """Reveal animations generated for ``::step::`` markers, each paired with its
+    resolved step and keyed to the ``inkflow-step-*`` id stamped on its wrapper
+    div. The pipeline routes these through the same annotate pass as deck.py cues,
+    then continues the step count with the ``animations=[...]`` list."""
+    max_step: int = 0
+    """Highest step consumed by the markdown reveals (including code-highlight
+    stages), used as the base for numbering the deck ``animations=[...]`` list."""
 
 
 _ParamMap = dict[str, str]
@@ -146,8 +150,9 @@ _RevealSpec = tuple[type[Animation], dict[str, object]]
 """A resolved reveal: the animation type plus its coerced constructor kwargs."""
 
 # Marker keys the resolver never forwards as constructor kwargs: ``type`` selects
-# the class, and ``element``/``step`` are bound by the resolver, not the author.
-_RESERVED_MARKER_KEYS = frozenset({"type", "element", "step"})
+# the class and ``element`` is bound by the resolver, not the author. ``trigger``
+# *is* forwarded — it lands on the cue's ``trigger`` field like any other param.
+_RESERVED_MARKER_KEYS = frozenset({"type", "element"})
 
 
 def _all_animation_subclasses() -> Iterator[type[Animation]]:
@@ -234,6 +239,42 @@ def _resolve_reveal(params: _ParamMap) -> _RevealSpec:
     return cls, kwargs
 
 
+def _spec_trigger(spec: _RevealSpec) -> Trigger:
+    """The reveal's `Trigger` — the coerced ``trigger=`` param, else ``ON_CLICK``."""
+    trigger = spec[1].get("trigger")
+    return trigger if isinstance(trigger, Trigger) else Trigger.ON_CLICK
+
+
+@dataclass
+class _Stepper:
+    """Running step counter for a markdown zone's reveals.
+
+    Mirrors ``pipeline._StepResolver`` but also folds in code-highlight stages
+    via `bump`: those consume steps inside a chunk's rendered HTML,
+    outside the trigger rule.
+    """
+
+    high: int = 0  # running max
+    current: int = 0  # last-assigned step
+
+    def advance(self, trigger: Trigger) -> int:
+        pinned = trigger.explicit_step
+        if pinned is not None:
+            self.current = pinned
+            self.high = max(self.high, pinned)
+        elif trigger == Trigger.WITH_PREVIOUS:
+            pass  # share the previous step
+        else:  # ON_CLICK
+            self.high += 1
+            self.current = self.high
+        return self.current
+
+    def bump(self, reached: int) -> None:
+        """Fold in steps consumed by a chunk's code-highlight stages."""
+        self.high = max(self.high, reached)
+        self.current = self.high
+
+
 # ── Zone parsing ──────────────────────────────────────────────────────────────
 
 
@@ -310,29 +351,32 @@ _REVEAL_ID_PREFIX = "inkflow-step-"
 
 
 def steps_wrap_content(
-    html: str, base_step: int, ids: Iterator[int], spec: _RevealSpec
-) -> tuple[str, int, list[Animation]]:
+    html: str, stepper: _Stepper, ids: Iterator[int], spec: _RevealSpec
+) -> tuple[str, list[tuple[Animation, int]]]:
     """Wrap each top-level <p>, <li>, and <dt>+<dd> group in a stepped reveal div.
 
     Each wrapped item gets a unique ``inkflow-step-*`` id and a matching reveal
-    ``Animation`` of the block's resolved type (``spec``, default ``FadeIn``); the
-    caller routes those through the annotate pass to apply the animation.
+    ``Animation`` of the block's resolved type (``spec``, default ``FadeIn``),
+    paired with the step the shared ``stepper`` assigns it under the block's
+    trigger (default ``ON_CLICK`` → one item per click). The caller routes those
+    through the annotate pass.
     """
 
     cls, kwargs = spec
+    trigger = _spec_trigger(spec)
     wrapped = f"<div>{html_fragment_to_xml(html)}</div>"
     root = etree.fromstring(wrapped.encode())
 
-    step = base_step
-    anims: list[Animation] = []
+    anims: list[tuple[Animation, int]] = []
 
-    def new_wrapper(step: int) -> SvgElement:
+    def new_wrapper() -> SvgElement:
+        step = stepper.advance(trigger)
         rid = f"{_REVEAL_ID_PREFIX}{next(ids)}"
         wrapper = etree.Element("div")
         wrapper.set("id", rid)
         # kwargs was coerced to each field's type at resolution time, but the
         # class is only known dynamically, so the unpack cannot be proven typed.
-        anims.append(cls(element=rid, step=step, **kwargs))  # pyright: ignore[reportArgumentType]
+        anims.append((cls(element=rid, **kwargs), step))  # pyright: ignore[reportArgumentType]
         return wrapper
 
     for child in list(root):
@@ -341,8 +385,7 @@ def steps_wrap_content(
             for li in list(child):
                 if li.tag != "li":
                     continue
-                step += 1
-                wrapper = new_wrapper(step)
+                wrapper = new_wrapper()
                 idx = list(child).index(li)
                 child.remove(li)
                 wrapper.append(li)
@@ -363,14 +406,12 @@ def steps_wrap_content(
             for el in list(child):
                 child.remove(el)
             for group in groups:
-                step += 1
-                wrapper = new_wrapper(step)
+                wrapper = new_wrapper()
                 for el in group:
                     wrapper.append(el)
                 child.append(wrapper)
         elif tag == "p":
-            step += 1
-            wrapper = new_wrapper(step)
+            wrapper = new_wrapper()
             idx = list(root).index(child)
             root.remove(child)
             wrapper.append(child)
@@ -378,47 +419,48 @@ def steps_wrap_content(
 
     inner = etree.tostring(root, encoding="unicode")
     inner = inner[len("<div>") : -len("</div>")]
-    return inner, step, anims
+    return inner, anims
 
 
 def chunks_to_html(
     chunks: Sequence[Chunk], base_step: int, ids: Iterator[int]
-) -> tuple[str, int, list[Animation]]:
+) -> tuple[str, int, list[tuple[Animation, int]]]:
     parts: list[str] = []
-    step = base_step
-    anims: list[Animation] = []
+    stepper = _Stepper(high=base_step, current=base_step)
+    anims: list[tuple[Animation, int]] = []
     pending: _RevealSpec | None = None  # set by a ::step:: marker, used next chunk
 
     for item in chunks:
         if isinstance(item, _StepMarker):
-            step += 1
             pending = _resolve_reveal(item.params)
+            stepper.advance(_spec_trigger(pending))
             continue
 
         if isinstance(item, _StepsBlock):
             html = markdown_to_html(item.text)
-            html, step, block_anims = steps_wrap_content(
-                html, step, ids, _resolve_reveal(item.params)
+            html, block_anims = steps_wrap_content(
+                html, stepper, ids, _resolve_reveal(item.params)
             )
             anims.extend(block_anims)
             parts.append(html)
             pending = None
             continue
 
-        # Regular string chunk: wrap only when an explicit ::step:: preceded it
-        chunk_step = step
-        html, step = render_md_with_steps(item, chunk_step)
+        # Regular string chunk: wrap only when an explicit ::step:: preceded it.
+        reveal_step = stepper.current
+        html, reached = render_md_with_steps(item, reveal_step)
+        stepper.bump(reached)  # fold in code-highlight stages
         if pending is not None:
             cls, kwargs = pending
             rid = f"{_REVEAL_ID_PREFIX}{next(ids)}"
             # See steps_wrap_content: dynamic class, kwargs coerced per field.
-            anims.append(cls(element=rid, step=chunk_step, **kwargs))  # pyright: ignore[reportArgumentType]
+            anims.append((cls(element=rid, **kwargs), reveal_step))  # pyright: ignore[reportArgumentType]
             parts.append(f'<div id="{rid}">{html}</div>')
         else:
             parts.append(html)
         pending = None
 
-    return "".join(parts), step, anims
+    return "".join(parts), stepper.high, anims
 
 
 # ── Zone routing ─────────────────────────────────────────────────────────────
@@ -490,7 +532,7 @@ def build_slide_content(
         zones = _reroute_zones(zones, auto_zones, available_zones, default_zone)
 
     result: dict[str, TextBox | Media] = {}
-    animations: list[Animation] = []
+    animations: list[tuple[Animation, int]] = []
     base_step = 0
     ids = itertools.count(1)
 
@@ -511,4 +553,8 @@ def build_slide_content(
         else:
             result[f"zone-{key}"] = val
 
-    return SlideContent(content=result, notes=notes_html, animations=animations)
+    # base_step now holds the running max across all reveal zones (incl.
+    # code-highlight stages); the deck animations=[...] list numbers on from here.
+    return SlideContent(
+        content=result, notes=notes_html, animations=animations, max_step=base_step
+    )

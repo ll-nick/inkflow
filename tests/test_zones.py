@@ -17,12 +17,18 @@ from inkflow.zones import (
     _reroute_zones,  # pyright: ignore[reportPrivateUsage]
     _RevealSpec,  # pyright: ignore[reportPrivateUsage]
     _StepMarker,  # pyright: ignore[reportPrivateUsage]
+    _Stepper,  # pyright: ignore[reportPrivateUsage]
     _StepsBlock,  # pyright: ignore[reportPrivateUsage]
     chunks_to_html,
     parse_markdown_zones,
     steps_wrap_content,
 )
 from inkflow.zones import build_slide_content as _build_slide_content_parsed
+
+# Reveals become (Animation, resolved-step) pairs, routed through the annotate
+# pass which stamps the fade-in class + data-step on the inkflow-step-* ids. So
+# the step tests assert on those pairs and the ids.
+_Reveal = tuple[Animation, int]
 
 
 # Adapter: build_slide_content now takes a pre-parsed ParsedMarkdown (parse markdown
@@ -39,23 +45,30 @@ def build_slide_content(
     )
 
 
-# Reveals now become Animation objects (the fade-in class + data-step are applied
-# later by the annotate pass, keyed to the inkflow-step-* ids these functions
-# stamp). So the step tests assert on the returned animations and the ids.
 def _c2h(
     chunks: Sequence[str | _StepMarker | _StepsBlock], base: int = 0
-) -> tuple[str, int, list[Animation]]:
+) -> tuple[str, int, list[_Reveal]]:
     return chunks_to_html(chunks, base, itertools.count(1))
 
 
+# steps_wrap_content now takes a shared _Stepper and returns just (html, pairs);
+# this adapter keeps the old (html, final-step, pairs) shape for the call sites.
 def _swc(
     html: str, base: int = 0, spec: _RevealSpec | None = None
-) -> tuple[str, int, list[Animation]]:
-    return steps_wrap_content(html, base, itertools.count(1), spec or (FadeIn, {}))
+) -> tuple[str, int, list[_Reveal]]:
+    stepper = _Stepper(high=base, current=base)
+    inner, anims = steps_wrap_content(
+        html, stepper, itertools.count(1), spec or (FadeIn, {})
+    )
+    return inner, stepper.high, anims
 
 
-def _steps(anims: list[Animation]) -> list[int]:
-    return [a.step for a in anims]
+def _steps(anims: list[_Reveal]) -> list[int]:
+    return [step for _, step in anims]
+
+
+def _objs(anims: list[_Reveal]) -> list[Animation]:
+    return [anim for anim, _ in anims]
 
 
 class TestParseMarkdownZones:
@@ -201,8 +214,8 @@ class TestChunksToHtml:
     def test_second_chunk_wrapped_with_reveal(self) -> None:
         html, step, anims = _c2h(["First", _StepMarker(), "Second"])
         assert _steps(anims) == [1]
-        assert isinstance(anims[0], FadeIn)
-        assert f'id="{anims[0].element}"' in html
+        assert isinstance(_objs(anims)[0], FadeIn)
+        assert f'id="{_objs(anims)[0].element}"' in html
         assert step == 1
 
     def test_base_step_offset_applied(self) -> None:
@@ -270,7 +283,7 @@ class TestStepsWrapContent:
         result, step, anims = _swc(html)
         assert "<br/>" in result
         assert _steps(anims) == [1]
-        assert f'id="{anims[0].element}"' in result
+        assert f'id="{_objs(anims)[0].element}"' in result
         assert step == 1
 
     def test_list_items_each_wrapped(self) -> None:
@@ -305,8 +318,9 @@ class TestStepsWrapContent:
         _result, _step, anims = _swc(
             "<ul><li>A</li><li>B</li></ul>", spec=(SlideIn, {"distance": 120.0})
         )
-        assert all(isinstance(a, SlideIn) for a in anims)
-        assert all(a.distance == 120.0 for a in anims if isinstance(a, SlideIn))
+        objs = _objs(anims)
+        assert all(isinstance(a, SlideIn) for a in objs)
+        assert all(a.distance == 120.0 for a in objs if isinstance(a, SlideIn))
 
     def test_deflist_each_dt_dd_group_wrapped(self) -> None:
         html = "<dl><dt>Term 1</dt><dd>Def 1</dd><dt>Term 2</dt><dd>Def 2</dd></dl>"
@@ -394,7 +408,8 @@ class TestBuildSlideContent:
         assert box.text is not None
         # Reveals are Animation objects keyed to inkflow-step-* ids in the html.
         assert _steps(result.animations) == [1, 2, 3]
-        for anim in result.animations:
+        assert result.max_step == 3
+        for anim in _objs(result.animations):
             assert f'id="{anim.element}"' in box.text
 
     def test_no_content_no_extra_returns_empty(self) -> None:
@@ -433,7 +448,7 @@ class _CustomGlow(Animation):
 class TestMarkerGrammar:
     def test_default_reveal_is_fade_in(self) -> None:
         result = build_slide_content("::content::\n::step::\nX.\n", {})
-        assert [type(a) for a in result.animations] == [FadeIn]
+        assert [type(a) for a in _objs(result.animations)] == [FadeIn]
 
     def test_step_type_and_params(self) -> None:
         md = (
@@ -441,10 +456,20 @@ class TestMarkerGrammar:
             + "::step type=SlideIn distance=120 direction=right::\nX.\n"
         )
         result = build_slide_content(md, {})
-        (a,) = result.animations
+        ((a, _),) = result.animations
         assert isinstance(a, SlideIn)
         assert a.distance == 120.0
         assert a.direction == Direction.RIGHT
+
+    def test_step_trigger_param_coerced(self) -> None:
+        # trigger= flows through to the cue and drives the resolved step: the
+        # with-previous reveal shares the step of the ON_CLICK reveal before it.
+        md = (
+            "::content::\n::step::\nFirst.\n\n"
+            + "::step trigger=with-previous::\nTogether.\n"
+        )
+        result = build_slide_content(md, {})
+        assert _steps(result.animations) == [1, 1]
 
     def test_steps_block_type_applies_to_all_items(self) -> None:
         md = (
@@ -452,38 +477,40 @@ class TestMarkerGrammar:
             + "- one\n- two\n::steps end::\n"
         )
         result = build_slide_content(md, {})
-        assert all(isinstance(a, Bounce) for a in result.animations)
-        assert [a.duration for a in result.animations] == [0.5, 0.5]
+        objs = _objs(result.animations)
+        assert all(isinstance(a, Bounce) for a in objs)
+        assert [a.duration for a in objs] == [0.5, 0.5]
         assert _steps(result.animations) == [1, 2]
 
     def test_easing_param_coerced_to_easing(self) -> None:
         result = build_slide_content(
             "::content::\n::step type=FadeIn easing=ease-in-out::\nX.\n", {}
         )
-        (a,) = result.animations
+        ((a, _),) = result.animations
         assert a.easing == Easing.EASE_IN_OUT
         assert isinstance(a.easing, Easing)
 
     def test_unknown_type_falls_back_to_fade_in(self) -> None:
         result = build_slide_content("::content::\n::step type=Nope::\nX.\n", {})
-        assert [type(a) for a in result.animations] == [FadeIn]
+        assert [type(a) for a in _objs(result.animations)] == [FadeIn]
 
     def test_custom_type_resolved_by_name(self) -> None:
         result = build_slide_content(
             "::content::\n::step type=_CustomGlow intensity=3::\nX.\n", {}
         )
-        (a,) = result.animations
+        ((a, _),) = result.animations
         assert isinstance(a, _CustomGlow)
         assert a.intensity == 3.0
 
     def test_reserved_keys_not_forwarded(self) -> None:
-        # element/step in a marker must not collide with the resolver-injected ones
+        # element in a marker must not collide with the resolver-injected id; a
+        # bogus step= param is just an unknown param and must not affect the step.
         result = build_slide_content(
             "::content::\n::step type=FadeIn element=x step=9::\nX.\n", {}
         )
-        (a,) = result.animations
+        ((a, step),) = result.animations
         assert a.element.startswith("inkflow-step-")
-        assert a.step == 1
+        assert step == 1
 
 
 class TestZoneParams:
