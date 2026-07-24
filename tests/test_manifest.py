@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inkflow.animations import Bounce, FadeIn, SlideIn
+from inkflow.animations import Bounce, FadeIn, PlayVideo, SlideIn
 from inkflow.enums import (
     Align,
     ColorMode,
@@ -9,8 +9,11 @@ from inkflow.enums import (
     MediaAlign,
     MediaFit,
     Muted,
+    Trigger,
 )
 from inkflow.manifest import (
+    Animation,
+    Cue,
     Deck,
     Image,
     Inline,
@@ -30,15 +33,36 @@ def test_camel_to_kebab() -> None:
 
 
 def test_animation_slug() -> None:
-    assert FadeIn("#x").slug() == "fade-in"
-    assert SlideIn("#x").slug() == "slide-in"
-    assert Bounce("#x").slug() == "bounce"
+    assert FadeIn("x").slug() == "fade-in"
+    assert SlideIn("x").slug() == "slide-in"
+    assert Bounce("x").slug() == "bounce"
 
 
 def test_transition_slug() -> None:
     assert Crossfade().slug() == "crossfade"
     assert Cut().slug() == "cut"
     assert Morph().slug() == "morph"
+
+
+def test_animation_is_a_cue() -> None:
+    assert isinstance(FadeIn("x"), Cue)
+
+
+def test_play_video_is_a_cue_without_timing() -> None:
+    pv = PlayVideo("media", Trigger.WITH_PREVIOUS)
+    assert isinstance(pv, Cue)
+    assert not isinstance(pv, Animation)
+    assert pv.element == "media"
+    assert pv.trigger == Trigger.WITH_PREVIOUS
+
+
+def test_trigger_presets_and_pin() -> None:
+    assert Trigger.ON_CLICK == "on-click"
+    assert Trigger.WITH_PREVIOUS == "with-previous"
+    assert Trigger.ON_CLICK.explicit_step is None
+    assert Trigger.WITH_PREVIOUS.explicit_step is None
+    assert Trigger.at(3).explicit_step == 3
+    assert isinstance(Trigger.at(3), Trigger)
 
 
 def test_slide_animations_default_empty() -> None:
@@ -65,9 +89,9 @@ def test_deck_custom_theme() -> None:
 
 
 def test_animation_fields_stored() -> None:
-    fade = FadeIn("#headline", step=2)
-    assert fade.element == "#headline"
-    assert fade.step == 2
+    fade = FadeIn("headline", Trigger.WITH_PREVIOUS)
+    assert fade.element == "headline"
+    assert fade.trigger == Trigger.WITH_PREVIOUS
 
 
 def test_transition_defaults() -> None:
@@ -172,7 +196,6 @@ def test_video_playback_defaults() -> None:
     assert v.poster is None
     assert v.start is None
     assert v.end is None
-    assert v.play_on_step is None
 
 
 def test_video_playback_custom() -> None:
@@ -185,7 +208,6 @@ def test_video_playback_custom() -> None:
         poster="thumb.png",
         start=1.0,
         end=4.5,
-        play_on_step=2,
     )
     assert v.controls is False
     assert v.autoplay is True
@@ -194,7 +216,6 @@ def test_video_playback_custom() -> None:
     assert v.poster == "thumb.png"
     assert v.start == 1.0
     assert v.end == 4.5
-    assert v.play_on_step == 2
 
 
 def test_media_alias_is_image_or_video() -> None:
@@ -249,7 +270,7 @@ def test_slide_md_field() -> None:
 
 
 def test_slide_animations_stored() -> None:
-    anim = FadeIn("#logo", step=1)
+    anim = FadeIn("logo")
     s = Slide("layout.svg", animations=[anim])
     assert s.animations == [anim]
 

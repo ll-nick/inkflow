@@ -196,8 +196,8 @@ class Video(_MediaBase):
     """A video asset for injection into a zone, with playback control.
 
     Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
-    Playback is driven by the presenter, so ``play_on_step`` ties a clip into the
-    slide's step sequence exactly like any other stepped element.
+    To start a clip on a step rather than on load, add an
+    ``animations.PlayVideo`` cue for its zone.
 
     ```python
     Slide(
@@ -225,10 +225,6 @@ class Video(_MediaBase):
     ``fit``/``align`` crop)."""
     end: float | None = None
     """Trim-out time in seconds."""
-    play_on_step: int | None = None
-    """Step at which the clip starts playing. Active when
-    ``play_on_step <= current_step``; stepping back below it resets to ``start``.
-    ``None`` means playback is governed by ``autoplay``/``controls`` alone."""
 
 
 Media = Image | Video
