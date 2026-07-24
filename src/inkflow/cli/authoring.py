@@ -9,7 +9,7 @@ from lxml import etree as _etree
 from rich import box as rich_box
 from rich.table import Table
 
-from inkflow import colors, loaders, ns
+from inkflow import ns, sync
 from inkflow.clean import clean_inkscape_svg
 from inkflow.cli._common import (
     Project,
@@ -277,9 +277,7 @@ def sync_cmd(
     dark_mode = resolve_dark_mode(color_mode, deck_obj, no_deck)
     targets = targets_or_deck_slides(files, project)
 
-    css = loaders.load_deck_styles(deck_obj, project_dir)
-    tokens = colors.extract_tokens(css, dark_mode)
-    preview_css = colors.build_preview_style(tokens)
+    preview_css = sync.build_preview_css(deck_obj, project_dir, dark_mode)
 
     stale_found = False
     for target in targets:
