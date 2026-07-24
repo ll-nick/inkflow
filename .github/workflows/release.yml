@@ -26,6 +26,9 @@ jobs:
             exit 1
           fi
 
+      - name: Check uv.lock is up to date
+        run: uv lock --check
+
       - run: uv build
 
       - name: Smoke test

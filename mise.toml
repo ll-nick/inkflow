@@ -14,6 +14,9 @@ run = "uv run basedpyright"
 [tasks.lint-deps]
 run = "uv run deptry src"
 
+[tasks.lint-lock]
+run = "uv lock --check"
+
 [tasks.test]
 run = "uv run pytest"
 
@@ -50,4 +53,4 @@ run = "npx biome check --write ."
 run = ["uv run ruff check --fix", "uv run ruff format", "npx biome check --write ."]
 
 [tasks.check]
-depends = ["lint-py", "fmt-py", "typecheck-py", "lint-deps", "test", "lint-js", "typecheck-js", "test-js"]
+depends = ["lint-py", "fmt-py", "typecheck-py", "lint-deps", "lint-lock", "test", "lint-js", "typecheck-js", "test-js"]
