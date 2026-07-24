@@ -1,10 +1,29 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 from typing import cast
 
 from inkflow.logging import logger, report
+
+GITIGNORE = """\
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Inkflow output
+/build/
+*.pdf
+
+# OS
+.DS_Store
+"""
 
 HOOK_SCRIPT = """\
 #!/usr/bin/env bash
@@ -188,3 +207,48 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
         report("Configured", "git hooks and SVG diff driver")
     else:
         report("Up to date", "git hooks and SVG diff driver", style="dim")
+
+
+def init_project_git(target: Path, *, verbose: bool = False) -> None:
+    """Bootstrap git for a freshly scaffolded project.
+
+    Only takes ownership of a repository it creates itself: when ``target`` is not
+    already inside a repo, it runs ``git init``, writes a ``.gitignore``, and
+    configures the SVG hooks + diff driver. When ``target`` is already inside a
+    repo, it leaves that repo's config untouched (never rewrites ``core.hooksPath``)
+    and points the user at ``inkflow setup-git`` instead. A missing ``git`` binary
+    is a quiet skip, not an error.
+    """
+    if shutil.which("git") is None:
+        report("Skipped", "git not found", style="dim")
+        return
+
+    existing = detect_git_root(target)
+    if existing is not None:
+        report("Using", f"existing git repo at {existing}")
+        report(
+            "Skipped",
+            "SVG hooks — run `inkflow setup-git` to enable",
+            style="dim",
+        )
+        return
+
+    try:
+        subprocess.run(
+            ["git", "init", "-q", str(target)],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raw = cast(bytes | None, exc.stderr)
+        msg = raw.decode().strip() if isinstance(raw, bytes) else str(exc)
+        logger.warning(f"git init failed: {msg}")
+        return
+    report("Initialized", "git repository")
+
+    gitignore = target / ".gitignore"
+    if not gitignore.exists():
+        gitignore.write_text(GITIGNORE, encoding="utf-8")
+        report("Created", ".gitignore")
+
+    run_git_setup(target, verbose=verbose)

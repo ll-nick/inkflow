@@ -27,9 +27,11 @@ from inkflow.logging import console, report
 def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
     """Scaffold a new presentation project in DIRECTORY (default: current).
 
-    Writes a starter `deck.py`, a title SVG, and a Markdown content slide. When run
-    inside a git repository it also configures the SVG git hooks (skip with
-    `--no-git`). Pass `--theme` to start from a custom theme directory.
+    Writes a starter `deck.py`. For a new project (not already inside a git repository)
+    it also runs `git init`, writes a `.gitignore`, and configures the SVG git hooks.
+    Inside an existing repository it leaves git alone and points you at `setup-git`.
+    Skip all git steps with `--no-git`.
+    Pass `--theme` to start from a custom theme directory.
     """
     target = directory.resolve()
     if (target / "deck.py").exists():
@@ -42,9 +44,7 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
     report("Created", "slides/content.md")
     report("Created", "deck.py")
     if not no_git:
-        git_root_path = git_setup.detect_git_root(target)
-        if git_root_path:
-            git_setup.run_git_setup(git_root_path, verbose=False)
+        git_setup.init_project_git(target, verbose=False)
     rel = str(directory) if str(directory) not in (".", "./") else None
     suffix = f"cd {rel} && inkflow serve" if rel else "inkflow serve"
     console.print(f"\nrun:  {suffix}", markup=False)

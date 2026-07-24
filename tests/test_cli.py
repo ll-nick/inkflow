@@ -364,3 +364,42 @@ class TestLayouts:
         result = runner.invoke(main, ["layouts", "--no-deck"])
         assert result.exit_code == 0
         assert "base" in result.output
+
+
+class TestInitGit:
+    """Git bootstrap on `inkflow init`. Asserts only on git artifacts + deck.py,
+    never on scaffold file names, so it stays decoupled from the scaffold layout."""
+
+    def test_fresh_project_inits_repo(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            result = runner.invoke(main, ["init", "my-talk"])
+            assert result.exit_code == 0, result.output
+            root = Path("my-talk")
+            assert (root / "deck.py").exists()
+            assert (root / ".git").is_dir()
+            gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+            assert ".venv/" in gitignore
+            assert "*.pdf" in gitignore
+            assert (root / ".githooks" / "pre-commit").exists()
+
+    def test_no_git_skips_bootstrap(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+            assert result.exit_code == 0, result.output
+            root = Path("my-talk")
+            assert (root / "deck.py").exists()
+            assert not (root / ".git").exists()
+            assert not (root / ".gitignore").exists()
+
+    def test_existing_repo_left_untouched(self, runner: CliRunner) -> None:
+        import subprocess
+
+        with runner.isolated_filesystem() as tmp:
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            result = runner.invoke(main, ["init", "."])
+            assert result.exit_code == 0, result.output
+            assert Path("deck.py").exists()
+            # Inside an existing repo, init must not drop a .gitignore or take over
+            # the repo's hook config.
+            assert not Path(".gitignore").exists()
+            assert "setup-git" in result.output
