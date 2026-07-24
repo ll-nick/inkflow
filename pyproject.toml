@@ -45,7 +45,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inkflow"]
-artifacts = ["src/inkflow/theme/**"]
+artifacts = ["src/inkflow/theme/**", "src/inkflow/templates/**"]
 exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**"]
 
 [dependency-groups]
