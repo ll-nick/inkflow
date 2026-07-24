@@ -24,7 +24,7 @@ commands:
       --ws-port=: WebSocket port
     completion:
       flag:
-        deck: ["$files([\"*.py\"])"]
+        deck: ["$files([\".py\"])"]
 
   - name: clean
     description: Strip Inkscape editor metadata from SVG files.
@@ -34,9 +34,9 @@ commands:
       --check: Exit non-zero if any file would be modified
     completion:
       flag:
-        deck: ["$files([\"*.py\"])"]
+        deck: ["$files([\".py\"])"]
       positionalany:
-        - "$files([\"*.svg\"])"
+        - "$files([\".svg\"])"
 
   - name: completion
     description: Print shell completion script for SHELL.
@@ -56,9 +56,9 @@ commands:
           -d, --deck=: Path to deck.py (used only when FILES is omitted)
         completion:
           flag:
-            deck: ["$files([\"*.py\"])"]
+            deck: ["$files([\".py\"])"]
           positionalany:
-            - "$files([\"*.svg\"])"
+            - "$files([\".svg\"])"
 
       - name: set
         description: Set the inkflow:parent of a slide SVG and refresh its layout layers.
@@ -67,7 +67,7 @@ commands:
           --no-deck: Operate without a deck.py
         completion:
           positional:
-            - ["$files([\"*.svg\"])"]
+            - ["$files([\".svg\"])"]
             - []
 
       - name: strip
@@ -77,7 +77,7 @@ commands:
           -d, --deck=: Path to deck.py
         completion:
           positionalany:
-            - "$files([\"*.svg\"])"
+            - "$files([\".svg\"])"
 
   - name: add
     description: Create a new slide SVG, optionally wired to a layout parent.
@@ -87,9 +87,9 @@ commands:
       --no-deck: Operate without a deck.py
     completion:
       flag:
-        deck: ["$files([\"*.py\"])"]
+        deck: ["$files([\".py\"])"]
       positional:
-        - ["$files([\"*.svg\"])"]
+        - ["$files([\".svg\"])"]
 
   - name: build
     description: Export a self-contained presentation directory for offline use.
@@ -98,7 +98,7 @@ commands:
       -o, --output=: Output directory
     completion:
       flag:
-        deck: ["$files([\"*.py\"])"]
+        deck: ["$files([\".py\"])"]
 
   - name: export
     description: Export a PDF via headless Chromium (one page per slide).
@@ -110,7 +110,7 @@ commands:
       --size=: Override PDF page size, e.g. 1280x720
     completion:
       flag:
-        deck: ["$files([\"*.py\"])"]
+        deck: ["$files([\".py\"])"]
 
   - name: sync
     description: Refresh layout layers and preview styles in slide SVGs.
@@ -123,7 +123,7 @@ commands:
       flag:
         mode: ["dark", "light"]
       positionalany:
-        - "$files([\"*.svg\"])"
+        - "$files([\".svg\"])"
 
   - name: colorize
     description: Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
@@ -135,7 +135,7 @@ commands:
       flag:
         mode: ["dark", "light"]
       positionalany:
-        - "$files([\"*.svg\"])"
+        - "$files([\".svg\"])"
 
   - name: palette
     description: Generate an Inkscape GPL color palette for the active theme.
@@ -155,7 +155,7 @@ commands:
       --strict: Treat warnings as errors
     completion:
       positionalany:
-        - "$files([\"*.svg\"])"
+        - "$files([\".svg\"])"
 
   - name: layouts
     description: List available layouts with their zones.
