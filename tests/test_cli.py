@@ -403,3 +403,42 @@ class TestInitGit:
             # the repo's hook config.
             assert not Path(".gitignore").exists()
             assert "setup-git" in result.output
+
+
+class TestInitScaffold:
+    def test_creates_starter_files(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+            assert result.exit_code == 0, result.output
+            root = Path("my-talk")
+            for rel in (
+                "deck.py",
+                "slides/title.svg",
+                "slides/diagram.svg",
+                "slides/guide.md",
+                "slides/diagram.md",
+                "notes/title.md",
+                "notes/guide.md",
+                "notes/diagram.md",
+            ):
+                assert (root / rel).exists(), rel
+
+    def test_sync_injects_layout_live(self, runner: CliRunner) -> None:
+        """The parented diagram SVG gets its base layer + preview style injected
+        into the project copy, while the packaged template stays lean."""
+        with runner.isolated_filesystem():
+            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+            assert result.exit_code == 0, result.output
+            diagram = Path("my-talk/slides/diagram.svg").read_text(encoding="utf-8")
+            assert "inkflow:layout-src" in diagram
+            assert "inkflow-preview" in diagram
+
+    def test_scaffolded_deck_builds(self, runner: CliRunner, tmp_path: Path) -> None:
+        from inkflow.export import build_static_html
+
+        with runner.isolated_filesystem():
+            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+            assert result.exit_code == 0, result.output
+            out = tmp_path / "build"
+            build_static_html(Path("my-talk/deck.py").resolve(), out)
+            assert (out / "index.html").exists()
