@@ -358,8 +358,7 @@ def _make_video_element(src: str, style: str, item: Video) -> SvgElement:
         el.set("data-autoplay", "")
     if item.loop:
         el.set("data-loop", "")
-    if item.play_on_step is not None:
-        el.set("data-play-on-step", str(item.play_on_step))
+    # data-play-on-step is written later by annotate_svg from a PlayVideo cue.
     if item.start is not None:
         el.set("data-start", f"{item.start:g}")
     if item.end is not None:

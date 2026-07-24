@@ -223,7 +223,6 @@ class TestVideoPlayback:
                         "v.mp4",
                         autoplay=True,
                         loop=True,
-                        play_on_step=2,
                         start=0.5,
                         end=1.5,
                     )
@@ -232,7 +231,9 @@ class TestVideoPlayback:
         )
         assert v.get("data-autoplay") is not None
         assert v.get("data-loop") is not None
-        assert v.get("data-play-on-step") == "2"
+        # data-play-on-step is written later by annotate from a PlayVideo cue,
+        # not by content injection.
+        assert v.get("data-play-on-step") is None
         assert v.get("data-start") == "0.5"
         assert v.get("data-end") == "1.5"
         assert v.get("autoplay") is None
