@@ -2,8 +2,6 @@
 
 Roughly ordered by priority
 
-- init command should setup a usable deck, current is a bit too minimal
-
 - Should themes we importable classes? That might make discovery trivial.
 
 - Composable layout components, orthogonal to layout system, e.g. `overlays=`. To e.g. put your own logo/footer on every slide without having to "wrap" each layout if you want to reuse builtins/themes.

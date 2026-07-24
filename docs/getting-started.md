@@ -62,35 +62,37 @@ cd my-talk
 inkflow serve
 ```
 
-This creates `slides/title.svg` (a title slide from the built-in theme),
-`slides/content.md` (Markdown content — example bullets with two reveal steps),
-and a `deck.py` that lists both.
+The starter deck has three slides, each showing a different way to author one:
+
+1. **`slides/title.svg`** — a plain SVG you drew. No layout, no zones: draw an SVG,
+   point a `Slide` at it, done.
+2. **A built-in layout filled with Markdown** — `Slide("default", md="guide")` pulls
+   `slides/guide.md` into the layout's content zone. `slides/guide.md` itself explains
+   how the template works.
+3. **`slides/diagram.svg`** — your own SVG that inherits a themed background via
+   `inkflow:parent`, carries its own Markdown zone (`slides/diagram.md`), and animates
+   an element by its `id`. The slide is a labelled "anatomy" diagram of itself.
+
+Speaker notes for each slide live in `notes/` and show only in the presenter panel
+(press `p`).
 
 **Make it yours:**
 
-- `slides/title.svg` only defines empty zones from the built-in cover layout —
-  fill them in from `deck.py`:
+- Edit the text in `slides/title.svg` (open it in Inkscape) and the Markdown in
+  `slides/guide.md` / `slides/diagram.md`.
+- Fill a layout zone from `deck.py` with a `TextBox` instead of Markdown:
 
   ```python
-  from inkflow import Deck, Slide, TextBox
+  from inkflow import Slide, TextBox
 
-  def main() -> Deck:
-      return Deck(slides=[
-          Slide("title", zones={
-              "title": TextBox("My Talk"),
-              "subtitle": TextBox("A subtitle"),
-          }),
-          Slide("builtin:default", md="content"),
-      ])
+  Slide("default", zones={"title": TextBox("My Talk")})
   ```
 
-- Edit `slides/content.md` to change the bullets.
-- Draw your own shapes directly in `slides/title.svg` and give one an ID (in
-  Inkscape, select it and open Object Properties via the Object menu or
-  <kbd>Ctrl+Shift+O</kbd>) to animate it:
+- Draw your own shape in any slide SVG and give it an ID (in Inkscape, select it and
+  open Object Properties via the Object menu or <kbd>Ctrl+Shift+O</kbd>) to animate it:
 
   ```python
-  Slide("title", animations=[animations.FadeIn("my-shape")])
+  Slide("diagram", animations=[animations.FadeIn("my-shape")])
   ```
 
 Save, and the presenter updates automatically. No refresh needed.
