@@ -7,6 +7,7 @@ from inkflow.enums import (
     MediaAlign,
     MediaFit,
     Muted,
+    Trigger,
     VAlign,
 )
 from inkflow.manifest import (
@@ -40,6 +41,7 @@ __all__ = [
     "Slide",
     "TextBox",
     "Transition",
+    "Trigger",
     "VAlign",
     "Video",
     "ZoneContent",

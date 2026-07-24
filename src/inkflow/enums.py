@@ -18,6 +18,7 @@ __all__ = [
     "MediaAlign",
     "MediaFit",
     "Muted",
+    "Trigger",
     "VAlign",
 ]
 
@@ -191,6 +192,41 @@ Easing.EASE_IN_OUT = Easing("ease-in-out")
 Easing.LINEAR = Easing("linear")
 Easing.STEP_START = Easing("step-start")
 Easing.STEP_END = Easing("step-end")
+
+
+class Trigger(str):
+    """When a cue fires. You set the intent; step numbers are inferred.
+
+    ```python
+    FadeIn("headline")                          # on the next keypress
+    FadeIn("subtitle", Trigger.WITH_PREVIOUS)   # with the previous cue
+    FadeIn("arrow", Trigger.at(3))              # pinned to step 3
+    ```
+
+    Markdown reveals accept the same values via ``trigger=``
+    (``::step trigger=with-previous::``, ``::step trigger=3::``).
+    """
+
+    ON_CLICK: ClassVar[Trigger]
+    """The default: the cue fires on the next keypress."""
+    WITH_PREVIOUS: ClassVar[Trigger]
+    """Fire together with the previous cue. When it comes first, the element is
+    visible from the start."""
+
+    @classmethod
+    def at(cls, step: int) -> Trigger:
+        """Pin the cue to an absolute step number."""
+        return cls(str(int(step)))
+
+    @property
+    def explicit_step(self) -> int | None:
+        """The step for a `Trigger.at(...)` value, or ``None`` for a preset."""
+        body = self[1:] if self.startswith("-") else self
+        return int(self) if body.isdigit() else None
+
+
+Trigger.ON_CLICK = Trigger("on-click")
+Trigger.WITH_PREVIOUS = Trigger("with-previous")
 
 
 class Muted(Enum):
