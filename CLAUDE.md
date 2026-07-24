@@ -18,7 +18,7 @@ Configures two things:
 - **Pre-commit hook** (`.githooks/pre-commit`) — strips Inkscape editor metadata from staged SVGs before every commit, so viewport pan/zoom/window state never lands in history
 - **SVG diff driver** — `git diff`, `git log -p`, and GitHub's diff view show only visual changes even for SVGs that haven't been cleaned in-place
 
-Git won't run this automatically on clone — that's an intentional git security boundary — so it needs to be run once. After that it's invisible.
+Git won't run this automatically on clone — that's an intentional git security boundary — so it needs to be run once. After that it's invisible. (`inkflow init` already does this for a freshly created project via `git_setup.init_project_git`; `setup-git` is the manual path for existing clones and teammates.)
 
 SVG source files should be kept clean (no Inkscape metadata) in the repository. Run `uv run inkflow clean demo/slides/*.svg` to clean any files committed before the hook was in place.
 
@@ -75,9 +75,16 @@ src/
                                palette), verify.py. Submodules register on `main` by import.
     clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
     colors.py         CSS color token extraction, hex→class mapping, SVG colorization, GPL palette
-    git_setup.py      git hook + SVG diff driver setup
-    init.py           project scaffolding (inkflow init)
+    git_setup.py      git hook + SVG diff driver setup; `init_project_git`
+                               bootstraps a fresh project (git init + .gitignore +
+                               hooks), and steps aside when already inside a repo
+    init.py           project scaffolding (inkflow init): copies templates/ into
+                               slides/ + notes/ and writes a 3-slide deck.py
     loaders.py        deck style / script loading helpers
+    sync.py           reusable layout-preview sync (`build_preview_css`,
+                               `sync_slides`): injects ancestor layout layers + a theme
+                               preview <style> into slide SVGs; shared by the `sync`
+                               command and `init` (run live after scaffolding)
     logging.py        unified log sink over stdlib logging: `logger`, shared Rich
                                `console`, `report` (cargo-style status), `collect_logs`
                                (per-rebuild capture), and three independent sinks
@@ -95,6 +102,8 @@ src/
       presenter.js    navigation, transitions, WebSocket, presenter panel
       presenter.css   all presenter styles including the sidebar panel
     theme/            built-in theme: main.svg, layouts/*.svg, styles.css
+    templates/        inkflow init starter files (title.svg, diagram.svg, guide.md,
+                               diagram.md, notes/*.md) copied verbatim into new projects
   ts/                 TypeScript source
     globals.d.ts      ambient declarations for Python-injected globals (__SLIDES_JSON__ etc.)
     shared/           types, step logic, step-ring SVG builder, cubic-bezier easing
