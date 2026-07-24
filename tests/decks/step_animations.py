@@ -5,9 +5,14 @@ through with the arrow keys. It exercises:
 
 - markdown reveals as real ``Animation`` objects (default ``FadeIn``);
 - the ``::step``/``::steps`` marker grammar: ``type=<ClassName>`` plus params,
-  including a custom ``Animation`` subclass (``Glow``) resolved by name;
+  including a custom ``Animation`` subclass (``Glow``) resolved by name, and the
+  ``trigger=`` param (``with-previous`` and an absolute pin);
 - every built-in animation once via ``deck.py`` ``animations=[...]``, each with
   default params (so their defaults come from Python, not a CSS fallback);
+- ``Trigger``: the default ``ON_CLICK`` (one cue per click), ``WITH_PREVIOUS``,
+  and the ``Trigger.at(n)`` pin;
+- concatenation: a slide whose markdown reveals number first, then its
+  ``animations=[...]`` list continues the same count;
 - the ``Easing`` value object (a preset and a ``cubic_bezier``), on both an
   animation and a transition.
 
@@ -19,7 +24,16 @@ served (and its ``--anim-intensity`` param scales the glow).
 
 from dataclasses import dataclass
 
-from inkflow import Deck, Direction, Easing, Inline, Slide, animations, transitions
+from inkflow import (
+    Deck,
+    Direction,
+    Easing,
+    Inline,
+    Slide,
+    Trigger,
+    animations,
+    transitions,
+)
 from inkflow.manifest import Animation
 
 
@@ -59,6 +73,9 @@ Slides in from the right.
 ::step type=Bounce::
 Bounces in.
 
+::step type=FadeIn trigger=with-previous::
+Fades in together with the bounce (shares its step).
+
 ::step type=Glow intensity=2::
 Custom deck-defined type, resolved by name.
 """)
@@ -74,18 +91,34 @@ def main() -> Deck:
                 "anim-targets",
                 id="builtins",
                 # Every built-in once, default params (defaults sourced from Python).
-                # One uses an explicit Easing to exercise the value object.
+                # Default ON_CLICK trigger -> one per click. One uses an explicit
+                # Easing to exercise the value object.
                 animations=[
-                    animations.FadeIn(
-                        "#a", step=1, easing=Easing.cubic_bezier(0.2, 0, 0.3, 1)
-                    ),
-                    animations.FadeOut("#b", step=2),
-                    animations.Bounce("#c", step=3),
-                    animations.SlideIn("#d", direction=Direction.RIGHT, step=4),
-                    animations.SlideOut("#e", direction=Direction.UP, step=5),
-                    animations.ZoomIn("#f", step=6),
-                    animations.ZoomOut("#g", step=7),
-                    animations.Highlight("#h", step=8),
+                    animations.FadeIn("a", easing=Easing.cubic_bezier(0.2, 0, 0.3, 1)),
+                    animations.FadeOut("b"),
+                    animations.Bounce("c"),
+                    animations.SlideIn("d", direction=Direction.RIGHT),
+                    animations.SlideOut("e", direction=Direction.UP),
+                    animations.ZoomIn("f"),
+                    animations.ZoomOut("g"),
+                    animations.Highlight("h"),
+                ],
+            ),
+            # Concatenation: the two markdown reveals number 1..2, then the deck
+            # animations=[...] list continues from there — badge-a lands on step 3
+            # (ON_CLICK after the reveals), badge-b is pinned to step 5.
+            Slide(
+                "slides/mixed.svg",
+                id="mixed",
+                md=Inline(
+                    "::steps::\n"
+                    + "- reveal one (step 1)\n"
+                    + "- reveal two (step 2)\n"
+                    + "::steps end::\n"
+                ),
+                animations=[
+                    animations.FadeIn("badge-a"),
+                    animations.FadeIn("badge-b", Trigger.at(5)),
                 ],
             ),
         ],

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#393e46"/>
+  <text x="960" y="120" font-family="sans-serif" font-size="56" fill="#ffffff" text-anchor="middle">markdown reveals, then deck cues</text>
+  <rect id="zone-content" x="120" y="220" width="1000" height="760" fill="none"/>
+  <g id="badge-a">
+    <rect x="1320" y="300" width="440" height="200" rx="16" fill="#00adb5"/>
+    <text x="1540" y="415" font-family="sans-serif" font-size="40" fill="#ffffff" text-anchor="middle">deck cue A (step 3)</text>
+  </g>
+  <g id="badge-b">
+    <rect x="1320" y="580" width="440" height="200" rx="16" fill="#eeeeee"/>
+    <text x="1540" y="695" font-family="sans-serif" font-size="40" fill="#222831" text-anchor="middle">deck cue B (at 5)</text>
+  </g>
+</svg>
