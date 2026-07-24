@@ -2,9 +2,6 @@
 
 Roughly ordered by priority
 
-- replace step= with trigger enum (session started, step-numbering)
-- Remove `#id`/css style selectors
-
 - inkflow init should run git init and create a .gitignore if git is available (setup-git doesn't make sense when running inkflow init some-dir)
 - init command should setup a usable deck, current is a bit too minimal
 
