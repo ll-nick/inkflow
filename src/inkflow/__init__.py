@@ -13,6 +13,7 @@ from inkflow.enums import (
 from inkflow.manifest import (
     Animation,
     Content,
+    Cue,
     Deck,
     Image,
     Inline,
@@ -29,6 +30,7 @@ __all__ = [
     "Animation",
     "ColorMode",
     "Content",
+    "Cue",
     "Deck",
     "Direction",
     "Easing",
