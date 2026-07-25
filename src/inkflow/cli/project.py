@@ -58,11 +58,12 @@ def init_cmd(
 ) -> None:
     """Scaffold a new presentation project in DIRECTORY (default: current).
 
-    Writes a starter `deck.py`. For a new project (not already inside a git repository)
-    it also runs `git init`, writes a `.gitignore`, and configures the SVG git hooks.
-    Inside an existing repository it leaves git alone and points you at `setup-git`.
-    Skip all git steps with `--no-git`.
-    Pass `--theme` to start from a custom theme directory.
+    Writes a starter `deck.py`, slides, and a `pyproject.toml` declaring inkflow.
+    For a new project (not already inside a git repository) it also runs `git init`,
+    writes a `.gitignore`, and configures the SVG git hooks. Inside an existing
+    repository it leaves git alone and points you at `setup-git`. Skip all git steps
+    with `--no-git`.
+
     Refuses to scaffold into a non-empty directory (dotfiles like `.git` are ignored)
     unless `--force` is given. Pass `--theme` to start from a custom theme directory.
     """
@@ -83,6 +84,7 @@ def init_cmd(
     report("Created", "slides/ (title.svg, diagram.svg, guide.md, diagram.md)")
     report("Created", "notes/ (title.md, guide.md, diagram.md)")
     report("Created", "deck.py")
+    report("Created", "pyproject.toml")
     _sync_layout_previews(target)
     if not no_git:
         git_setup.init_project_git(target, verbose=False)

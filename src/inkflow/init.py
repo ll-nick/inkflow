@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from importlib.metadata import PackageNotFoundError, version
 from importlib.resources import files
 from pathlib import Path
 
@@ -35,6 +37,40 @@ def main() -> Deck:
 _SLIDE_TEMPLATES = ("title.svg", "diagram.svg", "guide.md", "diagram.md")
 _NOTES_TEMPLATES = ("title.md", "guide.md", "diagram.md")
 
+_PYPROJECT = """\
+[project]
+name = "{name}"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "{requirement}",
+]
+"""
+
+
+def _project_name(target: Path) -> str:
+    """Derive a PEP 508-valid project name from the target directory."""
+    slug = re.sub(r"[^a-z0-9._-]+", "-", target.name.lower()).strip("-._")
+    return slug or "my-deck"
+
+
+def _inkflow_requirement() -> str:
+    """Pin the scaffold to the running inkflow via a compatible-release bound.
+
+    ``~=X.Y.Z`` lets patch fixes flow in but caps at the next minor, so a deck is
+    not silently upgraded across a breaking release while the DSL is unstable. The
+    exact version is still locked by ``uv.lock``. Falls back to a bare or ``>=``
+    requirement if the version cannot be parsed to a release triple.
+    """
+    try:
+        raw = version("inkflow")
+    except PackageNotFoundError:
+        return "inkflow"
+    match = re.match(r"^(\d+)\.(\d+)\.(\d+)", raw)
+    if match is None:
+        return f"inkflow>={raw}"
+    return f"inkflow~={match.group(1)}.{match.group(2)}.{match.group(3)}"
+
 
 def scaffold(target: Path, theme_path: str | None) -> None:
     """Create starter files for a new presentation in target.
@@ -68,4 +104,11 @@ def scaffold(target: Path, theme_path: str | None) -> None:
     deck_arg = f'theme="{theme_path}", ' if theme_path else ""
     (target / "deck.py").write_text(
         _DECK_PY.format(deck_arg=deck_arg), encoding="utf-8"
+    )
+
+    (target / "pyproject.toml").write_text(
+        _PYPROJECT.format(
+            name=_project_name(target), requirement=_inkflow_requirement()
+        ),
+        encoding="utf-8",
     )

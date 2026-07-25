@@ -443,6 +443,14 @@ class TestInitScaffold:
             build_static_html(Path("my-talk/deck.py").resolve(), out)
             assert (out / "index.html").exists()
 
+    def test_writes_pyproject_with_inkflow_dependency(self, runner: CliRunner) -> None:
+        with runner.isolated_filesystem():
+            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+            assert result.exit_code == 0, result.output
+            pyproject = Path("my-talk/pyproject.toml").read_text(encoding="utf-8")
+            assert 'name = "my-talk"' in pyproject
+            assert "inkflow~=" in pyproject
+
 
 class TestInitEmptyDirGuard:
     def test_refuses_non_empty_directory(self, runner: CliRunner) -> None:
