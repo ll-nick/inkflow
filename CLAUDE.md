@@ -79,7 +79,10 @@ src/
                                bootstraps a fresh project (git init + .gitignore +
                                hooks), and steps aside when already inside a repo
     init.py           project scaffolding (inkflow init): copies templates/ into
-                               slides/ + notes/ and writes a 3-slide deck.py
+                               slides/ + notes/, writes a 3-slide deck.py and a bare
+                               pyproject.toml pinning inkflow (`~=` compatible release);
+                               command refuses a non-empty target (dotfiles ignored)
+                               unless --force
     loaders.py        deck style / script loading helpers
     sync.py           reusable layout-preview sync (`build_preview_css`,
                                `sync_slides`): injects ancestor layout layers + a theme

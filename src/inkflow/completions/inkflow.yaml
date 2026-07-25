@@ -11,6 +11,7 @@ commands:
     flags:
       --theme=: Path to a custom theme directory
       --no-git: Skip git hook setup
+      --force: Scaffold even into a non-empty directory
     completion:
       positional:
         - ["$directories"]
