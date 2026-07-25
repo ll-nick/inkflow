@@ -47,7 +47,15 @@ def _sync_layout_previews(target: Path) -> None:
     is_flag=True,
     help="Skip git hook setup even when inside a git repository.",
 )
-def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
+@click.option(
+    "--force",
+    "force",
+    is_flag=True,
+    help="Scaffold even into a non-empty directory.",
+)
+def init_cmd(
+    directory: Path, theme_path: str | None, no_git: bool, force: bool
+) -> None:
     """Scaffold a new presentation project in DIRECTORY (default: current).
 
     Writes a starter `deck.py`. For a new project (not already inside a git repository)
@@ -55,10 +63,19 @@ def init_cmd(directory: Path, theme_path: str | None, no_git: bool) -> None:
     Inside an existing repository it leaves git alone and points you at `setup-git`.
     Skip all git steps with `--no-git`.
     Pass `--theme` to start from a custom theme directory.
+    Refuses to scaffold into a non-empty directory (dotfiles like `.git` are ignored)
+    unless `--force` is given. Pass `--theme` to start from a custom theme directory.
     """
     target = directory.resolve()
     if (target / "deck.py").exists():
         raise click.ClickException(f"deck.py already exists: {target / 'deck.py'}")
+    if target.exists() and not force:
+        clutter = [p for p in target.iterdir() if not p.name.startswith(".")]
+        if clutter:
+            raise click.ClickException(
+                f"directory {target} is not empty — run in a new directory "
+                + "(inkflow init my-talk) or pass --force"
+            )
     try:
         init.scaffold(target, theme_path)
     except ValueError as exc:
