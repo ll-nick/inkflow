@@ -10,27 +10,26 @@ This page takes you from zero to a running presentation in about five minutes.
   [Inkscape](https://inkscape.org/) is the primary authoring tool,
   but any editor that exports standard SVG works
 
-## Installation
+## Run the demo
+
+The demo deck lives in the repository, so clone it and serve:
 
 === "uv (recommended)"
 
     ```bash
-    uv add inkflow
+    git clone https://github.com/ll-nick/inkflow
+    cd inkflow/demo
+    uv run inkflow serve
     ```
 
 === "pip"
 
     ```bash
-    pip install inkflow
+    git clone https://github.com/ll-nick/inkflow
+    cd inkflow
+    pip install -e .
+    inkflow serve --deck demo/deck.py
     ```
-
-## Run the demo
-
-The repository ships with a working demo deck:
-
-```bash
-inkflow serve --deck demo/deck.py
-```
 
 Open [http://localhost:7777](http://localhost:7777) in your browser.
 Use the keyboard to navigate.
@@ -56,11 +55,33 @@ Here are a few shortcuts to get you started:
     For a fresh project, `inkflow init` also runs `git init` and configures git
     hooks automatically — see [Git integration](#git-integration).
 
-```bash
-inkflow init my-talk
-cd my-talk
-inkflow serve
-```
+=== "uv (recommended)"
+
+    ```bash
+    uvx inkflow init my-talk
+    cd my-talk
+    uv run inkflow serve
+    ```
+
+    `uvx` runs inkflow just long enough to scaffold. `uv run` then installs inkflow
+    into the project's own environment from the generated `pyproject.toml`.
+
+=== "pip"
+
+    ```bash
+    pip install inkflow
+    inkflow init my-talk
+    cd my-talk
+    inkflow serve
+    ```
+
+    Install inkflow into the environment you work in (a virtualenv is recommended);
+    that is the same environment `deck.py` imports it from. The generated
+    `pyproject.toml` records the dependency for reproducibility and for teammates on uv.
+
+`inkflow init` writes `slides/`, `notes/`, a `deck.py`,
+and a `pyproject.toml` pinning inkflow.
+It refuses to scaffold into a non-empty directory unless you pass `--force`.
 
 The starter deck has three slides, each showing a different way to author one:
 

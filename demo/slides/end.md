@@ -4,4 +4,4 @@
 
 [ll-nick.github.io/inkflow/](https://ll-nick.github.io/inkflow/)
 
-`uv add inkflow`
+`uvx inkflow init`

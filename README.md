@@ -91,10 +91,9 @@ It will inject the Markdown and media files into the SVGs, apply the transitions
 ## Quick start
 
 ```bash
-uv add inkflow # or: pip install inkflow
-inkflow init my-deck
+uvx inkflow init my-deck # or: pip install inkflow && inkflow init my-deck
 cd my-deck
-inkflow serve
+uv run inkflow serve # or, without uv: inkflow serve
 # press "o" in the tui to open http://localhost:7777 in your browser,
 # press ? in the presenter for keyboard shortcuts
 ```
