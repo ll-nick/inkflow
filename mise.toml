@@ -1,6 +1,7 @@
 [tools]
 uv   = "latest"
 node = "lts"
+pnpm = "latest"
 
 [tasks.lint-py]
 run = "uv run ruff check"
