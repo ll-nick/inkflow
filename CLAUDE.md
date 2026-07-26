@@ -208,9 +208,14 @@ Typography and color come from the CSS cascade (`theme/styles.css` + per-deck/pe
 *3. Python `TextBox` explicit params* — in `deck.py`:
 ```python
 from inkflow import Align, Slide, TextBox, VAlign
+
 Slide(
     "layout.svg",
-    zones={"content": TextBox(text="...", align=Align.CENTER, valign=VAlign.TOP, padding=40)},
+    zones={
+        "content": TextBox(
+            text="...", align=Align.CENTER, valign=VAlign.TOP, padding=40
+        )
+    },
 )
 ```
 The target zone is the `zones` dict key (`"content"` → `zone-content`); `TextBox` has no selector argument, its first positional is `text`. `Align` and `VAlign` are `StrEnum`s exported from the top-level package. `None` (the default) means "defer to CSS variable".

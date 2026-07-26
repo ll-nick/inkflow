@@ -14,32 +14,28 @@ jobs:
 
       - uses: jdx/mise-action@v4
 
-      - name: Check uv.lock is up to date
-        run: uv lock --check
-
       - run: npm ci
-
-      - name: JS checks
-        run: |
-          npx biome check src/ts/ src/css/
-          npx tsc --noEmit
 
       - name: Check bundles are up to date
         run: |
           mise run bundle
           git diff --exit-code src/inkflow/bundles/
 
-      - run: uv run ruff format --check src/ tests/
+      # Each check is the same mise task run locally, kept as separate steps so a
+      # failure points at the exact task. Keep this list in sync with `check`'s
+      # `depends` in mise.toml.
+      - run: mise run lint-lock
+      - run: mise run lint-py
+      - run: mise run fmt-py
+      - run: mise run typecheck-py
+      - run: mise run lint-deps
+      - run: mise run test
+      - run: mise run lint-js
+      - run: mise run typecheck-js
+      - run: mise run test-js
 
-      - run: uv run ruff check src/ tests/
-
-      - run: uv run basedpyright
-
-      - run: uv run deptry src
-
-      - run: uv run pytest
-
-      - run: git ls-files '*.svg' | xargs --no-run-if-empty uv run inkflow clean --check
+      - name: Check SVGs are clean
+        run: git ls-files '*.svg' | xargs --no-run-if-empty uv run inkflow clean --check
 
       - name: Build demo deck
         run: uv run inkflow build --deck demo/deck.py

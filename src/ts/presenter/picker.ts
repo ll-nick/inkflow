@@ -49,12 +49,12 @@ export function filterPicker(query: string): void {
     pickerList.innerHTML = matches
         .map(
             (idx, pos) =>
-                `<li role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}">` +
+                `<div role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}">` +
                 `<span class="pk-num">${idx + 1}</span>` +
-                `<span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></li>`,
+                `<span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></div>`,
         )
         .join("");
-    const active = pickerList.querySelector("li.active");
+    const active = pickerList.querySelector('[role="option"].active');
     if (active) active.scrollIntoView({ block: "nearest" });
 }
 
@@ -64,10 +64,10 @@ function pickerMoveCursor(delta: number): void {
         0,
         Math.min(state._pickerMatches.length - 1, state._pickerActive + delta),
     );
-    pickerList.querySelectorAll("li").forEach((li, i) => {
-        li.classList.toggle("active", i === state._pickerActive);
+    pickerList.querySelectorAll('[role="option"]').forEach((opt, i) => {
+        opt.classList.toggle("active", i === state._pickerActive);
     });
-    const active = pickerList.querySelector("li.active");
+    const active = pickerList.querySelector('[role="option"].active');
     if (active) active.scrollIntoView({ block: "nearest" });
 }
 
@@ -109,9 +109,9 @@ pickerInput.addEventListener("keydown", (e) => {
     }
 });
 pickerList.addEventListener("click", (e) => {
-    const li = (e.target as Element).closest("li");
-    if (!li) return;
-    const pos = parseInt((li as HTMLElement).dataset.pos!, 10);
+    const opt = (e.target as Element).closest('[role="option"]');
+    if (!opt) return;
+    const pos = parseInt((opt as HTMLElement).dataset.pos!, 10);
     state._pickerActive = pos;
     pickerCommit();
 });

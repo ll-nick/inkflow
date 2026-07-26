@@ -29,13 +29,19 @@ This means you get full Python: loops, conditionals, variables, imports.
 ```python
 from inkflow import Deck, Slide, animations
 
+
 def main() -> Deck:
-    return Deck(slides=[
-        Slide("title.svg", animations=[
-            animations.FadeIn("headline"),
-            animations.FadeIn("subtitle"),
-        ]),
-    ])
+    return Deck(
+        slides=[
+            Slide(
+                "title.svg",
+                animations=[
+                    animations.FadeIn("headline"),
+                    animations.FadeIn("subtitle"),
+                ],
+            ),
+        ]
+    )
 ```
 
 The manifest records intent, not rendering.

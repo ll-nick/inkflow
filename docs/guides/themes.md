@@ -36,7 +36,7 @@ before falling back to the built-in layouts.
 ## Color mode
 
 ```python
-Deck(mode=ColorMode.DARK)    # default
+Deck(mode=ColorMode.DARK)  # default
 Deck(mode=ColorMode.LIGHT)
 ```
 
@@ -159,17 +159,22 @@ Beyond the theme, you can inject CSS at two levels:
 **Deck-level**: applied to every slide:
 
 ```python
-Deck(style="""
+Deck(
+    style="""
     text { font-family: "Inter", sans-serif; }
-""")
+"""
+)
 ```
 
 **Slide-level**: applied to one slide only:
 
 ```python
-Slide("title", style="""
+Slide(
+    "title",
+    style="""
     #headline { fill: hotpink; }
-""")
+""",
+)
 ```
 
 Slide-level style takes precedence over deck-level, which takes precedence over the theme.
