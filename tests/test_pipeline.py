@@ -1,10 +1,12 @@
 # pyright: reportPrivateUsage=none
 from __future__ import annotations
 
+import json
 import logging
 import re
 import textwrap
 from pathlib import Path
+from typing import TypedDict, cast
 
 import pytest
 
@@ -88,26 +90,67 @@ class TestResolveSlideSource:
         assert resolve_slide_src("content", tmp_path) == layout
 
 
+class _CueDict(TypedDict):
+    step: int
+    kind: str
+    name: str
+    opts: dict[str, object]
+    vars: dict[str, str]
+
+
+def _parse_cues(svg: str, element_id: str) -> list[_CueDict]:
+    """The parsed `data-cues` list for one element (empty when absent)."""
+    el = parse_svg(svg).find(f'.//*[@id="{element_id}"]')
+    raw = el.get("data-cues") if el is not None else None
+    return cast("list[_CueDict]", json.loads(raw)) if raw else []
+
+
 class TestAnnotateSvg:
-    def test_fade_adds_class_and_step(self) -> None:
+    @staticmethod
+    def _cues(svg: str, element_id: str) -> list[_CueDict]:
+        return _parse_cues(svg, element_id)
+
+    @staticmethod
+    def _classes(svg: str, element_id: str) -> list[str]:
+        el = parse_svg(svg).find(f'.//*[@id="{element_id}"]')
+        return (el.get("class") or "").split() if el is not None else []
+
+    def test_fade_writes_enter_cue(self) -> None:
+        [cue] = self._cues(annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1)]), "box")
+        assert (cue["name"], cue["kind"], cue["step"]) == ("fade-in", "enter", 1)
+
+    def test_fade_out_kind_is_exit(self) -> None:
+        [cue] = self._cues(annotate_svg(_PLAIN_SVG, [(FadeOut("box"), 2)]), "box")
+        assert (cue["name"], cue["kind"], cue["step"]) == ("fade-out", "exit", 2)
+
+    def test_bounce_easing_defaults_to_spring(self) -> None:
+        # Bounce overrides the base easing default with its spring curve; the pipeline
+        # serializes it like any other animation's easing (no special-casing).
+        [cue] = self._cues(annotate_svg(_PLAIN_SVG, [(Bounce("dot"), 3)]), "dot")
+        assert cue["name"] == "bounce"
+        assert str(cue["opts"]["easing"]).startswith("cubic-bezier")
+
+    def test_emits_anim_slug_styling_hook_class(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [(ZoomIn("box"), 1)])
+        assert "anim-zoom-in" in self._classes(result, "box")
+
+    def test_multi_cue_emits_a_class_per_type(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1), (ZoomIn("box"), 2)])
+        classes = self._classes(result, "box")
+        assert "anim-fade-in" in classes and "anim-zoom-in" in classes
+
+    def test_enter_first_adds_pending_class(self) -> None:
         result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1)])
-        assert 'class="anim-fade-in"' in result
-        assert 'data-step="1"' in result
+        assert "anim-pending" in self._classes(result, "box")
 
-    def test_fade_out_adds_class(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(FadeOut("box"), 2)])
-        assert 'class="anim-fade-out"' in result
-        assert 'data-step="2"' in result
-
-    def test_bounce_adds_class(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(Bounce("dot"), 3)])
-        assert 'class="anim-bounce"' in result
-        assert 'data-step="3"' in result
+    def test_exit_first_has_no_pending_class(self) -> None:
+        result = annotate_svg(_PLAIN_SVG, [(FadeOut("box"), 1)])
+        assert "anim-pending" not in self._classes(result, "box")
 
     def test_preserves_existing_class(self) -> None:
         svg = _PLAIN_SVG.replace('<rect id="box"', '<rect id="box" class="my-class"')
-        result = annotate_svg(svg, [(FadeIn("box"), 1)])
-        assert 'class="my-class anim-fade-in"' in result
+        classes = self._classes(annotate_svg(svg, [(FadeIn("box"), 1)]), "box")
+        assert "my-class" in classes and "anim-pending" in classes
 
     def test_missing_element_warns_and_continues(self) -> None:
         with collect_logs(logging.WARNING) as warnings:
@@ -115,62 +158,97 @@ class TestAnnotateSvg:
         assert any("nonexistent" in w.message for w in warnings)
         assert 'id="box"' in result  # rest of SVG intact
 
-    def test_multiple_animations_applied(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1), (Bounce("dot"), 2)])
-        assert "anim-fade-in" in result
-        assert "anim-bounce" in result
+    def test_multiple_cues_on_one_element_grouped_and_sorted(self) -> None:
+        result = annotate_svg(
+            _PLAIN_SVG,
+            [(FadeOut("box"), 5), (FadeIn("box"), 1), (Highlight("box"), 2)],
+        )
+        cues = self._cues(result, "box")
+        assert [(c["name"], c["kind"], c["step"]) for c in cues] == [
+            ("fade-in", "enter", 1),
+            ("highlight", "emphasis", 2),
+            ("fade-out", "exit", 5),
+        ]
 
     def test_no_animations_leaves_svg_unchanged(self) -> None:
         result = annotate_svg(_PLAIN_SVG, [])
-        assert "anim-" not in result
+        assert "data-cues" not in result
         assert 'id="box"' in result
 
-    def test_class_derived_from_type_name(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(ZoomIn("box"), 1)])
-        assert "anim-zoom-in" in result
+    def test_name_derived_from_type(self) -> None:
+        [cue] = self._cues(annotate_svg(_PLAIN_SVG, [(ZoomIn("box"), 1)]), "box")
+        assert cue["name"] == "zoom-in"
+        assert cue["vars"] == {"scale": "0.8"}
 
-    def test_direction_becomes_modifier_class_not_prop(self) -> None:
+    def test_lone_distance_is_a_var_not_a_slide_offset(self) -> None:
+        # Bounce has `distance` but no `direction`, so it passes through as a plain var
+        # (the keyframe applies the unit) rather than being consumed into from-x/from-y.
+        [cue] = self._cues(annotate_svg(_PLAIN_SVG, [(Bounce("dot"), 3)]), "dot")
+        assert cue["vars"] == {"distance": "14.0"}
+
+    def test_direction_resolves_to_from_offset(self) -> None:
         result = annotate_svg(
-            _PLAIN_SVG, [(SlideIn("box", direction=Direction.RIGHT), 1)]
+            _PLAIN_SVG, [(SlideIn("box", direction=Direction.RIGHT, distance=200), 1)]
         )
-        assert "anim-slide-in" in result
-        assert "anim-from-right" in result
-        assert "--anim-direction" not in result
+        [cue] = self._cues(result, "box")
+        assert cue["vars"] == {"from-x": "200px", "from-y": "0px"}
 
-    def test_trigger_not_emitted_as_custom_prop(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box", Trigger.WITH_PREVIOUS), 2)])
-        assert "--anim-trigger" not in result
-        assert 'data-step="2"' in result
-
-    def test_params_emit_custom_props(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box", duration=0.8, delay=0.2), 1)])
-        assert "--anim-duration: 0.8s" in result
-        assert "--anim-delay: 0.2s" in result
-
-    def test_default_params_emit_python_defaults(self) -> None:
-        # Defaults live in Python and are always emitted (no CSS fallback).
-        result = annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1)])
-        assert "--anim-duration: 0.4s" in result
-        assert "--anim-easing: ease" in result
-        assert "--anim-delay: 0.0s" in result
-
-    def test_distance_uses_px_unit(self) -> None:
-        result = annotate_svg(_PLAIN_SVG, [(SlideIn("box", distance=120), 1)])
-        assert "--anim-distance: 120px" in result
-
-    def test_scale_and_color_emitted_raw(self) -> None:
-        result = annotate_svg(
-            _PLAIN_SVG,
-            [(Highlight("box", color="#ff0000", passes=3), 1)],
+    def test_trigger_not_serialized(self) -> None:
+        [cue] = self._cues(
+            annotate_svg(_PLAIN_SVG, [(FadeIn("box", Trigger.WITH_PREVIOUS), 2)]),
+            "box",
         )
-        assert "--anim-color: #ff0000" in result
-        assert "--anim-passes: 3" in result
+        assert "trigger" not in cue["vars"]
+        assert cue["step"] == 2
+
+    def test_timing_opts_from_python_defaults(self) -> None:
+        # Defaults live in Python and are always serialized (no CSS fallback). The opts
+        # are exactly the base Animation fields.
+        [cue] = self._cues(annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1)]), "box")
+        assert cue["opts"] == {
+            "duration": 0.4,
+            "delay": 0.0,
+            "easing": "ease",
+            "iterations": 1,
+        }
+
+    def test_timing_opts_overridden(self) -> None:
+        [cue] = self._cues(
+            annotate_svg(_PLAIN_SVG, [(FadeIn("box", duration=0.8, delay=0.2), 1)]),
+            "box",
+        )
+        assert cue["opts"]["duration"] == 0.8
+        assert cue["opts"]["delay"] == 0.2
+
+    def test_iterations_is_an_option_color_is_a_var(self) -> None:
+        [cue] = self._cues(
+            annotate_svg(
+                _PLAIN_SVG, [(Highlight("box", color="#ff0000", iterations=3), 1)]
+            ),
+            "box",
+        )
+        assert cue["opts"]["iterations"] == 3
+        assert cue["vars"]["color"] == "#ff0000"
 
     def test_preserves_existing_style(self) -> None:
         svg = _PLAIN_SVG.replace('<rect id="box"', '<rect id="box" style="fill:red"')
-        result = annotate_svg(svg, [(FadeIn("box", duration=0.8), 1)])
+        result = annotate_svg(svg, [(FadeIn("box"), 1)])
         assert "fill:red" in result
-        assert "--anim-duration: 0.8s" in result
+        assert "data-cues" in result
+
+    def test_two_enters_on_one_element_warn(self) -> None:
+        with collect_logs(logging.WARNING) as warnings:
+            annotate_svg(_PLAIN_SVG, [(FadeIn("box"), 1), (SlideIn("box"), 2)])
+        assert any("two enter" in w.message for w in warnings)
+
+    def test_enter_exit_enter_does_not_warn(self) -> None:
+        # Re-entry is legitimate: an opposing exit sits between the two enters.
+        with collect_logs(logging.WARNING) as warnings:
+            annotate_svg(
+                _PLAIN_SVG,
+                [(FadeIn("box"), 1), (FadeOut("box"), 3), (FadeIn("box"), 5)],
+            )
+        assert not any("opposing" in w.message for w in warnings)
 
 
 class TestResolveSteps:
@@ -342,7 +420,12 @@ class TestLayoutBackedSlideExpansion:
             slides=[Slide("layout", md="content", animations=[FadeIn("zone-title")])]
         )
         results = process_deck(deck, tmp_path)
-        assert "anim-fade-in" in results[0]["svg"]
+        cues = self._title_cues(results[0]["svg"])
+        assert [c["name"] for c in cues] == ["fade-in"]
+
+    @staticmethod
+    def _title_cues(svg: str) -> list[_CueDict]:
+        return _parse_cues(svg, "zone-title")
 
     def test_zones_media_injected(self, tmp_path: Path) -> None:
         self._setup(tmp_path)
@@ -360,8 +443,15 @@ class TestLayoutBackedSlideExpansion:
             slides=[Slide("layout", md="content", animations=[FadeIn("zone-title")])]
         )
         svg = process_deck(deck, tmp_path)[0]["svg"]
-        assert re.search(r'id="inkflow-step-\d+"[^>]*data-step="1"', svg)
-        assert re.search(r'id="zone-title"[^>]*data-step="2"', svg)
+        root = parse_svg(svg)
+        reveal = next(
+            el for el in root.iter() if (el.get("id") or "").startswith("inkflow-step-")
+        )
+        raw = reveal.get("data-cues")
+        assert raw is not None
+        reveal_cues = cast("list[_CueDict]", json.loads(raw))
+        assert [c["step"] for c in reveal_cues] == [1]
+        assert [c["step"] for c in self._title_cues(svg)] == [2]
 
     def test_autoplay_overridden_by_play_video_cue(self, tmp_path: Path) -> None:
         self._setup(tmp_path)

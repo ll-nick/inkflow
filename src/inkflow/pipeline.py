@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypedDict, cast
 
 from inkflow import ns
-from inkflow.animations import PlayVideo
+from inkflow.animations import Animation, PlayVideo
 from inkflow.clean import clean_inkscape_tree
 from inkflow.content import (
     inject_style,
@@ -14,12 +15,11 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.enums import ColorMode
+from inkflow.enums import AnimationKind, ColorMode, Direction
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
 from inkflow.manifest import (
-    Animation,
     Cue,
     Deck,
     Inline,
@@ -107,43 +107,11 @@ def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> 
 
 # ── Animation / transition serialization ──────────────────────────────────────
 
-# Fields that map to a modifier class instead of a CSS custom property, because
-# CSS cannot branch on a custom-property *value* (e.g. pick a slide axis).
-_ANIM_MODIFIER_FIELDS: frozenset[str] = frozenset({"direction"})
-
-# Per-field unit suffix for the emitted `--anim-<field>` custom properties. The
-# single place value formatting lives: times are seconds, distances are user
-# units (px == SVG user units here), everything else is emitted raw.
-_ANIM_UNIT: dict[str, str] = {"duration": "s", "delay": "s", "distance": "px"}
-
 
 def _set_fields(obj: object) -> dict[str, object]:
     """Dataclass fields whose value is not None (None means 'defer to the default')."""
     fields = cast("dict[str, object]", vars(obj))
     return {k: v for k, v in fields.items() if v is not None}
-
-
-def _anim_classes(anim: Animation) -> list[str]:
-    """CSS classes for an animation: a name-derived base plus modifier classes."""
-    classes = [f"anim-{anim.slug()}"]
-    direction = getattr(anim, "direction", None)
-    if direction is not None:
-        classes.append(f"anim-from-{direction}")
-    return classes
-
-
-def _anim_style(anim: Animation) -> str:
-    """Inline `--anim-<field>` custom properties for an animation's set params.
-
-    Generic over fields: anything beyond `element`/`trigger`/modifier fields that
-    is not `None` becomes a custom property. `None` means "let the CSS default win".
-    """
-    decls: list[str] = []
-    for name, value in _set_fields(anim).items():
-        if name in ("element", "trigger") or name in _ANIM_MODIFIER_FIELDS:
-            continue
-        decls.append(f"--anim-{name}: {value}{_ANIM_UNIT.get(name, '')}")
-    return "; ".join(decls)
 
 
 def resolve_steps(cues: list[Cue], base: int = 0) -> list[tuple[Cue, int]]:
@@ -156,21 +124,102 @@ def resolve_steps(cues: list[Cue], base: int = 0) -> list[tuple[Cue, int]]:
     return [(cue, resolver.resolve(cue.trigger)) for cue in cues]
 
 
-def _annotate_animation(root: SvgElement, anim: Animation, step: int) -> None:
-    el = root.find(f'.//*[@id="{anim.element}"]')
-    if el is None:
-        logger.warning(f"element #{anim.element} not found in SVG")
-        return
+# ── Animation cue serialization (`data-cues`) ─────────────────────────────────
+# Each animated element carries a `data-cues` JSON array. Each entry pairs a step
+# and kind with the keyframe name and the params the step engine needs: `opts` are
+# element.animate() playback options (seconds; the engine converts to ms), `vars`
+# are ready-to-inject strings the engine substitutes for `var(--anim-<key>)` in the
+# keyframes.
 
-    existing_class = el.get("class", "")
-    classes = [c for c in [existing_class, *_anim_classes(anim)] if c]
-    el.set("class", " ".join(classes))
-    el.set("data-step", str(step))
 
-    style = _anim_style(anim)
-    if style:
-        existing_style = el.get("style", "").strip().rstrip(";")
-        el.set("style", f"{existing_style}; {style}" if existing_style else style)
+def _offset_vector(direction: Direction, distance: float) -> tuple[str, str]:
+    """The (x, y) translate offset an element enters from / exits toward, as
+    keyframe-ready strings. Left and up are negative; ``px`` == SVG user units."""
+    if direction == Direction.LEFT:
+        return f"{-distance}px", "0px"
+    if direction == Direction.RIGHT:
+        return f"{distance}px", "0px"
+    if direction == Direction.UP:
+        return "0px", f"{-distance}px"
+    return "0px", f"{distance}px"  # DOWN
+
+
+def _cue_entry(anim: Animation, step: int) -> dict[str, object]:
+    """Serialize one animation cue to a `data-cues` entry.
+
+    The base `Animation` fields are element.animate() ``opts``; slide direction/distance
+    resolve to a translate offset; every other (subclass) field passes through as a
+    ``var`` keyed by its field name, injected into the keyframes' ``var(--anim-<key>)``.
+    """
+    fields: dict[str, object] = {
+        k: v
+        for k, v in cast("dict[str, object]", vars(anim)).items()
+        if k not in ("element", "trigger") and v is not None
+    }
+    # element.animate() options (durations in seconds; the engine scales to ms).
+    opts: dict[str, object] = {
+        "duration": fields.pop("duration"),
+        "delay": fields.pop("delay"),
+        "easing": fields.pop("easing"),
+        "iterations": fields.pop("iterations"),
+    }
+
+    # Substitution values injected into the keyframes' `var(--anim-<key>)`. A slide's
+    # direction+distance together resolve to a translate offset (the per-direction sign
+    # is geometry CSS can't derive from an enum). Every other field, including a lone
+    # `distance` like Bounce's rise, passes through as a plain var; a keyframe applies
+    # any unit it needs, e.g. `calc(var(--anim-distance) * 1px)`.
+    substitutions: dict[str, str] = {}
+    if "direction" in fields and "distance" in fields:
+        substitutions["from-x"], substitutions["from-y"] = _offset_vector(
+            cast("Direction", fields.pop("direction")),
+            cast("float", fields.pop("distance")),
+        )
+    for name, value in fields.items():
+        substitutions[name] = str(value)
+
+    return {
+        "step": step,
+        "kind": anim.kind.value,
+        "name": anim.slug(),
+        "opts": opts,
+        "vars": substitutions,
+    }
+
+
+def _add_class(el: SvgElement, cls: str) -> None:
+    existing = [c for c in el.get("class", "").split() if c]
+    if cls not in existing:
+        el.set("class", " ".join([*existing, cls]))
+
+
+def _starts_hidden(entries: list[dict[str, object]]) -> bool:
+    """True when the element's first visibility cue (lowest step) is an enter, so it
+    is hidden before that cue fires. Drives the initial-hidden guard that prevents a
+    flash of the element before the engine attaches."""
+    for e in entries:  # pre-sorted by step
+        if e["kind"] == AnimationKind.ENTER.value:
+            return True
+        if e["kind"] == AnimationKind.EXIT.value:
+            return False
+    return False
+
+
+def _warn_duplicate_kinds(element_id: str, entries: list[dict[str, object]]) -> None:
+    """Warn on two enters (or two exits) with no opposing cue between them: the second
+    re-plays a state the element is already in, almost always a mistake. Emphasis cues
+    may repeat freely and are ignored."""
+    last: object = None
+    for e in entries:
+        kind = e["kind"]
+        if kind == AnimationKind.EMPHASIS.value:
+            continue
+        if kind == last:
+            logger.warning(
+                f"element #{element_id}: two {kind} animations with no opposing "
+                + "cue between them"
+            )
+        last = kind
 
 
 def _annotate_play_video(root: SvgElement, cue: PlayVideo, step: int) -> None:
@@ -184,13 +233,34 @@ def _annotate_play_video(root: SvgElement, cue: PlayVideo, step: int) -> None:
 
 
 def annotate_svg(root: SvgElement, cues: list[tuple[Cue, int]]) -> SvgElement:
+    """Annotate the SVG for the step engine: `PlayVideo` cues stamp
+    `data-play-on-step`; animation cues are grouped per target element into one
+    `data-cues` JSON list (sorted by step)."""
+    entries_by_element: dict[str, list[dict[str, object]]] = {}
     for cue, step in cues:
         if isinstance(cue, PlayVideo):
             _annotate_play_video(root, cue, step)
         elif isinstance(cue, Animation):
-            _annotate_animation(root, cue, step)
+            entries_by_element.setdefault(cue.element, []).append(_cue_entry(cue, step))
         else:
             logger.warning(f"cue with no annotation handler: {type(cue).__name__}")
+
+    for element_id, entries in entries_by_element.items():
+        el = root.find(f'.//*[@id="{element_id}"]')
+        if el is None:
+            logger.warning(f"element #{element_id} not found in SVG")
+            continue
+        entries.sort(key=lambda e: cast("int", e["step"]))
+        _warn_duplicate_kinds(element_id, entries)
+        el.set("data-cues", json.dumps(entries, separators=(",", ":")))
+        # An `anim-<slug>` class per cue type: a pure styling hook (the engine drives
+        # animation from `data-cues`). Built-in CSS uses it only for constant styles a
+        # keyframe cannot hold at the right cascade origin (zoom's transform-box);
+        # custom animations can hook their own static styles the same way.
+        for name in dict.fromkeys(cast("str", e["name"]) for e in entries):
+            _add_class(el, f"anim-{name}")
+        if _starts_hidden(entries):
+            _add_class(el, "anim-pending")
     return root
 
 
@@ -210,11 +280,47 @@ def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
     ]
 
 
+_KEYFRAMES_RE = re.compile(r"@(?:-webkit-)?keyframes\b")
+
+
+def _extract_keyframes(css: str) -> tuple[str, str]:
+    """Split top-level ``@keyframes`` blocks out of ``css``.
+
+    Returns ``(keyframes_css, remaining_css)``. Animation names are document-global,
+    and the step engine discovers custom ``@keyframes`` (from ``Deck(style=...)``) by
+    name, so they must stay unscoped — wrapping them in ``@scope`` would hide or
+    invalidate them. The rest of the CSS is still scoped by the caller.
+    """
+    keyframes: list[str] = []
+    rest: list[str] = []
+    pos = 0
+    for m in _KEYFRAMES_RE.finditer(css):
+        brace = css.find("{", m.end())
+        if brace == -1:
+            continue
+        depth, j = 0, brace
+        while j < len(css):
+            if css[j] == "{":
+                depth += 1
+            elif css[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        end = j + 1
+        rest.append(css[pos : m.start()])
+        keyframes.append(css[m.start() : end])
+        pos = end
+    rest.append(css[pos:])
+    return "\n".join(keyframes), "".join(rest)
+
+
 def _scope_slide_styles(root: SvgElement, slide_number: int) -> SvgElement:
     """Assign a unique ID to the SVG root and wrap any inline <style> in @scope.
 
-    SVG style blocks would bleed onto adjacent slides
-    during CSS transitions without this guard.
+    SVG style blocks would bleed onto adjacent slides during CSS transitions without
+    this guard. ``@keyframes`` are lifted out first and kept global so the step engine
+    can still find them by name.
     """
     slide_id = f"inkflow-slide-{slide_number}"
     root.set("id", slide_id)
@@ -222,7 +328,9 @@ def _scope_slide_styles(root: SvgElement, slide_number: int) -> SvgElement:
         css = style_el.text
         if not css or not css.strip():
             continue
-        style_el.text = f"@scope(#{slide_id}) {{\n{css}\n}}"
+        keyframes_css, rest = _extract_keyframes(css)
+        scoped = f"@scope(#{slide_id}) {{\n{rest}\n}}" if rest.strip() else ""
+        style_el.text = "\n".join(filter(None, [keyframes_css, scoped]))
     return root
 
 

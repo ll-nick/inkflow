@@ -161,12 +161,11 @@ class TestCustomTypeMarker:
             textwrap.dedent("""\
                 import gc
                 from dataclasses import dataclass
-                from inkflow import Deck, Inline, Slide
-                from inkflow.manifest import Animation
+                from inkflow import Deck, Inline, Slide, animations
 
 
                 @dataclass
-                class Spark(Animation):
+                class Spark(animations.Emphasis):
                     intensity: float = 1.0
 
 
@@ -181,9 +180,11 @@ class TestCustomTypeMarker:
         out_dir = tmp_path / "out"
         build_static_html(deck_path, out_dir)
         html = (out_dir / "index.html").read_text(encoding="utf-8")
-        # Resolved to the custom type (not the FadeIn fallback).
-        assert "anim-spark" in html
-        assert "--anim-intensity: 4" in html
+        # Resolved to the custom type (not the FadeIn fallback): the cue's name is the
+        # type slug and its param flows into the data-cues encoding.
+        assert "spark" in html
+        assert "intensity" in html
+        assert "4.0" in html
 
 
 class TestEmptyDeck:
