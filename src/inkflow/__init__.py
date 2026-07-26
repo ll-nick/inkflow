@@ -1,6 +1,7 @@
 from inkflow import animations, transitions
 from inkflow.enums import (
     Align,
+    AnimationKind,
     ColorMode,
     Direction,
     Easing,
@@ -11,7 +12,6 @@ from inkflow.enums import (
     VAlign,
 )
 from inkflow.manifest import (
-    Animation,
     Content,
     Cue,
     Deck,
@@ -27,7 +27,7 @@ from inkflow.manifest import (
 
 __all__ = [
     "Align",
-    "Animation",
+    "AnimationKind",
     "ColorMode",
     "Content",
     "Cue",

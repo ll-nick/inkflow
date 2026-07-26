@@ -1,4 +1,5 @@
 import { cubicBezierEasing } from "../shared/easing";
+import { commitStepStyles } from "../shared/step";
 import type { TransitionData } from "../shared/types";
 import { MorphTransition } from "./morph";
 import { ProgressDriver } from "./progress-driver";
@@ -527,6 +528,10 @@ export function loadSlide(
     }
 
     const inst = makeTransition();
+    // Bake the outgoing slide's held step state into inline styles so the transition's
+    // snapshot (innerHTML / cloned nodes) keeps the current step instead of reverting to
+    // the authored base — the WAAPI animations that hold that state do not serialize.
+    commitStepStyles(stage);
     inst.prepare?.({ stage, params });
 
     const ctrl = new AbortController();

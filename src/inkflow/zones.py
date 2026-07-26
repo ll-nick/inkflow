@@ -10,10 +10,10 @@ from typing import get_args, get_origin, get_type_hints
 
 from lxml import etree
 
-from inkflow.animations import FadeIn
+from inkflow.animations import Animation, FadeIn
 from inkflow.enums import Align, Trigger, VAlign
 from inkflow.logging import logger
-from inkflow.manifest import Animation, Media, TextBox, ZoneContent
+from inkflow.manifest import Media, TextBox, ZoneContent
 from inkflow.markdown import (
     html_fragment_to_xml,
     markdown_to_html,

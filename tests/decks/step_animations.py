@@ -7,8 +7,9 @@ through with the arrow keys. It exercises:
 - the ``::step``/``::steps`` marker grammar: ``type=<ClassName>`` plus params,
   including a custom ``Animation`` subclass (``Glow``) resolved by name, and the
   ``trigger=`` param (``with-previous`` and an absolute pin);
-- every built-in animation once via ``deck.py`` ``animations=[...]``, each with
-  default params (so their defaults come from Python, not a CSS fallback);
+- every built-in animation once via ``deck.py`` ``animations=[...]``, with slowed
+  durations and exaggerated distances/scales/iterations so both forward playback and
+  backward (reverse) playback are easy to eyeball;
 - ``Trigger``: the default ``ON_CLICK`` (one cue per click), ``WITH_PREVIOUS``,
   and the ``Trigger.at(n)`` pin;
 - concatenation: a slide whose markdown reveals number first, then its
@@ -34,27 +35,29 @@ from inkflow import (
     animations,
     transitions,
 )
-from inkflow.manifest import Animation
 
 
 @dataclass
-class Glow(Animation):
+class Glow(animations.Enter):
     """Custom animation type, reachable from a ``type=Glow`` marker by name."""
 
     intensity: float = 1.0
 
 
-# CSS for the custom Glow type. The class is `anim-glow` (camel_to_kebab of Glow),
-# and it reads the `--anim-*` props the pipeline emits — including the custom
-# `--anim-intensity`. Element fades in and gains a glow scaled by intensity.
+# CSS for the custom Glow type. The step engine reads `@keyframes anim-glow`
+# (camel_to_kebab of Glow) and substitutes the cue's own params for any
+# `var(--anim-*)` token — including the custom `--anim-intensity`. Element fades in
+# and gains a glow scaled by intensity.
 GLOW_CSS = Inline("""
-.anim-glow {
-    opacity: 0;
-    transition: opacity var(--anim-duration) var(--anim-easing) var(--anim-delay);
-}
-.anim-glow.active {
-    opacity: 1;
-    text-shadow: 0 0 calc(10px * var(--anim-intensity)) var(--accent);
+@keyframes anim-glow {
+    from {
+        opacity: 0;
+        text-shadow: 0 0 0 var(--accent);
+    }
+    to {
+        opacity: 1;
+        text-shadow: 0 0 calc(10px * var(--anim-intensity)) var(--accent);
+    }
 }
 """)
 
@@ -62,46 +65,62 @@ GLOW_CSS = Inline("""
 REVEALS = Inline("""\
 # Reveals
 
-::steps::
+::steps duration=1.4::
 - default fade, item one
 - default fade, item two
 ::steps end::
 
-::step type=SlideIn direction=right distance=200::
+::step type=SlideIn direction=right distance=600 duration=1.4::
 Slides in from the right.
 
-::step type=Bounce::
+::step type=Bounce distance=120 duration=1.2::
 Bounces in.
 
-::step type=FadeIn trigger=with-previous::
+::step type=FadeIn trigger=with-previous duration=1.4::
 Fades in together with the bounce (shares its step).
 
-::step type=Glow intensity=2::
+::step type=Glow intensity=5 duration=1.4::
 Custom deck-defined type, resolved by name.
 """)
 
 
 def main() -> Deck:
     return Deck(
-        transition=transitions.Crossfade(easing=Easing.EASE_IN_OUT),
+        # Slow crossfade so it is easy to see the outgoing slide hold its final state.
+        transition=transitions.Crossfade(easing=Easing.EASE_IN_OUT, duration=1.5),
         style=GLOW_CSS,
         slides=[
             Slide("default", id="reveals", md=REVEALS),
             Slide(
                 "anim-targets",
                 id="builtins",
-                # Every built-in once, default params (defaults sourced from Python).
-                # Default ON_CLICK trigger -> one per click. One uses an explicit
-                # Easing to exercise the value object.
+                # Every built-in once, slowed and exaggerated for eyeballing forward
+                # and reverse. Default ON_CLICK trigger -> one per click. FadeIn uses an
+                # explicit Easing to exercise the value object.
                 animations=[
-                    animations.FadeIn("a", easing=Easing.cubic_bezier(0.2, 0, 0.3, 1)),
-                    animations.FadeOut("b"),
-                    animations.Bounce("c"),
-                    animations.SlideIn("d", direction=Direction.RIGHT),
-                    animations.SlideOut("e", direction=Direction.UP),
-                    animations.ZoomIn("f"),
-                    animations.ZoomOut("g"),
-                    animations.Highlight("h"),
+                    animations.FadeIn(
+                        "a", duration=1.4, easing=Easing.cubic_bezier(0.2, 0, 0.3, 1)
+                    ),
+                    animations.FadeOut("b", duration=1.4),
+                    animations.Bounce(
+                        # Bigger rise + a springier easing (higher 2nd control point)
+                        # for a pronounced overshoot.
+                        "c",
+                        distance=120,
+                        duration=1.2,
+                        easing=Easing.cubic_bezier(0.34, 2.6, 0.64, 1),
+                    ),
+                    animations.SlideIn(
+                        "d", direction=Direction.RIGHT, distance=600, duration=1.4
+                    ),
+                    animations.SlideOut(
+                        "e", direction=Direction.UP, distance=600, duration=1.4
+                    ),
+                    animations.ZoomIn("f", scale=0.15, duration=1.4),
+                    animations.ZoomOut("g", scale=2.5, duration=1.4),
+                    animations.Highlight(
+                        "h", color="#f38ba8", iterations=3, duration=0.7
+                    ),
                 ],
             ),
             # Concatenation: the two markdown reveals number 1..2, then the deck
@@ -117,8 +136,8 @@ def main() -> Deck:
                     + "::steps end::\n"
                 ),
                 animations=[
-                    animations.FadeIn("badge-a"),
-                    animations.FadeIn("badge-b", Trigger.at(5)),
+                    animations.FadeIn("badge-a", duration=1.4),
+                    animations.FadeIn("badge-b", Trigger.at(5), duration=1.4),
                 ],
             ),
         ],

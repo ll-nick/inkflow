@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inkflow.animations import Bounce, FadeIn, PlayVideo, SlideIn
+from inkflow.animations import Animation, Bounce, FadeIn, PlayVideo, SlideIn
 from inkflow.enums import (
     Align,
     ColorMode,
@@ -12,7 +12,6 @@ from inkflow.enums import (
     Trigger,
 )
 from inkflow.manifest import (
-    Animation,
     Cue,
     Deck,
     Image,

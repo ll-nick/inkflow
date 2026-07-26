@@ -385,13 +385,14 @@ function createLeafMorph(
             .scale(captured.bbox.width, captured.bbox.height);
         // The morph drives the `transform` attribute in SVG user space, about the
         // viewBox origin (0,0). Once that attribute maps to the CSS `transform`
-        // property, `transform-box` and `transform-origin` apply to it — and an
-        // animation class may set both (zoom uses `fill-box` + `center`), which
-        // re-bases the morph matrix about the element's bbox centre and offsets it
-        // every frame (largest at frame 0, where the matrix is furthest from
-        // identity). Pin the classic SVG reference frame for the morph; finalize
-        // restores the class values. The animated scale is 1 at this step, so the
-        // class's own effect is unchanged.
+        // property, `transform-box` and `transform-origin` apply to it — and the zoom
+        // animation's `.anim-zoom-in`/`.anim-zoom-out` class sets both (`fill-box` +
+        // `center`), which would re-base the morph matrix about the element's bbox
+        // centre and offset it every frame (largest at frame 0, where the matrix is
+        // furthest from identity). Pin the classic SVG reference frame inline for the
+        // morph; being inline author style it outranks that class rule, and finalize
+        // removes it to fall back. The animated scale is 1 here, so the class is
+        // otherwise unchanged.
         element.style.setProperty("transform-box", "view-box");
         element.style.setProperty("transform-origin", "0 0");
         return {

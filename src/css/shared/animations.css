@@ -1,141 +1,128 @@
-/* Animation parameters arrive as `--anim-*` custom properties on the element,
- * set by pipeline.py `_anim_style` from the Animation's Python fields; the rules
- * read them with `var(--x)`. */
+/* Built-in animation keyframes.
+ *
+ * The step engine (shared/step.ts) drives every cue via the Web Animations API. It
+ * reads the `@keyframes anim-<slug>` rule named after the cue's type, substitutes the
+ * cue's own values for any `var(--anim-<field>)` tokens (e.g. `var(--anim-from-x)`),
+ * and calls element.animate() with the cue's duration/easing/delay.
+ *
+ * Motion uses the individual `translate:` and `scale:` properties, NOT the `transform`
+ * shorthand. SVG elements moved in an editor carry a `transform` attribute (which maps
+ * to the CSS `transform` property); the shorthand would override it and snap the element
+ * back to its base coordinates. The individual properties compose with that attribute
+ * instead, so authored positions survive the animation. Keep it that way. */
 
-/* Motion uses the individual `translate:` and `scale:` properties, NOT the
- * `transform` shorthand. SVG elements moved in an editor carry a `transform`
- * attribute (which maps to the CSS `transform` property); the shorthand would
- * override it and snap the element back to its base coordinates. The individual
- * properties compose with that attribute instead, so authored positions survive
- * the animation. Keep it that way. */
+/* Initial-hidden guard: the pipeline adds `.anim-pending` to an element whose first cue
+ * is an enter, so it does not flash visible before the engine attaches (the engine
+ * removes the class once it holds the enter animation at its start). */
+.anim-pending {
+    opacity: 0;
+}
 
 /* ── Fade ─────────────────────────────────────────────────────────────────── */
 
-.anim-fade-in {
-    opacity: 0;
-    transition: opacity var(--anim-duration) var(--anim-easing)
-        var(--anim-delay);
-}
-.anim-fade-in.active {
-    opacity: 1;
+@keyframes anim-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
-.anim-fade-out {
-    opacity: 1;
-    transition: opacity var(--anim-duration) var(--anim-easing)
-        var(--anim-delay);
-}
-.anim-fade-out.active {
-    opacity: 0;
+@keyframes anim-fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
 }
 
 /* ── Bounce ───────────────────────────────────────────────────────────────── */
-/* Bounce-in from below. The translate axis uses its own `--anim-overshoot` easing
- * (the spring), independent of the opacity axis's `--anim-easing`. */
+/* Bounce-in from below. The cue's easing defaults to a spring that overshoots, so the
+ * translate axis gets its characteristic bounce; opacity rides the same curve and
+ * clamps at 1. */
 
-.anim-bounce {
-    opacity: 0;
-    translate: 0 14px;
-    transition:
-        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
-        translate var(--anim-duration) var(--anim-overshoot) var(--anim-delay);
-}
-.anim-bounce.active {
-    opacity: 1;
-    translate: 0 0;
+@keyframes anim-bounce {
+    from {
+        opacity: 0;
+        translate: 0 calc(var(--anim-distance) * 1px);
+    }
+    to {
+        opacity: 1;
+        translate: 0 0;
+    }
 }
 
 /* ── Slide ────────────────────────────────────────────────────────────────── */
-/* `direction` becomes an `.anim-from-*` modifier class (pipeline.py). For SlideIn
- * it is the edge the element enters from; for SlideOut, the edge it exits toward. */
+/* `--anim-from-x`/`--anim-from-y` are the offset endpoint, resolved in Python from the
+ * cue's direction + distance. SlideIn starts there and settles to 0; SlideOut leaves
+ * from 0 toward it. */
 
-.anim-slide-in {
-    opacity: 0;
-    transition:
-        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
-        translate var(--anim-duration) var(--anim-easing) var(--anim-delay);
-}
-.anim-slide-in.anim-from-left {
-    translate: calc(-1 * var(--anim-distance)) 0;
-}
-.anim-slide-in.anim-from-right {
-    translate: var(--anim-distance) 0;
-}
-.anim-slide-in.anim-from-up {
-    translate: 0 calc(-1 * var(--anim-distance));
-}
-.anim-slide-in.anim-from-down {
-    translate: 0 var(--anim-distance);
-}
-.anim-slide-in.active {
-    opacity: 1;
-    translate: 0 0;
+@keyframes anim-slide-in {
+    from {
+        opacity: 0;
+        translate: var(--anim-from-x) var(--anim-from-y);
+    }
+    to {
+        opacity: 1;
+        translate: 0 0;
+    }
 }
 
-.anim-slide-out {
-    opacity: 1;
-    translate: 0 0;
-    transition:
-        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
-        translate var(--anim-duration) var(--anim-easing) var(--anim-delay);
-}
-.anim-slide-out.active {
-    opacity: 0;
-}
-.anim-slide-out.anim-from-left.active {
-    translate: calc(-1 * var(--anim-distance)) 0;
-}
-.anim-slide-out.anim-from-right.active {
-    translate: var(--anim-distance) 0;
-}
-.anim-slide-out.anim-from-up.active {
-    translate: 0 calc(-1 * var(--anim-distance));
-}
-.anim-slide-out.anim-from-down.active {
-    translate: 0 var(--anim-distance);
+@keyframes anim-slide-out {
+    from {
+        opacity: 1;
+        translate: 0 0;
+    }
+    to {
+        opacity: 0;
+        translate: var(--anim-from-x) var(--anim-from-y);
+    }
 }
 
 /* ── Zoom ─────────────────────────────────────────────────────────────────── */
-/* fill-box + center origin so SVG elements scale about their own centre. */
+/* fill-box + center origin so SVG elements scale about their own centre. Kept on the
+ * element's `anim-<slug>` styling-hook class (normal author origin) rather than in the
+ * keyframes: the morph transition pins `transform-box: view-box` inline to drive its own
+ * matrix, and a normal author declaration is beatable by that inline style, whereas a
+ * keyframe declaration (animation origin) would not be. The scale itself animates. */
 
-.anim-zoom-in {
-    opacity: 0;
-    scale: var(--anim-scale);
-    transform-box: fill-box;
-    transform-origin: center;
-    transition:
-        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
-        scale var(--anim-duration) var(--anim-easing) var(--anim-delay);
-}
-.anim-zoom-in.active {
-    opacity: 1;
-    scale: 1;
-}
-
+.anim-zoom-in,
 .anim-zoom-out {
-    opacity: 1;
-    scale: 1;
     transform-box: fill-box;
     transform-origin: center;
-    transition:
-        opacity var(--anim-duration) var(--anim-easing) var(--anim-delay),
-        scale var(--anim-duration) var(--anim-easing) var(--anim-delay);
 }
-.anim-zoom-out.active {
-    opacity: 0;
-    scale: var(--anim-scale);
+
+@keyframes anim-zoom-in {
+    from {
+        opacity: 0;
+        scale: var(--anim-scale);
+    }
+    to {
+        opacity: 1;
+        scale: 1;
+    }
+}
+
+@keyframes anim-zoom-out {
+    from {
+        opacity: 1;
+        scale: 1;
+    }
+    to {
+        opacity: 0;
+        scale: var(--anim-scale);
+    }
 }
 
 /* ── Highlight ────────────────────────────────────────────────────────────── */
-/* Pulse a glow `--anim-passes` times without hiding the element. Only the 50%
- * keyframe is set, so the element returns to its natural appearance at the ends. */
+/* Pulse a glow `iterations` times (an element.animate() option) without hiding the element.
+ * Only the 50% keyframe is set, so the element returns to its natural appearance at the
+ * ends. */
 
-@keyframes anim-highlight-pulse {
+@keyframes anim-highlight {
     50% {
         filter: drop-shadow(0 0 8px var(--anim-color));
     }
-}
-.anim-highlight.active {
-    animation: anim-highlight-pulse var(--anim-duration) var(--anim-easing)
-        var(--anim-delay) var(--anim-passes);
 }

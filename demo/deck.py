@@ -1,7 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from inkflow import (
-    Animation,
     Deck,
     Direction,
     Image,
@@ -15,11 +14,14 @@ from inkflow import (
 )
 
 
-# Custom animation: subclass Animation, write matching CSS in styles.css.
-# The CSS class is derived from the type name: Flicker -> anim-flicker.
+# Custom animation: subclass a semantic base (Enter/Exit/Emphasis) and write a matching
+# @keyframes in styles.css. The keyframes name is derived from the type: Flicker ->
+# @keyframes anim-flicker; the step engine drives it.
 @dataclass
-class Flicker(Animation):
+class Flicker(animations.Enter):
     """Neon-light flicker-on effect defined in this deck, not in inkflow itself."""
+
+    duration: float = field(default=0.7, kw_only=True)
 
 
 # Custom transition: subclass Transition, register a matching JS handler in scripts.js.

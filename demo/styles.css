@@ -1,10 +1,10 @@
 /* Custom animations for this deck.
  * This file is auto-loaded by the inkflow server, no extra config needed.
- * Each class must follow the pattern: anim-<kebab-type-name> and anim-<...>.active
+ * Define @keyframes anim-<kebab-type-name>; the step engine drives it via the WAAPI.
  */
 
 /* Flicker — neon-light flicker-on effect, defined as a custom subclass in deck.py */
-@keyframes anim-flicker-in {
+@keyframes anim-flicker {
     0%,
     16%,
     22% {
@@ -23,14 +23,6 @@
     80% {
         opacity: 1;
     }
-}
-
-.anim-flicker {
-    opacity: 0;
-}
-.anim-flicker.active {
-    animation: anim-flicker-in var(--anim-duration, 0.7s)
-        var(--anim-easing, linear) var(--anim-delay, 0s) forwards;
 }
 
 /* Logo mark (icon + "ink" text). White on dark background, near-black on light. */

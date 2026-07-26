@@ -72,25 +72,73 @@ Elements with no animation declaration start **visible**.
 Elements targeted by an entrance animation (`FadeIn`, `Bounce`, `SlideIn`, `ZoomIn`) start
 **invisible** and appear when their step is reached.
 
+Every type has a **kind** — `enter`, `exit`, or `emphasis` — set by the semantic base
+it subclasses (`animations.Enter` / `Exit` / `Emphasis`). Enters reveal, exits hide, and
+emphasis (like `Highlight`) fires momentarily without changing visibility. Stepping
+backward plays each animation in reverse, mirroring the forward order.
+
 ### Animation types
 
-Every type accepts `duration`, `easing`, and `delay` (keyword-only); some add their own
-parameters. `element` and `trigger` are the two shared positional slots. See the
-[animations reference](../reference/animations.md) for the full table.
+Every type accepts `duration`, `easing`, `delay`, and `iterations` (keyword-only); some
+add their own parameters. `element` and `trigger` are the two shared positional slots. See
+the [animations reference](../reference/animations.md) for the full table.
 
 | Class | Effect | Starting state |
 |---|---|---|
 | `FadeIn` | Opacity 0 → 1, subtle upward drift | Hidden |
 | `FadeOut` | Opacity 1 → 0 | Visible |
-| `Bounce` | Scale pulse on entry | Hidden |
+| `Bounce` | Spring up into place from just below (`distance`) | Hidden |
 | `SlideIn` / `SlideOut` | Slide from/to an edge (`direction`, `distance`) | Hidden / Visible |
 | `ZoomIn` / `ZoomOut` | Scale into/out of place (`scale`) | Hidden / Visible |
-| `Highlight` | Pulse a glow (`color`, `passes`), without hiding | Visible |
+| `Highlight` | Pulse a glow (`color`, `iterations`), without hiding | Visible |
 
 ```python
 animations.SlideIn("box", direction="left", duration=0.6)
 animations.ZoomIn("logo", scale=0.6)
-animations.Highlight("total", color="#cba6f7", passes=2)
+animations.Highlight("total", color="#cba6f7", iterations=2)
+```
+
+### Multiple animations on one element
+
+Because each cue is driven independently, one element can carry several across the
+slide — it can enter, be emphasized, exit, and even re-enter, each on its own step:
+
+```python
+animations = [
+    animations.FadeIn("hero"),  # step 1: enters
+    animations.Highlight("hero"),  # step 2: emphasized
+    animations.SlideOut("hero", direction="down"),  # step 3: exits
+    animations.Bounce("hero"),  # step 4: returns
+]
+```
+
+The kinds decide how they compose: at any step the element is shown or hidden by its
+most recent enter/exit, while emphasis cues just pulse. Two enters (or two exits) on one
+element with no opposing cue between them is almost always a mistake, and inkflow warns
+about it at build time.
+
+### Custom animations
+
+Subclass a semantic base and write a matching `@keyframes anim-<slug>` (the kebab-cased
+type name) in a `styles.css` next to `deck.py`. No JavaScript: the step engine reads the
+keyframes and drives them, substituting each cue's own fields wherever they appear as
+`var(--anim-<field>)`.
+
+```python
+from dataclasses import dataclass
+from inkflow import animations
+
+
+@dataclass
+class Glow(animations.Emphasis):
+    intensity: float = 1.0  # → var(--anim-intensity)
+```
+
+```css
+/* styles.css */
+@keyframes anim-glow {
+    50% { filter: drop-shadow(0 0 calc(8px * var(--anim-intensity)) var(--accent)); }
+}
 ```
 
 ### Triggers — the step model

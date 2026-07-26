@@ -6,6 +6,7 @@ All are imported from the top-level `inkflow` package:
 ```python
 from inkflow import (
     Align,
+    AnimationKind,
     ColorMode,
     Direction,
     Easing,
@@ -36,6 +37,12 @@ value-object shape: presets (`Trigger.ON_CLICK`, `Trigger.WITH_PREVIOUS`) plus a
         attributes: true
 
 ::: inkflow.enums.Trigger
+    options:
+      docstring_section_style: spacy
+      summary:
+        attributes: true
+
+::: inkflow.enums.AnimationKind
     options:
       docstring_section_style: spacy
       summary:
