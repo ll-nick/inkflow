@@ -12,6 +12,9 @@
   <a href="https://ll-nick.github.io/inkflow/demo/">
     <img src="docs/assets/demo-button.svg" alt="Try the live demo">
   </a>
+  <a href="https://ll-nick.github.io/inkflow/">
+    <img src="docs/assets/docs-button.svg" alt="Read the docs">
+  </a>
 </p>
 
 > **Early-stage software.**
