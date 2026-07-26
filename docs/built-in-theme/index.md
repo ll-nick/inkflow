@@ -39,12 +39,15 @@ Pass the bare layout name to `Slide`, with Markdown or SVG content:
 ```python
 from inkflow import Deck, Slide
 
+
 def main() -> Deck:
-    return Deck(slides=[
-        Slide("cover", md="title"),
-        Slide("two-cols", md="compare"),
-        Slide("end", md="thanks"),
-    ])
+    return Deck(
+        slides=[
+            Slide("cover", md="title"),
+            Slide("two-cols", md="compare"),
+            Slide("end", md="thanks"),
+        ]
+    )
 ```
 
 Markdown zone markers (e.g. `::left::`, `::right::`, `::quote::`) target the named

@@ -16,10 +16,13 @@ zones filled with Markdown.
 ```python
 from inkflow import Deck, Slide
 
+
 def main() -> Deck:
-    return Deck(slides=[
-        Slide("title"),
-    ])
+    return Deck(
+        slides=[
+            Slide("title"),
+        ]
+    )
 ```
 
 A bare name like `"title"` is looked up in `slides/` first (as `slides/title.svg`),
@@ -51,11 +54,14 @@ Each animation targets a single element by its `id` (no leading `#`):
 ```python
 from inkflow import Slide, animations
 
-Slide("title", animations=[
-    animations.FadeIn("headline"),
-    animations.FadeIn("subtitle"),
-    animations.FadeIn("byline"),
-])
+Slide(
+    "title",
+    animations=[
+        animations.FadeIn("headline"),
+        animations.FadeIn("subtitle"),
+        animations.FadeIn("byline"),
+    ],
+)
 ```
 
 Each cue's `trigger` says *when* it fires, and inkflow works out the concrete
@@ -102,10 +108,10 @@ Each cue carries a `Trigger` that decides its step:
 ```python
 from inkflow import Trigger
 
-animations=[
-    animations.FadeIn("left-panel"),                      # step 1
+animations = [
+    animations.FadeIn("left-panel"),  # step 1
     animations.FadeIn("right-panel", Trigger.WITH_PREVIOUS),  # step 1, together
-    animations.FadeIn("caption"),                         # step 2
+    animations.FadeIn("caption"),  # step 2
 ]
 ```
 
@@ -121,11 +127,12 @@ Set it per slide, or set a default on the `Deck`:
 ```python
 from inkflow import Deck, Slide, transitions
 
+
 def main() -> Deck:
     return Deck(
         transition=transitions.Crossfade(),  # default for all slides
         slides=[
-            Slide("title"),                                    # uses Crossfade
+            Slide("title"),  # uses Crossfade
             Slide("diagram", transition=transitions.Morph()),  # overrides to Morph
         ],
     )
@@ -175,10 +182,13 @@ Point `md=` at a Markdown file and the pipeline routes its sections into the sli
 ```python
 from inkflow import Deck, Slide
 
+
 def main() -> Deck:
-    return Deck(slides=[
-        Slide("default", md="intro"),
-    ])
+    return Deck(
+        slides=[
+            Slide("default", md="intro"),
+        ]
+    )
 ```
 
 `"default"` is the name of a built-in layout — an SVG that defines zones and little
@@ -588,9 +598,9 @@ from inkflow import animations, Slide, Trigger
 
 Slide(
     "mixed",
-    md="bullets",   # two ::steps:: bullets → steps 1, 2
+    md="bullets",  # two ::steps:: bullets → steps 1, 2
     animations=[
-        animations.FadeIn("badge-a"),                 # step 3
+        animations.FadeIn("badge-a"),  # step 3
         animations.FadeIn("badge-b", Trigger.at(5)),  # pinned to step 5
     ],
 )
@@ -607,9 +617,12 @@ Use it as an escape hatch for one-off tweaks.
 For systematic visual changes, use a theme.
 
 ```python
-Slide("title", style="""
+Slide(
+    "title",
+    style="""
     #headline { font-size: 72px; fill: var(--inkflow-accent); }
-""")
+""",
+)
 ```
 
 ## Slide dimensions

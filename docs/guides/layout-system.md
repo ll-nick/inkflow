@@ -154,10 +154,10 @@ This creates `slides/new.svg` with `inkflow:parent="content"` set,
 then automatically runs `inkflow sync` to add preview layers.
 Omit `-p` to create a blank slide with no parent.
 
-Add it to `deck.py`:
+Add it to the `slides` list in `deck.py`:
 
 ```python
-Slide("slides/new.svg"),
+Slide("slides/new.svg")
 ```
 
 ## Changing or removing a parent

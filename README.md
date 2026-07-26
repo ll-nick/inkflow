@@ -44,6 +44,7 @@ A deck is a plain Python file:
 ```python
 from inkflow import Deck, Image, MediaFit, Slide, Video, animations, transitions
 
+
 def main() -> Deck:
     return Deck(
         slides=[

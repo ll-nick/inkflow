@@ -46,18 +46,28 @@ Browse the [guides](guides/slides.md) or read [Concepts](concepts.md) for the fu
 ```python
 from inkflow import Deck, Slide, animations, transitions
 
+
 def main() -> Deck:
-    return Deck(slides=[
-        Slide("title.svg", animations=[
-            animations.FadeIn("headline"),
-            animations.FadeIn("subtitle"),
-        ]),
-        Slide("diagram.svg", animations=[
-            animations.Bounce("box-a"),
-            animations.Bounce("box-b"),
-        ], transition=transitions.Crossfade()),
-        Slide("summary.svg", transition=transitions.Morph(duration=0.7)),
-    ])
+    return Deck(
+        slides=[
+            Slide(
+                "title.svg",
+                animations=[
+                    animations.FadeIn("headline"),
+                    animations.FadeIn("subtitle"),
+                ],
+            ),
+            Slide(
+                "diagram.svg",
+                animations=[
+                    animations.Bounce("box-a"),
+                    animations.Bounce("box-b"),
+                ],
+                transition=transitions.Crossfade(),
+            ),
+            Slide("summary.svg", transition=transitions.Morph(duration=0.7)),
+        ]
+    )
 ```
 
 ```bash

@@ -10,13 +10,14 @@ and override per slide as needed:
 ```python
 from inkflow import Deck, Direction, Slide, transitions
 
+
 def main() -> Deck:
     return Deck(
         transition=transitions.Crossfade(),  # default
         slides=[
-            Slide("title"),                                     # Crossfade (default)
-            Slide("diagram", transition=transitions.Cut()),      # override: instant cut
-            Slide("morph", transition=transitions.Morph(1.0)),   # override: morph
+            Slide("title"),  # Crossfade (default)
+            Slide("diagram", transition=transitions.Cut()),  # override: instant cut
+            Slide("morph", transition=transitions.Morph(1.0)),  # override: morph
         ],
     )
 ```
@@ -46,7 +47,7 @@ or when you want a deliberate hard-cut feel.
 Dissolves the outgoing slide out while fading the incoming slide in.
 
 ```python
-transitions.Crossfade()              # default 0.5s
+transitions.Crossfade()  # default 0.5s
 transitions.Crossfade(duration=0.6)  # slower fade
 ```
 
@@ -59,8 +60,8 @@ Both slides move together — the outgoing slide exits in one direction while th
 enters from the opposite edge.
 
 ```python
-transitions.Push()                                    # default: left, 0.5s
-transitions.Push(direction=Direction.RIGHT)           # slides move right
+transitions.Push()  # default: left, 0.5s
+transitions.Push(direction=Direction.RIGHT)  # slides move right
 transitions.Push(direction=Direction.UP, duration=0.4)
 ```
 
@@ -73,7 +74,7 @@ transitions.Push(direction=Direction.UP, duration=0.4)
 The incoming slide covers the outgoing one, which stays fixed in place.
 
 ```python
-transitions.Cover()                              # default: left, 0.5s
+transitions.Cover()  # default: left, 0.5s
 transitions.Cover(direction=Direction.UP)
 ```
 
@@ -88,7 +89,7 @@ The incoming slide scales into place while the outgoing slide keeps zooming past
 
 ```python
 transitions.Zoom()
-transitions.Zoom(amount=0.4)                 # gentler
+transitions.Zoom(amount=0.4)  # gentler
 transitions.Zoom(amount=0.6, duration=0.6, easing="ease-in-out")
 ```
 
@@ -103,8 +104,8 @@ Useful for dramatic scene changes. The colour fills the slide area only — the
 letterbox bars around the slide stay black throughout.
 
 ```python
-transitions.Fade()                          # fades through black
-transitions.Fade(color="#1a1a2e")           # fades through a custom colour
+transitions.Fade()  # fades through black
+transitions.Fade(color="#1a1a2e")  # fades through a custom colour
 transitions.Fade(color="#ffffff", duration=0.8)
 ```
 
@@ -117,8 +118,8 @@ transitions.Fade(color="#ffffff", duration=0.8)
 The incoming slide is progressively revealed from one edge, sliding over the outgoing slide.
 
 ```python
-transitions.Wipe()                                    # default: left-to-right reveal, 0.5s
-transitions.Wipe(direction=Direction.RIGHT)           # reveal from right
+transitions.Wipe()  # default: left-to-right reveal, 0.5s
+transitions.Wipe(direction=Direction.RIGHT)  # reveal from right
 transitions.Wipe(direction=Direction.UP, duration=0.7)
 ```
 
@@ -134,7 +135,7 @@ Elements that exist only in the outgoing slide fade out.
 Elements only in the incoming slide fade in.
 
 ```python
-transitions.Morph()              # default 0.5s
+transitions.Morph()  # default 0.5s
 transitions.Morph(duration=1.0)  # slower morph
 ```
 

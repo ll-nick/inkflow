@@ -11,10 +11,15 @@ enum and `easing` the [`Easing`](enums.md#inkflow.enums.Easing) type.
 ```python
 from inkflow import animations, Direction, Trigger
 
-Slide("01.svg", animations=[
-    animations.FadeIn("headline"),
-    animations.SlideIn("box", Trigger.WITH_PREVIOUS, direction=Direction.LEFT, duration=0.6),
-])
+Slide(
+    "01.svg",
+    animations=[
+        animations.FadeIn("headline"),
+        animations.SlideIn(
+            "box", Trigger.WITH_PREVIOUS, direction=Direction.LEFT, duration=0.6
+        ),
+    ],
+)
 ```
 
 The `animations` namespace also holds [`PlayVideo`](#inkflow.animations.PlayVideo),

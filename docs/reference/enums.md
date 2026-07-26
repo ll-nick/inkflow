@@ -5,7 +5,15 @@ All are imported from the top-level `inkflow` package:
 
 ```python
 from inkflow import (
-    Align, ColorMode, Direction, Easing, MediaAlign, MediaFit, Muted, Trigger, VAlign
+    Align,
+    ColorMode,
+    Direction,
+    Easing,
+    MediaAlign,
+    MediaFit,
+    Muted,
+    Trigger,
+    VAlign,
 )
 ```
 
