@@ -83,6 +83,9 @@ class Animation(Cue, Slugged):
     custom curve via ``Easing.cubic_bezier(...)``."""
     delay: float = field(default=0.0, kw_only=True)
     """Seconds to wait before the animation starts."""
+    iterations: int = field(default=1, kw_only=True)
+    """How many times the animation repeats. Mostly useful for an emphasis like
+    `Highlight` (pulse ``iterations`` times); enters/exits normally leave it at 1."""
 
 
 class Enter(Animation):
@@ -198,11 +201,13 @@ class ZoomOut(Exit):
 
 @dataclass
 class Highlight(Emphasis):
-    """Pulse the element ``passes`` times without hiding it."""
+    """Pulse the element ``iterations`` times without hiding it.
+
+    ``iterations`` (the number of pulses) is the shared `Animation` field; `duration`
+    is the length of one pulse.
+    """
 
     duration: float = field(default=0.6, kw_only=True)
     """Duration of one pulse in seconds."""
     color: str = "var(--accent)"
     """Glow color (any CSS color or theme token)."""
-    passes: int = 1
-    """Number of pulses."""
