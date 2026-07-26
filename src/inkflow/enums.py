@@ -12,6 +12,7 @@ from typing import ClassVar
 
 __all__ = [
     "Align",
+    "AnimationKind",
     "ColorMode",
     "Direction",
     "Easing",
@@ -36,7 +37,8 @@ class Direction(_KebabStrEnum):
 
     Used by ``SlideIn``, ``SlideOut``, ``Push``, ``Cover``, and ``Wipe``. The
     member value (``"left"``, ``"right"``, …) is the wire value sent to the
-    presenter and the ``anim-from-*`` modifier class suffix.
+    presenter; for slide animations it resolves to the cue's ``from-x``/``from-y``
+    offset.
     """
 
     LEFT = auto()
@@ -47,6 +49,28 @@ class Direction(_KebabStrEnum):
     """Upward."""
     DOWN = auto()
     """Downward."""
+
+
+class AnimationKind(_KebabStrEnum):
+    """The role an animation plays in an element's lifecycle.
+
+    Determines how the step engine composes several cues on one element: enters
+    reveal, exits hide, and emphasis fires momentarily without changing whether the
+    element is shown. The step engine keeps at most one enter/exit governing an
+    element's visibility at a time, so an element can enter, be emphasized, and exit
+    at different steps, and can even re-enter after an exit.
+
+    Set on the semantic base classes (``animations.Enter``/``Exit``/``Emphasis``);
+    concrete types inherit it, so authors pick a kind by which base they subclass.
+    """
+
+    ENTER = auto()
+    """Reveals the element; it is hidden before this cue's step and shown after."""
+    EXIT = auto()
+    """Hides the element; it is shown before this cue's step and hidden after."""
+    EMPHASIS = auto()
+    """A momentary accent (e.g. a pulse) that leaves visibility unchanged. Plays only
+    when its step is crossed going forward, never on an instant or backward landing."""
 
 
 class Align(_KebabStrEnum):
