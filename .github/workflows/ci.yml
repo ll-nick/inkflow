@@ -14,7 +14,10 @@ jobs:
 
       - uses: jdx/mise-action@v4
 
-      - run: npm ci
+      # Deterministic install from pnpm-lock.yaml (fails on a lockfile mismatch).
+      # The mise tasks below depend on `install-js`, which re-syncs with a plain
+      # `pnpm install`, a no-op once this has run.
+      - run: pnpm install --frozen-lockfile
 
       - name: Check bundles are up to date
         run: |
