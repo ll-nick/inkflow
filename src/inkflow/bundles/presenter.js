@@ -24,42 +24,181 @@
     return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="vertical-align:middle" aria-label="Step ${current} of ${total}">${paths}</svg>`;
   }
 
-  // src/ts/presenter/state.ts
-  var state = {
-    slides: [],
-    transitions: [],
-    slideIndex: 0,
-    step: 0,
-    syncMode: "two-way",
-    _pickerMatches: [],
-    _pickerActive: 0,
-    _overviewActive: 0,
-    _overviewCols: 1,
-    ws: null,
-    _syncingFromServer: false,
-    _laserMode: false
-  };
+  // src/ts/shared/keyframes.ts
+  var templates = /* @__PURE__ */ new Map();
+  function parseOffsets(keyText) {
+    return keyText.split(",").map((part) => {
+      const t = part.trim();
+      if (t === "from") return 0;
+      if (t === "to") return 1;
+      return Number.parseFloat(t) / 100;
+    }).filter((n) => Number.isFinite(n));
+  }
+  function kebabToCamel(prop) {
+    return prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  }
+  function ruleToKeyframes(rule) {
+    const frames = [];
+    for (const raw of Array.from(rule.cssRules)) {
+      const kf = raw;
+      const style = kf.style;
+      const props = {};
+      for (let i = 0; i < style.length; i++) {
+        const name = style[i];
+        props[kebabToCamel(name)] = style.getPropertyValue(name).trim();
+      }
+      for (const offset of parseOffsets(kf.keyText)) {
+        frames.push({ offset, ...props });
+      }
+    }
+    frames.sort((a, b) => a.offset - b.offset);
+    return frames;
+  }
+  function findKeyframes(name, rules) {
+    for (const rule of Array.from(rules)) {
+      if (rule instanceof CSSKeyframesRule) {
+        if (rule.name === name) return rule;
+        continue;
+      }
+      const grouping = rule;
+      if (grouping.cssRules) {
+        const found = findKeyframes(name, grouping.cssRules);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  function templateFor(name) {
+    const cached = templates.get(name);
+    if (cached !== void 0) return cached;
+    let result = null;
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      const rule = findKeyframes(name, rules);
+      if (rule) {
+        result = ruleToKeyframes(rule);
+        break;
+      }
+    }
+    templates.set(name, result);
+    return result;
+  }
+  var VAR_ANIM = /var\(\s*--anim-([\w-]+)\s*(?:,[^()]*)?\)/g;
+  function substituteVars(value, vars) {
+    return value.replace(
+      VAR_ANIM,
+      (match, key) => key in vars ? vars[key] : match
+    );
+  }
+  function buildKeyframes(name, vars) {
+    const template = templateFor(name);
+    if (!template) return [];
+    if (Object.keys(vars).length === 0) return template;
+    return template.map((frame) => {
+      const out = {};
+      for (const [k, v] of Object.entries(frame)) {
+        out[k] = typeof v === "string" ? substituteVars(v, vars) : v;
+      }
+      return out;
+    });
+  }
 
   // src/ts/shared/step.ts
-  function maxStep(root) {
-    let m = 0;
-    root.querySelectorAll("[data-step]").forEach((el) => {
-      const s = +(el.getAttribute("data-step") ?? "0");
-      if (s > m) m = s;
+  var elementCues = /* @__PURE__ */ new WeakMap();
+  var rootStep = /* @__PURE__ */ new WeakMap();
+  function parseCues(el) {
+    const raw = el.getAttribute("data-cues");
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+  function cueStates(el) {
+    let states = elementCues.get(el);
+    if (!states) {
+      states = parseCues(el).map((cue) => ({ cue, anim: null }));
+      elementCues.set(el, states);
+    }
+    return states;
+  }
+  function ensureAnim(el, st) {
+    if (!st.anim) {
+      const { name, vars, opts } = st.cue;
+      const anim = el.animate(buildKeyframes(`anim-${name}`, vars), {
+        duration: Math.max(0, opts.duration * 1e3),
+        delay: Math.max(0, opts.delay * 1e3),
+        easing: opts.easing || "linear",
+        iterations: opts.iterations ?? 1,
+        fill: "forwards"
+      });
+      anim.pause();
+      st.anim = anim;
+    }
+    return st.anim;
+  }
+  function holdAtEnd(anim) {
+    anim.playbackRate = 1;
+    try {
+      anim.play();
+      anim.finish();
+    } catch {
+    }
+  }
+  function elementActions(cues, step, prev, instant) {
+    const governing = (at) => {
+      let idx = -1;
+      cues.forEach((c, i) => {
+        if (c.kind !== "emphasis" && c.step <= at) idx = i;
+      });
+      return idx;
+    };
+    const gov = governing(step);
+    const govPrev = governing(prev);
+    return cues.map((cue, i) => {
+      if (cue.kind === "emphasis") {
+        const crossedForward = !instant && step > prev && cue.step > prev && cue.step <= step;
+        if (crossedForward) return "emphasis";
+        return instant ? "cancel" : "idle";
+      }
+      if (i === gov) {
+        return !instant && step > prev && cue.step === step ? "forward" : "hold";
+      }
+      if (!instant && i === govPrev && govPrev > gov) return "reverse";
+      return "cancel";
     });
-    root.querySelectorAll("[data-play-on-step]").forEach((el) => {
-      const s = +(el.getAttribute("data-play-on-step") ?? "0");
-      if (s > m) m = s;
-    });
-    root.querySelectorAll(
-      ".inkflow-codeblock[data-hl-spec][data-base-step]"
-    ).forEach((block) => {
-      const spec = JSON.parse(block.dataset.hlSpec);
-      const baseStep = +(block.dataset.baseStep ?? "0");
-      const last = baseStep + spec.length - 1;
-      if (last > m) m = last;
-    });
-    return m;
+  }
+  function applyAction(el, st, action) {
+    switch (action) {
+      case "forward":
+      case "emphasis": {
+        const anim = ensureAnim(el, st);
+        anim.cancel();
+        anim.playbackRate = 1;
+        anim.play();
+        break;
+      }
+      case "reverse": {
+        const anim = ensureAnim(el, st);
+        anim.playbackRate = -1;
+        anim.play();
+        break;
+      }
+      case "hold":
+        holdAtEnd(ensureAnim(el, st));
+        break;
+      case "cancel":
+        st.anim?.cancel();
+        break;
+      case "idle":
+        break;
+    }
   }
   function applyCodeHighlights(root, step) {
     root.querySelectorAll(
@@ -78,25 +217,79 @@
       });
     });
   }
+  function maxStep(root) {
+    let m = 0;
+    root.querySelectorAll("[data-cues]").forEach((el) => {
+      for (const c of parseCues(el)) if (c.step > m) m = c.step;
+    });
+    root.querySelectorAll("[data-play-on-step]").forEach((el) => {
+      const s = +(el.getAttribute("data-play-on-step") ?? "0");
+      if (s > m) m = s;
+    });
+    root.querySelectorAll(
+      ".inkflow-codeblock[data-hl-spec][data-base-step]"
+    ).forEach((block) => {
+      const spec = JSON.parse(block.dataset.hlSpec);
+      const baseStep = +(block.dataset.baseStep ?? "0");
+      const last = baseStep + spec.length - 1;
+      if (last > m) m = last;
+    });
+    return m;
+  }
   function applyStep(root, step) {
-    root.querySelectorAll("[data-step]").forEach((el) => {
-      el.classList.toggle(
-        "active",
-        +(el.getAttribute("data-step") ?? "0") <= step
+    const prev = rootStep.get(root) ?? 0;
+    root.querySelectorAll("[data-cues]").forEach((el) => {
+      const states = cueStates(el);
+      const actions = elementActions(
+        states.map((s) => s.cue),
+        step,
+        prev,
+        false
       );
+      states.forEach((st, i) => applyAction(el, st, actions[i]));
     });
     applyCodeHighlights(root, step);
+    rootStep.set(root, step);
   }
-  function applyStepInstant(root, step) {
-    applyStep(root, step);
+  function commitStepStyles(root) {
     if (typeof root.getAnimations !== "function") return;
     for (const anim of root.getAnimations({ subtree: true })) {
       try {
-        anim.finish();
+        anim.commitStyles();
       } catch {
       }
     }
   }
+  function applyStepInstant(root, step) {
+    root.querySelectorAll("[data-cues]").forEach((el) => {
+      const states = cueStates(el);
+      const actions = elementActions(
+        states.map((s) => s.cue),
+        step,
+        step,
+        true
+      );
+      states.forEach((st, i) => applyAction(el, st, actions[i]));
+    });
+    applyCodeHighlights(root, step);
+    rootStep.set(root, step);
+  }
+
+  // src/ts/presenter/state.ts
+  var state = {
+    slides: [],
+    transitions: [],
+    slideIndex: 0,
+    step: 0,
+    syncMode: "two-way",
+    _pickerMatches: [],
+    _pickerActive: 0,
+    _overviewActive: 0,
+    _overviewCols: 1,
+    ws: null,
+    _syncingFromServer: false,
+    _laserMode: false
+  };
 
   // src/ts/presenter/video.ts
   var armed = /* @__PURE__ */ new WeakSet();
@@ -291,14 +484,7 @@
     }
     pvNextInner.innerHTML = previewSvg;
     const svg = pvNextInner.querySelector("svg");
-    if (svg) {
-      svg.querySelectorAll("[data-step]").forEach((el) => {
-        el.classList.toggle(
-          "active",
-          +(el.getAttribute("data-step") ?? "0") <= revealStep
-        );
-      });
-    }
+    if (svg) applyStepInstant(svg, revealStep);
     requestAnimationFrame(_scalePvNext);
   }
   function renderPvNotes() {
@@ -1440,6 +1626,7 @@
       return;
     }
     const inst = makeTransition();
+    commitStepStyles(stage2);
     inst.prepare?.({ stage: stage2, params });
     const ctrl = new AbortController();
     let done = false;
