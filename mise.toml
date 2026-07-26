@@ -3,6 +3,9 @@ uv   = "latest"
 node = "lts"
 pnpm = "latest"
 
+[tasks.install-js]
+run = "pnpm install"
+
 [tasks.lint-py]
 run = "uv run ruff check"
 
@@ -22,15 +25,18 @@ run = "uv lock --check"
 run = "uv run pytest"
 
 [tasks.lint-js]
-run = "npx biome check ."
+depends = ["install-js"]
+run = "pnpm exec biome check ."
 
 [tasks.typecheck-js]
-run = "npx tsc --noEmit"
+depends = ["install-js"]
+run = "pnpm exec tsc --noEmit"
 
 [tasks.bundle]
+depends = ["install-js"]
 run = [
-  "npx esbuild src/ts/presenter/main.ts --bundle --outfile=src/inkflow/bundles/presenter.js",
-  "npx esbuild src/css/presenter/index.css --bundle --outfile=src/inkflow/bundles/presenter.css",
+  "pnpm exec esbuild src/ts/presenter/main.ts --bundle --outfile=src/inkflow/bundles/presenter.js",
+  "pnpm exec esbuild src/css/presenter/index.css --bundle --outfile=src/inkflow/bundles/presenter.css",
 ]
 
 [tasks.docs]
@@ -42,16 +48,19 @@ env = { NO_MKDOCS_2_WARNING = "1" }
 run = ["uv run inkflow build --deck demo/deck.py --output docs/demo", "uv run mkdocs build"]
 
 [tasks.test-js]
-run = "npx vitest run"
+depends = ["install-js"]
+run = "pnpm exec vitest run"
 
 [tasks.fix-py]
 run = ["uv run ruff check --fix", "uv run ruff format"]
 
 [tasks.fix-js]
-run = "npx biome check --write ."
+depends = ["install-js"]
+run = "pnpm exec biome check --write ."
 
 [tasks.fix]
-run = ["uv run ruff check --fix", "uv run ruff format", "npx biome check --write ."]
+depends = ["install-js"]
+run = ["uv run ruff check --fix", "uv run ruff format", "pnpm exec biome check --write ."]
 
 [tasks.check]
 depends = ["lint-py", "fmt-py", "typecheck-py", "lint-deps", "lint-lock", "test", "lint-js", "typecheck-js", "test-js"]
