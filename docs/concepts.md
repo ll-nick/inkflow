@@ -57,10 +57,14 @@ The pipeline handles the CSS classes and timing.
 
 A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
-Elements targeted by an animation start hidden and appear when their step is
-reached. Each cue declares a `Trigger` (the default `ON_CLICK` takes the next
+Elements targeted by an entrance animation start hidden and appear when their step
+is reached. Each cue declares a `Trigger` (the default `ON_CLICK` takes the next
 step, `WITH_PREVIOUS` shares the previous one), and Inkflow works out the step
 numbers from the triggers and order.
+
+Each animation has a **kind** (`enter`, `exit`, or `emphasis`), so one element can carry
+several cues that compose into a single lifecycle — enter, be emphasized, exit, even
+re-enter — at different steps. Stepping backward plays each animation in reverse.
 
 ## Zones and Markdown
 

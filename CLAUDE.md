@@ -27,31 +27,37 @@ SVG source files should be kept clean (no Inkscape metadata) in the repository. 
 ```
 src/
   inkflow/
-    __init__.py       exports: Deck, Slide, Image, Video, Media, TextBox, Animation,
-                               Cue, Transition, Align, VAlign, Direction, Easing, Trigger,
-                               Inline, Content, ZoneContent, ColorMode, MediaFit,
+    __init__.py       exports: Deck, Slide, Image, Video, Media, TextBox,
+                               Cue, Transition, Align, VAlign, Direction, Easing,
+                               AnimationKind, Trigger, Inline, Content, ZoneContent,
+                               ColorMode, MediaFit,
                                MediaAlign, Muted
                                and the `animations` and `transitions` namespaces
-    manifest.py       dataclasses for the deck DSL; Cue/Animation/Transition base.
-                               `Cue` (element, trigger) is the base for `Animation` (adds
-                               duration/easing/delay) and `PlayVideo`; `Slide.animations`
+                               (`Animation` is NOT top-level — it lives in `animations`)
+    manifest.py       dataclasses for the deck DSL; Cue/Transition base.
+                               `Cue` (element, trigger) is the timeline base for `Animation`
+                               (in animations.py) and `PlayVideo`; `Slide.animations`
                                is `list[Cue]`. Media is a `_MediaBase` shared by Image +
                                Video; `Media` is the `Image | Video` union alias (not
                                callable). Video adds playback fields (controls, autoplay,
-                               muted, loop, poster, start, end)
+                               muted, loop, poster, start, end). `Slugged` mixin (kebab slug
+                               from class name) is shared by Animation + Transition
                                Deck params: slides, transition, theme, mode: ColorMode,
                                style, font_size, embed_fonts
                                Slide params: src, id, md, zones, animations, transition,
                                extra_style, title, notes, visible, font_size
     enums.py          shared enums (Direction, Align, VAlign, MediaFit, MediaAlign,
-                               ColorMode, Muted, Trigger); `_KebabStrEnum` base emits CSS
-                               token values (Muted is a plain Enum, resolved in Python).
+                               ColorMode, Muted, Trigger, AnimationKind); `_KebabStrEnum`
+                               base emits CSS token values (Muted is a plain Enum, resolved
+                               in Python). `AnimationKind` (enter/exit/emphasis) is the
+                               animation lifecycle role.
                                `Easing`/`Trigger` are str value objects with named presets
                                plus a constructor (`Easing.cubic_bezier(...)`, `Trigger.at(n)`)
-    animations.py     concrete animation types (FadeIn, FadeOut, Bounce, SlideIn/Out,
-                               ZoomIn/Out, Highlight) subclassing manifest.Animation, plus
-                               `PlayVideo` (subclasses `Cue` directly, no timing) — starts a
-                               `Video` on a step instead of on load
+    animations.py     the `Animation` base (moved here from manifest) + the semantic bases
+                               `Enter`/`Exit`/`Emphasis` (they fix `kind`), the concrete types
+                               (FadeIn, FadeOut, Bounce, SlideIn/Out, ZoomIn/Out, Highlight)
+                               subclassing those, plus `PlayVideo` (subclasses `Cue`
+                               directly, no timing) — starts a `Video` on a step, not on load
     transitions.py    concrete transition types (Cut, Crossfade, Morph, Push, Cover,
                                Zoom, Fade, Wipe) subclassing manifest.Transition
     pipeline.py       animation annotation + layout inlining
@@ -109,7 +115,9 @@ src/
                                diagram.md, notes/*.md) copied verbatim into new projects
   ts/                 TypeScript source
     globals.d.ts      ambient declarations for Python-injected globals (__SLIDES_JSON__ etc.)
-    shared/           types, step logic, step-ring SVG builder, cubic-bezier easing
+    shared/           types, step engine (step.ts: WAAPI cue driver + elementActions),
+                      keyframes.ts (reads @keyframes + per-cue var substitution),
+                      step-ring SVG builder, cubic-bezier easing
     presenter/        main presenter modules — navigation, transitions (progress-driven
                       via progress-driver.ts), overview, picker, websocket, status bar,
                       keyboard, syncmenu.ts (sync-mode status-bar control),
@@ -133,7 +141,7 @@ tsconfig.json         TypeScript config (noEmit, verbatimModuleSyntax — tsc as
 
 **No SVG editor subprocess at serve time.**
 Any SVG editor writes the files; the pipeline reads them directly with lxml,
-strips Inkscape/Sodipodi editor namespaces, and annotates elements with animation classes.
+strips Inkscape/Sodipodi editor namespaces, and annotates elements with `data-cues` for the step engine.
 No GUI window flashes, instant processing.
 
 **Live reload pushes slides over WebSocket, not `location.reload()`.**
@@ -145,9 +153,10 @@ The HTTP response includes `Cache-Control: no-store` so hard refreshes always ge
 Clients send `{"type":"nav","slideIndex","step"}` (validated + clamped server-side by `_coerce_nav_position`); the server stores the last position and rebroadcasts it as `{"type":"position",...}` to the *other* clients, and pushes it once to each newly connected client. A window that booted from a deep link (URL slide segment, captured by `readURL()` before `syncURL()` rewrites the bar) or reconnected asserts its own position and ignores that first push; a bare window adopts it. Each client also has a per-tab **sync mode** (`two-way`/`present`/`follow`/`solo`, `shared/types.ts`) deciding locally whether it broadcasts nav (`sends()`) and applies incoming positions (`receives()`) — the server knows nothing about modes. `s` cycles the mode; `syncmenu.ts` owns the status-bar widget, `websocket.ts` the network/state. Switching into a receiving mode sends `{"type":"sync-request"}` to catch up. Persisted in `sessionStorage`.
 
 **`loadSlide()` vs `applyStep()` in the presenter JS.**
-Step advances within a slide must NOT re-render `stage.innerHTML` — that would make CSS transitions invisible because the browser only paints once per JS task.
-`loadSlide()` sets innerHTML (elements start at opacity 0).
-Subsequent `applyStep()` calls only toggle `.active` on existing DOM elements, triggering CSS transitions.
+Step advances within a slide must NOT re-render `stage.innerHTML` — that would recreate the Web Animations API animations and lose their state.
+`loadSlide()` sets innerHTML (enter-first elements start hidden via the `.anim-pending` guard).
+Subsequent `applyStep()` calls drive each element's per-cue WAAPI animations (play/hold/reverse/cancel) on the existing DOM. The step engine (`shared/step.ts`) reads each element's `data-cues`, creates one paused `Animation` per cue (keyframes from `keyframes.ts`), and per step lets the **governing** enter/exit (the last one reached) own visibility — held at its resting end — while every other enter/exit is cancelled, so the result never depends on WAAPI composite order across several held animations. A single step back across the governing boundary plays the outgoing cue in reverse (it lands on its start frame, which equals the new governing cue's resting value, and the next step cancels it). `applyStepInstant` lands the resting state with no playback (load, jumps, backward entry) and never fires emphasis. The pure `elementActions(cues, step, prev, instant)` is the testable decision at the core.
+Because the step state is held by live WAAPI animation objects (not classes/inline styles), it does not survive a DOM snapshot. So before a transition captures the outgoing slide (`stage.innerHTML` for the layer transitions, cloned nodes for morph), `loadSlide` calls `commitStepStyles(stage)` to bake the held values into inline styles — otherwise the outgoing slide reverts to its authored base (entered elements vanish, exited ones reappear) the instant the transition starts.
 
 **`deck.py` is a Python module, not YAML/TOML.**
 Loaded via `importlib.util.spec_from_file_location`. Must define a `main() -> Deck` function.
@@ -250,13 +259,13 @@ SVG files on disk are never modified by the serve/build pipeline.
 
 `pipeline.py` processes each slide as a single lxml tree: parsed once via the hardened parser in `svgio.py`, threaded through the pipeline, serialized once at the end. `SlideSvg` wraps the tree and each pipeline step is a method that mutates it in place (like `list.sort()`), delegating the DOM work to `content.py`/`svg.py` functions that take and return the root element. Key steps:
 1. `clean_inkscape_tree(src)` — parse with the hardened lxml parser, remove elements/attrs in `http://www.inkscape.org/namespaces/inkscape` and `http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd`, call `etree.cleanup_namespaces()`. (`clean_inkscape_svg` wraps this and serializes to a pretty-printed string for the CLI/pre-commit hook.)
-2. `annotate_svg(root, cues)` — `cues` are `(Cue, step)` pairs already resolved to concrete step numbers (see below). Finds elements by plain id (no leading `#`); for an `Animation` sets `class`/`data-step` and merges `--anim-*` custom properties into `style`, for a `PlayVideo` sets `data-play-on-step` on the target zone's `<video>`.
+2. `annotate_svg(root, cues)` — `cues` are `(Cue, step)` pairs already resolved to concrete step numbers (see below). Finds elements by plain id (no leading `#`); `Animation` cues are **grouped per target element** (an element may carry several) and written as one `data-cues` JSON array (sorted by step) via `_cue_entry` — each entry is `{step, kind, name, opts, vars}`, where `opts` are the base `Animation` fields as element.animate() options (`duration`/`delay`/`easing`/`iterations`) and `vars` are ready strings (slide direction+distance → `from-x`/`from-y`, `scale`/`color`/custom fields) substituted for `var(--anim-<key>)` in the keyframes. Enter-first elements also get an `anim-pending` class (initial-hidden guard); two same-kind cues with no opposing kind between them warn. A `PlayVideo` cue still sets `data-play-on-step` on the target zone's `<video>`.
 
 **Steps are inferred from triggers, never written by hand.** Every `Animation`/`PlayVideo` cue carries a `Trigger` (`ON_CLICK`, `WITH_PREVIOUS`, or a `Trigger.at(n)` pin). `steps.py`'s `StepResolver` walks a cue sequence in order and assigns concrete step numbers — `pipeline.resolve_steps` for the deck's `animations=[...]` list, the reveal counter in `zones.py` for markdown `::step::`/`::steps::` reveals. A slide's markdown reveals number first, then the `animations=[...]` list continues the count, so both form one timeline.
 
 **Autoplay vs. a `PlayVideo` cue.** If a `Video` sets `autoplay=True` and is also targeted by a `PlayVideo` cue, the cue wins: `process_slide` suppresses `autoplay` before content injection (so `Muted.AUTO` resolves to unmuted) and logs a warning.
 
-The CSS class is `anim-<slug>`, where the slug is the kebab-cased type name (`Animation.slug()` / `Transition.slug()`, a `_Slugged` mixin in `manifest.py`): `FadeIn → anim-fade-in`, `SlideIn → anim-slide-in`, `Highlight → anim-highlight`. There is no per-type registry. `_anim_style` emits one `--anim-<field>` custom property per non-`None` parameter (via the shared `_set_fields` field-walk, with a unit table for `duration`/`delay`/`distance`); the `direction` field instead becomes an `anim-from-<value>` modifier class (`_anim_classes`). All built-in animation/transition defaults are concrete Python dataclass field defaults — no CSS `var(--anim-x, default)` fallback; CSS in `src/css/shared/animations.css` consumes the custom props directly.
+The cue's `name` is the kebab-cased type name (`Slugged.slug()`, the mixin in `manifest.py`, shared by `Animation`/`Transition`): `FadeIn → fade-in`, driving `@keyframes anim-fade-in`. There is no per-type registry and no `--anim-*` style — timing/visual params travel in `data-cues` (the old `_anim_style`/`_anim_classes` are gone). Each animated element does still carry an `anim-<slug>` class per cue type, but only as a **styling hook** (the engine drives animation from `data-cues`, not the class): built-in CSS uses it solely for constant styles a keyframe cannot hold at the right cascade origin — `.anim-zoom-in`/`.anim-zoom-out` set `transform-box: fill-box` there so the morph transition's inline `view-box` pin can beat it by ordinary cascade instead of `!important`. Custom animations author a `@keyframes anim-<slug>` (no JS) and may hook their own static styles on `.anim-<slug>`; the engine reads the keyframes and substitutes the cue's `vars`. All built-in animation/transition defaults are concrete Python dataclass field defaults — no CSS `var(--anim-x, default)` fallback. `@keyframes` in `src/css/shared/animations.css` are global (in the presenter bundle); custom `@keyframes` from `Deck(style=...)` are lifted out of the per-slide `@scope` wrapper by `_scope_slide_styles`/`_extract_keyframes` so they stay globally discoverable.
 
 All SVG parsing routes through `svgio.py` (`parse_svg`, `parse_svg_file`, `serialize_svg`), which uses one hardened parser config (`resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False`, constructed per call since lxml parsers are not thread-safe). This is defense-in-depth plus crash-robustness: an SVG referencing an external/DTD entity degrades to an inert node instead of crashing the rebuild. `svgio.py` also exports the `SvgElement` type alias used across the backend.
 
