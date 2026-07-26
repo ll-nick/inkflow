@@ -123,6 +123,8 @@ demo/
   slides/             source SVGs and Markdown content files
 mise.toml             task runner + tool versions (replaces poethepoet)
 package.json          JS devDependencies: biome, esbuild, typescript
+pnpm-lock.yaml        pnpm lockfile (JS deps); package manager is pnpm, not npm
+pnpm-workspace.yaml   pnpm settings: allowlists esbuild's postinstall build script
 biome.json            Biome lint + format config (4-space indent, noUnusedVariables=error)
 tsconfig.json         TypeScript config (noEmit, verbatimModuleSyntax — tsc as type-checker only)
 ```
@@ -265,6 +267,8 @@ Three tools, each with a distinct role:
 - **Biome** — linter and formatter for TypeScript and CSS. Run via `mise run lint-js`. Config in `biome.json`.
 - **tsc** — type-checker only (`noEmit: true`). Never emits files; esbuild does that. Run via `mise run typecheck-js`.
 - **esbuild** — bundler. Produces committed bundles in `src/inkflow/bundles/` that the Python inlining pipeline reads at serve/build time. Run via `mise run bundle`.
+
+JS dependencies are managed with **pnpm** (`pnpm-lock.yaml`). Every JS task depends on an `install-js` task that runs `pnpm install`, so `node_modules` stays in sync with the lockfile on each `mise run` and cannot drift (CI uses `pnpm install --frozen-lockfile`). `pnpm-workspace.yaml` allowlists esbuild's postinstall build script, which pnpm blocks by default.
 
 `pip install inkflow` ships the pre-built bundles — no Node at install time.
 
