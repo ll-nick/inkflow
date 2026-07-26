@@ -111,7 +111,7 @@ describe("reverse", () => {
             },
             {
                 id: "b",
-                svg: "<svg><rect id='b' data-step='2'/></svg>",
+                svg: `<svg><rect id="b" data-cues='[{"step":2}]'/></svg>`,
                 title: "B",
                 notes: "",
             },

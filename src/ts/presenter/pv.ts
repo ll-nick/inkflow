@@ -1,4 +1,5 @@
 import { buildStepRing } from "../shared/ring";
+import { applyStepInstant } from "../shared/step";
 import { state } from "./state";
 import { maxStep } from "./status";
 
@@ -75,14 +76,7 @@ export function renderPvNext(): void {
     }
     pvNextInner.innerHTML = previewSvg;
     const svg = pvNextInner.querySelector("svg");
-    if (svg) {
-        svg.querySelectorAll("[data-step]").forEach((el) => {
-            el.classList.toggle(
-                "active",
-                +(el.getAttribute("data-step") ?? "0") <= revealStep,
-            );
-        });
-    }
+    if (svg) applyStepInstant(svg, revealStep);
     requestAnimationFrame(_scalePvNext);
 }
 

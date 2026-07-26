@@ -13,8 +13,8 @@ const stepInfo = document.getElementById("step-info")!;
 const mhudSlideInfo = document.getElementById("mhud-slide-info")!;
 const mhudStepRing = document.getElementById("mhud-step-ring")!;
 
-// maxStep is a pure function of the current slide's markup (its data-step and
-// code-highlight attributes), so it is derived from the slide data rather than the
+// maxStep is a pure function of the current slide's markup (its data-cues, video
+// play-on-step, and code-highlight attributes), derived from the slide data rather than the
 // live stage DOM. During a transition the stage briefly holds two slides at once
 // (as layers), which would corrupt a DOM-based count; reading the data keeps the
 // value correct mid-flight and lets navigation settle the step synchronously.
