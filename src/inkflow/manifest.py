@@ -23,7 +23,7 @@ def camel_to_kebab(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
 
 
-class _Slugged:
+class Slugged:
     """Mixin giving a DSL type a kebab-case slug derived from its class name."""
 
     @classmethod
@@ -62,12 +62,17 @@ verbatim. ``None`` means "nothing". Used by ``Slide.md``, ``Slide.notes``,
 ``Slide.extra_style``, and ``Deck.style``.
 """
 
-# ── Animation ────────────────────────────────────────────────────────────────
+# ── Cue ───────────────────────────────────────────────────────────────────────
 
 
 @dataclass
 class Cue:
-    """Base for anything on a slide's step timeline."""
+    """Base for anything on a slide's step timeline.
+
+    Carries just the target ``element`` and the ``trigger`` that decides its step.
+    ``Animation`` (in ``inkflow.animations``) adds timing on top; ``PlayVideo`` is a
+    sibling that carries no timing.
+    """
 
     element: str
     """Id of the target element, e.g. ``"headline"``."""
@@ -75,41 +80,11 @@ class Cue:
     """When the cue fires. Defaults to `Trigger.ON_CLICK`."""
 
 
-@dataclass
-class Animation(Cue, _Slugged):
-    """Base for every animation type.
-
-    Concrete types live in ``inkflow.animations`` and subclass this, adding their
-    own fields. ``duration``, ``easing``, and ``delay`` are shared keyword-only
-    timing params.
-
-    **Custom animations.** Subclass this directly in ``deck.py`` — no changes to
-    inkflow are needed. The CSS class is the kebab-cased type name (``MyGlow`` →
-    ``anim-my-glow``), and each extra field becomes a ``--anim-<field>`` custom
-    property on the element. Put the matching CSS in a ``styles.css`` next to
-    ``deck.py`` (loaded automatically).
-
-    ```python
-    @dataclass
-    class MyGlow(Animation):
-        intensity: float = 1.0   # → --anim-intensity on the element
-    ```
-    """
-
-    duration: float = field(default=0.4, kw_only=True)
-    """Duration in seconds."""
-    easing: Easing = field(default=Easing.EASE, kw_only=True)
-    """Easing curve — an ``Easing`` preset (e.g. ``Easing.EASE_IN_OUT``) or a
-    custom curve via ``Easing.cubic_bezier(...)``."""
-    delay: float = field(default=0.0, kw_only=True)
-    """Seconds to wait before the animation starts."""
-
-
 # ── Transition ────────────────────────────────────────────────────────────────
 
 
 @dataclass
-class Transition(_Slugged):
+class Transition(Slugged):
     """Data-only base for every transition type.
 
     Concrete types live in ``inkflow.transitions`` and subclass this. Every field

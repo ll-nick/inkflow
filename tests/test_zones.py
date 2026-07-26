@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from inkflow.animations import Bounce, FadeIn, SlideIn
+from inkflow.animations import Animation, Bounce, FadeIn, SlideIn
 from inkflow.enums import Align, Direction, Easing, MediaAlign, MediaFit, VAlign
-from inkflow.manifest import Animation, Image, Media, TextBox, ZoneContent
+from inkflow.manifest import Image, Media, TextBox, ZoneContent
 from inkflow.markdown import markdown_to_html
 from inkflow.steps import StepResolver
 from inkflow.zones import (

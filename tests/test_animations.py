@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from inkflow.animations import (
+    Animation,
     Bounce,
     FadeIn,
     FadeOut,
@@ -11,7 +12,6 @@ from inkflow.animations import (
     ZoomOut,
 )
 from inkflow.enums import Direction, Easing, Trigger
-from inkflow.manifest import Animation
 
 
 def test_shared_params_concrete_defaults() -> None:
@@ -57,13 +57,14 @@ def test_zoom_scale_field() -> None:
 def test_bounce_defaults() -> None:
     b = Bounce("a")
     assert b.duration == 0.35  # overrides the base 0.4
-    assert b.overshoot == Easing.cubic_bezier(0.34, 1.56, 0.64, 1)
-    assert isinstance(b.overshoot, Easing)
+    assert b.easing == Easing.cubic_bezier(0.34, 1.56, 0.64, 1)  # spring default
+    assert isinstance(b.easing, Easing)
+    assert b.distance == 14.0
 
 
 def test_highlight_fields() -> None:
-    h = Highlight("a", color="#f00", passes=3)
-    assert (h.color, h.passes) == ("#f00", 3)
+    h = Highlight("a", color="#f00", iterations=3)
+    assert (h.color, h.iterations) == ("#f00", 3)
     assert Highlight("a").duration == 0.6  # overrides the base 0.4
     assert Highlight("a").color == "var(--accent)"
 
