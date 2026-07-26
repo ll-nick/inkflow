@@ -3,6 +3,12 @@ uv   = "latest"
 node = "lts"
 pnpm = "latest"
 
+# Pin the resolved tool versions in mise.lock for reproducible installs, while
+# keeping the friendly latest/lts specs above. `mise upgrade` refreshes the lock
+# (done weekly by .github/workflows/mise-lock.yml).
+[settings]
+lockfile = true
+
 [tasks.install-js]
 run = "pnpm install"
 

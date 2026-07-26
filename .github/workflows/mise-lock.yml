@@ -1,0 +1,68 @@
+name: Update mise lockfile
+
+# Weekly refresh of mise.lock, analogous to dependabot (which has no mise
+# support). `mise upgrade` re-resolves the latest/lts tool specs in mise.toml
+# and `mise lock` rewrites the pinned versions/checksums for every platform. A
+# PR is opened (or its rolling branch updated) only when the lockfile changes.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC, matching dependabot's weekly cadence
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: mise-lock
+  cancel-in-progress: true
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+
+      - name: Upgrade tools and refresh the lockfile
+        run: |
+          mise upgrade
+          mise lock
+
+      - name: Open or update a PR if mise.lock changed
+        env:
+          # The default GITHUB_TOKEN works, but pushes/PRs it makes do not
+          # trigger the CI workflow. Set a MISE_LOCK_PAT secret (fine-grained
+          # PAT with contents + pull-requests write) to have CI run on these PRs.
+          GH_TOKEN: ${{ secrets.MISE_LOCK_PAT || github.token }}
+          BRANCH: chore/mise-lock-update
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- mise.lock; then
+            echo "mise.lock unchanged, nothing to do."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git switch -C "$BRANCH"
+          git add mise.lock
+          git commit -m "Bump mise tool versions"
+          git push --force origin "$BRANCH"
+
+          if [ "$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')" -eq 0 ]; then
+            gh pr create \
+              --head "$BRANCH" \
+              --base "$BASE" \
+              --title "Bump mise tool versions" \
+              --label dependencies \
+              --body "Weekly \`mise upgrade\` refresh of \`mise.lock\`. Review the version diff and merge once CI is green."
+          else
+            echo "PR already open for $BRANCH; force-pushed the refreshed lockfile to it."
+          fi
