@@ -435,7 +435,7 @@ kbd {
   max-height: 18rem;
   overflow-y: auto;
 }
-#picker-list li {
+#picker-list [role=option] {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -443,13 +443,13 @@ kbd {
   font-size: 0.82rem;
   cursor: pointer;
 }
-#picker-list li:hover {
+#picker-list [role=option]:hover {
   background: rgba(255, 255, 255, 0.05);
 }
-[data-theme=light] #picker-list li:hover {
+[data-theme=light] #picker-list [role=option]:hover {
   background: rgba(0, 0, 0, 0.05);
 }
-#picker-list li.active {
+#picker-list [role=option].active {
   background: var(--accent);
   color: var(--bg);
 }
@@ -460,7 +460,7 @@ kbd {
   flex-shrink: 0;
   font-size: 0.75rem;
 }
-#picker-list li.active .pk-num {
+#picker-list [role=option].active .pk-num {
   color: var(--bg);
   opacity: 0.75;
 }

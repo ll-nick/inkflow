@@ -2246,9 +2246,9 @@
     state._pickerMatches = matches;
     state._pickerActive = 0;
     pickerList.innerHTML = matches.map(
-      (idx, pos) => `<li role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}"><span class="pk-num">${idx + 1}</span><span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></li>`
+      (idx, pos) => `<div role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}"><span class="pk-num">${idx + 1}</span><span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></div>`
     ).join("");
-    const active = pickerList.querySelector("li.active");
+    const active = pickerList.querySelector('[role="option"].active');
     if (active) active.scrollIntoView({ block: "nearest" });
   }
   function pickerMoveCursor(delta) {
@@ -2257,10 +2257,10 @@
       0,
       Math.min(state._pickerMatches.length - 1, state._pickerActive + delta)
     );
-    pickerList.querySelectorAll("li").forEach((li, i) => {
-      li.classList.toggle("active", i === state._pickerActive);
+    pickerList.querySelectorAll('[role="option"]').forEach((opt, i) => {
+      opt.classList.toggle("active", i === state._pickerActive);
     });
-    const active = pickerList.querySelector("li.active");
+    const active = pickerList.querySelector('[role="option"].active');
     if (active) active.scrollIntoView({ block: "nearest" });
   }
   function pickerCommit() {
@@ -2291,9 +2291,9 @@
     }
   });
   pickerList.addEventListener("click", (e) => {
-    const li = e.target.closest("li");
-    if (!li) return;
-    const pos = parseInt(li.dataset.pos, 10);
+    const opt = e.target.closest('[role="option"]');
+    if (!opt) return;
+    const pos = parseInt(opt.dataset.pos, 10);
     state._pickerActive = pos;
     pickerCommit();
   });
