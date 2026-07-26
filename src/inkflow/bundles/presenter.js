@@ -246,7 +246,9 @@
         prev,
         false
       );
-      states.forEach((st, i) => applyAction(el, st, actions[i]));
+      states.forEach((st, i) => {
+        applyAction(el, st, actions[i]);
+      });
     });
     applyCodeHighlights(root, step);
     rootStep.set(root, step);
@@ -269,7 +271,9 @@
         step,
         true
       );
-      states.forEach((st, i) => applyAction(el, st, actions[i]));
+      states.forEach((st, i) => {
+        applyAction(el, st, actions[i]);
+      });
     });
     applyCodeHighlights(root, step);
     rootStep.set(root, step);

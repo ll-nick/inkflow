@@ -215,7 +215,9 @@ export function applyStep(root: Element, step: number): void {
             prev,
             false,
         );
-        states.forEach((st, i) => applyAction(el, st, actions[i]));
+        states.forEach((st, i) => {
+            applyAction(el, st, actions[i]);
+        });
     });
     applyCodeHighlights(root, step);
     rootStep.set(root, step);
@@ -249,7 +251,9 @@ export function applyStepInstant(root: Element, step: number): void {
             step,
             true,
         );
-        states.forEach((st, i) => applyAction(el, st, actions[i]));
+        states.forEach((st, i) => {
+            applyAction(el, st, actions[i]);
+        });
     });
     applyCodeHighlights(root, step);
     rootStep.set(root, step);
