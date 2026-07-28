@@ -1,0 +1,512 @@
+/* inkflow contract stylesheet — always loaded, before any theme.
+ *
+ * This is inkflow runtime CSS, not a theme. It owns three things every deck needs
+ * regardless of the active theme:
+ *   1. the neutral token floor — a value for every --inkflow-* token, so a theme
+ *      that sets nothing still renders readably (a theme's :root overrides these);
+ *   2. the structural rules the pipeline emits classes for (.inkflow-fill-*,
+ *      .inkflow-wrapper, .inkflow-content) — these consume the tokens via var();
+ *   3. the markdown element rules (headings, code, blockquote, tables, lists) that
+ *      keep rendered content legible.
+ * A theme supplies token *values* (palette + typography) and, optionally, extra CSS.
+ */
+
+/* ── Neutral token floor (dark) ───────────────────────────────────────────────
+ * Plain but functional defaults. The builtin theme and any third-party theme
+ * override these; they only take effect for tokens a theme leaves unset. */
+
+:root {
+    /* typography */
+    --inkflow-font-body: sans-serif;
+    --inkflow-font-mono: monospace;
+    --inkflow-line-height: 1.4;
+    --inkflow-heading-weight: 600;
+    --inkflow-heading-line-height: 1.2;
+    /* --inkflow-font-heading is intentionally unset: headings fall back to body. */
+
+    /* semantic */
+    --inkflow-bg: #1a1a1a;
+    --inkflow-surface: #2a2a2a;
+    --inkflow-border: #444444;
+    --inkflow-text: #e6e6e6;
+    --inkflow-text-muted: #a0a0a0;
+    --inkflow-accent: #7aa2f7;
+    --inkflow-accent-fg: #1a1a1a;
+    --inkflow-code-bg: #111111;
+    --inkflow-code-text: #e6e6e6;
+    --inkflow-link: #7aa2f7;
+    --inkflow-heading: #e6e6e6;
+    --inkflow-blockquote: #444444;
+
+    /* named palette */
+    --inkflow-red: #e06c75;
+    --inkflow-orange: #d19a66;
+    --inkflow-yellow: #e5c07b;
+    --inkflow-green: #98c379;
+    --inkflow-teal: #56b6c2;
+    --inkflow-blue: #61afef;
+    --inkflow-purple: #c678dd;
+    --inkflow-pink: #d787af;
+    --inkflow-grey: #7f848e;
+}
+
+/* ── Neutral token floor (light) ──────────────────────────────────────────── */
+
+:root[data-theme="light"] {
+    --inkflow-bg: #ffffff;
+    --inkflow-surface: #f0f0f0;
+    --inkflow-border: #cccccc;
+    --inkflow-text: #1a1a1a;
+    --inkflow-text-muted: #666666;
+    --inkflow-accent: #3355cc;
+    --inkflow-accent-fg: #ffffff;
+    --inkflow-code-bg: #f5f5f5;
+    --inkflow-code-text: #1a1a1a;
+    --inkflow-link: #3355cc;
+    --inkflow-heading: #1a1a1a;
+    --inkflow-blockquote: #cccccc;
+
+    --inkflow-red: #d0322b;
+    --inkflow-orange: #b5690a;
+    --inkflow-yellow: #a07a12;
+    --inkflow-green: #468c2b;
+    --inkflow-teal: #2a8a90;
+    --inkflow-blue: #2f6fe0;
+    --inkflow-purple: #8a3fd0;
+    --inkflow-pink: #c04d8a;
+    --inkflow-grey: #8a8f98;
+}
+
+/* ── SVG element fill utilities ───────────────────────────────────────────── */
+
+.inkflow-fill-bg {
+    fill: var(--inkflow-bg);
+}
+.inkflow-fill-surface {
+    fill: var(--inkflow-surface);
+}
+.inkflow-fill-border {
+    fill: var(--inkflow-border);
+}
+.inkflow-fill-text {
+    fill: var(--inkflow-text);
+}
+.inkflow-fill-text-muted {
+    fill: var(--inkflow-text-muted);
+}
+.inkflow-fill-accent {
+    fill: var(--inkflow-accent);
+}
+.inkflow-fill-accent-fg {
+    fill: var(--inkflow-accent-fg);
+}
+.inkflow-fill-code-bg {
+    fill: var(--inkflow-code-bg);
+}
+.inkflow-fill-code-text {
+    fill: var(--inkflow-code-text);
+}
+.inkflow-fill-red {
+    fill: var(--inkflow-red);
+}
+.inkflow-fill-orange {
+    fill: var(--inkflow-orange);
+}
+.inkflow-fill-yellow {
+    fill: var(--inkflow-yellow);
+}
+.inkflow-fill-green {
+    fill: var(--inkflow-green);
+}
+.inkflow-fill-teal {
+    fill: var(--inkflow-teal);
+}
+.inkflow-fill-blue {
+    fill: var(--inkflow-blue);
+}
+.inkflow-fill-purple {
+    fill: var(--inkflow-purple);
+}
+.inkflow-fill-pink {
+    fill: var(--inkflow-pink);
+}
+.inkflow-fill-grey {
+    fill: var(--inkflow-grey);
+}
+
+/* ── SVG element stroke utilities ─────────────────────────────────────────── */
+
+.inkflow-stroke-bg {
+    stroke: var(--inkflow-bg);
+}
+.inkflow-stroke-surface {
+    stroke: var(--inkflow-surface);
+}
+.inkflow-stroke-border {
+    stroke: var(--inkflow-border);
+}
+.inkflow-stroke-text {
+    stroke: var(--inkflow-text);
+}
+.inkflow-stroke-text-muted {
+    stroke: var(--inkflow-text-muted);
+}
+.inkflow-stroke-accent {
+    stroke: var(--inkflow-accent);
+}
+.inkflow-stroke-accent-fg {
+    stroke: var(--inkflow-accent-fg);
+}
+.inkflow-stroke-code-bg {
+    stroke: var(--inkflow-code-bg);
+}
+.inkflow-stroke-code-text {
+    stroke: var(--inkflow-code-text);
+}
+.inkflow-stroke-red {
+    stroke: var(--inkflow-red);
+}
+.inkflow-stroke-orange {
+    stroke: var(--inkflow-orange);
+}
+.inkflow-stroke-yellow {
+    stroke: var(--inkflow-yellow);
+}
+.inkflow-stroke-green {
+    stroke: var(--inkflow-green);
+}
+.inkflow-stroke-teal {
+    stroke: var(--inkflow-teal);
+}
+.inkflow-stroke-blue {
+    stroke: var(--inkflow-blue);
+}
+.inkflow-stroke-purple {
+    stroke: var(--inkflow-purple);
+}
+.inkflow-stroke-pink {
+    stroke: var(--inkflow-pink);
+}
+.inkflow-stroke-grey {
+    stroke: var(--inkflow-grey);
+}
+
+/* ── foreignObject layout wrapper ────────────────────────────────────────── */
+
+/* --inkflow-valign: start | center | end  (set on #zone-* in layout SVG CSS) */
+/* --inkflow-padding: any CSS length        (set on #zone-* in layout SVG CSS) */
+.inkflow-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    justify-content: var(--inkflow-valign, start);
+    padding: var(--inkflow-padding, 0);
+}
+
+/* ── .inkflow-content typography ─────────────────────────────────────────── */
+
+/* --inkflow-align: left | center | right | justify (set on #zone-* in layout SVG CSS) */
+.inkflow-content {
+    font-family: var(--inkflow-font-body);
+    font-size: 1em;
+    color: var(--inkflow-text);
+    box-sizing: border-box;
+    overflow: hidden;
+    line-height: var(--inkflow-line-height);
+    text-align: var(--inkflow-align, left);
+}
+.inkflow-content p {
+    margin-bottom: 0.5em;
+}
+.inkflow-content ul {
+    list-style-type: disc;
+    padding-left: 1.5em;
+    margin-bottom: 0.5em;
+}
+.inkflow-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 0.5em;
+}
+.inkflow-content li {
+    display: list-item;
+    margin-bottom: 0.3em;
+}
+.inkflow-content dl {
+    margin-bottom: 0.5em;
+}
+.inkflow-content dt {
+    font-weight: 600;
+    color: var(--inkflow-accent);
+    margin-top: 0.4em;
+}
+.inkflow-content dd {
+    padding-left: 1.5em;
+    color: var(--inkflow-text-muted);
+    margin-bottom: 0.2em;
+}
+
+/* Heading scale is a fixed table (GitHub-aligned); weight, leading, and heading
+   font come from typography tokens. heading_font falls back to body when unset. */
+.inkflow-content h1,
+.inkflow-content h2,
+.inkflow-content h3,
+.inkflow-content h4,
+.inkflow-content h5,
+.inkflow-content h6 {
+    font-family: var(--inkflow-font-heading, var(--inkflow-font-body));
+    font-weight: var(--inkflow-heading-weight);
+    line-height: var(--inkflow-heading-line-height);
+    color: var(--inkflow-heading);
+    margin-bottom: 0.3em;
+}
+.inkflow-content h1 {
+    font-size: 2em;
+}
+.inkflow-content h2 {
+    font-size: 1.5em;
+}
+.inkflow-content h3 {
+    font-size: 1.25em;
+}
+.inkflow-content h4 {
+    font-size: 1em;
+}
+.inkflow-content h5 {
+    font-size: 0.875em;
+}
+.inkflow-content h6 {
+    font-size: 0.85em;
+    color: var(--inkflow-text-muted);
+}
+.inkflow-content a {
+    color: var(--inkflow-link);
+    text-decoration: underline;
+}
+.inkflow-content a:hover {
+    opacity: 0.8;
+}
+.inkflow-wrapper [data-inkflow-slide] {
+    color: var(--inkflow-link);
+    cursor: pointer;
+}
+.inkflow-wrapper [data-inkflow-slide]:hover {
+    color: var(--inkflow-accent);
+}
+.inkflow-content code {
+    font-family: var(--inkflow-font-mono);
+    background: var(--inkflow-code-bg);
+    color: var(--inkflow-code-text);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+.inkflow-content pre {
+    overflow: auto;
+    background: var(--inkflow-code-bg);
+    color: var(--inkflow-code-text);
+    padding: 0.5em;
+    border-radius: 4px;
+}
+.inkflow-content pre code {
+    background: none;
+    padding: 0;
+}
+.inkflow-content blockquote {
+    border-left: 3px solid var(--inkflow-blockquote);
+    padding-left: 0.8em;
+    margin: 0.5em 0;
+    color: var(--inkflow-text-muted);
+}
+.inkflow-content table {
+    /* inline-table so the zone's text-align (left/center/right) positions the
+       table the same way it positions prose — see content.py align handling. */
+    display: inline-table;
+    border-collapse: collapse;
+    margin: 0.5em 0;
+}
+.inkflow-content th,
+.inkflow-content td {
+    border: 2px solid var(--inkflow-border);
+    padding: 0.3em 0.7em;
+    text-align: left;
+}
+.inkflow-content th {
+    background: var(--inkflow-surface);
+    color: var(--inkflow-heading);
+    font-weight: 600;
+}
+.inkflow-content .footnote-ref a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Footnote block is hoisted to .inkflow-wrapper level by content.py */
+.inkflow-wrapper .footnotes {
+    margin-top: auto;
+    margin-bottom: 1.5em;
+    padding-top: 0.5em;
+    border-top: 1px solid var(--inkflow-border);
+    font-size: 0.72em;
+    color: var(--inkflow-text-muted);
+}
+.inkflow-wrapper .footnotes ol {
+    padding-left: 1.5em;
+    margin: 0;
+}
+.inkflow-wrapper .footnotes p {
+    margin: 0;
+}
+.inkflow-wrapper .footnote-backref {
+    color: var(--inkflow-accent);
+    text-decoration: none;
+    margin-left: 0.2em;
+}
+
+/* ── Pygments syntax-highlight token classes ──────────────────────────────── */
+/* Colours come from --inkflow-* variables, so dark/light themes work for free */
+
+/* Comments */
+.highlight .c,
+.highlight .c1,
+.highlight .cm,
+.highlight .cp,
+.highlight .cpf {
+    color: var(--inkflow-grey);
+    font-style: italic;
+}
+.highlight .cs {
+    color: var(--inkflow-grey);
+    font-style: italic;
+    font-weight: bold;
+}
+
+/* Keywords */
+.highlight .k,
+.highlight .kc,
+.highlight .kd,
+.highlight .kn,
+.highlight .kp,
+.highlight .kr {
+    color: var(--inkflow-purple);
+}
+.highlight .kt {
+    color: var(--inkflow-yellow);
+}
+
+/* Strings */
+.highlight .s,
+.highlight .s1,
+.highlight .s2,
+.highlight .sa,
+.highlight .sb,
+.highlight .sc,
+.highlight .dl,
+.highlight .sh,
+.highlight .sx {
+    color: var(--inkflow-green);
+}
+.highlight .sd {
+    color: var(--inkflow-grey);
+    font-style: italic;
+}
+.highlight .se {
+    color: var(--inkflow-orange);
+}
+.highlight .si,
+.highlight .sr,
+.highlight .ss {
+    color: var(--inkflow-teal);
+}
+
+/* Names / builtins / functions */
+.highlight .nb,
+.highlight .bp {
+    color: var(--inkflow-blue);
+}
+.highlight .nc {
+    color: var(--inkflow-yellow);
+}
+.highlight .nd,
+.highlight .nf,
+.highlight .fm {
+    color: var(--inkflow-blue);
+}
+.highlight .ne {
+    color: var(--inkflow-red);
+}
+.highlight .no {
+    color: var(--inkflow-orange);
+}
+
+/* Numbers */
+.highlight .m,
+.highlight .mb,
+.highlight .mf,
+.highlight .mh,
+.highlight .mi,
+.highlight .il,
+.highlight .mo {
+    color: var(--inkflow-orange);
+}
+
+/* Operators */
+.highlight .o {
+    color: var(--inkflow-teal);
+}
+.highlight .ow {
+    color: var(--inkflow-purple);
+}
+
+/* Diff */
+.highlight .gd {
+    color: var(--inkflow-red);
+}
+.highlight .gi {
+    color: var(--inkflow-green);
+}
+.highlight .ge {
+    font-style: italic;
+}
+.highlight .gs {
+    font-weight: bold;
+}
+
+/* ── Code block container and line highlight states ───────────────────────── */
+
+.inkflow-codeblock {
+    font-family: var(--inkflow-font-mono);
+    margin: 0.4em 0;
+}
+
+.inkflow-codeblock pre.highlight {
+    background: var(--inkflow-code-bg);
+    color: var(--inkflow-code-text);
+    border-radius: 4px;
+    padding: 0.6em 0.8em;
+    overflow: auto;
+    margin: 0;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.inkflow-codeblock pre.highlight code {
+    background: none;
+    padding: 0;
+    font-family: inherit;
+}
+
+.code-line {
+    display: block;
+    min-height: 1.5em;
+    transition: opacity 0.15s ease;
+}
+
+.code-line.hl-dim {
+    opacity: 0.25;
+}
+
+.code-line.hl-active {
+    opacity: 1;
+}

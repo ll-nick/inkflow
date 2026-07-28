@@ -33,9 +33,19 @@ def _cascade(filename: str, deck: Deck | None, project_dir: Path | None) -> str:
     return "\n".join(parts)
 
 
+def _contract_css() -> str:
+    """inkflow's always-loaded runtime stylesheet (structural rules + neutral token
+    floor + markdown element rules). Not a theme; loads before any theme layer."""
+    return (
+        importlib.resources.files("inkflow")
+        .joinpath("contract.css")
+        .read_text(encoding="utf-8")
+    )
+
+
 def load_deck_styles(deck: Deck | None, project_dir: Path | None) -> str:
-    """Return concatenated CSS in cascade order: builtin → theme → project."""
-    return _cascade("styles.css", deck, project_dir)
+    """Return concatenated CSS: contract → builtin → theme → project."""
+    return "\n".join([_contract_css(), _cascade("styles.css", deck, project_dir)])
 
 
 def load_deck_scripts(deck: Deck | None, project_dir: Path | None) -> str:
