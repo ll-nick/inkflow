@@ -1,4 +1,5 @@
 from inkflow import animations, transitions
+from inkflow.animations import Cue
 from inkflow.enums import (
     Align,
     AnimationKind,
@@ -13,17 +14,16 @@ from inkflow.enums import (
 )
 from inkflow.manifest import (
     Content,
-    Cue,
     Deck,
     Image,
     Inline,
     Media,
     Slide,
     TextBox,
-    Transition,
     Video,
     ZoneContent,
 )
+from inkflow.transitions import Transition
 
 __all__ = [
     "Align",

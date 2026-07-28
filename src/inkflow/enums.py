@@ -7,6 +7,7 @@ animations and transitions, ``Align``/``VAlign`` by text zones, ``MediaFit``/
 
 from __future__ import annotations
 
+import re
 from enum import Enum, StrEnum, auto
 from typing import ClassVar
 
@@ -19,9 +20,27 @@ __all__ = [
     "MediaAlign",
     "MediaFit",
     "Muted",
+    "Slugged",
     "Trigger",
     "VAlign",
+    "camel_to_kebab",
 ]
+
+
+# ── Type-name slug ────────────────────────────────────────────────────────────
+
+
+def camel_to_kebab(name: str) -> str:
+    """`FadeIn` -> `fade-in`, `SlideIn` -> `slide-in`, `Highlight` -> `highlight`."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
+
+
+class Slugged:
+    """Mixin giving a DSL type a kebab-case slug derived from its class name."""
+
+    @classmethod
+    def slug(cls) -> str:
+        return camel_to_kebab(cls.__name__)
 
 
 class _KebabStrEnum(StrEnum):

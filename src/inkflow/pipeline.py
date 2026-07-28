@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 from inkflow import ns
-from inkflow.animations import Animation, PlayVideo
+from inkflow.animations import Animation, Cue, PlayVideo
 from inkflow.clean import clean_inkscape_tree
 from inkflow.content import (
     inject_style,
@@ -20,19 +20,18 @@ from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_p
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
 from inkflow.manifest import (
-    Cue,
     Deck,
     Inline,
     Media,
     Slide,
     TextBox,
-    Transition,
     Video,
 )
 from inkflow.steps import StepResolver
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
 from inkflow.titles import humanize
+from inkflow.transitions import Transition
 from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────

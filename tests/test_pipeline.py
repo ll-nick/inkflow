@@ -12,6 +12,7 @@ import pytest
 
 from inkflow.animations import (
     Bounce,
+    Cue,
     FadeIn,
     FadeOut,
     Highlight,
@@ -22,7 +23,6 @@ from inkflow.animations import (
 from inkflow.enums import Direction, Trigger
 from inkflow.logging import collect_logs
 from inkflow.manifest import (
-    Cue,
     Deck,
     Image,
     Inline,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inkflow.animations import Animation, Bounce, FadeIn, PlayVideo, SlideIn
+from inkflow.animations import Animation, Bounce, Cue, FadeIn, PlayVideo, SlideIn
 from inkflow.enums import (
     Align,
     ColorMode,
@@ -10,20 +10,18 @@ from inkflow.enums import (
     MediaFit,
     Muted,
     Trigger,
+    camel_to_kebab,
 )
 from inkflow.manifest import (
-    Cue,
     Deck,
     Image,
     Inline,
     Media,
     Slide,
     TextBox,
-    Transition,
     Video,
-    camel_to_kebab,
 )
-from inkflow.transitions import Crossfade, Cut, Morph, Push
+from inkflow.transitions import Crossfade, Cut, Morph, Push, Transition
 
 
 def test_camel_to_kebab() -> None:

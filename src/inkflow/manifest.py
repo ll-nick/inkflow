@@ -1,35 +1,18 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
+from inkflow.animations import Cue
 from inkflow.enums import (
     Align,
     ColorMode,
-    Easing,
     MediaAlign,
     MediaFit,
     Muted,
-    Trigger,
     VAlign,
 )
-
-# ── Type-name slug ────────────────────────────────────────────────────────────
-
-
-def camel_to_kebab(name: str) -> str:
-    """`FadeIn` -> `fade-in`, `SlideIn` -> `slide-in`, `Highlight` -> `highlight`."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
-
-
-class Slugged:
-    """Mixin giving a DSL type a kebab-case slug derived from its class name."""
-
-    @classmethod
-    def slug(cls) -> str:
-        return camel_to_kebab(cls.__name__)
-
+from inkflow.transitions import Transition
 
 # ── Content marker ────────────────────────────────────────────────────────────
 
@@ -61,49 +44,6 @@ A bare ``str`` is treated as a path to read; an ``Inline`` value is used
 verbatim. ``None`` means "nothing". Used by ``Slide.md``, ``Slide.notes``,
 ``Slide.extra_style``, and ``Deck.style``.
 """
-
-# ── Cue ───────────────────────────────────────────────────────────────────────
-
-
-@dataclass
-class Cue:
-    """Base for anything on a slide's step timeline.
-
-    Carries just the target ``element`` and the ``trigger`` that decides its step.
-    ``Animation`` (in ``inkflow.animations``) adds timing on top; ``PlayVideo`` is a
-    sibling that carries no timing.
-    """
-
-    element: str
-    """Id of the target element, e.g. ``"headline"``."""
-    trigger: Trigger = Trigger.ON_CLICK
-    """When the cue fires. Defaults to `Trigger.ON_CLICK`."""
-
-
-# ── Transition ────────────────────────────────────────────────────────────────
-
-
-@dataclass
-class Transition(Slugged):
-    """Data-only base for every transition type.
-
-    Concrete types live in ``inkflow.transitions`` and subclass this. Every field
-    is serialized into the transition JSON, so ``direction``, ``color`` etc. arrive
-    on the JS ``TransitionData`` object automatically.
-
-    **Custom transitions.** Subclass this in ``deck.py``; the type name becomes the
-    JS handler key via ``camel_to_kebab`` (``MyWarp`` → ``"my-warp"``). Register
-    the matching handler from a ``scripts.js`` next to ``deck.py`` with
-    ``window.inkflow.registerProgressTransition(name, render)`` (or the
-    lower-level ``registerTransition``).
-    """
-
-    duration: float = 0.5
-    """Duration in seconds. Defaults to ``0.5``; ``Cut`` overrides it to ``0.0``."""
-    easing: Easing = field(default=Easing.EASE, kw_only=True)
-    """Easing curve — an ``Easing`` preset or a custom curve via
-    ``Easing.cubic_bezier(...)``."""
-
 
 # ── Content types ─────────────────────────────────────────────────────────────
 
