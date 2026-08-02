@@ -1,81 +1,11 @@
 /* inkflow contract stylesheet — always loaded, before any theme.
  *
- * This is inkflow runtime CSS, not a theme. It owns three things every deck needs
- * regardless of the active theme:
- *   1. the neutral token floor — a value for every --inkflow-* token, so a theme
- *      that sets nothing still renders readably (a theme's :root overrides these);
- *   2. the structural rules the pipeline emits classes for (.inkflow-fill-*,
- *      .inkflow-wrapper, .inkflow-content) — these consume the tokens via var();
- *   3. the markdown element rules (headings, code, blockquote, tables, lists) that
- *      keep rendered content legible.
- * A theme supplies token *values* (palette + typography) and, optionally, extra CSS.
+ * inkflow runtime CSS, not a theme: the structural rules the pipeline emits classes
+ * for (.inkflow-fill-*, .inkflow-wrapper, .inkflow-content) plus the markdown element
+ * rules that keep content legible, all consuming --inkflow-* tokens via var(). The
+ * token *values* (every --inkflow-*) come from the active theme's render_tokens_css
+ * (see themes.py); there is no floor here.
  */
-
-/* ── Neutral token floor (dark) ───────────────────────────────────────────────
- * Plain but functional defaults. The builtin theme and any third-party theme
- * override these; they only take effect for tokens a theme leaves unset. */
-
-:root {
-    /* typography */
-    --inkflow-font-body: sans-serif;
-    --inkflow-font-mono: monospace;
-    --inkflow-line-height: 1.4;
-    --inkflow-heading-weight: 600;
-    --inkflow-heading-line-height: 1.2;
-    /* --inkflow-font-heading is intentionally unset: headings fall back to body. */
-
-    /* semantic */
-    --inkflow-bg: #1a1a1a;
-    --inkflow-surface: #2a2a2a;
-    --inkflow-border: #444444;
-    --inkflow-text: #e6e6e6;
-    --inkflow-text-muted: #a0a0a0;
-    --inkflow-accent: #7aa2f7;
-    --inkflow-accent-fg: #1a1a1a;
-    --inkflow-code-bg: #111111;
-    --inkflow-code-text: #e6e6e6;
-    --inkflow-link: #7aa2f7;
-    --inkflow-heading: #e6e6e6;
-    --inkflow-blockquote: #444444;
-
-    /* named palette */
-    --inkflow-red: #e06c75;
-    --inkflow-orange: #d19a66;
-    --inkflow-yellow: #e5c07b;
-    --inkflow-green: #98c379;
-    --inkflow-teal: #56b6c2;
-    --inkflow-blue: #61afef;
-    --inkflow-purple: #c678dd;
-    --inkflow-pink: #d787af;
-    --inkflow-grey: #7f848e;
-}
-
-/* ── Neutral token floor (light) ──────────────────────────────────────────── */
-
-:root[data-theme="light"] {
-    --inkflow-bg: #ffffff;
-    --inkflow-surface: #f0f0f0;
-    --inkflow-border: #cccccc;
-    --inkflow-text: #1a1a1a;
-    --inkflow-text-muted: #666666;
-    --inkflow-accent: #3355cc;
-    --inkflow-accent-fg: #ffffff;
-    --inkflow-code-bg: #f5f5f5;
-    --inkflow-code-text: #1a1a1a;
-    --inkflow-link: #3355cc;
-    --inkflow-heading: #1a1a1a;
-    --inkflow-blockquote: #cccccc;
-
-    --inkflow-red: #d0322b;
-    --inkflow-orange: #b5690a;
-    --inkflow-yellow: #a07a12;
-    --inkflow-green: #468c2b;
-    --inkflow-teal: #2a8a90;
-    --inkflow-blue: #2f6fe0;
-    --inkflow-purple: #8a3fd0;
-    --inkflow-pink: #c04d8a;
-    --inkflow-grey: #8a8f98;
-}
 
 /* ── SVG element fill utilities ───────────────────────────────────────────── */
 
@@ -209,7 +139,7 @@
 
 /* --inkflow-align: left | center | right | justify (set on #zone-* in layout SVG CSS) */
 .inkflow-content {
-    font-family: var(--inkflow-font-body);
+    font-family: var(--inkflow-body-font);
     font-size: 1em;
     color: var(--inkflow-text);
     box-sizing: border-box;
@@ -248,15 +178,15 @@
     margin-bottom: 0.2em;
 }
 
-/* Heading scale is a fixed table (GitHub-aligned); weight, leading, and heading
-   font come from typography tokens. heading_font falls back to body when unset. */
+/* Heading scale is a fixed table (GitHub-aligned); font, weight, and leading come
+   from typography tokens. */
 .inkflow-content h1,
 .inkflow-content h2,
 .inkflow-content h3,
 .inkflow-content h4,
 .inkflow-content h5,
 .inkflow-content h6 {
-    font-family: var(--inkflow-font-heading, var(--inkflow-font-body));
+    font-family: var(--inkflow-heading-font);
     font-weight: var(--inkflow-heading-weight);
     line-height: var(--inkflow-heading-line-height);
     color: var(--inkflow-heading);
@@ -296,7 +226,7 @@
     color: var(--inkflow-accent);
 }
 .inkflow-content code {
-    font-family: var(--inkflow-font-mono);
+    font-family: var(--inkflow-mono-font);
     background: var(--inkflow-code-bg);
     color: var(--inkflow-code-text);
     padding: 0.1em 0.3em;
@@ -476,7 +406,7 @@
 /* ── Code block container and line highlight states ───────────────────────── */
 
 .inkflow-codeblock {
-    font-family: var(--inkflow-font-mono);
+    font-family: var(--inkflow-mono-font);
     margin: 0.4em 0;
 }
 

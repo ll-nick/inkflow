@@ -1,74 +1,11 @@
-/* Built-in theme aesthetic layer (Catppuccin).
+/* Built-in theme aesthetic layer (Catppuccin) — per-layout zone styling.
  *
- * Structural rules, the neutral token floor, and the markdown element rules live
- * in inkflow's contract stylesheet (src/inkflow/contract.css), loaded first. This
- * file carries only what makes the builtin theme *look* the way it does: the palette
- * token values and the per-layout zone styling for the builtin layouts. It is the
- * worked example of a theme's aesthetic layer. */
-
-/* ── Raw palette (dark / Catppuccin Mocha) ────────────────────────────────── */
-
-:root {
-    --inkflow-red: #f38ba8; /* Red      */
-    --inkflow-orange: #fab387; /* Peach    */
-    --inkflow-yellow: #f9e2af; /* Yellow   */
-    --inkflow-green: #a6e3a1; /* Green    */
-    --inkflow-teal: #94e2d5; /* Teal     */
-    --inkflow-blue: #89b4fa; /* Blue     */
-    --inkflow-purple: #cba6f7; /* Mauve    */
-    --inkflow-pink: #f5c2e7; /* Pink     */
-    --inkflow-grey: #6c7086; /* Overlay0 */
-}
-
-/* ── Semantic tokens (dark / Catppuccin Mocha) ────────────────────────────── */
-
-:root {
-    --inkflow-bg: #1e1e2e; /* Base     */
-    --inkflow-surface: #313244; /* Surface0 */
-    --inkflow-border: #585b70; /* Surface2 */
-    --inkflow-text: #cdd6f4; /* Text     */
-    --inkflow-text-muted: #a6adc8; /* Subtext0 */
-    --inkflow-accent: #cba6f7; /* = purple */
-    --inkflow-accent-fg: #11111b; /* Crust    */
-    --inkflow-code-bg: #181825; /* Mantle   */
-    --inkflow-code-text: #cdd6f4; /* = text   */
-    --inkflow-link: #89b4fa; /* = blue   */
-    --inkflow-heading: #cdd6f4; /* = text   */
-    --inkflow-blockquote: #585b70; /* = border */
-}
-
-/* ── Raw palette overrides (light / Catppuccin Latte) ─────────────────────── */
-
-:root[data-theme="light"] {
-    --inkflow-red: #d20f39; /* Red      */
-    --inkflow-orange: #fe640b; /* Peach    */
-    --inkflow-yellow: #df8e1d; /* Yellow   */
-    --inkflow-green: #40a02b; /* Green    */
-    --inkflow-teal: #179299; /* Teal     */
-    --inkflow-blue: #1e66f5; /* Blue     */
-    --inkflow-purple: #8839ef; /* Mauve    */
-    --inkflow-pink: #ea76cb; /* Pink     */
-    --inkflow-grey: #9ca0b0; /* Overlay0 */
-}
-
-/* ── Semantic token overrides (light / Catppuccin Latte) ─────────────────── */
-
-:root[data-theme="light"] {
-    --inkflow-bg: #eff1f5; /* Base     */
-    --inkflow-surface: #ccd0da; /* Surface0 */
-    --inkflow-border: #acb0be; /* Surface2 */
-    --inkflow-text: #4c4f69; /* Text     */
-    --inkflow-text-muted: #6c6f85; /* Subtext0 */
-    --inkflow-accent: #8839ef; /* = purple */
-    --inkflow-accent-fg: #eff1f5; /* Base     */
-    --inkflow-code-bg: #e6e9ef; /* Mantle   */
-    --inkflow-code-text: #4c4f69; /* = text   */
-    --inkflow-link: #1e66f5; /* = blue   */
-    --inkflow-heading: #4c4f69; /* = text   */
-    --inkflow-blockquote: #acb0be; /* = border */
-}
-
-/* ── Per-layout zone alignment and typography ─────────────────────────────── */
+ * The palette token *values* are generated from Builtin's typed Palette (see
+ * themes.py) via render_tokens_css, and the structural rules + neutral floor +
+ * markdown element rules live in inkflow's contract stylesheet (contract.css). This
+ * file carries only what is inherently a stylesheet: the per-layout zone alignment
+ * and typography for the built-in layouts. It is the worked example of a theme's
+ * optional styles.css escape hatch. */
 
 /* default ------------------------------------------------------------------ */
 .layout-default #zone-title {
