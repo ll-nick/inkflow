@@ -12,6 +12,7 @@ from inkflow.enums import (
     Muted,
     VAlign,
 )
+from inkflow.themes import Builtin, Theme
 from inkflow.transitions import Transition
 
 # ── Content marker ────────────────────────────────────────────────────────────
@@ -237,7 +238,6 @@ class Deck:
     def main() -> Deck:
         return Deck(
             transition=transitions.Crossfade(),
-            theme="./my-theme",
             mode=ColorMode.DARK,
             slides=[...],
         )
@@ -248,8 +248,9 @@ class Deck:
     """The ordered slide list."""
     transition: Transition | None = None
     """Default transition for all slides. A ``Cut`` (instant) is used when unset."""
-    theme: str | None = None
-    """Path to a theme directory. ``None`` uses the built-in theme."""
+    theme: Theme = field(default_factory=Builtin)
+    """The deck's theme. Defaults to the built-in Catppuccin theme. Subclass
+    ``Theme`` (or ``Builtin``) and pass an instance to restyle the deck."""
     mode: ColorMode = ColorMode.DARK
     """Dark or light color mode for the presentation."""
     style: Content = None

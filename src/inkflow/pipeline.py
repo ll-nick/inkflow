@@ -30,6 +30,7 @@ from inkflow.manifest import (
 from inkflow.steps import StepResolver
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
+from inkflow.themes import Theme
 from inkflow.titles import humanize
 from inkflow.transitions import Transition
 from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zones
@@ -82,7 +83,7 @@ def _infer_slide_title(
     return humanize(stem)
 
 
-def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> Path:
+def resolve_slide_src(src: str, project_dir: Path, theme: Theme | None = None) -> Path:
     """Resolve a Slide.src string to an absolute Path.
 
     Single-part names (no directory separator, no scheme prefix) are checked
@@ -407,7 +408,7 @@ class DeckContext:
     """Loop-invariant deck params, built once per rebuild and shared by every slide."""
 
     project_dir: Path
-    theme: str | None
+    theme: Theme
     deck_style: str
     font_size: int  # deck default; a slide may override via Slide.font_size
     mode: ColorMode

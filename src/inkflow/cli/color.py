@@ -91,12 +91,8 @@ def palette_cmd(
         loaders.load_deck_styles(deck_obj, project_dir), dark_mode
     )
 
-    theme_label: str | None = project.theme if project else None
+    theme_label = project.theme.name if project else None
     mode_label = "light" if not dark_mode else "dark"
-    palette_name = (
-        f"inkflow/{Path(theme_label).name} ({mode_label})"
-        if theme_label
-        else f"inkflow ({mode_label})"
-    )
+    palette_name = f"{theme_label or 'inkflow'} ({mode_label})"
     gpl = colors.build_gpl(tokens, palette_name)
     click.echo(gpl, nl=False)

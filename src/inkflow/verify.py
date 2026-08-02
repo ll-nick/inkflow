@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from inkflow.animations import Animation, PlayVideo
 from inkflow.clean import clean_inkscape_tree
@@ -11,11 +12,14 @@ from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import compose_with_ancestors
 from inkflow.zones import build_slide_content, parse_markdown_zones
 
+if TYPE_CHECKING:
+    from inkflow.themes import Theme
+
 Issue = tuple[str, str]  # (level, message) — level is "error" or "warn"
 
 
 def composed_svg_ids(
-    src: Path, project_dir: Path | None, theme: str | None
+    src: Path, project_dir: Path | None, theme: Theme | None
 ) -> set[str]:
     """Return all element IDs from an SVG after compositing its ancestor chain."""
     root = clean_inkscape_tree(src)
@@ -140,7 +144,7 @@ def _check_default_zone(
 
 
 def _check_sync(
-    src: Path, project_dir: Path | None, theme: str | None, preview_css: str
+    src: Path, project_dir: Path | None, theme: Theme | None, preview_css: str
 ) -> list[Issue]:
     chain = resolve_chain(src, project_dir, theme)
     if not is_layout_current(src, chain, preview_css):
@@ -151,7 +155,7 @@ def _check_sync(
 def verify_slide(
     slide: Slide,
     project_dir: Path,
-    theme: str | None,
+    theme: Theme | None,
     preview_css: str,
 ) -> list[Issue]:
     """Return all (level, message) issues for one slide. Empty list means clean."""

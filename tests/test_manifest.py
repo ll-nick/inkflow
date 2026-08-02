@@ -21,6 +21,7 @@ from inkflow.manifest import (
     TextBox,
     Video,
 )
+from inkflow.themes import Builtin
 from inkflow.transitions import Crossfade, Cut, Morph, Push, Transition
 
 
@@ -69,7 +70,7 @@ def test_slide_animations_default_empty() -> None:
 def test_deck_defaults() -> None:
     deck = Deck()
     assert deck.slides == []
-    assert deck.theme is None
+    assert isinstance(deck.theme, Builtin)
     assert deck.mode == ColorMode.DARK
 
 
@@ -82,7 +83,8 @@ def test_deck_is_dataclass() -> None:
 
 
 def test_deck_custom_theme() -> None:
-    assert Deck(theme="./my-theme").theme == "./my-theme"
+    theme = Builtin()
+    assert Deck(theme=theme).theme is theme
 
 
 def test_animation_fields_stored() -> None:

@@ -5,6 +5,7 @@ import importlib.resources
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lxml import etree
 
@@ -19,6 +20,9 @@ from inkflow.ns import (
 from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
 from inkflow.svgio import SvgElement, parse_svg_file
 
+if TYPE_CHECKING:
+    from inkflow.themes import Theme
+
 # ── Zone routing constants ────────────────────────────────────────────────────
 
 _FIXED_ROUTING_ZONES: frozenset[str] = frozenset(
@@ -31,17 +35,6 @@ _FIXED_ROUTING_ZONES: frozenset[str] = frozenset(
 
 def builtin_theme_dir() -> Path:
     return Path(str(importlib.resources.files("inkflow").joinpath("theme")))
-
-
-def resolve_theme_dir(theme: str, project_root: Path) -> Path:
-    p = Path(theme)
-    if p.is_absolute():
-        return p
-    if theme.startswith(("./", "../")):
-        return (project_root / p).resolve()
-    raise ValueError(
-        f"Named theme '{theme}' is not yet supported. Use a path like './my-theme'."
-    )
 
 
 # ── Parent attribute ──────────────────────────────────────────────────────────
@@ -58,7 +51,7 @@ def resolve_parent_path(
     parent_str: str,
     base_dir: Path,
     project_root: Path | None,
-    theme: str | None,
+    theme: Theme | None,
 ) -> Path:
     """Resolve an inkflow:parent string to an absolute Path.
 
@@ -95,8 +88,7 @@ def resolve_parent_path(
         name = parent_str[len("theme:") :]
         if theme is None:
             raise ValueError(f"theme:{name} requires Deck(theme=...) to be set.")
-        theme_dir = resolve_theme_dir(theme, project_root or Path())
-        resolved = _with_svg(theme_dir / "layouts" / name)
+        resolved = _with_svg(theme.layouts_dir / name)
         if not resolved.exists():
             raise ValueError(f"theme:{name} not found at {resolved}")
         return resolved
@@ -126,11 +118,7 @@ def resolve_parent_path(
     if project_root is not None:
         candidates.append(_with_svg(project_root / "layouts" / name))
     if theme is not None:
-        candidates.append(
-            _with_svg(
-                resolve_theme_dir(theme, project_root or Path()) / "layouts" / name
-            )
-        )
+        candidates.append(_with_svg(theme.layouts_dir / name))
     candidates.append(_with_svg(builtin_theme_dir() / "layouts" / name))
 
     for candidate in candidates:
@@ -147,7 +135,7 @@ def resolve_parent_path(
 def resolve_chain(
     svg_path: Path,
     project_root: Path | None,
-    theme: str | None,
+    theme: Theme | None,
 ) -> list[Path]:
     """Return the ancestor chain for svg_path, root-first, excluding svg_path itself.
 
@@ -282,7 +270,7 @@ def create_slide(
     parent_str: str | None,
     output_path: Path,
     project_dir: Path | None,
-    theme: str | None,
+    theme: Theme | None,
 ) -> None:
     """Create a minimal slide SVG, optionally wired to a layout parent.
 
@@ -403,7 +391,7 @@ def resolve_default_zone(
 
 def discover_layouts(
     project_dir: Path | None,
-    theme: str | None,
+    theme: Theme | None,
 ) -> list[tuple[str, Path]]:
     """Return (source_label, layout_path) pairs from all available layout directories.
 
@@ -414,8 +402,8 @@ def discover_layouts(
     for p in sorted((builtin_theme_dir() / "layouts").glob("*.svg")):
         sources.append(("builtin", p))
 
-    if theme and project_dir:
-        theme_layouts = resolve_theme_dir(theme, project_dir) / "layouts"
+    if theme is not None:
+        theme_layouts = theme.layouts_dir
         if theme_layouts.is_dir():
             for p in sorted(theme_layouts.glob("*.svg")):
                 sources.append(("theme", p))
@@ -432,7 +420,7 @@ def discover_layouts(
 def layout_zones(
     layout_path: Path,
     project_dir: Path | None,
-    theme: str | None,
+    theme: Theme | None,
 ) -> LayoutInfo:
     """Return zone information for a layout after compositing ancestors.
 

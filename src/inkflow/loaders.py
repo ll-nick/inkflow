@@ -3,34 +3,9 @@ from __future__ import annotations
 import importlib.resources
 from pathlib import Path
 
-from inkflow.layout import resolve_theme_dir
 from inkflow.manifest import Content, Deck, Inline
 from inkflow.markdown import markdown_to_html
-
-
-def _cascade(filename: str, deck: Deck | None, project_dir: Path | None) -> str:
-    """Concatenate a named file from builtin → theme → project layers."""
-    parts: list[str] = []
-
-    builtin = importlib.resources.files("inkflow").joinpath("theme", filename)
-    if builtin.is_file():
-        parts.append(builtin.read_text(encoding="utf-8"))
-
-    if deck is not None and deck.theme is not None and project_dir is not None:
-        try:
-            theme_dir = resolve_theme_dir(deck.theme, project_dir)
-            f = theme_dir / filename
-            if f.exists():
-                parts.append(f.read_text(encoding="utf-8"))
-        except ValueError:
-            pass
-
-    if project_dir is not None:
-        f = project_dir / filename
-        if f.exists():
-            parts.append(f.read_text(encoding="utf-8"))
-
-    return "\n".join(parts)
+from inkflow.themes import Builtin, Theme
 
 
 def _contract_css() -> str:
@@ -43,14 +18,35 @@ def _contract_css() -> str:
     )
 
 
+def _deck_theme(deck: Deck | None) -> Theme:
+    return deck.theme if deck is not None else Builtin()
+
+
+def _project_file(filename: str, project_dir: Path | None) -> str:
+    if project_dir is not None:
+        f = project_dir / filename
+        if f.is_file():
+            return f.read_text(encoding="utf-8")
+    return ""
+
+
 def load_deck_styles(deck: Deck | None, project_dir: Path | None) -> str:
-    """Return concatenated CSS: contract → builtin → theme → project."""
-    return "\n".join([_contract_css(), _cascade("styles.css", deck, project_dir)])
+    """Return concatenated CSS: contract → theme tokens → theme styles → project."""
+    theme = _deck_theme(deck)
+    parts = [
+        _contract_css(),
+        theme.render_tokens_css(),
+        theme.styles_css(),
+        _project_file("styles.css", project_dir),
+    ]
+    return "\n".join(p for p in parts if p)
 
 
 def load_deck_scripts(deck: Deck | None, project_dir: Path | None) -> str:
-    """Return concatenated JS in cascade order: builtin → theme → project."""
-    return _cascade("scripts.js", deck, project_dir)
+    """Return concatenated JS: theme scripts → project."""
+    theme = _deck_theme(deck)
+    parts = [theme.scripts_js(), _project_file("scripts.js", project_dir)]
+    return "\n".join(p for p in parts if p)
 
 
 # ── Content field loaders ─────────────────────────────────────────────────────

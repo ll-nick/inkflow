@@ -11,10 +11,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from inkflow import colors, loaders
 from inkflow.layout import inject_layout_layers, resolve_chain
 from inkflow.manifest import Deck
+
+if TYPE_CHECKING:
+    from inkflow.themes import Theme
 
 
 def build_preview_css(
@@ -30,7 +34,7 @@ def sync_slides(
     paths: Iterable[Path],
     *,
     project_dir: Path | None,
-    theme: str | None,
+    theme: Theme | None,
     deck_obj: Deck | None,
     dark_mode: bool,
 ) -> None:
