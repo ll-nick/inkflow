@@ -11,6 +11,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Give updates a couple days to age past pnpm's minimumReleaseAge
+    # supply-chain check (default 24h), or CI can fail on fresh transitive
+    # deps pulled in by the bump.
+    cooldown:
+      default-days: 2
     labels:
       - "dependencies"
 
