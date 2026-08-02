@@ -3,10 +3,8 @@ from __future__ import annotations
 import textwrap
 
 from inkflow.colors import (
-    SVG_TOKENS,
     build_gpl,
     build_preview_style,
-    builtin_tokens,
     colorize_svg,
     extract_tokens,
     hex_to_class_map,
@@ -47,29 +45,6 @@ def test_extract_tokens_skips_non_hex_values() -> None:
     assert tokens["text"] == "#cdd6f4"
 
 
-# ── builtin_tokens ────────────────────────────────────────────────────────────
-
-
-def test_builtin_tokens_dark_non_empty() -> None:
-    tokens = builtin_tokens(dark_mode=True)
-    assert tokens
-    assert "bg" in tokens
-    assert "accent" in tokens
-
-
-def test_builtin_tokens_dark_and_light_differ() -> None:
-    dark = builtin_tokens(dark_mode=True)
-    light = builtin_tokens(dark_mode=False)
-    assert dark != light
-    assert dark.get("bg") != light.get("bg")
-
-
-def test_builtin_tokens_contains_all_svg_tokens() -> None:
-    tokens = builtin_tokens(dark_mode=True)
-    for name in SVG_TOKENS:
-        assert name in tokens, f"missing token: {name}"
-
-
 # ── build_preview_style ───────────────────────────────────────────────────────
 
 
@@ -84,11 +59,6 @@ def test_build_preview_style_emits_fill_and_stroke() -> None:
 def test_build_preview_style_skips_missing_tokens() -> None:
     css = build_preview_style({})
     assert css == ""
-
-
-def test_build_preview_style_builtin_dark_non_empty() -> None:
-    css = build_preview_style(builtin_tokens(dark_mode=True))
-    assert css
 
 
 # ── build_gpl ─────────────────────────────────────────────────────────────────

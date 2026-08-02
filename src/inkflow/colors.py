@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.resources
 import re
 
 from lxml import etree
@@ -323,13 +322,3 @@ def colorize_svg(
     if not changed:
         return svg_str, False
     return etree.tostring(root, encoding="unicode", xml_declaration=False), True
-
-
-# ── Default dark-mode token helper ────────────────────────────────────────────
-
-
-def builtin_tokens(dark_mode: bool = True) -> dict[str, str]:
-    """Return tokens extracted from the built-in theme CSS only."""
-    pkg = importlib.resources.files("inkflow")
-    css = pkg.joinpath("theme", "styles.css").read_text(encoding="utf-8")
-    return extract_tokens(css, dark_mode)
