@@ -39,9 +39,6 @@ def _sync_layout_previews(target: Path) -> None:
 @main.command("init")
 @click.argument("directory", default=".", type=click.Path(path_type=Path))
 @click.option(
-    "--theme", "theme_path", default=None, help="Path to a custom theme directory."
-)
-@click.option(
     "--no-git",
     "no_git",
     is_flag=True,
@@ -53,9 +50,7 @@ def _sync_layout_previews(target: Path) -> None:
     is_flag=True,
     help="Scaffold even into a non-empty directory.",
 )
-def init_cmd(
-    directory: Path, theme_path: str | None, no_git: bool, force: bool
-) -> None:
+def init_cmd(directory: Path, no_git: bool, force: bool) -> None:
     """Scaffold a new presentation project in DIRECTORY (default: current).
 
     Writes a starter `deck.py`, slides, and a `pyproject.toml` declaring inkflow.
@@ -65,7 +60,7 @@ def init_cmd(
     with `--no-git`.
 
     Refuses to scaffold into a non-empty directory (dotfiles like `.git` are ignored)
-    unless `--force` is given. Pass `--theme` to start from a custom theme directory.
+    unless `--force` is given.
     """
     target = directory.resolve()
     if (target / "deck.py").exists():
@@ -77,10 +72,7 @@ def init_cmd(
                 f"directory {target} is not empty — run in a new directory "
                 + "(inkflow init my-talk) or pass --force"
             )
-    try:
-        init.scaffold(target, theme_path)
-    except ValueError as exc:
-        raise click.ClickException(str(exc)) from exc
+    init.scaffold(target)
     report("Created", "slides/ (title.svg, diagram.svg, guide.md, diagram.md)")
     report("Created", "notes/ (title.md, guide.md, diagram.md)")
     report("Created", "deck.py")
