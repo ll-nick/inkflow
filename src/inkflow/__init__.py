@@ -23,6 +23,7 @@ from inkflow.manifest import (
     Video,
     ZoneContent,
 )
+from inkflow.themes import Palette, Theme, Typography
 from inkflow.transitions import Transition
 
 __all__ = [
@@ -40,10 +41,13 @@ __all__ = [
     "MediaAlign",
     "MediaFit",
     "Muted",
+    "Palette",
     "Slide",
     "TextBox",
+    "Theme",
     "Transition",
     "Trigger",
+    "Typography",
     "VAlign",
     "Video",
     "ZoneContent",
