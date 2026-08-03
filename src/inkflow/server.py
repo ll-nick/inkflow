@@ -128,7 +128,7 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
         _state["transitions"] = transitions
         _state["styles_css"] = styles_css
         _state["scripts_js"] = scripts_js
-        _state["mode"] = deck.mode
+        _state["mode"] = deck.effective_mode
         _state["title"] = resolve_deck_title(deck, project_dir)
         _state["error"] = None
         _state["logs"] = browser_logs

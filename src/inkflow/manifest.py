@@ -247,19 +247,34 @@ class Deck:
     slides: list[Slide] = field(default_factory=list)
     """The ordered slide list."""
     transition: Transition | None = None
-    """Default transition for all slides. A ``Cut`` (instant) is used when unset."""
+    """Default transition for all slides. ``None`` defers to the theme's default."""
     theme: Theme = field(default_factory=Builtin)
     """The deck's theme. Defaults to the built-in Catppuccin theme. Subclass
     ``Theme`` (or ``Builtin``) and pass an instance to restyle the deck."""
-    mode: ColorMode = ColorMode.DARK
-    """Dark or light color mode for the presentation."""
+    mode: ColorMode | None = None
+    """Dark or light color mode. ``None`` defers to the theme's ``mode``."""
     style: Content = None
     """CSS injected into every slide. A bare ``str`` is a file path; ``Inline(...)``
     is a literal CSS string."""
-    font_size: int = 36
-    """Base font size for zone content, in px."""
+    font_size: int | None = None
+    """Base font size for zone content, in px. ``None`` defers to the theme."""
     embed_fonts: bool = True
     """Auto-discover and embed the fonts used in slides. Set ``False`` to opt out."""
     title: str | None = None
     """Presentation title, used for the browser tab, static build page, and PDF
     metadata. ``None`` infers a title from the project directory name."""
+
+    @property
+    def effective_mode(self) -> ColorMode:
+        """Resolved color mode: the deck value, else the theme's default."""
+        return self.mode if self.mode is not None else self.theme.mode
+
+    @property
+    def effective_font_size(self) -> int:
+        """Resolved base font size: the deck value, else the theme's default."""
+        return self.font_size if self.font_size is not None else self.theme.font_size
+
+    @property
+    def effective_transition(self) -> Transition:
+        """Resolved default transition: the deck value, else the theme's default."""
+        return self.transition if self.transition is not None else self.theme.transition

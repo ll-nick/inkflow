@@ -167,9 +167,9 @@ def resolve_dark_mode(
 ) -> bool:
     if no_deck or deck_obj is None:
         return color_mode != "light"
-    return (
-        deck_obj.mode == ColorMode.DARK if color_mode is None else color_mode == "dark"
-    )
+    if color_mode is None:
+        return deck_obj.effective_mode == ColorMode.DARK
+    return color_mode == "dark"
 
 
 deck_option = click.option(

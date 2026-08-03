@@ -264,16 +264,15 @@ def annotate_svg(root: SvgElement, cues: list[tuple[Cue, int]]) -> SvgElement:
     return root
 
 
-def _serialize_transition(t: Transition | None) -> dict[str, object]:
-    if t is None:
-        return {"type": "cut", "duration": 0.0}
+def _serialize_transition(t: Transition) -> dict[str, object]:
     return {"type": t.slug(), **_set_fields(t)}
 
 
 def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
+    default = deck.effective_transition
     return [
         _serialize_transition(
-            slide.transition if slide.transition is not None else deck.transition
+            slide.transition if slide.transition is not None else default
         )
         for slide in deck.slides
         if slide.visible
@@ -498,8 +497,8 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         project_dir=project_dir,
         theme=deck.theme,
         deck_style=load_style(deck.style, project_dir),
-        font_size=deck.font_size,
-        mode=deck.mode,
+        font_size=deck.effective_font_size,
+        mode=deck.effective_mode,
         total_slides=len(visible_slides),
     )
     raw_ids = [_infer_slide_id(s) for s in visible_slides]
