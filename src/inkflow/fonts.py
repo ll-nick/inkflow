@@ -7,6 +7,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 import platformdirs
 
@@ -96,11 +97,15 @@ class _FontSpec:
 # ── Font directory discovery ──────────────────────────────────────────────────
 
 
-def _font_dirs(project_dir: Path) -> list[Path]:
-    # Project fonts, then the per-user font dir (via platformdirs), then the
-    # OS-wide system dirs. platformdirs models the user dir on every platform but
-    # has no concept of system fonts, so those stay explicit.
-    dirs: list[Path] = [project_dir / "fonts", Path(platformdirs.user_fonts_dir())]
+def _font_dirs(project_dir: Path, theme_fonts_dir: Path | None) -> list[Path]:
+    # Project fonts, then the theme's bundled fonts, then the per-user font dir (via
+    # platformdirs), then the OS-wide system dirs. Project wins over theme wins over
+    # system. platformdirs models the user dir on every platform but has no concept
+    # of system fonts, so those stay explicit.
+    dirs: list[Path] = [project_dir / "fonts"]
+    if theme_fonts_dir is not None:
+        dirs.append(theme_fonts_dir)
+    dirs.append(Path(platformdirs.user_fonts_dir()))
 
     if sys.platform == "win32":
         dirs.append(Path(r"C:\Windows\Fonts"))
@@ -142,24 +147,33 @@ def _read_font_record(path: Path) -> _FontRecord | None:
 
 # ── Index building (with module-level cache) ──────────────────────────────────
 
-_index_cache: dict[Path, dict[str, list[_FontRecord]]] = {}
+
+class _FontIndexKey(NamedTuple):
+    """Cache key: one scan per project + theme, so a theme swap doesn't go stale."""
+
+    project_dir: Path
+    theme_fonts_dir: Path | None
+
+
+_index_cache: dict[_FontIndexKey, dict[str, list[_FontRecord]]] = {}
 
 
 def _build_index(
-    project_dir: Path, *, force: bool = False
+    project_dir: Path, theme_fonts_dir: Path | None = None, *, force: bool = False
 ) -> dict[str, list[_FontRecord]]:
-    if not force and project_dir in _index_cache:
-        return _index_cache[project_dir]
+    key = _FontIndexKey(project_dir, theme_fonts_dir)
+    if not force and key in _index_cache:
+        return _index_cache[key]
 
     index: dict[str, list[_FontRecord]] = {}
-    for font_dir in _font_dirs(project_dir):
+    for font_dir in _font_dirs(project_dir, theme_fonts_dir):
         for path in sorted(font_dir.rglob("*")):
             if path.suffix.lower() in _FONT_SUFFIXES:
                 record = _read_font_record(path)
                 if record:
                     index.setdefault(record.family.lower(), []).append(record)
 
-    _index_cache[project_dir] = index
+    _index_cache[key] = index
     return index
 
 
@@ -374,7 +388,9 @@ def _embed_common(
 # ── Public entry points ───────────────────────────────────────────────────────
 
 
-def embed_fonts_css(slides: list[SlideData], project_dir: Path) -> str:
+def embed_fonts_css(
+    slides: list[SlideData], project_dir: Path, theme_fonts_dir: Path | None = None
+) -> str:
     """Embed full (unsubsetted) fonts — for ``inkflow serve``.
 
     Font index is cached in-process; subsequent rebuilds pay only the file-read cost.
@@ -383,7 +399,7 @@ def embed_fonts_css(slides: list[SlideData], project_dir: Path) -> str:
     specs = extract_font_specs(slides)
     if not specs:
         return ""
-    index = _build_index(project_dir)
+    index = _build_index(project_dir, theme_fonts_dir)
 
     def _full(record: _FontRecord) -> tuple[bytes, str, str]:
         suffix = record.path.suffix.lower()
@@ -396,7 +412,9 @@ def embed_fonts_css(slides: list[SlideData], project_dir: Path) -> str:
     return _embed_common(specs, index, _full)
 
 
-def embed_fonts_css_subsetted(slides: list[SlideData], project_dir: Path) -> str:
+def embed_fonts_css_subsetted(
+    slides: list[SlideData], project_dir: Path, theme_fonts_dir: Path | None = None
+) -> str:
     """Embed subsetted fonts — for ``inkflow build`` and PDF export.
 
     Subsets each font to only the codepoints present in the slides, then encodes
@@ -407,7 +425,7 @@ def embed_fonts_css_subsetted(slides: list[SlideData], project_dir: Path) -> str
     if not specs:
         return ""
     codepoints = frozenset(codepoint_set)
-    index = _build_index(project_dir)
+    index = _build_index(project_dir, theme_fonts_dir)
     rules: list[str] = []
 
     for spec in specs:

@@ -112,7 +112,9 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
             transitions = resolve_transitions(deck)
             styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
             if deck.embed_fonts:
-                font_css = await asyncio.to_thread(embed_fonts_css, slides, project_dir)
+                font_css = await asyncio.to_thread(
+                    embed_fonts_css, slides, project_dir, deck.theme.fonts_dir
+                )
             else:
                 font_css = ""
             if font_css:
