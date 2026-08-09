@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING
 
 from inkflow.animations import Animation, PlayVideo
 from inkflow.clean import clean_inkscape_tree
-from inkflow.layout import is_layout_current, resolve_chain, resolve_default_zone
+from inkflow.layout import (
+    discover_layouts,
+    is_layout_current,
+    resolve_chain,
+    resolve_default_zone,
+)
 from inkflow.loaders import load_md, resolve_content_src
 from inkflow.manifest import Inline, Media, Slide, Video
 from inkflow.pipeline import resolve_slide_src
@@ -152,6 +157,25 @@ def _check_sync(
     return []
 
 
+def _unresolved_src_issue(src: str, project_dir: Path, theme: Theme | None) -> Issue:
+    """Author-facing issue for an unresolvable ``Slide.src``.
+
+    A bare, suffix-less name is a layout reference, so list the layouts actually
+    available across the project, theme, and built-in dirs to guide the fix.
+    """
+    p = Path(src)
+    is_layout_ref = (
+        len(p.parts) == 1
+        and not p.suffix
+        and not src.startswith(("local:", "theme:", "builtin:", "./", "../"))
+    )
+    if not is_layout_ref:
+        return ("error", f"source not found: {src}")
+    available = sorted({lp.stem for _, lp in discover_layouts(project_dir, theme)})
+    listed = ", ".join(available) or "(none)"
+    return ("error", f"layout '{src}' not found. Available: {listed}")
+
+
 def verify_slide(
     slide: Slide,
     project_dir: Path,
@@ -162,7 +186,7 @@ def verify_slide(
     try:
         src = resolve_slide_src(slide.src, project_dir, theme)
     except ValueError:
-        return [("error", f"source not found: {slide.src}")]
+        return [_unresolved_src_issue(slide.src, project_dir, theme)]
     if not src.exists():
         return [("error", f"source not found: {src}")]
 
