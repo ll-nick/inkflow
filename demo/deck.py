@@ -102,6 +102,7 @@ def main() -> Deck:
                 md="deckpy.md",
                 transition=transitions.Push(direction=Direction.LEFT),
                 notes="notes/deckpy.md",
+                font_size=30,
             ),
             # Markdown + math, full width with room to breathe.
             Slide(
