@@ -24,8 +24,12 @@ No configuration needed. Name the font in your SVG editor and it will be embedde
 Inkflow searches for font files in this order, using the first match found:
 
 1. **`fonts/`** — a directory next to your `deck.py`
-2. User font directory (`~/.local/share/fonts` on Linux, `~/Library/Fonts` on macOS, `%LOCALAPPDATA%\Microsoft\Windows\Fonts` on Windows)
-3. System font directories (`/usr/share/fonts` on Linux, `/Library/Fonts` on macOS, `C:\Windows\Fonts` on Windows)
+2. **The active theme's `fonts/`** — fonts bundled inside the theme's package, so a theme can ship the typefaces it declares (see the [Themes guide](themes.md))
+3. User font directory (`~/.local/share/fonts` on Linux, `~/Library/Fonts` on macOS, `%LOCALAPPDATA%\Microsoft\Windows\Fonts` on Windows)
+4. System font directories (`/usr/share/fonts` on Linux, `/Library/Fonts` on macOS, `C:\Windows\Fonts` on Windows)
+
+Project fonts win over theme fonts win over the system, so you can always override a
+theme's bundled font by dropping a same-named file in your own `fonts/`.
 
 ## Committing fonts with your project
 
