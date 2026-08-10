@@ -1,35 +1,35 @@
 [project]
 name = "inkflow"
-version = "0.1.1"
+version = "0.2.0"
 description = "Beautiful slides from SVG. Your editor, your style."
 readme = "README.md"
-license = {text = "MIT"}
-authors = [{name = "Nick Le Large"}]
 requires-python = ">=3.11"
-keywords = ["presentation", "slides", "svg", "inkscape", "animation"]
+license = "MIT"
+authors = [{ name = "Nick Le Large" }]
+keywords = ["animation", "inkscape", "presentation", "slides", "svg"]
 classifiers = [
-    "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Multimedia :: Graphics :: Presentation",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Graphics :: Presentation",
 ]
 dependencies = [
-    "brotli>=1.2.0",
-    "click>=8.0",
-    "fonttools>=4.63.0",
-    "latex2mathml>=3.81.0",
-    "lxml>=5.0",
-    "markdown-it-py>=3.0",
-    "mdit-py-plugins>=0.6.1",
-    "platformdirs>=4.0",
-    "pygments>=2.20.0",
-    "rich>=15.0.0",
-    "typing-extensions>=4.15.0",
-    "watchfiles>=0.21",
-    "websockets>=12.0",
+  "brotli>=1.2.0",
+  "click>=8.0",
+  "fonttools>=4.63.0",
+  "latex2mathml>=3.81.0",
+  "lxml>=5.0",
+  "markdown-it-py>=3.0",
+  "mdit-py-plugins>=0.6.1",
+  "platformdirs>=4.0",
+  "pygments>=2.20.0",
+  "rich>=15.0.0",
+  "typing-extensions>=4.15.0",
+  "watchfiles>=0.21",
+  "websockets>=12.0",
 ]
 
 [project.urls]
@@ -39,36 +39,23 @@ Repository = "https://github.com/ll-nick/inkflow"
 [project.scripts]
 inkflow = "inkflow.cli:main"
 
+[dependency-groups]
+dev = [
+  "basedpyright>=1.39.5",
+  "deptry>=0.25.1",
+  "lxml-stubs>=0.5",
+  "pytest>=9.0.3",
+  "ruff>=0.15.13",
+]
+docs = [
+  "mkdocs-click>=0.9.0",
+  "mkdocs-material>=9.0",
+  "mkdocstrings[python]>=1.0.4",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/inkflow"]
-artifacts = ["src/inkflow/theme/**", "src/inkflow/templates/**"]
-exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**"]
-
-[dependency-groups]
-dev = [
-    "basedpyright>=1.39.5",
-    "deptry>=0.25.1",
-    "lxml-stubs>=0.5",
-    "pytest>=9.0.3",
-    "ruff>=0.15.13",
-]
-docs = [
-    "mkdocs-click>=0.9.0",
-    "mkdocs-material>=9.0",
-    "mkdocstrings[python]>=1.0.4",
-]
-
-
-[tool.pyright]
-reportUnusedCallResult = "none"
-reportMissingTypeStubs = "none"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.deptry.package_module_name_map]
 fonttools = "fontTools"
@@ -77,3 +64,18 @@ fonttools = "fontTools"
 [tool.deptry.per_rule_ignores]
 # brotli is never imported directly; fontTools' WOFF2 encoder picks it up at runtime.
 DEP002 = ["brotli"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inkflow"]
+artifacts = ["src/inkflow/theme/**", "src/inkflow/templates/**"]
+exclude = [
+  "src/inkflow/theme/showcase/**",
+  "src/inkflow/theme/**/__pycache__/**"
+]
+
+[tool.pyright]
+reportUnusedCallResult = "none"
+reportMissingTypeStubs = "none"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
