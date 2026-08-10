@@ -3,7 +3,7 @@ name = "inkflow"
 version = "0.1.1"
 description = "Beautiful slides from SVG. Your editor, your style."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "Nick Le Large"}]
 requires-python = ">=3.11"
 keywords = ["presentation", "slides", "svg", "inkscape", "animation"]
