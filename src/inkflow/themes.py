@@ -211,9 +211,14 @@ class Theme:
     def fonts_dir(self) -> Path:
         return self.asset_dir() / "fonts"
 
+    @property
+    def styles_path(self) -> Path:
+        """Where this theme's `styles.css` would live, whether or not it exists."""
+        return self.asset_dir() / "styles.css"
+
     def styles_css(self) -> str:
         """The theme's optional escape-hatch stylesheet, or ``""`` if absent."""
-        f = self.asset_dir() / "styles.css"
+        f = self.styles_path
         return f.read_text(encoding="utf-8") if f.is_file() else ""
 
     def scripts_js(self) -> str:

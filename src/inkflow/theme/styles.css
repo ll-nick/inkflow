@@ -5,7 +5,13 @@
  * markdown element rules live in inkflow's contract stylesheet (contract.css). This
  * file carries only what is inherently a stylesheet: the per-layout zone alignment
  * and typography for the built-in layouts. It is the worked example of a theme's
- * optional styles.css escape hatch. */
+ * optional styles.css escape hatch.
+ *
+ * It is loaded for *every* deck, not only decks on the built-in theme, because any
+ * theme may fall through to the built-in layouts (loaders.load_deck_styles). Keep
+ * every rule here scoped to a `.layout-*` class of a built-in layout: an unscoped
+ * rule would become a global default that every custom theme inherits and has to
+ * override. Themes load after this file, so they can restyle any of it. */
 
 /* default ------------------------------------------------------------------ */
 .layout-default #zone-title {

@@ -31,12 +31,21 @@ def _project_file(filename: str, project_dir: Path | None) -> str:
 
 
 def load_deck_styles(deck: Deck | None, project_dir: Path | None) -> str:
-    """Return concatenated CSS: contract → theme tokens → theme styles → project."""
+    """Return concatenated CSS: contract → tokens → built-in → theme → project."""
     theme = _deck_theme(deck)
+    builtin = Builtin()
+    # The built-in layouts are the fallback set for every theme, so their styling
+    # loads regardless of which theme is active. It reads the active theme's tokens,
+    # and the theme's own styles come after it and win. Skipped when the active theme
+    # *is* the built-in, which would otherwise emit the same file twice.
+    active_styles = (
+        "" if theme.styles_path == builtin.styles_path else theme.styles_css()
+    )
     parts = [
         _contract_css(),
         theme.render_tokens_css(),
-        theme.styles_css(),
+        builtin.styles_css(),
+        active_styles,
         _project_file("styles.css", project_dir),
     ]
     return "\n".join(p for p in parts if p)

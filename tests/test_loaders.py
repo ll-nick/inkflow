@@ -84,3 +84,30 @@ class TestLoadDeckStyles:
         (tmp_path / "styles.css").write_text("/* project */", encoding="utf-8")
         result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
         assert result.index("/* theme */") < result.index("/* project */")
+
+
+class TestBuiltinLayoutStyles:
+    """The built-in layouts are every theme's fallback, so their styling loads too."""
+
+    def test_loaded_under_a_custom_theme(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        theme_dir = tmp_path / "my-theme"
+        theme_dir.mkdir()
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
+        assert ".layout-center #zone-content" in result
+
+    def test_custom_theme_css_wins_over_builtin(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        theme_dir = tmp_path / "my-theme"
+        theme_dir.mkdir()
+        (theme_dir / "styles.css").write_text("/* theme */", encoding="utf-8")
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
+        assert result.index(".layout-center #zone-content") < result.index(
+            "/* theme */"
+        )
+
+    def test_not_duplicated_when_builtin_is_active(self, tmp_path: Path) -> None:
+        result = load_deck_styles(Deck(), tmp_path)
+        assert result.count(".layout-center #zone-content") == 1
