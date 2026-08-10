@@ -89,7 +89,12 @@ src/
                                pyproject.toml pinning inkflow (`~=` compatible release);
                                command refuses a non-empty target (dotfiles ignored)
                                unless --force
-    loaders.py        deck style / script loading helpers
+    loaders.py        deck style / script loading helpers. `load_deck_styles` emits the
+                               CSS cascade: contract.css → active theme tokens → the
+                               *built-in* theme's styles.css (always, since any theme may
+                               fall through to the built-in layouts; skipped when the
+                               built-in is itself active) → active theme styles.css →
+                               project styles.css
     sync.py           reusable layout-preview sync (`build_preview_css`,
                                `sync_slides`): injects ancestor layout layers + a theme
                                preview <style> into slide SVGs; shared by the `sync`
@@ -110,7 +115,9 @@ src/
     bundles/          pre-built JS/CSS output (committed; no Node needed at install time)
       presenter.js    navigation, transitions, WebSocket, presenter panel
       presenter.css   all presenter styles including the sidebar panel
-    theme/            built-in theme: main.svg, layouts/*.svg, styles.css
+    theme/            built-in theme: layouts/*.svg, icon.svg, showcase/, and
+                               styles.css (per-layout zone styling for those layouts,
+                               loaded for every deck — keep its rules `.layout-*`-scoped)
     templates/        inkflow init starter files (title.svg, diagram.svg, guide.md,
                                diagram.md, notes/*.md) copied verbatim into new projects
   ts/                 TypeScript source
@@ -198,7 +205,7 @@ Opt out per-deck: `Deck(embed_fonts=False)`.
 **Markdown content injection (`md=`) uses `<foreignObject>`.**
 Markdown is rendered to HTML via `markdown-it-py`.
 Zone `<rect>` elements in the layout SVG are replaced with `<foreignObject>` of the same geometry containing the rendered HTML.
-Typography and color come from the CSS cascade (`theme/styles.css` + per-deck/per-slide `style=`) injected into the `<foreignObject>` HTML head.
+Typography and color come from the CSS cascade (`contract.css` + theme tokens + `theme/styles.css` + per-deck/per-slide `style=`, see `loaders.load_deck_styles`) injected into the `<foreignObject>` HTML head.
 
 **Text zone alignment — three layers, increasing specificity.**
 
@@ -208,7 +215,7 @@ Typography and color come from the CSS cascade (`theme/styles.css` + per-deck/pe
 #zone-title   { --inkflow-valign: center; }
 #zone-content { --inkflow-padding: 40px; }
 ```
-`--inkflow-align` (`left`/`center`/`right`/`justify`), `--inkflow-valign` (`start`/`center`/`end`), and `--inkflow-padding` (any CSS length) are consumed by `.inkflow-wrapper` and `.inkflow-content` in `theme/styles.css` via `var()`. No pipeline extraction; pure browser cascade.
+`--inkflow-align` (`left`/`center`/`right`/`justify`), `--inkflow-valign` (`start`/`center`/`end`), and `--inkflow-padding` (any CSS length) are consumed by `.inkflow-wrapper` and `.inkflow-content` in `contract.css` via `var()`. No pipeline extraction; pure browser cascade.
 
 *2. Markdown zone marker parameters* — per-zone, per-slide, directly in the `.md` file:
 ```
