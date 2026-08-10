@@ -46,6 +46,29 @@ jobs:
             exit 0
           fi
 
+          # Summarize the per-tool version bump from the `[[tools.X]]` / `version =
+          # "..."` lines mise.lock uses
+          BUMPS="$(git diff -- mise.lock | awk '
+            /^[ +-]\[\[tools\./ {
+              tool = $0
+              sub(/^[ +-]\[\[tools\./, "", tool)
+              sub(/\]\].*/, "", tool)
+              old = ""; new = ""
+              next
+            }
+            /^-version = "/ {
+              old = $0; sub(/^-version = "/, "", old); sub(/".*/, "", old)
+              next
+            }
+            /^\+version = "/ {
+              new = $0; sub(/^\+version = "/, "", new); sub(/".*/, "", new)
+              if (old != "" && new != "" && old != new) {
+                print "- **" tool "**: `" old "` -> `" new "`"
+              }
+              next
+            }
+          ')"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin \
@@ -56,13 +79,19 @@ jobs:
           git commit -m "Bump mise tool versions"
           git push --force origin "$BRANCH"
 
+          BODY="Automatic \`mise upgrade\` refresh of \`mise.lock\`.
+
+          ### Version bumps
+          ${BUMPS:-_No top-level tool version changes (checksum/url metadata only)._}"
+
           if [ "$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')" -eq 0 ]; then
             gh pr create \
               --head "$BRANCH" \
               --base "$BASE" \
               --title "Bump mise tool versions" \
               --label dependencies \
-              --body "Weekly \`mise upgrade\` refresh of \`mise.lock\`. Review the version diff and merge once CI is green."
+              --body "$BODY"
           else
-            echo "PR already open for $BRANCH; force-pushed the refreshed lockfile to it."
+            gh pr edit "$BRANCH" --body "$BODY"
+            echo "PR already open for $BRANCH; force-pushed the refreshed lockfile and updated its body."
           fi
