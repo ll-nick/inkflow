@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import textwrap
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from inkflow.layout import (
     resolve_chain,
     resolve_parent_path,
 )
+from inkflow.themes import Theme
 
 _SIMPLE_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg"
@@ -60,14 +62,16 @@ class TestResolveParentPath:
         result = resolve_parent_path("../layouts/main", slides_dir, tmp_path, None)
         assert result == (tmp_path / "layouts" / "main.svg").resolve()
 
-    def test_theme_prefix(self, tmp_path: Path) -> None:
+    def test_theme_prefix(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
         theme_dir = tmp_path / "themes" / "my-theme"
         layout = theme_dir / "layouts" / "bullets.svg"
         layout.parent.mkdir(parents=True, exist_ok=True)
         layout.write_text(_SIMPLE_SVG, encoding="utf-8")
         svg = tmp_path / "slides" / "01.svg"
         result = resolve_parent_path(
-            "theme:bullets", svg, tmp_path, "./themes/my-theme"
+            "theme:bullets", svg, tmp_path, dir_theme(theme_dir)
         )
         assert result == layout.resolve()
 

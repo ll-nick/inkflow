@@ -1,35 +1,19 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
+from inkflow.animations import Cue
 from inkflow.enums import (
     Align,
     ColorMode,
-    Easing,
     MediaAlign,
     MediaFit,
     Muted,
-    Trigger,
     VAlign,
 )
-
-# ── Type-name slug ────────────────────────────────────────────────────────────
-
-
-def camel_to_kebab(name: str) -> str:
-    """`FadeIn` -> `fade-in`, `SlideIn` -> `slide-in`, `Highlight` -> `highlight`."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
-
-
-class Slugged:
-    """Mixin giving a DSL type a kebab-case slug derived from its class name."""
-
-    @classmethod
-    def slug(cls) -> str:
-        return camel_to_kebab(cls.__name__)
-
+from inkflow.themes import Builtin, Theme
+from inkflow.transitions import Transition
 
 # ── Content marker ────────────────────────────────────────────────────────────
 
@@ -61,49 +45,6 @@ A bare ``str`` is treated as a path to read; an ``Inline`` value is used
 verbatim. ``None`` means "nothing". Used by ``Slide.md``, ``Slide.notes``,
 ``Slide.extra_style``, and ``Deck.style``.
 """
-
-# ── Cue ───────────────────────────────────────────────────────────────────────
-
-
-@dataclass
-class Cue:
-    """Base for anything on a slide's step timeline.
-
-    Carries just the target ``element`` and the ``trigger`` that decides its step.
-    ``Animation`` (in ``inkflow.animations``) adds timing on top; ``PlayVideo`` is a
-    sibling that carries no timing.
-    """
-
-    element: str
-    """Id of the target element, e.g. ``"headline"``."""
-    trigger: Trigger = Trigger.ON_CLICK
-    """When the cue fires. Defaults to `Trigger.ON_CLICK`."""
-
-
-# ── Transition ────────────────────────────────────────────────────────────────
-
-
-@dataclass
-class Transition(Slugged):
-    """Data-only base for every transition type.
-
-    Concrete types live in ``inkflow.transitions`` and subclass this. Every field
-    is serialized into the transition JSON, so ``direction``, ``color`` etc. arrive
-    on the JS ``TransitionData`` object automatically.
-
-    **Custom transitions.** Subclass this in ``deck.py``; the type name becomes the
-    JS handler key via ``camel_to_kebab`` (``MyWarp`` → ``"my-warp"``). Register
-    the matching handler from a ``scripts.js`` next to ``deck.py`` with
-    ``window.inkflow.registerProgressTransition(name, render)`` (or the
-    lower-level ``registerTransition``).
-    """
-
-    duration: float = 0.5
-    """Duration in seconds. Defaults to ``0.5``; ``Cut`` overrides it to ``0.0``."""
-    easing: Easing = field(default=Easing.EASE, kw_only=True)
-    """Easing curve — an ``Easing`` preset or a custom curve via
-    ``Easing.cubic_bezier(...)``."""
-
 
 # ── Content types ─────────────────────────────────────────────────────────────
 
@@ -297,7 +238,6 @@ class Deck:
     def main() -> Deck:
         return Deck(
             transition=transitions.Crossfade(),
-            theme="./my-theme",
             mode=ColorMode.DARK,
             slides=[...],
         )
@@ -307,18 +247,34 @@ class Deck:
     slides: list[Slide] = field(default_factory=list)
     """The ordered slide list."""
     transition: Transition | None = None
-    """Default transition for all slides. A ``Cut`` (instant) is used when unset."""
-    theme: str | None = None
-    """Path to a theme directory. ``None`` uses the built-in theme."""
-    mode: ColorMode = ColorMode.DARK
-    """Dark or light color mode for the presentation."""
+    """Default transition for all slides. ``None`` defers to the theme's default."""
+    theme: Theme = field(default_factory=Builtin)
+    """The deck's theme. Defaults to the built-in Catppuccin theme. Subclass
+    ``Theme`` (or ``Builtin``) and pass an instance to restyle the deck."""
+    mode: ColorMode | None = None
+    """Dark or light color mode. ``None`` defers to the theme's ``mode``."""
     style: Content = None
     """CSS injected into every slide. A bare ``str`` is a file path; ``Inline(...)``
     is a literal CSS string."""
-    font_size: int = 36
-    """Base font size for zone content, in px."""
+    font_size: int | None = None
+    """Base font size for zone content, in px. ``None`` defers to the theme."""
     embed_fonts: bool = True
     """Auto-discover and embed the fonts used in slides. Set ``False`` to opt out."""
     title: str | None = None
     """Presentation title, used for the browser tab, static build page, and PDF
     metadata. ``None`` infers a title from the project directory name."""
+
+    @property
+    def effective_mode(self) -> ColorMode:
+        """Resolved color mode: the deck value, else the theme's default."""
+        return self.mode if self.mode is not None else self.theme.mode
+
+    @property
+    def effective_font_size(self) -> int:
+        """Resolved base font size: the deck value, else the theme's default."""
+        return self.font_size if self.font_size is not None else self.theme.font_size
+
+    @property
+    def effective_transition(self) -> Transition:
+        """Resolved default transition: the deck value, else the theme's default."""
+        return self.transition if self.transition is not None else self.theme.transition

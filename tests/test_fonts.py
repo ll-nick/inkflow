@@ -16,6 +16,7 @@ from inkflow.fonts import (
     _build_index,  # pyright: ignore[reportPrivateUsage]
     _css_weight_to_int,  # pyright: ignore[reportPrivateUsage]
     _first_named_family,  # pyright: ignore[reportPrivateUsage]
+    _FontIndexKey,  # pyright: ignore[reportPrivateUsage]
     _FontRecord,  # pyright: ignore[reportPrivateUsage]
     _index_cache,  # pyright: ignore[reportPrivateUsage]
     _subset_font,  # pyright: ignore[reportPrivateUsage]
@@ -220,7 +221,7 @@ def test_build_index_cached_on_second_call(
             scan_count["n"] += 1
         return original_rglob(self, pattern)
 
-    _index_cache.pop(tmp_path, None)
+    _index_cache.pop(_FontIndexKey(tmp_path, None), None)
     monkeypatch.setattr(Path, "rglob", counting_rglob)
     _build_index(tmp_path)
     _build_index(tmp_path)
@@ -228,17 +229,17 @@ def test_build_index_cached_on_second_call(
 
 
 def test_build_index_force_bypasses_cache(tmp_path: Path) -> None:
-    _index_cache.pop(tmp_path, None)
+    _index_cache.pop(_FontIndexKey(tmp_path, None), None)
     _build_index(tmp_path)
     _build_index(tmp_path, force=True)
     # just verify no crash and cache is repopulated
-    assert tmp_path in _index_cache
+    assert _FontIndexKey(tmp_path, None) in _index_cache
 
 
 def test_build_index_includes_project_local_fonts(tmp_path: Path) -> None:
     fonts_dir = tmp_path / "fonts"
     fonts_dir.mkdir()
-    _index_cache.pop(tmp_path, None)
+    _index_cache.pop(_FontIndexKey(tmp_path, None), None)
     # Even with no font files, the directory is searched without error
     index = _build_index(tmp_path, force=True)
     assert isinstance(index, dict)
@@ -268,7 +269,7 @@ def test_embed_fonts_css_empty_slides(tmp_path: Path) -> None:
 def test_embed_fonts_css_family_not_found_produces_warning(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setitem(_index_cache, tmp_path, {})
+    monkeypatch.setitem(_index_cache, _FontIndexKey(tmp_path, None), {})
     slides = [_slide(_svg('<text font-family="NonExistentFont">X</text>'))]
     with collect_logs(logging.WARNING) as warnings:
         css = embed_fonts_css(slides, tmp_path)
@@ -288,7 +289,9 @@ def test_embed_fonts_css_success(
     fake_record = _FontRecord(
         path=fake_path, family="Inter", weight_class=400, is_italic=False
     )
-    monkeypatch.setitem(_index_cache, tmp_path, {"inter": [fake_record]})
+    monkeypatch.setitem(
+        _index_cache, _FontIndexKey(tmp_path, None), {"inter": [fake_record]}
+    )
 
     slides = [_slide(_svg('<text font-family="Inter">Hello</text>'))]
     with collect_logs(logging.WARNING) as warnings:
@@ -308,7 +311,9 @@ def test_embed_fonts_css_success_sets_weight_and_style(
     fake_record = _FontRecord(
         path=fake_path, family="Inter", weight_class=700, is_italic=False
     )
-    monkeypatch.setitem(_index_cache, tmp_path, {"inter": [fake_record]})
+    monkeypatch.setitem(
+        _index_cache, _FontIndexKey(tmp_path, None), {"inter": [fake_record]}
+    )
 
     slides = [_slide(_svg('<text font-family="Inter" font-weight="bold">X</text>'))]
     css = embed_fonts_css(slides, tmp_path)
@@ -327,7 +332,9 @@ def test_embed_fonts_css_subsetted_success(
     fake_record = _FontRecord(
         path=fake_path, family="Inter", weight_class=400, is_italic=False
     )
-    monkeypatch.setitem(_index_cache, tmp_path, {"inter": [fake_record]})
+    monkeypatch.setitem(
+        _index_cache, _FontIndexKey(tmp_path, None), {"inter": [fake_record]}
+    )
     monkeypatch.setattr(
         "inkflow.fonts._subset_font",
         lambda path, codepoints: (b"SUBSET_DATA", "font/woff2", "woff2"),  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
@@ -350,7 +357,9 @@ def test_embed_fonts_css_subsetted_fallback_on_failure(
     fake_record = _FontRecord(
         path=fake_path, family="Inter", weight_class=400, is_italic=False
     )
-    monkeypatch.setitem(_index_cache, tmp_path, {"inter": [fake_record]})
+    monkeypatch.setitem(
+        _index_cache, _FontIndexKey(tmp_path, None), {"inter": [fake_record]}
+    )
     monkeypatch.setattr(
         "inkflow.fonts._subset_font",
         MagicMock(side_effect=RuntimeError("subsetting failed")),

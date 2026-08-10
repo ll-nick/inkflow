@@ -27,7 +27,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
     transitions = resolve_transitions(deck)
     styles_css = load_deck_styles(deck, project_dir)
     if deck.embed_fonts:
-        font_css = embed_fonts_css_subsetted(slides, project_dir)
+        font_css = embed_fonts_css_subsetted(slides, project_dir, deck.theme.fonts_dir)
         if font_css:
             styles_css = (font_css + "\n" + styles_css).strip()
     scripts_js = load_deck_scripts(deck, project_dir)
@@ -39,7 +39,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
         "transitions": transitions,
         "styles_css": styles_css,
         "scripts_js": scripts_js,
-        "mode": deck.mode,
+        "mode": deck.effective_mode,
         "ws_clients": set(),
         "error": None,
         "position": {"slideIndex": 0, "step": 0},
@@ -131,7 +131,7 @@ def build_pdf(
         raise RuntimeError("Cannot export a PDF: the deck has no visible slides.")
     styles_css = load_deck_styles(deck, project_dir)
     if deck.embed_fonts:
-        font_css = embed_fonts_css_subsetted(slides, project_dir)
+        font_css = embed_fonts_css_subsetted(slides, project_dir, deck.theme.fonts_dir)
         if font_css:
             styles_css = (font_css + "\n" + styles_css).strip()
 
@@ -144,7 +144,7 @@ def build_pdf(
 
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")
-    data_theme = "" if deck.mode == ColorMode.DARK else "light"
+    data_theme = "" if deck.effective_mode == ColorMode.DARK else "light"
     slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
     title = resolve_deck_title(deck, project_dir)
     html = (

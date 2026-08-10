@@ -12,6 +12,7 @@ from inkflow.layout import resolve_chain
 from inkflow.manifest import Deck
 from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
+from inkflow.themes import Theme
 
 _level_choice = click.Choice(inkflow_logging.LEVEL_NAMES)
 
@@ -115,7 +116,7 @@ class Project:
         return cls(load_deck(resolved), resolved.parent)
 
     @property
-    def theme(self) -> str | None:
+    def theme(self) -> Theme:
         return self.deck.theme
 
     def slide_targets(self) -> list[Target]:
@@ -166,9 +167,9 @@ def resolve_dark_mode(
 ) -> bool:
     if no_deck or deck_obj is None:
         return color_mode != "light"
-    return (
-        deck_obj.mode == ColorMode.DARK if color_mode is None else color_mode == "dark"
-    )
+    if color_mode is None:
+        return deck_obj.effective_mode == ColorMode.DARK
+    return color_mode == "dark"
 
 
 deck_option = click.option(

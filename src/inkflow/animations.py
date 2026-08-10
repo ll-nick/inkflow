@@ -27,12 +27,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from inkflow.enums import AnimationKind, Direction, Easing
-from inkflow.manifest import Cue, Slugged
+from inkflow.enums import AnimationKind, Direction, Easing, Slugged, Trigger
 
 __all__ = [
     "Animation",
     "Bounce",
+    "Cue",
     "Emphasis",
     "Enter",
     "Exit",
@@ -45,6 +45,23 @@ __all__ = [
     "ZoomIn",
     "ZoomOut",
 ]
+
+
+# ── Cue ────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class Cue:
+    """Base for anything on a slide's step timeline.
+
+    Carries just the target ``element`` and the ``trigger`` that decides its step.
+    `Animation` adds timing on top; `PlayVideo` is a sibling that carries no timing.
+    """
+
+    element: str
+    """Id of the target element, e.g. ``"headline"``."""
+    trigger: Trigger = Trigger.ON_CLICK
+    """When the cue fires. Defaults to `Trigger.ON_CLICK`."""
 
 
 # ── Base + semantic bases ──────────────────────────────────────────────────────

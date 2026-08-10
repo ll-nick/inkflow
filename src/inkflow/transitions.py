@@ -18,8 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from inkflow.enums import Direction, Easing
-from inkflow.manifest import Transition
+from inkflow.enums import Direction, Easing, Slugged
 
 __all__ = [
     "Cover",
@@ -28,9 +27,35 @@ __all__ = [
     "Fade",
     "Morph",
     "Push",
+    "Transition",
     "Wipe",
     "Zoom",
 ]
+
+
+# ── Base ───────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class Transition(Slugged):
+    """Data-only base for every transition type.
+
+    Concrete types subclass this. Every field is serialized into the transition
+    JSON, so ``direction``, ``color`` etc. arrive on the JS ``TransitionData`` object
+    automatically.
+
+    **Custom transitions.** Subclass this in ``deck.py``; the type name becomes the
+    JS handler key via ``camel_to_kebab`` (``MyWarp`` → ``"my-warp"``). Register
+    the matching handler from a ``scripts.js`` next to ``deck.py`` with
+    ``window.inkflow.registerProgressTransition(name, render)`` (or the
+    lower-level ``registerTransition``).
+    """
+
+    duration: float = 0.5
+    """Duration in seconds. Defaults to ``0.5``; ``Cut`` overrides it to ``0.0``."""
+    easing: Easing = field(default=Easing.EASE, kw_only=True)
+    """Easing curve — an ``Easing`` preset or a custom curve via
+    ``Easing.cubic_bezier(...)``."""
 
 
 @dataclass

@@ -12,6 +12,7 @@ import pytest
 
 from inkflow.animations import (
     Bounce,
+    Cue,
     FadeIn,
     FadeOut,
     Highlight,
@@ -22,7 +23,6 @@ from inkflow.animations import (
 from inkflow.enums import Direction, Trigger
 from inkflow.logging import collect_logs
 from inkflow.manifest import (
-    Cue,
     Deck,
     Image,
     Inline,
@@ -310,8 +310,11 @@ class TestResolveTransitions:
         return d
 
     def test_defaults_to_cut(self) -> None:
+        # An unset deck/slide transition resolves to the theme default (Cut).
         d = self._deck()
-        assert resolve_transitions(d) == [{"type": "cut", "duration": 0.0}]
+        assert resolve_transitions(d) == [
+            {"type": "cut", "duration": 0.0, "easing": "ease"}
+        ]
 
     def test_deck_level_crossfade(self) -> None:
         d = self._deck(deck_t=Crossfade(0.6), slide_ts=[None, None])

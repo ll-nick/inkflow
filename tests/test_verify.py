@@ -37,6 +37,15 @@ class TestVerifySlideSource:
         issues = verify_slide(slide, tmp_path, None, "")
         assert any(level == "error" and "not found" in msg for level, msg in issues)
 
+    def test_missing_layout_lists_available(self, tmp_path: Path) -> None:
+        # A bare, unresolvable layout name enumerates the layouts that do exist
+        # (here just the built-ins, since there is no project/theme layouts dir).
+        slide = Slide("nonexistent-layout")
+        issues = verify_slide(slide, tmp_path, None, "")
+        errors = [msg for level, msg in issues if level == "error"]
+        assert any("nonexistent-layout" in m and "not found" in m for m in errors)
+        assert any("Available:" in m and "default" in m for m in errors)
+
     def test_clean_slide_has_no_issues(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
         slide = Slide(str(src))

@@ -81,6 +81,7 @@ nav:
     - Presenter view: guides/presenter-view.md
   - Reference:
     - Manifest: reference/manifest.md
+    - Themes: reference/theme.md
     - Enums: reference/enums.md
     - Animations: reference/animations.md
     - Transitions: reference/transitions.md

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from inkflow.animations import Animation, Bounce, FadeIn, PlayVideo, SlideIn
+from inkflow.animations import Animation, Bounce, Cue, FadeIn, PlayVideo, SlideIn
 from inkflow.enums import (
     Align,
     ColorMode,
@@ -10,20 +10,19 @@ from inkflow.enums import (
     MediaFit,
     Muted,
     Trigger,
+    camel_to_kebab,
 )
 from inkflow.manifest import (
-    Cue,
     Deck,
     Image,
     Inline,
     Media,
     Slide,
     TextBox,
-    Transition,
     Video,
-    camel_to_kebab,
 )
-from inkflow.transitions import Crossfade, Cut, Morph, Push
+from inkflow.themes import Builtin
+from inkflow.transitions import Crossfade, Cut, Morph, Push, Transition
 
 
 def test_camel_to_kebab() -> None:
@@ -71,12 +70,15 @@ def test_slide_animations_default_empty() -> None:
 def test_deck_defaults() -> None:
     deck = Deck()
     assert deck.slides == []
-    assert deck.theme is None
-    assert deck.mode == ColorMode.DARK
+    assert isinstance(deck.theme, Builtin)
+    assert deck.mode is None  # defers to the theme
 
 
-def test_deck_mode_default() -> None:
-    assert Deck().mode == ColorMode.DARK
+def test_deck_mode_defers_to_theme() -> None:
+    # Unset deck mode resolves to the theme's mode (Builtin is dark).
+    assert Deck().mode is None
+    assert Deck().effective_mode == ColorMode.DARK
+    assert Deck(mode=ColorMode.LIGHT).effective_mode == ColorMode.LIGHT
 
 
 def test_deck_is_dataclass() -> None:
@@ -84,7 +86,8 @@ def test_deck_is_dataclass() -> None:
 
 
 def test_deck_custom_theme() -> None:
-    assert Deck(theme="./my-theme").theme == "./my-theme"
+    theme = Builtin()
+    assert Deck(theme=theme).theme is theme
 
 
 def test_animation_fields_stored() -> None:
@@ -251,12 +254,14 @@ def test_deck_style_inline() -> None:
     assert Deck(style=Inline("body { color: red; }")).style == "body { color: red; }"
 
 
-def test_deck_font_size_defaults() -> None:
-    assert Deck().font_size == 36
+def test_deck_font_size_defers_to_theme() -> None:
+    assert Deck().font_size is None
+    assert Deck().effective_font_size == 36  # Builtin default
 
 
 def test_deck_font_size_stored() -> None:
     assert Deck(font_size=48).font_size == 48
+    assert Deck(font_size=48).effective_font_size == 48
 
 
 def test_slide_md_field() -> None:

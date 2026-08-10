@@ -3,44 +3,59 @@ from __future__ import annotations
 import importlib.resources
 from pathlib import Path
 
-from inkflow.layout import resolve_theme_dir
 from inkflow.manifest import Content, Deck, Inline
 from inkflow.markdown import markdown_to_html
+from inkflow.themes import Builtin, Theme
 
 
-def _cascade(filename: str, deck: Deck | None, project_dir: Path | None) -> str:
-    """Concatenate a named file from builtin → theme → project layers."""
-    parts: list[str] = []
+def _contract_css() -> str:
+    """inkflow's always-loaded runtime stylesheet (structural rules + neutral token
+    floor + markdown element rules). Not a theme; loads before any theme layer."""
+    return (
+        importlib.resources.files("inkflow")
+        .joinpath("contract.css")
+        .read_text(encoding="utf-8")
+    )
 
-    builtin = importlib.resources.files("inkflow").joinpath("theme", filename)
-    if builtin.is_file():
-        parts.append(builtin.read_text(encoding="utf-8"))
 
-    if deck is not None and deck.theme is not None and project_dir is not None:
-        try:
-            theme_dir = resolve_theme_dir(deck.theme, project_dir)
-            f = theme_dir / filename
-            if f.exists():
-                parts.append(f.read_text(encoding="utf-8"))
-        except ValueError:
-            pass
+def _deck_theme(deck: Deck | None) -> Theme:
+    return deck.theme if deck is not None else Builtin()
 
+
+def _project_file(filename: str, project_dir: Path | None) -> str:
     if project_dir is not None:
         f = project_dir / filename
-        if f.exists():
-            parts.append(f.read_text(encoding="utf-8"))
-
-    return "\n".join(parts)
+        if f.is_file():
+            return f.read_text(encoding="utf-8")
+    return ""
 
 
 def load_deck_styles(deck: Deck | None, project_dir: Path | None) -> str:
-    """Return concatenated CSS in cascade order: builtin → theme → project."""
-    return _cascade("styles.css", deck, project_dir)
+    """Return concatenated CSS: contract → tokens → built-in → theme → project."""
+    theme = _deck_theme(deck)
+    builtin = Builtin()
+    # The built-in layouts are the fallback set for every theme, so their styling
+    # loads regardless of which theme is active. It reads the active theme's tokens,
+    # and the theme's own styles come after it and win. Skipped when the active theme
+    # *is* the built-in, which would otherwise emit the same file twice.
+    active_styles = (
+        "" if theme.styles_path == builtin.styles_path else theme.styles_css()
+    )
+    parts = [
+        _contract_css(),
+        theme.render_tokens_css(),
+        builtin.styles_css(),
+        active_styles,
+        _project_file("styles.css", project_dir),
+    ]
+    return "\n".join(p for p in parts if p)
 
 
 def load_deck_scripts(deck: Deck | None, project_dir: Path | None) -> str:
-    """Return concatenated JS in cascade order: builtin → theme → project."""
-    return _cascade("scripts.js", deck, project_dir)
+    """Return concatenated JS: theme scripts → project."""
+    theme = _deck_theme(deck)
+    parts = [theme.scripts_js(), _project_file("scripts.js", project_dir)]
+    return "\n".join(p for p in parts if p)
 
 
 # ── Content field loaders ─────────────────────────────────────────────────────

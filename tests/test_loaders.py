@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from inkflow.loaders import load_deck_styles, load_notes
 from inkflow.manifest import Deck, Inline
+from inkflow.themes import Theme
 
 
 class TestLoadNotes:
@@ -58,28 +60,54 @@ class TestLoadDeckStyles:
         result = load_deck_styles(Deck(), tmp_path)
         assert "/* project */" in result
 
-    def test_appends_theme_css(self, tmp_path: Path) -> None:
+    def test_appends_theme_css(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
         theme_dir = tmp_path / "my-theme"
         theme_dir.mkdir()
         (theme_dir / "styles.css").write_text("/* theme */", encoding="utf-8")
-        result = load_deck_styles(Deck(theme="./my-theme"), tmp_path)
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
         assert "/* theme */" in result
 
-    def test_theme_without_css_no_crash(self, tmp_path: Path) -> None:
-        (tmp_path / "my-theme").mkdir()
-        result = load_deck_styles(Deck(theme="./my-theme"), tmp_path)
-        assert result  # base CSS still returned
+    def test_theme_without_css_no_crash(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        theme_dir = tmp_path / "my-theme"
+        theme_dir.mkdir()
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
+        assert result  # contract CSS still returned
 
-    def test_named_theme_silently_ignored(self, tmp_path: Path) -> None:
-        # named themes raise ValueError in resolve_theme_dir — must be swallowed
-        result = load_deck_styles(Deck(theme="nonexistent-named-theme"), tmp_path)
-        assert result  # base CSS still returned, no crash
-
-    def test_ordering(self, tmp_path: Path) -> None:
-        (tmp_path / "theme").mkdir()
-        (tmp_path / "theme" / "styles.css").write_text("/* theme */", encoding="utf-8")
+    def test_ordering(self, tmp_path: Path, dir_theme: Callable[[Path], Theme]) -> None:
+        theme_dir = tmp_path / "my-theme"
+        theme_dir.mkdir()
+        (theme_dir / "styles.css").write_text("/* theme */", encoding="utf-8")
         (tmp_path / "styles.css").write_text("/* project */", encoding="utf-8")
-        result = load_deck_styles(Deck(theme="./theme"), tmp_path)
-        theme_pos = result.index("/* theme */")
-        project_pos = result.index("/* project */")
-        assert theme_pos < project_pos
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
+        assert result.index("/* theme */") < result.index("/* project */")
+
+
+class TestBuiltinLayoutStyles:
+    """The built-in layouts are every theme's fallback, so their styling loads too."""
+
+    def test_loaded_under_a_custom_theme(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        theme_dir = tmp_path / "my-theme"
+        theme_dir.mkdir()
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
+        assert ".layout-center #zone-content" in result
+
+    def test_custom_theme_css_wins_over_builtin(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        theme_dir = tmp_path / "my-theme"
+        theme_dir.mkdir()
+        (theme_dir / "styles.css").write_text("/* theme */", encoding="utf-8")
+        result = load_deck_styles(Deck(theme=dir_theme(theme_dir)), tmp_path)
+        assert result.index(".layout-center #zone-content") < result.index(
+            "/* theme */"
+        )
+
+    def test_not_duplicated_when_builtin_is_active(self, tmp_path: Path) -> None:
+        result = load_deck_styles(Deck(), tmp_path)
+        assert result.count(".layout-center #zone-content") == 1

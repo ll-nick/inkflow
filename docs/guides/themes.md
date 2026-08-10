@@ -1,202 +1,202 @@
 # Themes
 
-A theme is a directory that provides a base layout SVG, optional built-in layouts, and a CSS stylesheet.
-Themes define the visual identity of a deck (background, color palette, typography)
-without coupling that identity to individual slide files.
-
-## Theme directory structure
-
-```
-my-theme/
-  main.svg              ← base layout (no parent); background + brand elements
-  numbered-main.svg     ← variant that adds zone-slide-number / zone-slide-total
-  styles.css            ← CSS cascade injected into every slide
-  layouts/
-    cover.svg
-    default.svg
-    two-cols.svg
-    ...                 ← layout SVGs that extend main.svg or numbered-main.svg
-```
+A theme is a **Python class**.
+You subclass `Theme`, give it a typed color `Palette` (and optional `Typography`),
+and pass an instance to your deck.
+Because a theme is an ordinary class,
+it can live in your `deck.py`, in a local module, or in an installed package —
+so themes are importable and shareable, no matter how they were installed.
 
 ## Using a theme
 
-Point `Deck` at the theme directory:
-
 ```python
-Deck(theme="./my-theme")
+from inkflow import Deck
+from inkflow_themes import Nord  # some installed theme package
+
+Deck(theme=Nord())
 ```
 
-Bare theme names (e.g. `Deck(theme="catppuccin-mocha")`) will be resolved from installed pip packages
-once named theme support is implemented.
-For now, use a path.
-
-With a theme set, bare layout names in `Slide` are resolved through the theme's `layouts/` directory
-before falling back to the built-in layouts.
-
-## Color mode
+Set no theme and you get the built-in Catppuccin theme:
 
 ```python
-Deck(mode=ColorMode.DARK)  # default
-Deck(mode=ColorMode.LIGHT)
+Deck()  # == Deck(theme=Builtin())
 ```
 
-`mode` controls the `data-theme` attribute on the presenter's `<html>` element:
-`ColorMode.DARK` leaves it empty (the default `:root` styles apply) and
-`ColorMode.LIGHT` sets `data-theme="light"`.
-Your theme CSS can target this to provide palette variants:
+## Defining a theme
+
+Subclass `Theme` and set class attributes:
+
+```python
+from dataclasses import replace
+from inkflow import ColorMode, Palette, Theme, Typography
+
+
+class Sunset(Theme):
+    mode = ColorMode.DARK
+    dark = Palette(bg="#2b1b2f", text="#ffe6d5", accent="#ff7a59")
+    light = replace(Theme.light, accent="#d1495b")
+    typography = Typography(heading_font="Fraunces", heading_weight=700)
+```
+
+- `dark` and `light` are a `Palette` each — one per color mode.
+- `typography` is a `Typography`.
+- Every token has a sensible default (a neutral floor),
+  so you set only the ones you care about.
+
+## The token API
+
+The theme's job is to supply **values** for a fixed set of `--inkflow-*` CSS custom
+properties that the layouts and rendered Markdown consume.
+inkflow always loads a *contract* stylesheet that provides the structural rules and
+the markdown element styling and reads those tokens;
+your theme provides the values.
+So a theme that sets nothing still renders — you override only what you want.
+
+There are two token groups:
+a `Palette` of colors, one instance per color mode,
+and a single `Typography` for fonts and text metrics.
+Each field maps to a CSS variable by kebab-casing its name
+(`text_muted` → `--inkflow-text-muted`).
+
+Every field, its default, and what it styles is listed in the
+[Themes reference](../reference/theme.md).
+
+Heading *sizes* are a fixed scale in the contract, not tokens.
+Font names are `font-family` values,
+so ship the font file in your theme's `fonts/` directory to embed it
+(see the [Fonts guide](fonts.md)).
+
+## Overriding only some tokens
+
+A `Palette`'s field defaults are the neutral **dark** floor,
+so `Palette(accent="#88c0d0")` gives that accent plus the dark floor for everything
+else — correct for a partial *dark* palette.
+
+For a partial *light* palette, start from the light floor with `dataclasses.replace`,
+because a bare `Palette(...)` would fill the unnamed fields with the *dark* floor:
+
+```python
+class Nord(Theme):
+    dark = replace(Theme.dark, accent="#88c0d0")  # dark floor + accent
+    light = replace(Theme.light, accent="#5e81ac")  # light floor + accent
+```
+
+A full custom palette just names every field:
+`Palette(bg=..., text=..., accent=..., ...)`.
+
+## Color mode, font size, and transition
+
+Deck-level `mode`, `font_size`, and `transition` default to "defer to the theme".
+Resolution runs **slide → deck → theme**:
+
+```python
+Deck(theme=Nord())  # mode/size/transition come from Nord
+Deck(theme=Nord(), mode=ColorMode.LIGHT)  # deck overrides the theme's mode
+```
+
+`mode` sets the `data-theme` attribute the presenter reads:
+`ColorMode.DARK` leaves it empty (the `:root` palette applies) and
+`ColorMode.LIGHT` sets `data-theme="light"` (the light palette applies).
+
+## Built-in layouts, recolored
+
+A theme needs no layout files of its own.
+Bare layout names in `Slide(...)` resolve through the project, then the theme,
+then the built-in layouts,
+and the built-ins take your palette automatically
+because they paint through the `inkflow-fill-*` token classes.
+Ship your own `layouts/*.svg` only when you want different geometry:
+you can override just the layouts you care about and inherit the rest.
+
+Because any theme can fall through to them,
+the built-in layouts' own stylesheet (zone alignment and heading sizes,
+keyed on `.layout-<name>`) is loaded for every deck,
+not only for decks on the built-in theme.
+Your theme's `styles.css` loads after it,
+so restyling a built-in layout is a matter of naming the same selector:
 
 ```css
-:root { --inkflow-bg: #1e1e2e; --inkflow-text: #cdd6f4; }
-[data-theme="light"] { --inkflow-bg: #eff1f5; --inkflow-text: #4c4f69; }
+/* your theme's styles.css */
+.layout-center #zone-content {
+    --inkflow-align: left;
+}
 ```
 
-## CSS variables
+## Shipping a theme as a package
 
-The built-in theme and the presenter use a set of CSS custom properties.
-Override them in your `styles.css` to change colors without rewriting layout SVGs:
+A theme locates its assets from **its own module**, so an installed theme just works.
+Put a `theme/` directory next to the module that defines the class:
 
-| Variable | Default (Mocha) | Default (Latte) | Role |
-|---|---|---|---|
-| `--inkflow-bg` | `#1e1e2e` | `#eff1f5` | Slide background |
-| `--inkflow-surface` | `#313244` | `#ccd0da` | Card / panel background |
-| `--inkflow-border` | `#585b70` | `#acb0be` | Border / divider color |
-| `--inkflow-text` | `#cdd6f4` | `#4c4f69` | Primary text color |
-| `--inkflow-text-muted` | `#a6adc8` | `#6c6f85` | Secondary / muted text |
-| `--inkflow-accent` | `#cba6f7` | `#8839ef` | Accent / highlight color (Mauve) |
-| `--inkflow-accent-fg` | `#11111b` | `#eff1f5` | Foreground on accent backgrounds |
-| `--inkflow-code-bg` | `#181825` | `#e6e9ef` | Code block background |
-| `--inkflow-code-text` | `#cdd6f4` | `#4c4f69` | Code block text color |
-| `--inkflow-red` | `#f38ba8` | `#d20f39` | Red — errors, deletions |
-| `--inkflow-green` | `#a6e3a1` | `#40a02b` | Green — success, additions |
-| `--inkflow-blue` | `#89b4fa` | `#1e66f5` | Blue — info, links |
-| `--inkflow-yellow` | `#f9e2af` | `#df8e1d` | Yellow — warnings, highlights |
+```
+inkflow_themes/
+  __init__.py     # class Nord(Theme): ...
+  theme/
+    layouts/*.svg   # optional — only layouts you add or override
+    styles.css      # optional — CSS the token API doesn't cover
+    fonts/*.woff2   # optional — bundled fonts
+```
+
+Then `from inkflow_themes import Nord; Deck(theme=Nord())`.
+Themes must be installed as regular (unpacked) packages;
+a zip-imported theme raises a clear error.
 
 ## SVG element utility classes
 
-SVG elements can carry semantic classes that respond to the active color mode
-(light/dark toggle in the presenter).
-Each token has both a fill and a stroke variant:
-
-| Fill class | Stroke class | Variable |
-|---|---|---|
-| `inkflow-fill-bg` | `inkflow-stroke-bg` | `--inkflow-bg` |
-| `inkflow-fill-surface` | `inkflow-stroke-surface` | `--inkflow-surface` |
-| `inkflow-fill-border` | `inkflow-stroke-border` | `--inkflow-border` |
-| `inkflow-fill-text` | `inkflow-stroke-text` | `--inkflow-text` |
-| `inkflow-fill-text-muted` | `inkflow-stroke-text-muted` | `--inkflow-text-muted` |
-| `inkflow-fill-accent` | `inkflow-stroke-accent` | `--inkflow-accent` |
-| `inkflow-fill-accent-fg` | `inkflow-stroke-accent-fg` | `--inkflow-accent-fg` |
-| `inkflow-fill-code-bg` | `inkflow-stroke-code-bg` | `--inkflow-code-bg` |
-| `inkflow-fill-code-text` | `inkflow-stroke-code-text` | `--inkflow-code-text` |
-| `inkflow-fill-red` | `inkflow-stroke-red` | `--inkflow-red` |
-| `inkflow-fill-green` | `inkflow-stroke-green` | `--inkflow-green` |
-| `inkflow-fill-blue` | `inkflow-stroke-blue` | `--inkflow-blue` |
-| `inkflow-fill-yellow` | `inkflow-stroke-yellow` | `--inkflow-yellow` |
-
-Example — a rect that fills with the accent color and uses the surface color as its stroke:
+SVG elements can carry semantic classes that follow the active color mode.
+Each token has a fill and a stroke variant, e.g.:
 
 ```xml
 <rect class="inkflow-fill-accent inkflow-stroke-surface" .../>
 ```
 
+Available for every palette token: `inkflow-fill-<token>` and
+`inkflow-stroke-<token>` (`bg`, `surface`, `border`, `text`, `text-muted`, `accent`,
+`accent-fg`, `code-bg`, `code-text`, and the named colors `red` … `grey`).
+The presenter's light/dark switch updates all of them automatically.
+
 ## Authoring theme colors in Inkscape
 
-Inkscape can't read CSS custom properties from the HTML page, so elements with semantic
-classes appear unstyled in the editor without extra setup.
-Two commands bridge this gap:
-
-**1. Install the Inkscape palette (once per machine):**
-
-`inkflow palette` writes a GIMP palette to stdout; redirect it into Inkscape's
-palette directory (the Linux path is shown here):
+Inkscape can't read CSS custom properties, so semantically-classed elements appear
+unstyled in the editor without help.
+Three commands bridge the gap:
 
 ```bash
-inkflow palette > ~/.config/inkscape/palettes/inkflow.gpl
-# or for a custom theme:
+# 1. Install the palette as Inkscape swatches (once per machine):
 inkflow palette --deck deck.py > ~/.config/inkscape/palettes/inkflow.gpl
-```
 
-Open Inkscape's swatches panel and switch to the "inkflow" palette.
-You can now pick theme colors by token name.
-
-**2. Convert hardcoded colors to semantic classes:**
-
-After drawing shapes with palette colors, run:
-
-```bash
+# 2. Convert hardcoded hex fills/strokes to semantic classes:
 inkflow colorize slides/*.svg
-```
 
-This scans each SVG for `fill`/`stroke` attributes (and `style=` declarations)
-that match known theme hex values, replaces them with the corresponding
-`inkflow-fill-*` / `inkflow-stroke-*` classes, and removes the hardcoded attribute.
-
-**3. Refresh the editor preview:**
-
-```bash
+# 3. Refresh the editor preview (injects hex fallbacks Inkscape can render;
+#    stripped at serve time, never shipped to the browser):
 inkflow sync
 ```
 
-This injects a `<style id="inkflow-preview">` block into each SVG with hardcoded
-hex fallbacks for the semantic classes, so Inkscape renders them with the correct
-colors. The block is stripped automatically at serve time — it never appears in the browser.
-
-**Workflow for a new themed shape:**
-
-1. Draw the shape in Inkscape, pick a color from the inkflow swatches panel.
-2. Run `inkflow colorize slides/myslide.svg` to convert the hex to a class.
-3. Run `inkflow sync` to refresh the Inkscape preview.
-4. Alternatively, assign the class directly in Object Properties (Shift+Ctrl+O)
-   — Inkscape shows the correct color immediately after step 3.
-
-The presenter's light/dark toggle updates all semantic-class elements automatically —
-no further changes needed.
+`inkflow palette` derives the swatches from the active theme's palette,
+so a custom theme exports its own colors.
 
 ## Per-deck and per-slide CSS
 
-Beyond the theme, you can inject CSS at two levels:
-
-**Deck-level**: applied to every slide:
+Beyond the theme you can inject CSS at two levels:
 
 ```python
-Deck(
-    style="""
-    text { font-family: "Inter", sans-serif; }
-"""
-)
+Deck(style='text { font-family: "Inter", sans-serif; }')  # every slide
+Slide("title", style="#headline { fill: hotpink; }")  # one slide
 ```
 
-**Slide-level**: applied to one slide only:
+Slide style beats deck style, which beats the theme.
+The full stylesheet order, each layer overriding the ones before it:
 
-```python
-Slide(
-    "title",
-    style="""
-    #headline { fill: hotpink; }
-""",
-)
-```
-
-Slide-level style takes precedence over deck-level, which takes precedence over the theme.
+1. the contract stylesheet (structural rules, markdown elements)
+2. the active theme's tokens
+3. the built-in layout styling
+4. the active theme's `styles.css`
+5. the project's `styles.css` next to `deck.py`
+6. `Deck(style=...)`, then `Slide(style=...)`
 
 ## Font size
 
-The base font size for zone content is controlled by `Deck(font_size=36)` (default 36px).
-This sets the CSS `font-size` on the `<foreignObject>` root,
-and all `em`/`rem` units in your theme cascade from it.
-
-## Building a custom theme
-
-The simplest path is to copy the built-in theme and modify it.
-Edit `main.svg` for the base frame, `styles.css` for typography and color,
-and the layouts for zone placement:
-
-```bash
-cp -r $(uv run python -c "import inkflow; print(inkflow.__file__.replace('__init__.py','theme'))") ./my-theme
-```
-
-Then point your deck at it:
-
-```python
-Deck(theme="./my-theme")
-```
+`Deck(font_size=36)` (default from the theme, `36`) sets the base `font-size` on each
+zone's `<foreignObject>` root;
+all `em`/`rem` units cascade from it.
+Set it per slide with `Slide(..., font_size=48)`.

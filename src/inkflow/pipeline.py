@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 from inkflow import ns
-from inkflow.animations import Animation, PlayVideo
+from inkflow.animations import Animation, Cue, PlayVideo
 from inkflow.clean import clean_inkscape_tree
 from inkflow.content import (
     inject_style,
@@ -20,19 +20,19 @@ from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_p
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
 from inkflow.manifest import (
-    Cue,
     Deck,
     Inline,
     Media,
     Slide,
     TextBox,
-    Transition,
     Video,
 )
 from inkflow.steps import StepResolver
 from inkflow.svg import compose_with_ancestors
 from inkflow.svgio import SvgElement, serialize_svg
+from inkflow.themes import Theme
 from inkflow.titles import humanize
+from inkflow.transitions import Transition
 from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zones
 
 # ── Slide wire format ────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ def _infer_slide_title(
     return humanize(stem)
 
 
-def resolve_slide_src(src: str, project_dir: Path, theme: str | None = None) -> Path:
+def resolve_slide_src(src: str, project_dir: Path, theme: Theme | None = None) -> Path:
     """Resolve a Slide.src string to an absolute Path.
 
     Single-part names (no directory separator, no scheme prefix) are checked
@@ -264,16 +264,15 @@ def annotate_svg(root: SvgElement, cues: list[tuple[Cue, int]]) -> SvgElement:
     return root
 
 
-def _serialize_transition(t: Transition | None) -> dict[str, object]:
-    if t is None:
-        return {"type": "cut", "duration": 0.0}
+def _serialize_transition(t: Transition) -> dict[str, object]:
     return {"type": t.slug(), **_set_fields(t)}
 
 
 def resolve_transitions(deck: Deck) -> list[dict[str, object]]:
+    default = deck.effective_transition
     return [
         _serialize_transition(
-            slide.transition if slide.transition is not None else deck.transition
+            slide.transition if slide.transition is not None else default
         )
         for slide in deck.slides
         if slide.visible
@@ -408,7 +407,7 @@ class DeckContext:
     """Loop-invariant deck params, built once per rebuild and shared by every slide."""
 
     project_dir: Path
-    theme: str | None
+    theme: Theme
     deck_style: str
     font_size: int  # deck default; a slide may override via Slide.font_size
     mode: ColorMode
@@ -498,8 +497,8 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         project_dir=project_dir,
         theme=deck.theme,
         deck_style=load_style(deck.style, project_dir),
-        font_size=deck.font_size,
-        mode=deck.mode,
+        font_size=deck.effective_font_size,
+        mode=deck.effective_mode,
         total_slides=len(visible_slides),
     )
     raw_ids = [_infer_slide_id(s) for s in visible_slides]
