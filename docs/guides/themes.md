@@ -11,7 +11,7 @@ so themes are importable and shareable, no matter how they were installed.
 
 ```python
 from inkflow import Deck
-from inkflow_themes import Nord   # some installed theme package
+from inkflow_themes import Nord  # some installed theme package
 
 Deck(theme=Nord())
 ```
@@ -52,40 +52,18 @@ the markdown element styling and reads those tokens;
 your theme provides the values.
 So a theme that sets nothing still renders — you override only what you want.
 
-### Palette (colors, one per mode)
-
-| Token | Role |
-|---|---|
-| `bg` | Slide background |
-| `surface` | Card / panel background |
-| `border` | Border / divider |
-| `text` | Primary text |
-| `text_muted` | Secondary / muted text |
-| `accent` | Accent / highlight |
-| `accent_fg` | Foreground on accent backgrounds |
-| `code_bg` / `code_text` | Code block background / text |
-| `link` | Link color |
-| `heading` | Heading color |
-| `blockquote` | Blockquote border |
-| `red` `orange` `yellow` `green` `teal` `blue` `purple` `pink` `grey` | Named accent palette — syntax highlighting and the `inkflow-fill-*` / `inkflow-stroke-*` SVG utility classes |
-
+There are two token groups:
+a `Palette` of colors, one instance per color mode,
+and a single `Typography` for fonts and text metrics.
 Each field maps to a CSS variable by kebab-casing its name
 (`text_muted` → `--inkflow-text-muted`).
 
-### Typography
-
-| Token | Default | Role |
-|---|---|---|
-| `body_font` | `sans-serif` | Body `font-family` |
-| `heading_font` | `sans-serif` | Heading `font-family` |
-| `mono_font` | `monospace` | Code `font-family` |
-| `line_height` | `1.4` | Body line height |
-| `heading_weight` | `600` | Heading weight |
-| `heading_line_height` | `1.2` | Heading line height |
+Every field, its default, and what it styles is listed in the
+[Themes reference](../reference/theme.md).
 
 Heading *sizes* are a fixed scale in the contract, not tokens.
-Font names are `font-family` values;
-ship the font file in your theme's `fonts/` directory to embed it
+Font names are `font-family` values,
+so ship the font file in your theme's `fonts/` directory to embed it
 (see the [Fonts guide](fonts.md)).
 
 ## Overriding only some tokens
@@ -99,7 +77,7 @@ because a bare `Palette(...)` would fill the unnamed fields with the *dark* floo
 
 ```python
 class Nord(Theme):
-    dark = replace(Theme.dark, accent="#88c0d0")    # dark floor + accent
+    dark = replace(Theme.dark, accent="#88c0d0")  # dark floor + accent
     light = replace(Theme.light, accent="#5e81ac")  # light floor + accent
 ```
 
@@ -112,7 +90,7 @@ Deck-level `mode`, `font_size`, and `transition` default to "defer to the theme"
 Resolution runs **slide → deck → theme**:
 
 ```python
-Deck(theme=Nord())                        # mode/size/transition come from Nord
+Deck(theme=Nord())  # mode/size/transition come from Nord
 Deck(theme=Nord(), mode=ColorMode.LIGHT)  # deck overrides the theme's mode
 ```
 
@@ -127,8 +105,22 @@ Bare layout names in `Slide(...)` resolve through the project, then the theme,
 then the built-in layouts,
 and the built-ins take your palette automatically
 because they paint through the `inkflow-fill-*` token classes.
-Ship your own `layouts/*.svg` only when you want different geometry;
+Ship your own `layouts/*.svg` only when you want different geometry:
 you can override just the layouts you care about and inherit the rest.
+
+Because any theme can fall through to them,
+the built-in layouts' own stylesheet (zone alignment and heading sizes,
+keyed on `.layout-<name>`) is loaded for every deck,
+not only for decks on the built-in theme.
+Your theme's `styles.css` loads after it,
+so restyling a built-in layout is a matter of naming the same selector:
+
+```css
+/* your theme's styles.css */
+.layout-center #zone-content {
+    --inkflow-align: left;
+}
+```
 
 ## Shipping a theme as a package
 
@@ -188,11 +180,19 @@ so a custom theme exports its own colors.
 Beyond the theme you can inject CSS at two levels:
 
 ```python
-Deck(style='text { font-family: "Inter", sans-serif; }')   # every slide
-Slide("title", style="#headline { fill: hotpink; }")       # one slide
+Deck(style='text { font-family: "Inter", sans-serif; }')  # every slide
+Slide("title", style="#headline { fill: hotpink; }")  # one slide
 ```
 
 Slide style beats deck style, which beats the theme.
+The full stylesheet order, each layer overriding the ones before it:
+
+1. the contract stylesheet (structural rules, markdown elements)
+2. the active theme's tokens
+3. the built-in layout styling
+4. the active theme's `styles.css`
+5. the project's `styles.css` next to `deck.py`
+6. `Deck(style=...)`, then `Slide(style=...)`
 
 ## Font size
 
