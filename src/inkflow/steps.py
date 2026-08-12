@@ -14,8 +14,10 @@ class StepResolver:
     """Assigns concrete step numbers to an ordered sequence of triggers.
 
     ``high`` is the running max, ``current`` the last-assigned step; both start
-    at ``base``. ``ON_CLICK`` advances the max, ``WITH_PREVIOUS`` reuses the
-    last step, and a ``Trigger.at(n)`` pin lands on ``n`` and lifts the max.
+    at ``base``. ``ON_CLICK`` advances the max, ``WITH_PREVIOUS`` and
+    ``AFTER_PREVIOUS`` reuse the last step (they differ only in timing, resolved as
+    a delay in ``pipeline.py``), and a ``Trigger.at(n)`` pin lands on ``n`` and
+    lifts the max.
     """
 
     def __init__(self, base: int = 0) -> None:
@@ -27,7 +29,7 @@ class StepResolver:
         if pinned is not None:
             self.current = pinned
             self.high = max(self.high, pinned)
-        elif trigger == Trigger.WITH_PREVIOUS:
+        elif trigger in (Trigger.WITH_PREVIOUS, Trigger.AFTER_PREVIOUS):
             pass  # share the previous step
         else:  # ON_CLICK (and any unknown value falls here)
             self.high += 1
