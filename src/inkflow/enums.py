@@ -243,11 +243,13 @@ class Trigger(str):
     ```python
     FadeIn("headline")                          # on the next keypress
     FadeIn("subtitle", Trigger.WITH_PREVIOUS)   # with the previous cue
+    FadeIn("caption", Trigger.AFTER_PREVIOUS)   # automatically, once it finishes
     FadeIn("arrow", Trigger.at(3))              # pinned to step 3
     ```
 
     Markdown reveals accept the same values via ``trigger=``
-    (``::step trigger=with-previous::``, ``::step trigger=3::``).
+    (``::step trigger=with-previous::``, ``::step trigger=after-previous::``,
+    ``::step trigger=3::``).
     """
 
     ON_CLICK: ClassVar[Trigger]
@@ -255,6 +257,8 @@ class Trigger(str):
     WITH_PREVIOUS: ClassVar[Trigger]
     """Fire together with the previous cue. When it comes first, the element is
     visible from the start."""
+    AFTER_PREVIOUS: ClassVar[Trigger]
+    """Fire automatically once the previous cue finishes."""
 
     @classmethod
     def at(cls, step: int) -> Trigger:
@@ -270,6 +274,7 @@ class Trigger(str):
 
 Trigger.ON_CLICK = Trigger("on-click")
 Trigger.WITH_PREVIOUS = Trigger("with-previous")
+Trigger.AFTER_PREVIOUS = Trigger("after-previous")
 
 
 class Muted(Enum):
