@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      uv-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
 
@@ -16,6 +20,10 @@ updates:
     # deps pulled in by the bump.
     cooldown:
       default-days: 2
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
 
@@ -23,5 +31,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
