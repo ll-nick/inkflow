@@ -2,9 +2,11 @@
 
 No proprietary formats, no black magic and fully hackable
 
+::step::
+
 <br>
 
-::steps type=SlideIn direction=left distance=500::
+::steps trigger=after-previous type=SlideIn direction=left distance=500::
 
 Custom animations
 : Like the `Flicker` from earlier

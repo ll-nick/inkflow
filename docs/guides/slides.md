@@ -147,8 +147,9 @@ Each cue carries a `Trigger` that decides its step:
 
 | Trigger | Meaning |
 |---|---|
-| `Trigger.ON_CLICK` (default) | Takes the next step — needs a keypress |
+| `Trigger.ON_CLICK` (default) | Takes the next step, needs a keypress |
 | `Trigger.WITH_PREVIOUS` | Shares the previous cue's step, firing together |
+| `Trigger.AFTER_PREVIOUS` | Shares the previous cue's step, then plays automatically once it finishes (no keypress) |
 | `Trigger.at(n)` | Pins the cue to an absolute step `n` |
 
 `trigger` is the second positional argument (after `element`):
@@ -159,12 +160,25 @@ from inkflow import Trigger
 animations = [
     animations.FadeIn("left-panel"),  # step 1
     animations.FadeIn("right-panel", Trigger.WITH_PREVIOUS),  # step 1, together
-    animations.FadeIn("caption"),  # step 2
+    animations.FadeIn("caption", Trigger.AFTER_PREVIOUS),  # step 1, after right-panel
+    animations.FadeIn("footnote"),  # step 2
 ]
 ```
 
-A first-in-order `WITH_PREVIOUS` falls to the slide-entry step, so the element is
-visible from the start. `Trigger.at(n)` is the escape hatch for aligning cues on
+A first-in-order `WITH_PREVIOUS` or `AFTER_PREVIOUS` falls to the slide-entry step.
+It is not shown pre-resting:
+it animates on entry, right after the slide transition settles,
+so a slide can build itself the moment you arrive with no keypress.
+
+`AFTER_PREVIOUS` turns one keypress into a self-playing sequence.
+The cues share one step and play as a single atomic run,
+scrubbed along one 0-to-1 timeline:
+the first cue fires on the press (or on entry, if it is first in order),
+and each following `AFTER_PREVIOUS` cue starts as the one before it finishes.
+So one press forward plays the whole cascade,
+a forward press while it is still playing snaps it to the end,
+and one press back mirrors it (last stage out first).
+`Trigger.at(n)` is the escape hatch for aligning cues on
 the shared step axis (see [combining reveals and animations](#combining-markdown-reveals-with-animations)).
 
 ## Transitions
@@ -414,8 +428,10 @@ marker but a `cubic-bezier(...)` curve is a `deck.py`-only thing.
 #### Controlling the step with `trigger=`
 
 A reveal defaults to `ON_CLICK` (one keypress per reveal). Set `trigger=` to
-change that — `with-previous` fires a reveal together with the one before it, and
-a number pins it to an absolute step:
+change that:
+`with-previous` fires a reveal together with the one before it,
+`after-previous` lets it reveal itself once the one before it finishes,
+and a number pins it to an absolute step:
 
 ```markdown
 ::step::
@@ -423,6 +439,9 @@ First point.
 
 ::step trigger=with-previous::
 Appears together with the first point.
+
+::step trigger=after-previous::
+Reveals on its own, right after the first point.
 
 ::step trigger=3::
 Pinned to step 3.

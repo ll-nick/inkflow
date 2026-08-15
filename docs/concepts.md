@@ -59,12 +59,18 @@ A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
 Elements targeted by an entrance animation start hidden and appear when their step
 is reached. Each cue declares a `Trigger` (the default `ON_CLICK` takes the next
-step, `WITH_PREVIOUS` shares the previous one), and Inkflow works out the step
+step, `WITH_PREVIOUS` shares the previous one, `AFTER_PREVIOUS` shares it but
+plays itself once the previous cue finishes), and Inkflow works out the step
 numbers from the triggers and order.
 
 Each animation has a **kind** (`enter`, `exit`, or `emphasis`), so one element can carry
 several cues that compose into a single lifecycle — enter, be emphasized, exit, even
 re-enter — at different steps. Stepping backward plays each animation in reverse.
+An `AFTER_PREVIOUS` chain plays as one atomic run:
+one press forward runs it, a forward press mid-run snaps it to the end,
+and one press back mirrors it.
+A cue on the slide-entry step animates on arrival, just after the transition,
+rather than being shown already finished.
 
 ## Zones and Markdown
 

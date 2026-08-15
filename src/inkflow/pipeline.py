@@ -4,7 +4,7 @@ import json
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import NamedTuple, TypedDict, cast
 
 from inkflow import ns
 from inkflow.animations import Animation, Cue, PlayVideo
@@ -15,7 +15,7 @@ from inkflow.content import (
     substitute_content,
     substitute_zone_numbers,
 )
-from inkflow.enums import AnimationKind, ColorMode, Direction
+from inkflow.enums import AnimationKind, ColorMode, Direction, Trigger
 from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
@@ -124,6 +124,50 @@ def resolve_steps(cues: list[Cue], base: int = 0) -> list[tuple[Cue, int]]:
     return [(cue, resolver.resolve(cue.trigger)) for cue in cues]
 
 
+class PlacedCue(NamedTuple):
+    """A cue resolved to its concrete step and its offset within that step's run.
+
+    ``offset`` is seconds from the run's start where the cue's slot begins.
+    """
+
+    cue: Cue
+    step: int
+    offset: float
+
+
+def _resolve_run_offsets(pairs: list[tuple[Cue, int]]) -> list[PlacedCue]:
+    """Assign each cue its run ``offset``: where its slot begins within its step's run.
+
+    A step's cues play as one progress-driven run in the presenter. ``offset`` (seconds
+    from the run's start) places each cue's slot; the presenter scrubs the cue's own
+    ``[0, delay + duration]`` effect timeline starting there, so the authored ``delay``
+    still applies.
+
+    The slot is chosen by ``trigger``: ``ON_CLICK`` or a ``Trigger.at`` pin starts a
+    fresh group (offset 0); ``WITH_PREVIOUS`` shares its predecessor's slot; and
+    ``AFTER_PREVIOUS`` starts when the predecessor finishes (its slot plus its full
+    ``delay + duration`` footprint). Non-``Animation`` cues (``PlayVideo``, no timing)
+    contribute a zero footprint and their offset is unused.
+    """
+    prev_offset = 0.0  # slot start of the previous cue within its run
+    prev_span = 0.0  # the previous cue's delay + duration footprint
+    result: list[PlacedCue] = []
+    for cue, step in pairs:
+        # Only Animation cues carry timing; a PlayVideo contributes a zero footprint.
+        delay = cue.delay if isinstance(cue, Animation) else 0.0
+        duration = cue.duration if isinstance(cue, Animation) else 0.0
+        if cue.trigger == Trigger.AFTER_PREVIOUS:
+            offset = prev_offset + prev_span
+        elif cue.trigger == Trigger.WITH_PREVIOUS:
+            offset = prev_offset
+        else:  # ON_CLICK or a Trigger.at pin: a fresh run
+            offset = 0.0
+        prev_offset = offset
+        prev_span = delay + duration
+        result.append(PlacedCue(cue, step, offset))
+    return result
+
+
 # ── Animation cue serialization (`data-cues`) ─────────────────────────────────
 # Each animated element carries a `data-cues` JSON array. Each entry pairs a step
 # and kind with the keyframe name and the params the step engine needs: `opts` are
@@ -144,12 +188,14 @@ def _offset_vector(direction: Direction, distance: float) -> tuple[str, str]:
     return "0px", f"{distance}px"  # DOWN
 
 
-def _cue_entry(anim: Animation, step: int) -> dict[str, object]:
+def _cue_entry(anim: Animation, step: int, offset: float) -> dict[str, object]:
     """Serialize one animation cue to a `data-cues` entry.
 
-    The base `Animation` fields are element.animate() ``opts``; slide direction/distance
-    resolve to a translate offset; every other (subclass) field passes through as a
-    ``var`` keyed by its field name, injected into the keyframes' ``var(--anim-<key>)``.
+    The base `Animation` fields are element.animate() ``opts`` (``delay`` included and
+    untouched); ``offset`` is where the cue's slot begins in its step's run; slide
+    direction/distance resolve to a translate offset; every other (subclass) field
+    passes through as a ``var`` keyed by its field name, injected into the keyframes'
+    ``var(--anim-<key>)``.
     """
     fields: dict[str, object] = {
         k: v
@@ -182,6 +228,7 @@ def _cue_entry(anim: Animation, step: int) -> dict[str, object]:
         "step": step,
         "kind": anim.kind.value,
         "name": anim.slug(),
+        "offset": offset,
         "opts": opts,
         "vars": substitutions,
     }
@@ -235,13 +282,18 @@ def _annotate_play_video(root: SvgElement, cue: PlayVideo, step: int) -> None:
 def annotate_svg(root: SvgElement, cues: list[tuple[Cue, int]]) -> SvgElement:
     """Annotate the SVG for the step engine: `PlayVideo` cues stamp
     `data-play-on-step`; animation cues are grouped per target element into one
-    `data-cues` JSON list (sorted by step)."""
+    `data-cues` JSON list (sorted by step).
+
+    ``cues`` are in timeline order, so the per-cue run ``offset`` (which cue's slot
+    begins where within its step's run) is resolved here before grouping."""
     entries_by_element: dict[str, list[dict[str, object]]] = {}
-    for cue, step in cues:
+    for cue, step, offset in _resolve_run_offsets(cues):
         if isinstance(cue, PlayVideo):
             _annotate_play_video(root, cue, step)
         elif isinstance(cue, Animation):
-            entries_by_element.setdefault(cue.element, []).append(_cue_entry(cue, step))
+            entries_by_element.setdefault(cue.element, []).append(
+                _cue_entry(cue, step, offset)
+            )
         else:
             logger.warning(f"cue with no annotation handler: {type(cue).__name__}")
 

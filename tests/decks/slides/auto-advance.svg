@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#393e46"/>
+  <text x="960" y="150" font-family="sans-serif" font-size="70" fill="#ffffff" text-anchor="middle">Auto-advance</text>
+  <text x="960" y="225" font-family="sans-serif" font-size="34" fill="#00adb5" text-anchor="middle">One keypress starts the chain; each stage waits out the one before it.</text>
+
+  <!-- The four cards are the real per-slide pipeline stages. They cascade in left to
+       right on a single press: stage-1 on the keypress, the rest AFTER_PREVIOUS. The
+       static chevrons show the flow direction while the cards fill in. -->
+  <text x="500" y="560" font-family="sans-serif" font-size="72" fill="#5a6270" text-anchor="middle">›</text>
+  <text x="960" y="560" font-family="sans-serif" font-size="72" fill="#5a6270" text-anchor="middle">›</text>
+  <text x="1420" y="560" font-family="sans-serif" font-size="72" fill="#5a6270" text-anchor="middle">›</text>
+
+  <g id="stage-1">
+    <rect x="80" y="440" width="380" height="200" rx="16" fill="#00adb5"/>
+    <text x="270" y="555" font-family="sans-serif" font-size="42" fill="#ffffff" text-anchor="middle">Clean</text>
+  </g>
+  <g id="stage-2">
+    <rect x="540" y="440" width="380" height="200" rx="16" fill="#00adb5"/>
+    <text x="730" y="555" font-family="sans-serif" font-size="42" fill="#ffffff" text-anchor="middle">Inject</text>
+  </g>
+  <g id="stage-3">
+    <rect x="1000" y="440" width="380" height="200" rx="16" fill="#00adb5"/>
+    <text x="1190" y="555" font-family="sans-serif" font-size="42" fill="#ffffff" text-anchor="middle">Annotate</text>
+  </g>
+  <g id="stage-4">
+    <rect x="1460" y="440" width="380" height="200" rx="16" fill="#00adb5"/>
+    <text x="1650" y="555" font-family="sans-serif" font-size="42" fill="#ffffff" text-anchor="middle">Serialize</text>
+  </g>
+
+  <text id="caption" x="960" y="800" font-family="sans-serif" font-size="40" fill="#eeeeee" text-anchor="middle">…and the slide is ready.</text>
+</svg>
