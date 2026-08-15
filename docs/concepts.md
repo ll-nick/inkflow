@@ -117,6 +117,28 @@ The SVG files on disk are not modified.
 `inkflow sync` can optionally write locked preview layers into each SVG
 so you can see the inherited background while editing in Inkscape.
 
+## Overlays
+
+Inheritance answers "what am I built on", and composites behind a slide.
+Chrome that cuts across layouts asks a different question:
+"what goes on top of every slide, regardless of what it is built on".
+
+Overlays are that second axis.
+They live in `overlays/`, are listed on the deck, and composite above the finished slide:
+
+```python
+Deck(
+    overlays=[Overlay("footer"), Overlay("logo")],
+    slides=[Slide("title.svg", overlays=[]), Slide("content", md="intro.md")],
+)
+```
+
+Keeping the two axes separate is what lets a logo reach every layout
+without a wrapper layout for each one,
+and it means a deck that is otherwise pure Markdown never has to maintain a custom SVG.
+Overlays can inherit from other overlays, so shared chrome stays in one file.
+See the [layout system guide](guides/layout-system.md#overlays) for the full picture.
+
 ## Themes
 
 A theme is a directory that bundles a set of layouts, a CSS stylesheet, and/or custom JavaScript.

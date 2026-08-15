@@ -122,6 +122,92 @@ slides/bullets.svg
 The pipeline resolves the full chain and composites all layers from root to leaf.
 The SVG files on disk stay unmodified.
 
+## Overlays
+
+`inkflow:parent` answers "what am I built on" and composites *behind* a slide.
+Chrome that cuts across layouts asks a different question:
+"what goes on top of every slide, regardless of what it is built on".
+A logo, a footer, a header.
+That is an **overlay**.
+
+An overlay is an SVG at slide dimensions,
+composited above the finished slide:
+
+```python
+from inkflow import Deck, Overlay, Slide
+
+Deck(
+    overlays=[Overlay("footer"), Overlay("logo")],
+    slides=[
+        Slide("title.svg", overlays=[]),  # bare title, no chrome
+        Slide("content", md="intro.md"),  # inherits the deck's two
+    ],
+)
+```
+
+List order is paint order.
+Resolution runs `Slide.overlays` → `Deck.overlays` → `Theme.overlays`,
+each an override rather than a merge:
+`None` inherits the next level up,
+and `[]` means no chrome at all.
+
+Because overlays composite before zone numbering and content injection,
+three things follow without extra work:
+
+- A `zone-slide-number` inside a footer overlay is filled like any other.
+- A zone the overlay declares can be filled from `zones={...}` on a slide,
+  and is pruned on slides that leave it empty.
+- Animations can target elements inside an overlay,
+  so chrome can be revealed on a step.
+
+Overlays live in their own `overlays/` directory
+and resolve through the same three-level search and prefix grammar as layouts,
+against `overlays/` instead of `layouts/`:
+
+| Syntax | Resolves to |
+|---|---|
+| `"footer"` | Three-level search for `overlays/footer.svg` |
+| `"local:footer"` | `{project}/overlays/footer.svg` |
+| `"theme:footer"` | `{theme_dir}/overlays/footer.svg` |
+| `"builtin:footer"` | Inkflow built-in overlays |
+| `"./chrome/footer.svg"` | Relative to the project directory |
+
+Layouts and overlays are separate namespaces,
+so a bare name always means one or the other and never both.
+
+### Overlays can inherit too
+
+`inkflow:parent` on an overlay means "drawn behind me *within this overlay*".
+The overlay as a whole still lands on top of the slide,
+so the two axes stay independent:
+
+```
+overlays/brand.svg           the rule line and mark
+overlays/chrome.svg          inkflow:parent="brand", adds the event name
+```
+
+This is how a theme can ship `theme:brand`
+that a project extends locally without copying it.
+Bare names in an overlay's `inkflow:parent` resolve in the overlay namespace,
+so chrome can only ever inherit chrome.
+
+!!! warning "Do not point an overlay's parent at a layout"
+
+    Layouts paint a full-bleed background,
+    which on top of a slide hides the entire deck.
+    Bare names cannot reach a layout from an overlay,
+    so this takes an explicit path to trigger.
+    `inkflow verify` reports it as an error and names the offending file.
+
+### Removing an element from a layout
+
+There is no mechanism for this, because it is styling rather than structure.
+Hide it with CSS, which is already scoped per slide:
+
+```python
+Slide("content", extra_style=Inline("#logo { display: none }"))
+```
+
 ## Path resolution
 
 Inkflow resolves layout names using a three-level search:
