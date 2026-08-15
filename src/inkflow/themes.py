@@ -15,11 +15,13 @@ obscurely.
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import ClassVar, cast
 
 from inkflow.enums import ColorMode
+from inkflow.overlay import Overlay
 from inkflow.transitions import Cut, Transition
 
 __all__ = ["Builtin", "Palette", "Theme", "Typography"]
@@ -167,6 +169,10 @@ class Theme:
     """Base font size (px) for zone content, unless the deck or slide overrides it."""
     transition: Transition = Cut()
     """Slide transition a deck gets when it sets none of its own."""
+    overlays: Sequence[Overlay] = ()
+    """Chrome composited on top of every slide, unless the deck or slide overrides
+    it. Lets a theme ship its own branding, resolved against the theme's
+    ``overlays/`` directory."""
 
     # palette per mode; defaults are the neutral floor (dark via Palette(), light via
     # the light-floor constant). Override off these with `dataclasses.replace`.
@@ -206,6 +212,10 @@ class Theme:
     @property
     def layouts_dir(self) -> Path:
         return self.asset_dir() / "layouts"
+
+    @property
+    def overlays_dir(self) -> Path:
+        return self.asset_dir() / "overlays"
 
     @property
     def fonts_dir(self) -> Path:
