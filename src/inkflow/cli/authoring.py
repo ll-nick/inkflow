@@ -23,8 +23,10 @@ from inkflow.cli._common import (
     targets_or_deck_slides,
 )
 from inkflow.layout import (
+    AssetKind,
     create_slide,
     discover_layouts,
+    discover_overlays,
     inject_layout_layers,
     is_layout_current,
     layout_zones,
@@ -36,6 +38,7 @@ from inkflow.logging import console, logger, report
 from inkflow.pipeline import resolve_slide_src
 from inkflow.svg import with_namespaces
 from inkflow.svgio import parse_svg_file
+from inkflow.themes import Theme
 
 
 @main.command()
@@ -324,49 +327,70 @@ class _LayoutRow:
     default_zone: str
 
 
-@main.command("layouts")
-@deck_option
-@no_deck_option
-def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
-    """List available layouts with their zones and parent chain.
-
-    Discovers layouts from three sources — built-in, theme, then project-local —
-    and prints a table per source with each layout's parent chain and zone names.
-    The default zone is underlined; a checkmark marks layouts that carry a slide
-    number (a `zone-slide-number` or `zone-slide-total`). Pass `--no-deck` to list
-    only the built-in layouts.
-    """
-
-    project = load_project_or_none(deck_path, no_deck)
-    project_dir = project.dir if project else None
-    theme = project.theme if project else None
-
+def _asset_rows(
+    kind: AssetKind,
+    project_dir: Path | None,
+    theme: Theme | None,
+) -> dict[str, list[_LayoutRow]]:
+    """Group discovered layouts or overlays by source, with their chains and zones."""
+    discover = discover_layouts if kind is AssetKind.LAYOUT else discover_overlays
     groups: dict[str, list[_LayoutRow]] = {}
-    for source_label, layout_path in discover_layouts(project_dir, theme):
+    for source_label, path in discover(project_dir, theme):
         try:
-            chain = resolve_chain(layout_path, project_dir, theme)
+            chain = resolve_chain(path, project_dir, theme, kind)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
         parent_str = " → ".join(p.stem for p in chain) if chain else "—"
-        info = layout_zones(layout_path, project_dir, theme)
+        info = layout_zones(path, project_dir, theme, kind)
         groups.setdefault(source_label, []).append(
             _LayoutRow(
-                layout_path.stem,
+                path.stem,
                 parent_str,
                 info.zones,
                 info.numbered,
                 info.default_zone,
             )
         )
+    return groups
 
-    source_styles = [
-        ("builtin", "steel_blue", "Built-in"),
-        ("theme", "dark_orange", "Theme"),
-        ("local", "green", "Local"),
-    ]
 
+@main.command("layouts")
+@deck_option
+@no_deck_option
+def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
+    """List available layouts and overlays with their zones and parent chain.
+
+    Discovers both from three sources — built-in, theme, then project-local — and
+    prints a table per source with each entry's parent chain and zone names. The
+    default zone is underlined; a checkmark marks entries that carry a slide number
+    (a `zone-slide-number` or `zone-slide-total`). Layouts compose behind a slide,
+    overlays on top of it, and the two are separate namespaces. The overlay section
+    is omitted when no overlays exist. Pass `--no-deck` to list only the built-ins.
+    """
+
+    project = load_project_or_none(deck_path, no_deck)
+    project_dir = project.dir if project else None
+    theme = project.theme if project else None
+
+    _print_asset_tables(_asset_rows(AssetKind.LAYOUT, project_dir, theme))
+
+    overlay_groups = _asset_rows(AssetKind.OVERLAY, project_dir, theme)
+    if overlay_groups:
+        console.print()
+        console.print("[bold]OVERLAYS[/bold] [dim](composited on top)[/dim]")
+        _print_asset_tables(overlay_groups)
+
+
+_SOURCE_STYLES = [
+    ("builtin", "steel_blue", "Built-in"),
+    ("theme", "dark_orange", "Theme"),
+    ("local", "green", "Local"),
+]
+
+
+def _print_asset_tables(groups: dict[str, list[_LayoutRow]]) -> None:
     first = True
-    for source_key, color, title in source_styles:
+    for source_key, color, title in _SOURCE_STYLES:
         rows = groups.get(source_key)
         if not rows:
             continue
