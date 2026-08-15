@@ -5,6 +5,7 @@ from inkflow import (
     Direction,
     Image,
     MediaFit,
+    Overlay,
     Slide,
     Transition,
     Trigger,
@@ -37,9 +38,13 @@ class Flip(Transition):
 def main() -> Deck:
     return Deck(
         title="Inkflow Demo",
+        # The inkflow mark, on top of every slide whatever layout it uses.
+        overlays=[Overlay("footer")],
         slides=[
             Slide(
                 "title.svg",
+                # Opt out: the cover art is full-bleed and carries its own branding.
+                overlays=[],
                 zones={
                     "media": Image(
                         src="assets/cover-dark.webp",
