@@ -31,7 +31,7 @@ src/
                                Cue, Transition, Align, VAlign, Direction, Easing,
                                AnimationKind, Trigger, Inline, Content, ZoneContent,
                                ColorMode, MediaFit,
-                               MediaAlign, Muted
+                               MediaAlign, Muted, Overlay
                                and the `animations` and `transitions` namespaces
                                (`Animation` is NOT top-level — it lives in `animations`)
     manifest.py       dataclasses for the deck DSL; Cue/Transition base.
@@ -42,10 +42,10 @@ src/
                                callable). Video adds playback fields (controls, autoplay,
                                muted, loop, poster, start, end). `Slugged` mixin (kebab slug
                                from class name) is shared by Animation + Transition
-                               Deck params: slides, transition, theme, mode: ColorMode,
-                               style, font_size, embed_fonts
+                               Deck params: slides, transition, overlays, theme,
+                               mode: ColorMode, style, font_size, embed_fonts
                                Slide params: src, id, md, zones, animations, transition,
-                               extra_style, title, notes, visible, font_size
+                               overlays, extra_style, title, notes, visible, font_size
     enums.py          shared enums (Direction, Align, VAlign, MediaFit, MediaAlign,
                                ColorMode, Muted, Trigger, AnimationKind); `_KebabStrEnum`
                                base emits CSS token values (Muted is a plain Enum, resolved
@@ -63,7 +63,12 @@ src/
     pipeline.py       animation annotation + layout inlining
     content.py        TextBox / Image / Video injection into zone rects, with alignment
                                support; Video emits data-* playback attrs (driven by video.ts)
-    layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer writing
+    layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer
+                               writing. `AssetKind` (layouts/overlays) selects the searched
+                               subdir, so `resolve_parent_path`/`resolve_chain` serve both
+                               namespaces with one grammar
+    overlay.py        the `Overlay` DSL type (src only). Its own module because both
+                               `themes` and `manifest` reference it, same as `Transition`
     markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
                                HTML->well-formed-XML normalization (no inkflow-specific grammar)
     steps.py          `StepResolver` — the trigger-resolution rule (ON_CLICK/WITH_PREVIOUS/
@@ -105,7 +110,9 @@ src/
                                (console/file/browser), each a level, resolved by
                                `resolve_levels` (`--log-level*` flags + INKFLOW_LOG_LEVEL*
                                env, `off` disables) and installed by `configure`
-    svg.py            SVG tree utilities (ensure_defs, with_namespaces, compose_with_ancestors)
+    svg.py            SVG tree utilities (ensure_defs, with_namespaces,
+                               compose_with_ancestors, compose_overlays,
+                               duplicate_zone_ids, is_full_canvas_fill)
     svgio.py          SVG parse/serialize primitives: one hardened parser, SvgElement alias
     verify.py         slide authoring checks (inkflow verify)
     ns.py             XML namespace constants
@@ -254,6 +261,15 @@ Inline styles are only emitted when the corresponding param is non-`None`; CSS v
 `inject-layout` writes locked Inkscape preview layers into SVGs for authoring reference,
 but the pipeline resolves `inkflow:parent` chains in memory and composites layers on the fly.
 SVG files on disk are never modified by the serve/build pipeline.
+
+**Overlays are the second composition axis, not multiple inheritance.**
+`inkflow:parent` means "what am I built on" and composites *behind* a slide; an `Overlay` means "what goes on top regardless of what I'm built on" and composites *above* it. That keeps each axis single-purpose, and it is why chrome (a logo, a footer) reaches every layout without a wrapper layout per layout. `process_slide` calls `compose_overlays` right after `compose_ancestors` and *before* numbering/injection/annotation, so an overlay's `zone-slide-number` is filled, an overlay-declared zone can be targeted by `zones={...}` (and is pruned when unfilled), and cues can animate overlay elements — all for free. Resolution is `Slide.overlays` → `Deck.overlays` → `Theme.overlays`, each an override (`None` inherits, `[]` means none), matching `effective_transition`.
+
+Overlays live in `overlays/` and resolve through `resolve_parent_path(..., AssetKind.OVERLAY)`, the same grammar against a different subdir. The separate namespace is load-bearing: a bare `inkflow:parent` on an overlay can only find another overlay, so it cannot silently pull in a layout, whose full-bleed background rect would paint over the entire deck. `verify` catches the explicit-path version of that mistake via `is_full_canvas_fill` and names the offending file in the chain. Front-composition (rather than a "universal root ancestor", which would be a one-line change to `resolve_chain`) is forced by exactly that background rect: `theme/layouts/base.svg` is a single full-canvas `<rect>`, so chrome at the root of the chain would be painted over.
+
+Overlays become part of the slide SVG, so they travel with it during a transition (chrome slides with a `Push`, dips mid-`Crossfade`; `Cut`/`Morph` are unaffected). Accepted and documented; a persistent chrome layer outside the stage would be the alternative if it ever grates.
+
+`inkflow sync` does **not** yet inject overlay preview layers (planned): sync works on files but overlays are declared on slides, so the file→overlays mapping is many-to-one and needs a resolution rule (explicit `inkflow:preview-overlays` attribute → unanimous slides → deck default).
 
 ## Server
 
