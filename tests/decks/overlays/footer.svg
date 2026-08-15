@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="brand" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <text id="footer-label" x="80" y="1050" font-family="sans-serif" font-size="26" class="inkflow-fill-text-muted">inkflow overlays</text>
+  <rect id="zone-footer-note" x="620" y="1018" width="600" height="44"/>
+  <g id="footer-badge">
+    <circle cx="1420" cy="1040" r="14" class="inkflow-fill-accent"/>
+  </g>
+</svg>
