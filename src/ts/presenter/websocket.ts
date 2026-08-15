@@ -1,7 +1,12 @@
 import type { SyncMode, TransitionData, WsMessage } from "../shared/types";
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
-import { applyCurrentStep, applyCurrentStepInstant, maxStep } from "./status";
+import {
+    applyCurrentStep,
+    applyCurrentStepInstant,
+    maxStep,
+    snapStepRun,
+} from "./status";
 import { CUT, loadSlide, snapInflight } from "./transitions";
 import { hideError, showError, showLogs } from "./ui";
 
@@ -149,9 +154,11 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
         } else if (msg.type === "position") {
             if (!receives()) return;
             if (msg.snap) {
-                // Another screen snapped its transition; match it. Position is
-                // already in sync, so just collapse our in-flight transition.
+                // Another screen snapped its in-flight animation; match it. Position is
+                // already in sync, so just collapse ours — whichever is live (a slide
+                // transition or a step run).
                 snapInflight();
+                snapStepRun();
                 return;
             }
             if (firstPositionPending) {
