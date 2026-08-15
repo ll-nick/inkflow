@@ -33,6 +33,7 @@ from inkflow.pipeline import _add_layout_classes as _add_layout_classes_el
 from inkflow.pipeline import (
     _deduplicate_ids,
     _infer_slide_id,
+    _resolve_run_offsets,
     process_deck,
     resolve_slide_src,
     resolve_steps,
@@ -94,6 +95,7 @@ class _CueDict(TypedDict):
     step: int
     kind: str
     name: str
+    offset: float
     opts: dict[str, object]
     vars: dict[str, str]
 
@@ -270,10 +272,92 @@ class TestResolveSteps:
         pairs = resolve_steps([FadeIn("a"), FadeIn("b", Trigger.at(5)), FadeIn("c")])
         assert [s for _, s in pairs] == [1, 5, 6]
 
+    def test_after_previous_shares_step(self) -> None:
+        # Like WITH_PREVIOUS for step numbering; the two differ only in delay.
+        pairs = resolve_steps(
+            [FadeIn("a"), FadeIn("b", Trigger.AFTER_PREVIOUS), FadeIn("c")]
+        )
+        assert [s for _, s in pairs] == [1, 1, 2]
+
     def test_base_offsets_the_sequence(self) -> None:
         # The deck list concatenates after markdown reveals (base = reveal count).
         pairs = resolve_steps([FadeIn("a"), FadeIn("b", Trigger.WITH_PREVIOUS)], base=3)
         assert [s for _, s in pairs] == [4, 4]
+
+
+class TestResolveRunOffsets:
+    @staticmethod
+    def _offsets(cues: list[Cue]) -> list[float]:
+        return [offset for _, _, offset in _resolve_run_offsets(resolve_steps(cues))]
+
+    def test_after_previous_starts_when_predecessor_finishes(self) -> None:
+        # FadeIn footprint = delay 0 + duration 0.4, so the AFTER slot begins at 0.4.
+        assert self._offsets([FadeIn("a"), FadeIn("b", Trigger.AFTER_PREVIOUS)]) == [
+            0.0,
+            0.4,
+        ]
+
+    def test_chain_accumulates(self) -> None:
+        # Each link's slot begins where the running total of the ones before it lands.
+        assert self._offsets(
+            [
+                FadeIn("a"),
+                FadeIn("b", Trigger.AFTER_PREVIOUS),
+                FadeIn("c", Trigger.AFTER_PREVIOUS),
+            ]
+        ) == [0.0, 0.4, 0.8]
+
+    def test_authored_delay_stays_out_of_the_offset(self) -> None:
+        # The predecessor's footprint is delay + duration (0.2 + 0.8 = 1.0), so the
+        # AFTER_PREVIOUS slot begins at 1.0. The predecessor's own slot stays 0: its
+        # authored delay is a pre-pause inside its slot, never folded into the offset.
+        assert self._offsets(
+            [FadeIn("a", duration=0.8, delay=0.2), FadeIn("b", Trigger.AFTER_PREVIOUS)]
+        ) == [0.0, 1.0]
+
+    def test_on_click_resets_the_run(self) -> None:
+        # A fresh run (ON_CLICK) starts a new slot chain at offset 0.
+        assert self._offsets(
+            [
+                FadeIn("a"),
+                FadeIn("b", Trigger.AFTER_PREVIOUS),
+                FadeIn("c"),  # new run
+            ]
+        ) == [0.0, 0.4, 0.0]
+
+    def test_with_previous_inherits_the_offset(self) -> None:
+        # A WITH_PREVIOUS after an auto-advanced cue shares its slot.
+        assert self._offsets(
+            [
+                FadeIn("a"),
+                FadeIn("b", Trigger.AFTER_PREVIOUS),
+                FadeIn("c", Trigger.WITH_PREVIOUS),
+            ]
+        ) == [0.0, 0.4, 0.4]
+
+    def test_play_video_passes_through_untouched(self) -> None:
+        # PlayVideo carries no timing and is never rewritten (no delay attribute).
+        triples = _resolve_run_offsets(
+            resolve_steps([FadeIn("a"), PlayVideo("vid", Trigger.AFTER_PREVIOUS)])
+        )
+        video_cue, _, _ = triples[1]
+        assert not hasattr(video_cue, "delay")
+
+    def test_offset_serialized_while_authored_delay_preserved(self) -> None:
+        # End to end: the run offset lands on the cue entry, and the authored delay
+        # stays a first-class opts.delay (here 0.0, the AFTER cue's own default).
+        pairs = resolve_steps([FadeIn("box"), FadeIn("dot", Trigger.AFTER_PREVIOUS)])
+        [dot_cue] = _parse_cues(annotate_svg(_PLAIN_SVG, pairs), "dot")
+        assert dot_cue["offset"] == 0.4
+        assert dot_cue["opts"]["delay"] == 0.0
+
+    def test_authored_delay_survives_into_opts(self) -> None:
+        # An ON_CLICK cue with an authored delay keeps it in opts (offset stays 0).
+        [box_cue] = _parse_cues(
+            annotate_svg(_PLAIN_SVG, resolve_steps([FadeIn("box", delay=0.3)])), "box"
+        )
+        assert box_cue["offset"] == 0.0
+        assert box_cue["opts"]["delay"] == 0.3
 
 
 _VIDEO_SVG = textwrap.dedent("""\
