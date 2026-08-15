@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
@@ -12,6 +13,7 @@ from inkflow.enums import (
     Muted,
     VAlign,
 )
+from inkflow.overlay import Overlay
 from inkflow.themes import Builtin, Theme
 from inkflow.transitions import Transition
 
@@ -201,6 +203,9 @@ class Slide:
     reveals in the content."""
     transition: Transition | None = None
     """Transition into this slide. ``None`` inherits the deck default."""
+    overlays: Sequence[Overlay] | None = None
+    """Chrome composited on top of this slide, in paint order. ``None`` inherits the
+    deck's overlays; ``[]`` opts this slide out of all chrome."""
     extra_style: Content = None
     """CSS appended to the deck style for this slide. A bare ``str`` is a file path;
     ``Inline(...)`` is a literal CSS string."""
@@ -226,8 +231,9 @@ class Deck:
 
     **Deck → Slide inheritance:**
 
-    - ``transition``, ``font_size`` — *override*: a slide value replaces the deck
-      default; ``None`` on the slide inherits.
+    - ``transition``, ``font_size``, ``overlays`` — *override*: a slide value replaces
+      the deck default; ``None`` on the slide inherits. If both are ``None``,
+      the theme default is used.
     - ``style`` / ``extra_style`` — *additive*: ``Deck.style`` is emitted first,
       then ``Slide.extra_style``; the slide CSS wins on equal-specificity rules via
       cascade order.
@@ -248,6 +254,9 @@ class Deck:
     """The ordered slide list."""
     transition: Transition | None = None
     """Default transition for all slides. ``None`` defers to the theme's default."""
+    overlays: Sequence[Overlay] | None = None
+    """Chrome composited on top of every slide, in paint order. ``None`` defers to
+    the theme's overlays; ``[]`` means none."""
     theme: Theme = field(default_factory=Builtin)
     """The deck's theme. Defaults to the built-in Catppuccin theme. Subclass
     ``Theme`` (or ``Builtin``) and pass an instance to restyle the deck."""
@@ -278,3 +287,8 @@ class Deck:
     def effective_transition(self) -> Transition:
         """Resolved default transition: the deck value, else the theme's default."""
         return self.transition if self.transition is not None else self.theme.transition
+
+    @property
+    def effective_overlays(self) -> Sequence[Overlay]:
+        """Resolved default overlays: the deck value, else the theme's."""
+        return self.overlays if self.overlays is not None else self.theme.overlays
