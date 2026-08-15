@@ -84,15 +84,27 @@ class Nord(Theme):
 A full custom palette just names every field:
 `Palette(bg=..., text=..., accent=..., ...)`.
 
-## Color mode, font size, and transition
+## Color mode, font size, transition, and overlays
 
-Deck-level `mode`, `font_size`, and `transition` default to "defer to the theme".
+Deck-level `mode`, `font_size`, `transition`, and `overlays` default to
+"defer to the theme".
 Resolution runs **slide → deck → theme**:
 
 ```python
-Deck(theme=Nord())  # mode/size/transition come from Nord
+Deck(theme=Nord())  # mode/size/transition/overlays come from Nord
 Deck(theme=Nord(), mode=ColorMode.LIGHT)  # deck overrides the theme's mode
 ```
+
+`overlays` is how a theme ships its own branding.
+Set it on the theme class and every deck using that theme gets the chrome,
+with `Deck(overlays=[])` or `Slide(overlays=[])` opting back out:
+
+```python
+class Corporate(Theme):
+    overlays = [Overlay("theme:brand")]
+```
+
+See the [layout system guide](layout-system.md#overlays) for how overlays compose.
 
 `mode` sets the `data-theme` attribute the presenter reads:
 `ColorMode.DARK` leaves it empty (the `:root` palette applies) and
@@ -132,6 +144,7 @@ inkflow_themes/
   __init__.py     # class Nord(Theme): ...
   theme/
     layouts/*.svg   # optional — only layouts you add or override
+    overlays/*.svg  # optional — chrome referenced by Theme.overlays
     styles.css      # optional — CSS the token API doesn't cover
     fonts/*.woff2   # optional — bundled fonts
 ```

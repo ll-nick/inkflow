@@ -4,6 +4,7 @@ import hashlib
 import importlib.resources
 from copy import deepcopy
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -30,6 +31,25 @@ _FIXED_ROUTING_ZONES: frozenset[str] = frozenset(
 )
 
 
+# ── Asset kinds ───────────────────────────────────────────────────────────────
+
+
+class AssetKind(StrEnum):
+    """A composable SVG asset kind, and the directory it is searched in.
+
+    Layouts and overlays share one resolution grammar but live in separate
+    namespaces, so a bare name always means one or the other and never both.
+    """
+
+    LAYOUT = "layouts"
+    OVERLAY = "overlays"
+
+    @property
+    def singular(self) -> str:
+        """The kind as a singular noun, for user-facing messages."""
+        return self.value.removesuffix("s")
+
+
 # ── Built-in theme ───────────────────────────────────────────────────────────
 
 
@@ -52,10 +72,17 @@ def resolve_parent_path(
     base_dir: Path,
     project_root: Path | None,
     theme: Theme | None,
+    kind: AssetKind = AssetKind.LAYOUT,
 ) -> Path:
     """Resolve an inkflow:parent string to an absolute Path.
 
-    Prefix syntaxes (bypass the search):
+    ``kind`` selects the searched subdirectory, so overlays get the identical
+    grammar against ``overlays/`` instead of ``layouts/``. Keeping the namespaces
+    separate is what makes a bare name on an overlay fail loudly rather than
+    silently resolving to a layout, whose full-bleed background would paint over
+    the whole slide.
+
+    Prefix syntaxes (bypass the search), shown for the layout kind:
       local:foo      →  {project_root}/layouts/foo.svg   (requires project_root)
       theme:foo      →  {theme_dir}/layouts/foo.svg      (requires theme)
       builtin:foo    →  {builtin_theme_dir}/layouts/foo.svg
@@ -63,7 +90,7 @@ def resolve_parent_path(
       /absolute      →  literal filesystem path
 
     Bare single-part name (no prefix, no separator):
-      Three-level search: project layouts/ → theme layouts/ → built-in layouts/
+      Three-level search: project → theme → built-in.
       Levels are skipped when project_root or theme is None.
     Multi-part relative path (has /, no prefix):
       Relative to base_dir.
@@ -79,7 +106,7 @@ def resolve_parent_path(
                 f"local:{name} requires a project root. "
                 + "Use --deck to point to a project."
             )
-        resolved = _with_svg(project_root / "layouts" / name)
+        resolved = _with_svg(project_root / kind / name)
         if not resolved.exists():
             raise ValueError(f"local:{name} not found at {resolved}")
         return resolved
@@ -88,17 +115,17 @@ def resolve_parent_path(
         name = parent_str[len("theme:") :]
         if theme is None:
             raise ValueError(f"theme:{name} requires Deck(theme=...) to be set.")
-        resolved = _with_svg(theme.layouts_dir / name)
+        resolved = _with_svg(theme.asset_dir() / kind / name)
         if not resolved.exists():
             raise ValueError(f"theme:{name} not found at {resolved}")
         return resolved
 
     if parent_str.startswith("builtin:"):
         name = parent_str[len("builtin:") :]
-        resolved = _with_svg(builtin_theme_dir() / "layouts" / name)
+        resolved = _with_svg(builtin_theme_dir() / kind / name)
         if not resolved.exists():
             raise ValueError(
-                f"builtin:{name} not found — no built-in layout named '{name}'"
+                f"builtin:{name} not found — no built-in {kind.singular} named '{name}'"
             )
         return resolved
 
@@ -116,17 +143,19 @@ def resolve_parent_path(
     name = parent_str
     candidates: list[Path] = []
     if project_root is not None:
-        candidates.append(_with_svg(project_root / "layouts" / name))
+        candidates.append(_with_svg(project_root / kind / name))
     if theme is not None:
-        candidates.append(_with_svg(theme.layouts_dir / name))
-    candidates.append(_with_svg(builtin_theme_dir() / "layouts" / name))
+        candidates.append(_with_svg(theme.asset_dir() / kind / name))
+    candidates.append(_with_svg(builtin_theme_dir() / kind / name))
 
     for candidate in candidates:
         if candidate.exists():
             return candidate
 
     searched = "\n".join(f"  {c}" for c in candidates)
-    raise ValueError(f"Layout '{name}' not found. Searched:\n{searched}")
+    raise ValueError(
+        f"{kind.singular.capitalize()} '{name}' not found. Searched:\n{searched}"
+    )
 
 
 # ── Chain resolution ──────────────────────────────────────────────────────────
@@ -136,12 +165,16 @@ def resolve_chain(
     svg_path: Path,
     project_root: Path | None,
     theme: Theme | None,
+    kind: AssetKind = AssetKind.LAYOUT,
 ) -> list[Path]:
     """Return the ancestor chain for svg_path, root-first, excluding svg_path itself.
 
     Returns an empty list if the file has no inkflow:parent.
     Raises ValueError on circular chains or when a parent string requires context
     (project_root for local:, theme for theme:) that is not available.
+
+    ``kind`` is the namespace bare-name parents resolve in: an overlay inherits from
+    another overlay, never from a layout.
     """
     chain: list[Path] = []
     current = svg_path.resolve()
@@ -152,7 +185,7 @@ def resolve_chain(
         if parent_str is None:
             break
         parent_path = resolve_parent_path(
-            parent_str, current.parent, project_root, theme
+            parent_str, current.parent, project_root, theme, kind
         )
         if parent_path in visited:
             raise ValueError(f"Circular inkflow:parent chain detected at {parent_path}")
@@ -389,38 +422,52 @@ def resolve_default_zone(
     return ""
 
 
-def discover_layouts(
+def discover_assets(
+    kind: AssetKind,
     project_dir: Path | None,
     theme: Theme | None,
 ) -> list[tuple[str, Path]]:
-    """Return (source_label, layout_path) pairs from all available layout directories.
+    """Return (source_label, path) pairs from all available directories for a kind.
 
     Order: builtin → theme → local.
     """
     sources: list[tuple[str, Path]] = []
 
-    for p in sorted((builtin_theme_dir() / "layouts").glob("*.svg")):
-        sources.append(("builtin", p))
-
-    if theme is not None:
-        theme_layouts = theme.layouts_dir
-        if theme_layouts.is_dir():
-            for p in sorted(theme_layouts.glob("*.svg")):
-                sources.append(("theme", p))
-
-    if project_dir:
-        local_layouts = project_dir / "layouts"
-        if local_layouts.is_dir():
-            for p in sorted(local_layouts.glob("*.svg")):
-                sources.append(("local", p))
+    for label, base in (
+        ("builtin", builtin_theme_dir()),
+        ("theme", theme.asset_dir() if theme is not None else None),
+        ("local", project_dir),
+    ):
+        if base is None:
+            continue
+        directory = base / kind
+        if directory.is_dir():
+            sources.extend((label, p) for p in sorted(directory.glob("*.svg")))
 
     return sources
+
+
+def discover_layouts(
+    project_dir: Path | None,
+    theme: Theme | None,
+) -> list[tuple[str, Path]]:
+    """Return (source_label, path) pairs from every available layout directory."""
+    return discover_assets(AssetKind.LAYOUT, project_dir, theme)
+
+
+def discover_overlays(
+    project_dir: Path | None,
+    theme: Theme | None,
+) -> list[tuple[str, Path]]:
+    """Return (source_label, path) pairs from every available overlay directory."""
+    return discover_assets(AssetKind.OVERLAY, project_dir, theme)
 
 
 def layout_zones(
     layout_path: Path,
     project_dir: Path | None,
     theme: Theme | None,
+    kind: AssetKind = AssetKind.LAYOUT,
 ) -> LayoutInfo:
     """Return zone information for a layout after compositing ancestors.
 
@@ -429,7 +476,7 @@ def layout_zones(
     (those are indicated by ``numbered``).
     """
     root = clean_inkscape_tree(layout_path)
-    chain = resolve_chain(layout_path, project_dir, theme)
+    chain = resolve_chain(layout_path, project_dir, theme, kind)
     if chain:
         root = compose_with_ancestors(root, chain)
 

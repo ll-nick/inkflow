@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import NamedTuple, TypedDict, cast
@@ -16,7 +17,12 @@ from inkflow.content import (
     substitute_zone_numbers,
 )
 from inkflow.enums import AnimationKind, ColorMode, Direction, Trigger
-from inkflow.layout import resolve_chain, resolve_default_zone, resolve_parent_path
+from inkflow.layout import (
+    AssetKind,
+    resolve_chain,
+    resolve_default_zone,
+    resolve_parent_path,
+)
 from inkflow.loaders import load_md, load_notes, load_style
 from inkflow.logging import logger
 from inkflow.manifest import (
@@ -27,8 +33,9 @@ from inkflow.manifest import (
     TextBox,
     Video,
 )
+from inkflow.overlay import Overlay
 from inkflow.steps import StepResolver
-from inkflow.svg import compose_with_ancestors
+from inkflow.svg import compose_overlays, compose_with_ancestors, duplicate_zone_ids
 from inkflow.svgio import SvgElement, serialize_svg
 from inkflow.themes import Theme
 from inkflow.titles import humanize
@@ -103,6 +110,26 @@ def resolve_slide_src(src: str, project_dir: Path, theme: Theme | None = None) -
         if slides_candidate.exists():
             return slides_candidate
     return resolve_parent_path(src, project_dir, project_dir, theme)
+
+
+def resolve_overlay_chains(
+    overlays: Sequence[Overlay],
+    project_dir: Path,
+    theme: Theme | None = None,
+) -> list[list[Path]]:
+    """Resolve each overlay to a root-first path list, ``[*ancestors, overlay]``.
+
+    Bare names resolve in the overlay namespace at every level, including an
+    overlay's own ``inkflow:parent``, so chrome can only ever inherit chrome.
+    """
+    chains: list[list[Path]] = []
+    for overlay in overlays:
+        path = resolve_parent_path(
+            overlay.src, project_dir, project_dir, theme, AssetKind.OVERLAY
+        )
+        ancestors = resolve_chain(path, project_dir, theme, AssetKind.OVERLAY)
+        chains.append([*ancestors, path])
+    return chains
 
 
 # ── Animation / transition serialization ──────────────────────────────────────
@@ -385,15 +412,26 @@ def _scope_slide_styles(root: SvgElement, slide_number: int) -> SvgElement:
     return root
 
 
-def _add_layout_classes(root: SvgElement, chain: list[Path], src: Path) -> SvgElement:
-    """Add layout-<stem> classes to the SVG root for every entry in [*chain, src].
+def _add_layout_classes(
+    root: SvgElement,
+    chain: list[Path],
+    src: Path,
+    overlay_chains: list[list[Path]],
+) -> SvgElement:
+    """Add layout-<stem> and overlay-<stem> classes to the SVG root.
 
     This scopes CSS rules in styles.css to a slide type
-    (e.g. `.layout-cover #zone-title`)
+    (e.g. `.layout-cover #zone-title`). Every entry of an overlay's chain gets a
+    class, not just the leaf, so `.overlay-brand .rule` matches whichever variant
+    of that chrome is in play.
     """
-    existing = [c for c in root.get("class", "").split() if not c.startswith("layout-")]
-    new_classes = [f"layout-{p.stem}" for p in [*chain, src]]
-    root.set("class", " ".join(existing + new_classes))
+    prefixes = ("layout-", "overlay-")
+    existing = [c for c in root.get("class", "").split() if not c.startswith(prefixes)]
+    layout_classes = [f"layout-{p.stem}" for p in [*chain, src]]
+    overlay_classes = [
+        f"overlay-{p.stem}" for overlay in overlay_chains for p in overlay
+    ]
+    root.set("class", " ".join(existing + layout_classes + overlay_classes))
     return root
 
 
@@ -420,8 +458,14 @@ class SlideSvg:
         if chain:
             self.root = compose_with_ancestors(self.root, chain)
 
-    def tag_layout(self, chain: list[Path], src: Path) -> None:
-        self.root = _add_layout_classes(self.root, chain, src)
+    def compose_overlays(self, overlay_chains: list[list[Path]]) -> None:
+        if overlay_chains:
+            self.root = compose_overlays(self.root, overlay_chains)
+
+    def tag_layout(
+        self, chain: list[Path], src: Path, overlay_chains: list[list[Path]]
+    ) -> None:
+        self.root = _add_layout_classes(self.root, chain, src, overlay_chains)
 
     def number_slides(self, slide_number: int, total: int) -> None:
         self.root = substitute_zone_numbers(self.root, slide_number, total)
@@ -432,6 +476,9 @@ class SlideSvg:
             for el in self.root.iter()
             if (eid := el.get("id")) is not None and eid.startswith("zone-")
         }
+
+    def duplicate_zone_ids(self) -> list[str]:
+        return duplicate_zone_ids(self.root)
 
     def inject_content(
         self, content: dict[str, TextBox | Media], font_size: int, dark_mode: bool
@@ -462,6 +509,7 @@ class DeckContext:
     theme: Theme
     deck_style: str
     font_size: int  # deck default; a slide may override via Slide.font_size
+    overlays: Sequence[Overlay]  # deck default, already resolved against the theme
     mode: ColorMode
     total_slides: int
 
@@ -494,14 +542,23 @@ def process_slide(
     ctx: DeckContext,
     slide_number: int,
     parsed: ParsedMarkdown | None,
+    slide_id: str,
 ) -> tuple[str, str]:
     """Return the processed SVG string and the slide's markdown-derived notes."""
     src = resolve_slide_src(slide.src, ctx.project_dir, ctx.theme)
     chain = resolve_chain(src, ctx.project_dir, ctx.theme)
+    overlays = slide.overlays if slide.overlays is not None else ctx.overlays
+    overlay_chains = resolve_overlay_chains(overlays, ctx.project_dir, ctx.theme)
 
     doc = SlideSvg.cleaned(src)
     doc.compose_ancestors(chain)
-    doc.tag_layout(chain, src)
+    doc.compose_overlays(overlay_chains)
+    for zone_id in doc.duplicate_zone_ids():
+        logger.warning(
+            f"{slide_id}: {zone_id} is declared more than once after composition — "
+            + "zone ids must be unique across a slide and its overlays"
+        )
+    doc.tag_layout(chain, src, overlay_chains)
     doc.number_slides(slide_number, ctx.total_slides)
 
     md_notes = ""
@@ -550,6 +607,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         theme=deck.theme,
         deck_style=load_style(deck.style, project_dir),
         font_size=deck.effective_font_size,
+        overlays=deck.effective_overlays,
         mode=deck.effective_mode,
         total_slides=len(visible_slides),
     )
@@ -562,7 +620,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         parsed = parse_markdown_zones(md_text) if md_text is not None else None
         title = _infer_slide_title(slide, slide_id, parsed)
         explicit_notes = load_notes(slide.notes, project_dir)
-        svg, md_notes = process_slide(slide, ctx, i + 1, parsed)
+        svg, md_notes = process_slide(slide, ctx, i + 1, parsed, slide_id)
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
     logger.info(f"processed {len(results)} slide(s)")

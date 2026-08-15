@@ -5,6 +5,7 @@ from pathlib import Path
 
 from inkflow.animations import FadeIn, PlayVideo
 from inkflow.manifest import Image, Slide, Video
+from inkflow.overlay import Overlay
 from inkflow.verify import verify_slide
 
 _LAYOUT_SVG = textwrap.dedent("""\
@@ -239,3 +240,78 @@ class TestVerifyDefaultZone:
         slide = Slide(str(layout), md=str(md))
         issues = verify_slide(slide, tmp_path, None, "")
         assert not any("inkflow:default-zone" in msg for _, msg in issues)
+
+
+class TestVerifyOverlays:
+    def _overlay(self, tmp_path: Path, name: str, body: str, attrs: str = "") -> None:
+        overlays = tmp_path / "overlays"
+        overlays.mkdir(parents=True, exist_ok=True)
+        namespaces = 'xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow"'
+        size = 'viewBox="0 0 1920 1080" width="1920" height="1080"'
+        (overlays / f"{name}.svg").write_text(
+            f"<svg {namespaces} {size} {attrs}>{body}</svg>",
+            encoding="utf-8",
+        )
+
+    def test_overlay_zone_is_not_reported_missing(self, tmp_path: Path) -> None:
+        _setup(tmp_path)
+        self._overlay(
+            tmp_path, "footer", '<rect id="zone-note" width="10" height="10"/>'
+        )
+        slide = Slide(
+            "slides/01-title.svg",
+            zones={"note": "hi"},
+            overlays=[Overlay("footer")],
+        )
+        assert verify_slide(slide, tmp_path, None, "") == []
+
+    def test_overlay_animation_target_is_not_reported_missing(
+        self, tmp_path: Path
+    ) -> None:
+        _setup(tmp_path)
+        self._overlay(tmp_path, "footer", '<g id="badge"/>')
+        slide = Slide(
+            "slides/01-title.svg",
+            animations=[FadeIn("badge")],
+            overlays=[Overlay("footer")],
+        )
+        assert verify_slide(slide, tmp_path, None, "") == []
+
+    def test_opaque_overlay_is_error(self, tmp_path: Path) -> None:
+        _setup(tmp_path)
+        self._overlay(tmp_path, "solid", '<rect width="1920" height="1080"/>')
+        slide = Slide("slides/01-title.svg", overlays=[Overlay("solid")])
+        issues = verify_slide(slide, tmp_path, None, "")
+        assert any(level == "error" and "full-canvas" in msg for level, msg in issues)
+
+    def test_opaque_overlay_named_via_its_parent(self, tmp_path: Path) -> None:
+        # The offending file is the ancestor, so the message must name it, not the leaf.
+        self._overlay(tmp_path, "solid", '<rect width="1920" height="1080"/>')
+        self._overlay(tmp_path, "chrome", '<g id="badge"/>', 'inkflow:parent="solid"')
+        _setup(tmp_path)
+        slide = Slide("slides/01-title.svg", overlays=[Overlay("chrome")])
+        issues = verify_slide(slide, tmp_path, None, "")
+        assert any("solid.svg" in msg for _, msg in issues)
+
+    def test_zone_collision_is_warning(self, tmp_path: Path) -> None:
+        _setup(tmp_path)
+        self._overlay(
+            tmp_path, "footer", '<rect id="zone-media" width="10" height="10"/>'
+        )
+        slide = Slide("slides/01-title.svg", overlays=[Overlay("footer")])
+        issues = verify_slide(slide, tmp_path, None, "")
+        assert any(level == "warn" and "zone-media" in msg for level, msg in issues)
+
+    def test_deck_overlays_used_when_slide_sets_none(self, tmp_path: Path) -> None:
+        _setup(tmp_path)
+        self._overlay(tmp_path, "solid", '<rect width="1920" height="1080"/>')
+        slide = Slide("slides/01-title.svg")
+        issues = verify_slide(slide, tmp_path, None, "", [Overlay("solid")])
+        assert any("full-canvas" in msg for _, msg in issues)
+
+    def test_slide_opt_out_beats_deck_overlays(self, tmp_path: Path) -> None:
+        _setup(tmp_path)
+        self._overlay(tmp_path, "solid", '<rect width="1920" height="1080"/>')
+        slide = Slide("slides/01-title.svg", overlays=[])
+        issues = verify_slide(slide, tmp_path, None, "", [Overlay("solid")])
+        assert not any("full-canvas" in msg for _, msg in issues)

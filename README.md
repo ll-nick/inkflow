@@ -41,15 +41,28 @@ Your source files are SVG, Markdown, and Python: open formats, plain text, not t
 A deck is a plain Python file:
 
 ```python
-from inkflow import Deck, Image, MediaFit, Slide, Video, animations, transitions
+from inkflow import (
+    Deck,
+    Image,
+    MediaFit,
+    Overlay,
+    Slide,
+    Video,
+    animations,
+    transitions,
+)
 
 
 def main() -> Deck:
     return Deck(
+        # Chrome composited on top of every slide, whatever layout it uses
+        overlays=[Overlay("footer")],
         slides=[
             # SVG slide: draw freely in Inkscape, animate elements by id
             Slide(
                 "title.svg",
+                # Opt a single slide out of the deck's chrome
+                overlays=[],
                 # Each cue's Trigger decides when it fires (default: on next click)
                 animations=[
                     animations.FadeIn("headline"),
@@ -80,7 +93,7 @@ def main() -> Deck:
                 md="clip.md",
                 zones={"media": Video("assets/demo.mp4", autoplay=True, loop=True)},
             ),
-        ]
+        ],
     )
 ```
 

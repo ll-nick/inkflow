@@ -23,6 +23,7 @@ from inkflow.manifest import (
     Video,
     ZoneContent,
 )
+from inkflow.overlay import Overlay
 from inkflow.themes import Palette, Theme, Typography
 from inkflow.transitions import Transition
 
@@ -41,6 +42,7 @@ __all__ = [
     "MediaAlign",
     "MediaFit",
     "Muted",
+    "Overlay",
     "Palette",
     "Slide",
     "TextBox",

@@ -9,9 +9,11 @@ from lxml import etree
 
 from inkflow import ns
 from inkflow.layout import (
+    AssetKind,
     LayoutInfo,
     create_slide,
     discover_layouts,
+    discover_overlays,
     inject_layout_layers,
     is_layout_current,
     layout_zones,
@@ -354,3 +356,83 @@ class TestCreateSlide:
     def test_unresolvable_parent_raises(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
             create_slide("local:missing", tmp_path / "child.svg", tmp_path, None)
+
+
+# ── Overlay namespace ─────────────────────────────────────────────────────────
+
+
+class TestOverlayResolution:
+    """The overlay kind resolves the same grammar against ``overlays/``.
+
+    Keeping the two namespaces apart is what stops a bare name on an overlay from
+    silently picking up a layout, whose full-bleed background would hide the slide.
+    """
+
+    def _overlay(self, root: Path, name: str) -> Path:
+        path = root / "overlays" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_SIMPLE_SVG, encoding="utf-8")
+        return path
+
+    def test_bare_name_found_in_project_overlays(self, tmp_path: Path) -> None:
+        overlay = self._overlay(tmp_path, "footer.svg")
+        result = resolve_parent_path(
+            "footer", tmp_path, tmp_path, None, AssetKind.OVERLAY
+        )
+        assert result == overlay.resolve()
+
+    def test_local_prefix(self, tmp_path: Path) -> None:
+        overlay = self._overlay(tmp_path, "footer.svg")
+        result = resolve_parent_path(
+            "local:footer", tmp_path, tmp_path, None, AssetKind.OVERLAY
+        )
+        assert result == overlay.resolve()
+
+    def test_theme_prefix(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        theme_dir = tmp_path / "themes" / "my-theme"
+        overlay = self._overlay(theme_dir, "brand.svg")
+        result = resolve_parent_path(
+            "theme:brand", tmp_path, tmp_path, dir_theme(theme_dir), AssetKind.OVERLAY
+        )
+        assert result == overlay.resolve()
+
+    def test_layout_not_reachable_by_bare_name(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layouts" / "default.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_SIMPLE_SVG, encoding="utf-8")
+        with pytest.raises(ValueError, match="Overlay 'default' not found"):
+            resolve_parent_path("default", tmp_path, tmp_path, None, AssetKind.OVERLAY)
+
+    def test_relative_path_still_escapes_the_namespace(self, tmp_path: Path) -> None:
+        # The escape hatch stays open: an explicit path resolves wherever it points.
+        target = tmp_path / "chrome" / "footer.svg"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(_SIMPLE_SVG, encoding="utf-8")
+        result = resolve_parent_path(
+            "./chrome/footer", tmp_path, tmp_path, None, AssetKind.OVERLAY
+        )
+        assert result == target.resolve()
+
+    def test_chain_stays_in_overlay_namespace(self, tmp_path: Path) -> None:
+        self._overlay(tmp_path, "brand.svg")
+        child = tmp_path / "overlays" / "footer.svg"
+        child.write_text(
+            _SIMPLE_SVG.replace("<svg", '<svg inkflow:parent="brand"', 1),
+            encoding="utf-8",
+        )
+        chain = resolve_chain(child, tmp_path, None, AssetKind.OVERLAY)
+        assert [p.stem for p in chain] == ["brand"]
+
+
+class TestDiscoverOverlays:
+    def test_finds_project_overlays(self, tmp_path: Path) -> None:
+        overlays = tmp_path / "overlays"
+        overlays.mkdir()
+        (overlays / "footer.svg").write_text(_SIMPLE_SVG, encoding="utf-8")
+        found = discover_overlays(tmp_path, None)
+        assert ("local", (overlays / "footer.svg")) in found
+
+    def test_empty_without_overlays_dir(self, tmp_path: Path) -> None:
+        assert discover_overlays(tmp_path, None) == []
