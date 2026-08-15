@@ -128,6 +128,10 @@
     }
     return states;
   }
+  function effectEndMs(cue) {
+    const { duration, delay, iterations } = cue.opts;
+    return Math.max(0, delay) * 1e3 + Math.max(0, duration) * (iterations ?? 1) * 1e3;
+  }
   function ensureAnim(el, st) {
     if (!st.anim) {
       const { name, vars, opts } = st.cue;
@@ -136,7 +140,7 @@
         delay: Math.max(0, opts.delay * 1e3),
         easing: opts.easing || "linear",
         iterations: opts.iterations ?? 1,
-        fill: "forwards"
+        fill: "both"
       });
       anim.pause();
       st.anim = anim;
@@ -151,53 +155,42 @@
     } catch {
     }
   }
-  function elementActions(cues, step, prev, instant) {
-    const governing = (at) => {
-      let idx = -1;
-      cues.forEach((c, i) => {
-        if (c.kind !== "emphasis" && c.step <= at) idx = i;
-      });
-      return idx;
-    };
-    const gov = governing(step);
-    const govPrev = governing(prev);
-    return cues.map((cue, i) => {
-      if (cue.kind === "emphasis") {
-        const crossedForward = !instant && step > prev && cue.step > prev && cue.step <= step;
-        if (crossedForward) return "emphasis";
-        return instant ? "cancel" : "idle";
-      }
-      if (i === gov) {
-        return !instant && step > prev && cue.step === step ? "forward" : "hold";
-      }
-      if (!instant && i === govPrev && govPrev > gov) return "reverse";
-      return "cancel";
+  function restingActions(cues, step) {
+    let gov = -1;
+    cues.forEach((c, i) => {
+      if (c.kind !== "emphasis" && c.step <= step) gov = i;
     });
+    return cues.map((_, i) => i === gov ? "hold" : "cancel");
   }
-  function applyAction(el, st, action) {
-    switch (action) {
-      case "forward":
-      case "emphasis": {
+  function buildStepRun(root, fromStep, toStep) {
+    const forward = toStep >= fromStep;
+    const runStep = Math.max(fromStep, toStep);
+    const items = [];
+    root.querySelectorAll("[data-cues]").forEach((el) => {
+      for (const st of cueStates(el)) {
+        if (st.cue.step !== runStep) continue;
         const anim = ensureAnim(el, st);
-        anim.cancel();
-        anim.playbackRate = 1;
-        anim.play();
-        break;
+        anim.pause();
+        items.push({
+          anim,
+          offsetMs: Math.max(0, st.cue.offset) * 1e3,
+          spanMs: effectEndMs(st.cue)
+        });
       }
-      case "reverse": {
-        const anim = ensureAnim(el, st);
-        anim.playbackRate = -1;
-        anim.play();
-        break;
-      }
-      case "hold":
-        holdAtEnd(ensureAnim(el, st));
-        break;
-      case "cancel":
-        st.anim?.cancel();
-        break;
-      case "idle":
-        break;
+    });
+    const totalMs = items.reduce(
+      (m, it) => Math.max(m, it.offsetMs + it.spanMs),
+      0
+    );
+    return { items, totalMs, forward, toStep };
+  }
+  function seekStepRun(run, value) {
+    const runTimeMs = value * run.totalMs;
+    for (const it of run.items) {
+      it.anim.currentTime = Math.min(
+        Math.max(runTimeMs - it.offsetMs, 0),
+        it.spanMs
+      );
     }
   }
   function applyCodeHighlights(root, step) {
@@ -216,6 +209,9 @@
         if (!hasHL) line.classList.remove("hl-active", "hl-dim");
       });
     });
+  }
+  function appliedStep(root) {
+    return rootStep.get(root) ?? 0;
   }
   function maxStep(root) {
     let m = 0;
@@ -236,23 +232,6 @@
     });
     return m;
   }
-  function applyStep(root, step) {
-    const prev = rootStep.get(root) ?? 0;
-    root.querySelectorAll("[data-cues]").forEach((el) => {
-      const states = cueStates(el);
-      const actions = elementActions(
-        states.map((s) => s.cue),
-        step,
-        prev,
-        false
-      );
-      states.forEach((st, i) => {
-        applyAction(el, st, actions[i]);
-      });
-    });
-    applyCodeHighlights(root, step);
-    rootStep.set(root, step);
-  }
   function commitStepStyles(root) {
     if (typeof root.getAnimations !== "function") return;
     for (const anim of root.getAnimations({ subtree: true })) {
@@ -265,14 +244,13 @@
   function applyStepInstant(root, step) {
     root.querySelectorAll("[data-cues]").forEach((el) => {
       const states = cueStates(el);
-      const actions = elementActions(
+      const actions = restingActions(
         states.map((s) => s.cue),
-        step,
-        step,
-        true
+        step
       );
       states.forEach((st, i) => {
-        applyAction(el, st, actions[i]);
+        if (actions[i] === "hold") holdAtEnd(ensureAnim(el, st));
+        else st.anim?.cancel();
       });
     });
     applyCodeHighlights(root, step);
@@ -293,6 +271,41 @@
     ws: null,
     _syncingFromServer: false,
     _laserMode: false
+  };
+
+  // src/ts/presenter/progress-driver.ts
+  var ProgressDriver = class {
+    value = 0;
+    // The end the most recent animateTo is travelling toward. Callers read this to
+    // decide which way a reversal should go.
+    heading = 1;
+    animateTo(target, durationSeconds, signal, onFrame) {
+      this.heading = target;
+      const ratePerMillisecond = 1 / (durationSeconds * 1e3);
+      return new Promise((resolve) => {
+        let lastTimestamp = null;
+        const step = (timestamp) => {
+          if (signal.aborted) {
+            resolve();
+            return;
+          }
+          if (lastTimestamp === null) lastTimestamp = timestamp;
+          const direction = target >= this.value ? 1 : -1;
+          this.value += direction * ratePerMillisecond * (timestamp - lastTimestamp);
+          lastTimestamp = timestamp;
+          const reachedTarget = direction === 1 && this.value >= target || direction === -1 && this.value <= target;
+          if (reachedTarget) {
+            this.value = target;
+            onFrame(this.value);
+            resolve();
+            return;
+          }
+          onFrame(this.value);
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+    }
   };
 
   // src/ts/presenter/video.ts
@@ -379,12 +392,90 @@
     maxStepIndex = state.slideIndex;
     return maxStepValue;
   }
-  function applyCurrentStep() {
-    applyStep(stage, state.step);
-    syncVideos(stage, state.step);
+  var runController = null;
+  var runDriver = null;
+  var runRun = null;
+  var runTo = 0;
+  var runForward = true;
+  function inflightStepDirection() {
+    if (!runController) return null;
+    return runForward ? "forward" : "backward";
+  }
+  function driveRun() {
+    const ctrl = new AbortController();
+    runController = ctrl;
+    const driver = runDriver;
+    const run = runRun;
+    const to = runTo;
+    void driver.animateTo(
+      runForward ? 1 : 0,
+      run.totalMs / 1e3,
+      ctrl.signal,
+      (v) => seekStepRun(run, v)
+    ).then(() => {
+      if (ctrl.signal.aborted) return;
+      if (runController === ctrl) {
+        runController = null;
+        runDriver = null;
+        runRun = null;
+      }
+      applyStepInstant(stage, to);
+      updateStatus();
+    });
+  }
+  function landRun() {
+    if (!runController) return;
+    runController.abort();
+    runController = null;
+    runDriver = null;
+    runRun = null;
+    applyStepInstant(stage, runTo);
+    syncVideos(stage, runTo);
+  }
+  function snapStepRun() {
+    if (!runController) return;
+    landRun();
     updateStatus();
   }
+  function reverseStepRun() {
+    if (!runController || !runDriver || !runRun) return false;
+    const nextTo = runForward ? runTo - 1 : runTo + 1;
+    if (nextTo < 0) return false;
+    runController.abort();
+    runForward = !runForward;
+    runTo = nextTo;
+    state.step = runTo;
+    applyCodeHighlights(stage, runTo);
+    syncVideos(stage, runTo);
+    updateStatus();
+    driveRun();
+    return true;
+  }
+  function settleStepRun() {
+    landRun();
+  }
+  function applyCurrentStep() {
+    landRun();
+    const from = appliedStep(stage);
+    const to = state.step;
+    applyCodeHighlights(stage, to);
+    syncVideos(stage, to);
+    const run = buildStepRun(stage, from, to);
+    if (run.totalMs <= 0 || from === to) {
+      applyStepInstant(stage, to);
+      updateStatus();
+      return;
+    }
+    runRun = run;
+    runDriver = new ProgressDriver();
+    runDriver.value = run.forward ? 0 : 1;
+    runTo = to;
+    runForward = run.forward;
+    updateStatus();
+    driveRun();
+  }
   function applyCurrentStepInstant() {
+    landRun();
     applyStepInstant(stage, state.step);
     syncVideos(stage, state.step);
     updateStatus();
@@ -718,41 +809,6 @@
     if (scaleX === 0) return Math.hypot(m.c, m.d);
     return Math.abs(m.a * m.d - m.b * m.c) / scaleX;
   }
-
-  // src/ts/presenter/progress-driver.ts
-  var ProgressDriver = class {
-    value = 0;
-    // The end the most recent animateTo is travelling toward. Callers read this to
-    // decide which way a reversal should go.
-    heading = 1;
-    animateTo(target, durationSeconds, signal, onFrame) {
-      this.heading = target;
-      const ratePerMillisecond = 1 / (durationSeconds * 1e3);
-      return new Promise((resolve) => {
-        let lastTimestamp = null;
-        const step = (timestamp) => {
-          if (signal.aborted) {
-            resolve();
-            return;
-          }
-          if (lastTimestamp === null) lastTimestamp = timestamp;
-          const direction = target >= this.value ? 1 : -1;
-          this.value += direction * ratePerMillisecond * (timestamp - lastTimestamp);
-          lastTimestamp = timestamp;
-          const reachedTarget = direction === 1 && this.value >= target || direction === -1 && this.value <= target;
-          if (reachedTarget) {
-            this.value = target;
-            onFrame(this.value);
-            resolve();
-            return;
-          }
-          onFrame(this.value);
-          requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      });
-    }
-  };
 
   // src/ts/presenter/morph.ts
   var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
@@ -1578,15 +1634,21 @@
   registerProgressTransition("fade", fadeRender);
   registerProgressTransition("wipe", wipeRender);
   registerTransition("morph", () => new MorphTransition());
-  function loadSlide(then = null, transition = null) {
+  function loadSlide(then = null, transition = null, entryPlay = false) {
+    settleStepRun();
     const params = transition ?? state.transitions[state.slideIndex] ?? CUT;
+    const entering = entryPlay && params.type !== "cut" && !params.reverse;
     const settleContent = () => {
       applyCurrentStepInstant();
       updateStatus();
     };
+    const initialLand = entering ? () => {
+      applyStepInstant(stage2, state.step - 1);
+      updateStatus();
+    } : settleContent;
     const swap = () => {
       stage2.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
-      settleContent();
+      initialLand();
     };
     const canReverse = liveInstance?.reverse != null && liveParams != null && liveParams.type === params.type && Boolean(liveParams.reverse) !== Boolean(params.reverse);
     if (canReverse) {
@@ -1626,6 +1688,7 @@
     const makeTransition = registry.get(params.type);
     if (!makeTransition) {
       swap();
+      if (entering) applyCurrentStep();
       then?.();
       return;
     }
@@ -1650,7 +1713,10 @@
     liveParams = params;
     liveSettle = settle;
     swap();
-    inst.start({ stage: stage2, params, signal: ctrl.signal }).then(() => settle(true)).catch(() => settle(false));
+    inst.start({ stage: stage2, params, signal: ctrl.signal }).then(() => {
+      if (entering && !ctrl.signal.aborted) applyCurrentStep();
+      settle(true);
+    }).catch(() => settle(false));
   }
 
   // src/ts/presenter/ui.ts
@@ -1910,6 +1976,7 @@
         if (!receives()) return;
         if (msg.snap) {
           snapInflight();
+          snapStepRun();
           return;
         }
         if (firstPositionPending) {
@@ -2115,6 +2182,23 @@
     return true;
   }
   function advance() {
+    const runDir = inflightStepDirection();
+    if (runDir === "forward") {
+      snapStepRun();
+      sendSnap();
+      return;
+    }
+    if (runDir === "backward") {
+      if (reverseStepRun()) {
+        renderPvNext();
+        updatePvInfo();
+        sendNav();
+      } else {
+        snapStepRun();
+        sendSnap();
+      }
+      return;
+    }
     if (inflightDirection() === "forward") {
       snapInflight();
       sendSnap();
@@ -2128,12 +2212,29 @@
     } else if (state.slideIndex < state.slides.length - 1) {
       state.slideIndex++;
       state.step = 0;
-      loadSlide();
+      loadSlide(null, null, true);
       renderPv();
     }
     sendNav();
   }
   function retreat() {
+    const runDir = inflightStepDirection();
+    if (runDir === "backward") {
+      snapStepRun();
+      sendSnap();
+      return;
+    }
+    if (runDir === "forward") {
+      if (reverseStepRun()) {
+        renderPvNext();
+        updatePvInfo();
+        sendNav();
+      } else {
+        snapStepRun();
+        sendSnap();
+      }
+      return;
+    }
     if (inflightDirection() === "backward") {
       snapInflight();
       sendSnap();
@@ -2160,7 +2261,7 @@
     if (state.slideIndex < state.slides.length - 1) {
       state.slideIndex++;
       state.step = 0;
-      loadSlide();
+      loadSlide(null, null, true);
       renderPv();
     }
     sendNav();
