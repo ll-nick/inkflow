@@ -1,14 +1,18 @@
 import { buildKeyframes } from "./keyframes";
 
 // The step engine. Every animated element carries a `data-cues` JSON array (written by
-// pipeline.py). Each cue becomes one Web Animations API animation, and the engine drives
-// those animations by step: enters reveal, exits hide, emphasis pulses. Because each cue
-// is its own animation, an element can enter, be emphasized, and exit at different steps,
-// reverse is a real backward play (a true time-mirror), and per-cue params never collide.
+// pipeline.py). Each cue becomes one paused Web Animations API animation that the engine
+// drives by SEEKING its `currentTime` — setting the playback position directly, never
+// letting it run on the wall clock. A step's cues form one "run" laid out over a shared
+// timeline (each cue at its `offset`), and the presenter walks a single 0→1 progress value
+// across that run (see status.ts). Because the whole run is one scalar, reverse is the value
+// gliding back and a snap is the value jumping to its end — exactly like the slide
+// transitions. At rest, the governing enter/exit cue owns visibility, so the held state
+// never depends on WAAPI composite order.
 
 interface CueOpts {
     duration: number; // seconds
-    delay: number; // seconds
+    delay: number; // seconds — a real WAAPI before-phase the run seeks through
     easing: string;
     iterations?: number;
 }
@@ -17,6 +21,7 @@ interface CueData {
     step: number;
     kind: "enter" | "exit" | "emphasis";
     name: string;
+    offset: number; // seconds from its run's start where this cue's slot begins
     opts: CueOpts;
     vars: Record<string, string>;
 }
@@ -50,17 +55,29 @@ function cueStates(el: Element): CueState[] {
     return states;
 }
 
+// The effect's natural end in ms: delay + duration·iterations. A run never seeks past it,
+// and the resting hold lands exactly on it.
+function effectEndMs(cue: CueData): number {
+    const { duration, delay, iterations } = cue.opts;
+    return (
+        Math.max(0, delay) * 1000 +
+        Math.max(0, duration) * (iterations ?? 1) * 1000
+    );
+}
+
 function ensureAnim(el: Element, st: CueState): Animation {
     if (!st.anim) {
         const { name, vars, opts } = st.cue;
         // The cue `name` is the type slug (`fade-in`); the keyframes rule is
-        // `@keyframes anim-<slug>` (`anim-fade-in`), so prefix it here.
+        // `@keyframes anim-<slug>` (`anim-fade-in`), so prefix it here. `fill: both` so a
+        // a sought `currentTime` paints a deterministic frame at any point, including the
+        // `delay` before-phase (the from-frame).
         const anim = el.animate(buildKeyframes(`anim-${name}`, vars), {
             duration: Math.max(0, opts.duration * 1000),
             delay: Math.max(0, opts.delay * 1000),
             easing: opts.easing || "linear",
             iterations: opts.iterations ?? 1,
-            fill: "forwards",
+            fill: "both",
         });
         anim.pause();
         st.anim = anim;
@@ -78,87 +95,96 @@ function holdAtEnd(anim: Animation): void {
     }
 }
 
-// ── Decision (pure) ─────────────────────────────────────────────────────────────
+// ── Resting decision (pure) ─────────────────────────────────────────────────────
 
-// What the engine should do with a cue at `step`.
-export type CueAction =
-    | "forward" // enter/exit: play in to reveal/hide
-    | "reverse" // enter/exit: play back to un-reveal/un-hide
-    | "hold" // enter/exit: sit at the resting end state
-    | "emphasis" // emphasis: fire once
-    | "cancel" // assert nothing
-    | "idle"; // leave as-is
+// What the engine should do with a cue when the slide sits at rest on `step`.
+export type RestingAction =
+    | "hold" // enter/exit: sit at the resting end state (the governing cue)
+    | "cancel"; // assert nothing
 
-// Decide an action for every cue on one element, given the target step, the previously
-// applied step, and whether this is an instant landing (load / jump / backward entry) vs a
-// sequential move. Visibility is owned by the *governing* enter/exit cue — the last whose
-// step is reached — so at most one enter/exit ever asserts the element's state and the
-// result never depends on WAAPI composite order across several held animations. A single
-// step back across the governing boundary plays the outgoing cue in reverse; it lands on
-// its start frame (which equals the new governing cue's resting value) and is cancelled by
-// the next step. Pure, so the whole rule is unit-testable. `cues` are in step order.
-export function elementActions(
+// Decide the resting action for every cue on one element at `step`. Visibility is owned by
+// the *governing* enter/exit cue — the last whose step is reached — held at its end; every
+// other enter/exit, and every emphasis, asserts nothing (cancel). Pure, so the whole rule
+// is unit-testable. `cues` are in step order.
+export function restingActions(
     cues: readonly Pick<CueData, "kind" | "step">[],
     step: number,
-    prev: number,
-    instant: boolean,
-): CueAction[] {
-    const governing = (at: number): number => {
-        let idx = -1;
-        cues.forEach((c, i) => {
-            if (c.kind !== "emphasis" && c.step <= at) idx = i;
-        });
-        return idx;
-    };
-    const gov = governing(step);
-    const govPrev = governing(prev);
-    return cues.map((cue, i): CueAction => {
-        if (cue.kind === "emphasis") {
-            const crossedForward =
-                !instant && step > prev && cue.step > prev && cue.step <= step;
-            if (crossedForward) return "emphasis";
-            return instant ? "cancel" : "idle";
-        }
-        if (i === gov) {
-            return !instant && step > prev && cue.step === step
-                ? "forward"
-                : "hold";
-        }
-        if (!instant && i === govPrev && govPrev > gov) return "reverse";
-        return "cancel";
+): RestingAction[] {
+    let gov = -1;
+    cues.forEach((c, i) => {
+        if (c.kind !== "emphasis" && c.step <= step) gov = i;
     });
+    return cues.map((_, i): RestingAction => (i === gov ? "hold" : "cancel"));
 }
 
-function applyAction(el: Element, st: CueState, action: CueAction): void {
-    switch (action) {
-        case "forward":
-        case "emphasis": {
+// ── Step run (animated, seek-driven) ────────────────────────────────────────────
+
+// One cue enlisted in a run: its animation plus its slot on the run timeline (ms).
+interface RunItem {
+    anim: Animation;
+    offsetMs: number; // where the cue's slot begins within the run
+    spanMs: number; // the cue's own effect length (delay + duration·iterations)
+}
+
+// A step's cues laid out as a single seekable timeline. `totalMs` is the run's length;
+// `forward` is the travel direction (true 0→1, false 1→0); `toStep` is the destination stop.
+export interface StepRun {
+    items: RunItem[];
+    totalMs: number;
+    forward: boolean;
+    toStep: number;
+}
+
+// Build the run played when moving between `fromStep` and `toStep` (always adjacent stops).
+// The run is the cues introduced at the higher stop, each placed at its `offset`; seeking
+// the run forward reveals them staggered and backward mirrors it. An empty run (totalMs 0)
+// means nothing animates and the caller should land instantly.
+export function buildStepRun(
+    root: Element,
+    fromStep: number,
+    toStep: number,
+): StepRun {
+    const forward = toStep >= fromStep;
+    const runStep = Math.max(fromStep, toStep);
+    const items: RunItem[] = [];
+    root.querySelectorAll("[data-cues]").forEach((el) => {
+        for (const st of cueStates(el)) {
+            if (st.cue.step !== runStep) continue;
             const anim = ensureAnim(el, st);
-            anim.cancel(); // restart from the `from` frame
-            anim.playbackRate = 1;
-            anim.play();
-            break;
+            anim.pause(); // a previously-held cue is finished/running — pause so a
+            // sought currentTime holds instead of the effect advancing on its own.
+            items.push({
+                anim,
+                offsetMs: Math.max(0, st.cue.offset) * 1000,
+                spanMs: effectEndMs(st.cue),
+            });
         }
-        case "reverse": {
-            const anim = ensureAnim(el, st);
-            anim.playbackRate = -1;
-            anim.play();
-            break;
-        }
-        case "hold":
-            holdAtEnd(ensureAnim(el, st));
-            break;
-        case "cancel":
-            st.anim?.cancel();
-            break;
-        case "idle":
-            break;
+    });
+    const totalMs = items.reduce(
+        (m, it) => Math.max(m, it.offsetMs + it.spanMs),
+        0,
+    );
+    return { items, totalMs, forward, toStep };
+}
+
+// Paint the run at progress `value` (0..1) by seeking each cue: its `currentTime` is the run
+// time minus its slot offset, clamped to its own span. Cues whose slot has not begun sit at
+// their from-frame; cues past their end sit held. Setting `currentTime` on an idle
+// (cancelled) animation re-activates it paused at that frame, so a run picks up cancelled
+// enters cleanly.
+export function seekStepRun(run: StepRun, value: number): void {
+    const runTimeMs = value * run.totalMs;
+    for (const it of run.items) {
+        it.anim.currentTime = Math.min(
+            Math.max(runTimeMs - it.offsetMs, 0),
+            it.spanMs,
+        );
     }
 }
 
 // ── Code-fence highlight stages (unchanged) ─────────────────────────────────────
 
-function applyCodeHighlights(root: Element, step: number): void {
+export function applyCodeHighlights(root: Element, step: number): void {
     root.querySelectorAll<HTMLElement>(
         ".inkflow-codeblock[data-hl-spec][data-base-step]",
     ).forEach((block) => {
@@ -178,6 +204,12 @@ function applyCodeHighlights(root: Element, step: number): void {
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────────
+
+// The last step the engine applied to this root (0 before anything). status.ts reads it to
+// know where a run starts from.
+export function appliedStep(root: Element): number {
+    return rootStep.get(root) ?? 0;
+}
 
 // The highest step in a slide: the max across every element's cues, plus a video's
 // play-on-step and code-highlight stages. A pure function of the markup, so it works on a
@@ -202,27 +234,6 @@ export function maxStep(root: Element): number {
     return m;
 }
 
-// Advance the slide to `step`, animating the change. Direction (forward vs backward) is
-// inferred from the last step applied to this root, so a single forward press reveals and
-// a single back press mirrors it in reverse.
-export function applyStep(root: Element, step: number): void {
-    const prev = rootStep.get(root) ?? 0;
-    root.querySelectorAll("[data-cues]").forEach((el) => {
-        const states = cueStates(el);
-        const actions = elementActions(
-            states.map((s) => s.cue),
-            step,
-            prev,
-            false,
-        );
-        states.forEach((st, i) => {
-            applyAction(el, st, actions[i]);
-        });
-    });
-    applyCodeHighlights(root, step);
-    rootStep.set(root, step);
-}
-
 // Bake each element's currently-held animation values into its inline style. The step
 // state is held by live WAAPI animation objects, which a DOM snapshot (a transition
 // capturing innerHTML, or cloning nodes) does not carry — without this the outgoing slide
@@ -239,20 +250,19 @@ export function commitStepStyles(root: Element): void {
     }
 }
 
-// Land on `step`'s resting state with no visible playback: reached enters/exits hold their
-// end, everything else asserts nothing, and emphasis never fires. Used for load, jumps,
-// overview thumbnails, and backward slide entry.
+// Land on `step`'s resting state with no visible playback: the governing enter/exit holds
+// its end, everything else asserts nothing, and code highlights switch. Used for load,
+// jumps, overview thumbnails, backward slide entry, and to settle the end of a run.
 export function applyStepInstant(root: Element, step: number): void {
     root.querySelectorAll("[data-cues]").forEach((el) => {
         const states = cueStates(el);
-        const actions = elementActions(
+        const actions = restingActions(
             states.map((s) => s.cue),
             step,
-            step,
-            true,
         );
         states.forEach((st, i) => {
-            applyAction(el, st, actions[i]);
+            if (actions[i] === "hold") holdAtEnd(ensureAnim(el, st));
+            else st.anim?.cancel();
         });
     });
     applyCodeHighlights(root, step);
