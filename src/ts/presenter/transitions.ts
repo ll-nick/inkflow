@@ -1,10 +1,15 @@
 import { cubicBezierEasing } from "../shared/easing";
-import { commitStepStyles } from "../shared/step";
+import { applyStepInstant, commitStepStyles } from "../shared/step";
 import type { TransitionData } from "../shared/types";
 import { MorphTransition } from "./morph";
 import { ProgressDriver } from "./progress-driver";
 import { state } from "./state";
-import { applyCurrentStepInstant, updateStatus } from "./status";
+import {
+    applyCurrentStep,
+    applyCurrentStepInstant,
+    settleStepRun,
+    updateStatus,
+} from "./status";
 
 const stage = document.getElementById("stage")!;
 
@@ -441,9 +446,19 @@ registerTransition("morph", () => new MorphTransition());
 export function loadSlide(
     then: (() => void) | null = null,
     transition: TransitionData | null = null,
+    entryPlay = false,
 ): void {
+    // A step run in flight (mid-chain when a slide change is triggered) is landed on its
+    // destination before we capture and replace the outgoing slide.
+    settleStepRun();
+
     const params: TransitionData =
         transition ?? state.transitions[state.slideIndex] ?? CUT;
+
+    // Entry-play: a forward sequential entrance animates the entry step *after* the
+    // transition settles, so its cues must stay hidden during the transition. A CUT or a
+    // reversed (backward) entrance keeps the normal instant landing.
+    const entering = entryPlay && params.type !== "cut" && !params.reverse;
 
     // Reconcile the visual + status with whatever content is now in the stage:
     // land the current step and sync the status bar + URL. swap() runs this after
@@ -454,12 +469,20 @@ export function loadSlide(
         applyCurrentStepInstant();
         updateStatus();
     };
+    // For an entry-play entrance, land the pre-entry state (one below the entry step) so
+    // the entry cues are hidden until applyCurrentStep() animates them after the transition.
+    const initialLand = entering
+        ? () => {
+              applyStepInstant(stage, state.step - 1);
+              updateStatus();
+          }
+        : settleContent;
 
     const swap = () => {
         stage.innerHTML = state.slides.length
             ? state.slides[state.slideIndex].svg
             : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
-        settleContent();
+        initialLand();
     };
 
     // Smooth reversal: same transition type, opposite direction, handler has reverse().
@@ -523,6 +546,7 @@ export function loadSlide(
     if (!makeTransition) {
         // Unknown transition type — fall back to instant swap.
         swap();
+        if (entering) applyCurrentStep(); // still play the entry step
         then?.();
         return;
     }
@@ -558,6 +582,10 @@ export function loadSlide(
     swap();
 
     inst.start({ stage, params, signal: ctrl.signal })
-        .then(() => settle(true))
+        .then(() => {
+            // Entry-play: the transition has settled, so animate the entry step now.
+            if (entering && !ctrl.signal.aborted) applyCurrentStep();
+            settle(true);
+        })
         .catch(() => settle(false));
 }
