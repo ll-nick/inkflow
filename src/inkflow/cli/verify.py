@@ -56,7 +56,10 @@ def verify_cmd(
 
     css = loaders.load_deck_styles(deck_obj, project_dir)
     preview_css = colors.build_preview_style(
-        colors.extract_tokens(css, deck_obj.mode == ColorMode.DARK)
+        # effective_mode, not mode: a deck that defers to its theme has mode=None,
+        # which would silently build the light preview here and disagree with the
+        # dark one `inkflow sync` wrote, reporting every slide as stale.
+        colors.extract_tokens(css, deck_obj.effective_mode == ColorMode.DARK)
     )
 
     has_error = has_warn = False
