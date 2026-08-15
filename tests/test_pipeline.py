@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import textwrap
+from collections.abc import Callable
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -29,6 +30,7 @@ from inkflow.manifest import (
     Slide,
     Video,
 )
+from inkflow.overlay import Overlay
 from inkflow.pipeline import _add_layout_classes as _add_layout_classes_el
 from inkflow.pipeline import (
     _deduplicate_ids,
@@ -41,6 +43,7 @@ from inkflow.pipeline import (
 )
 from inkflow.pipeline import annotate_svg as _annotate_svg_el
 from inkflow.svgio import parse_svg, serialize_svg
+from inkflow.themes import Theme
 from inkflow.transitions import Crossfade, Cut, Morph
 
 
@@ -51,9 +54,15 @@ def annotate_svg(svg: str, cues: list[tuple[Cue, int]]) -> str:
     return serialize_svg(_annotate_svg_el(parse_svg(svg), cues))
 
 
-def _add_layout_classes(svg: str, chain: list[Path], src: Path) -> str:
-    return serialize_svg(_add_layout_classes_el(parse_svg(svg), chain, src))
+def _add_layout_classes(
+    svg: str, chain: list[Path], src: Path, overlays: list[list[Path]] | None = None
+) -> str:
+    return serialize_svg(
+        _add_layout_classes_el(parse_svg(svg), chain, src, overlays or [])
+    )
 
+
+_SVG_NS = "http://www.w3.org/2000/svg"
 
 _PLAIN_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -723,3 +732,88 @@ class TestSlideSvg:
         assert doc.number_slides(2, 5) is None  # returns None, mutates self
         doc.scope_styles(2)
         assert 'id="inkflow-slide-2"' in doc.to_svg()
+
+
+class TestOverlayClasses:
+    def test_every_entry_in_an_overlay_chain_gets_a_class(self, tmp_path: Path) -> None:
+        src = tmp_path / "hero.svg"
+        brand = tmp_path / "brand.svg"
+        footer = tmp_path / "footer.svg"
+        for p in (src, brand, footer):
+            p.write_text(_PLAIN_SVG, encoding="utf-8")
+        result = _add_layout_classes(_PLAIN_SVG, [], src, [[brand, footer]])
+        assert 'class="layout-hero overlay-brand overlay-footer"' in result
+
+    def test_stale_overlay_classes_replaced(self, tmp_path: Path) -> None:
+        src = tmp_path / "hero.svg"
+        src.write_text(_PLAIN_SVG, encoding="utf-8")
+        svg = _PLAIN_SVG.replace("<svg ", '<svg class="keep overlay-old" ')
+        result = _add_layout_classes(svg, [], src, [])
+        assert "overlay-old" not in result
+        assert 'class="keep layout-hero"' in result
+
+
+class TestOverlayPrecedence:
+    """Slide → Deck → Theme, each an override rather than a merge."""
+
+    def _project(self, tmp_path: Path) -> Path:
+        overlays = tmp_path / "overlays"
+        overlays.mkdir(parents=True, exist_ok=True)
+        for name, mark in (("footer", "ovl-footer"), ("logo", "ovl-logo")):
+            rect = f'<rect id="{mark}" width="10" height="10"/>'
+            (overlays / f"{name}.svg").write_text(
+                f'<svg xmlns="{_SVG_NS}" viewBox="0 0 100 100">{rect}</svg>',
+                encoding="utf-8",
+            )
+        slides = tmp_path / "slides"
+        slides.mkdir(parents=True, exist_ok=True)
+        (slides / "s.svg").write_text(_PLAIN_SVG, encoding="utf-8")
+        return tmp_path
+
+    def _svg_for(self, tmp_path: Path, deck: Deck) -> str:
+        return process_deck(deck, tmp_path)[0]["svg"]
+
+    def test_deck_overlays_apply(self, tmp_path: Path) -> None:
+        self._project(tmp_path)
+        deck = Deck(overlays=[Overlay("footer")], slides=[Slide("s")])
+        assert "ovl-footer" in self._svg_for(tmp_path, deck)
+
+    def test_slide_empty_list_opts_out(self, tmp_path: Path) -> None:
+        self._project(tmp_path)
+        deck = Deck(overlays=[Overlay("footer")], slides=[Slide("s", overlays=[])])
+        assert "ovl-footer" not in self._svg_for(tmp_path, deck)
+
+    def test_slide_overlays_replace_rather_than_extend(self, tmp_path: Path) -> None:
+        self._project(tmp_path)
+        deck = Deck(
+            overlays=[Overlay("footer")],
+            slides=[Slide("s", overlays=[Overlay("logo")])],
+        )
+        svg = self._svg_for(tmp_path, deck)
+        assert "ovl-logo" in svg
+        assert "ovl-footer" not in svg
+
+    def test_deck_none_falls_through_to_theme(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        self._project(tmp_path)
+        theme = dir_theme(tmp_path)
+        theme.overlays = [Overlay("theme:logo")]
+        assert "ovl-logo" in self._svg_for(
+            tmp_path, Deck(theme=theme, slides=[Slide("s")])
+        )
+
+    def test_deck_empty_list_beats_theme(
+        self, tmp_path: Path, dir_theme: Callable[[Path], Theme]
+    ) -> None:
+        self._project(tmp_path)
+        theme = dir_theme(tmp_path)
+        theme.overlays = [Overlay("theme:logo")]
+        deck = Deck(theme=theme, overlays=[], slides=[Slide("s")])
+        assert "ovl-logo" not in self._svg_for(tmp_path, deck)
+
+    def test_overlay_paints_over_slide_content(self, tmp_path: Path) -> None:
+        self._project(tmp_path)
+        deck = Deck(overlays=[Overlay("footer")], slides=[Slide("s")])
+        svg = self._svg_for(tmp_path, deck)
+        assert svg.index('id="box"') < svg.index("ovl-footer")
