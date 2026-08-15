@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,8 +14,14 @@ from inkflow.layout import (
 )
 from inkflow.loaders import load_md, resolve_content_src
 from inkflow.manifest import Inline, Media, Slide, Video
-from inkflow.pipeline import resolve_slide_src
-from inkflow.svg import compose_with_ancestors
+from inkflow.overlay import Overlay
+from inkflow.pipeline import resolve_overlay_chains, resolve_slide_src
+from inkflow.svg import (
+    compose_overlays,
+    compose_with_ancestors,
+    duplicate_zone_ids,
+    is_full_canvas_fill,
+)
 from inkflow.zones import build_slide_content, parse_markdown_zones
 
 if TYPE_CHECKING:
@@ -148,6 +155,29 @@ def _check_default_zone(
     return []
 
 
+def _check_overlays(overlay_chains: list[list[Path]]) -> list[Issue]:
+    """Flag overlays that would blank the deck, and report their composition.
+
+    The failure this catches is an overlay whose `inkflow:parent` points at a
+    layout instead of another overlay: layouts paint a full-bleed background, and
+    on top of a slide that hides everything. The symptom (a blank deck) is two
+    files removed from the cause, so name the file.
+    """
+    issues: list[Issue] = []
+    for chain in overlay_chains:
+        for path in chain:
+            if is_full_canvas_fill(clean_inkscape_tree(path)):
+                issues.append(
+                    (
+                        "error",
+                        f"overlay {path.name} paints an opaque full-canvas rect, "
+                        + "which would hide the slide beneath it — overlays inherit "
+                        + "from overlays, not from layouts",
+                    )
+                )
+    return issues
+
+
 def _check_sync(
     src: Path, project_dir: Path | None, theme: Theme | None, preview_css: str
 ) -> list[Issue]:
@@ -181,8 +211,14 @@ def verify_slide(
     project_dir: Path,
     theme: Theme | None,
     preview_css: str,
+    deck_overlays: Sequence[Overlay] = (),
 ) -> list[Issue]:
-    """Return all (level, message) issues for one slide. Empty list means clean."""
+    """Return all (level, message) issues for one slide. Empty list means clean.
+
+    ``deck_overlays`` is the deck's resolved overlay list, which the slide may
+    override. Overlays are composed into the tree before the id checks run, since
+    a zone or animation target may legitimately live in the chrome.
+    """
     try:
         src = resolve_slide_src(slide.src, project_dir, theme)
     except ValueError:
@@ -192,11 +228,16 @@ def verify_slide(
 
     issues = _check_files(slide, project_dir)
 
+    overlays = slide.overlays if slide.overlays is not None else deck_overlays
     try:
         root = clean_inkscape_tree(src)
         chain = resolve_chain(src, project_dir, theme)
         if chain:
             root = compose_with_ancestors(root, chain)
+        overlay_chains = resolve_overlay_chains(overlays, project_dir, theme)
+        root = compose_overlays(root, overlay_chains)
+    except (ValueError, OSError) as exc:
+        return [*issues, ("error", f"could not compose SVG: {exc}")]
     except Exception as exc:
         return [*issues, ("error", f"could not parse SVG: {exc}")]
 
@@ -208,5 +249,14 @@ def verify_slide(
     issues += _check_zones(slide, project_dir, zone_ids)
     issues += _check_animations(slide, all_ids)
     issues += _check_default_zone(slide, project_dir, zone_ids, default_zone)
+    issues += _check_overlays(overlay_chains)
+    issues += [
+        (
+            "warn",
+            f"{zone_id} is declared more than once — "
+            + "zone ids must be unique across a slide and its overlays",
+        )
+        for zone_id in duplicate_zone_ids(root)
+    ]
     issues += _check_sync(src, project_dir, theme, preview_css)
     return issues

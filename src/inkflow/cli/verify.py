@@ -31,8 +31,9 @@ def verify_cmd(
     Runs per-slide checks and prints an `ok` / `error` / `warn` line for each.
     Errors: the SVG source, `.md`, notes file, or `Media.src` is missing; a zone id
     (from `zones` keys or `::zone::` markers) or an animation element id is absent
-    from the composed SVG. Warnings: animation steps are not contiguous from 1, or
-    layout layers are stale (run `inkflow sync`).
+    from the composed SVG; an overlay paints an opaque full-canvas rect, which would
+    hide the slide. Warnings: animation steps are not contiguous from 1, a zone id is
+    declared twice after composition, or layout layers are stale (run `inkflow sync`).
 
     Exits 1 on any error, or on any warning when `--strict` is set. Hidden slides
     (`visible=False`) are skipped unless `--all` is passed.
@@ -60,7 +61,9 @@ def verify_cmd(
 
     has_error = has_warn = False
     for slide in slides:
-        issues = verify_slide(slide, project_dir, theme, preview_css)
+        issues = verify_slide(
+            slide, project_dir, theme, preview_css, deck_obj.effective_overlays
+        )
         for level, _ in issues:
             if level == "error":
                 has_error = True
