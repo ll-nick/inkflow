@@ -57,6 +57,13 @@ def _rect_geometry(el: SvgElement) -> _ZoneRect:
     return _ZoneRect(x=x, y=y, width=w, height=h)
 
 
+def _is_rounded_rect(el: SvgElement) -> bool:
+    return (
+        _parse_dimension(el.get("rx", "0")) > 0
+        or _parse_dimension(el.get("ry", "0")) > 0
+    )
+
+
 def _polygon_bbox(points_str: str) -> _ZoneRect:
     nums = [float(v) for v in re.split(r"[,\s]+", points_str.strip()) if v]
     xs = nums[0::2]
@@ -177,7 +184,8 @@ def _zone_geometry(
         del shape_copy.attrib["transform"]
 
     if tag == "rect":
-        return _ZoneGeometry(rect=_rect_geometry(el), clip_shape=shape_copy)
+        clip_shape = shape_copy if _is_rounded_rect(el) else None
+        return _ZoneGeometry(rect=_rect_geometry(el), clip_shape=clip_shape)
 
     if tag in ("polygon", "polyline"):
         rect = _polygon_bbox(el.get("points", ""))
@@ -396,8 +404,13 @@ def _replace_with_media(
         return _make_image_element(src, style)
 
     fo = etree.Element(f"{{{ns.SVG}}}foreignObject")
-    fo.set("overflow", "visible")
     if geom.clip_shape is not None:
+        # Plain rects need no clip-path: the foreignObject's own box is the shape,
+        # and its native viewport clipping (default overflow: hidden) crops exactly
+        # on the SVG's own rasterization pass. A redundant clip-path here doubles up
+        # with that pass and can leave a hairline seam where the two disagree by a
+        # subpixel. Only non-rect and rounded-rect shapes need the explicit clip.
+        fo.set("overflow", "visible")
         fo.set("clip-path", _add_clip_path(root, zone_id, geom.clip_shape))
 
     if item.alt_src is None:
