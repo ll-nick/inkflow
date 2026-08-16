@@ -83,6 +83,6 @@ def main() -> Deck:
         slides=[
             Slide("auto-advance", id="cascade", animations=CASCADE),
             Slide("auto-advance-on-enter", id="on-enter", animations=ON_ENTER),
-            Slide("default", id="reveals", md=REVEALS),
+            Slide("content", id="reveals", md=REVEALS),
         ],
     )

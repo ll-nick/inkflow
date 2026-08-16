@@ -90,7 +90,7 @@ def main() -> Deck:
         transition=transitions.Crossfade(easing=Easing.EASE_IN_OUT, duration=1.5),
         style=GLOW_CSS,
         slides=[
-            Slide("default", id="reveals", md=REVEALS),
+            Slide("content", id="reveals", md=REVEALS),
             Slide(
                 "anim-targets",
                 id="builtins",

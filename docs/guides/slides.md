@@ -248,12 +248,12 @@ from inkflow import Deck, Slide
 def main() -> Deck:
     return Deck(
         slides=[
-            Slide("default", md="intro"),
+            Slide("content", md="intro"),
         ]
     )
 ```
 
-`"default"` is the name of a built-in layout — an SVG that defines zones and little
+`"content"` is the name of a built-in layout — an SVG that defines zones and little
 else (see [Built-in layouts](#built-in-layouts) below).
 `md` takes the same kind of path as `Slide.src`: a bare name like `"intro"` resolves
 to `slides/intro.md`, or write the path out in full.
@@ -531,7 +531,7 @@ You can also set notes directly on `Slide` via the `notes=` parameter:
 
 ```python
 Slide("title", notes="Remember to greet the audience.")
-Slide("default", md="bullets", notes=Path("notes/bullets.md"))
+Slide("content", md="bullets", notes=Path("notes/bullets.md"))
 ```
 
 `str` is used as-is (inline HTML/text). `Path` pointing to a `.md` file is rendered as Markdown; any other extension is read as-is.
@@ -619,23 +619,22 @@ load, which you accept by opting in explicitly.
 
 ## Built-in layouts
 
-Layout names like `"default"` above resolve to reusable layout SVGs.
+Layout names like `"content"` above resolve to reusable layout SVGs.
 The built-in theme ships these:
 
 | Name | Zones | Use for |
 |---|---|---|
-| `cover` | title, subtitle | Title / opening slide |
-| `section` | title | Section divider |
-| `default` | title, content | Standard text slide |
-| `center` | title, content | Centered content |
+| `cover` | title, subtitle, media | Title / opening slide |
+| `section` | title, subtitle | Section divider |
+| `title` | title | Bare title, no content zone |
+| `content` | title, content | Standard text slide |
+| `center` | content | Centered content |
 | `two-cols` | title, left, right | Two-column comparison |
-| `two-cols-header` | title, left, right | Two columns with wide header |
-| `fact` | title, content | Big number or key fact |
-| `quote` | title, content | Pull quote |
-| `statement` | title, content | Bold statement |
+| `fact` | fact, caption | Big number or key fact |
+| `quote` | quote, attribution | Pull quote |
 | `media-left` | title, content, media | Text + image/video (image left) |
 | `media-right` | title, content, media | Text + image/video (image right) |
-| `end` | title, content | Thank-you / closing slide |
+| `end` | title, subtitle | Thank-you / closing slide |
 
 ### Referencing project layouts
 

@@ -55,7 +55,7 @@ Layouts declare their default zone with the `inkflow:default-zone` attribute:
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:inkflow="urn:inkflow"
-     inkflow:parent="builtin:default"
+     inkflow:parent="builtin:content"
      inkflow:default-zone="content"
      viewBox="0 0 1920 1080" width="1920" height="1080">
   <rect id="zone-content" x="120" y="200" width="1680" height="720"/>
@@ -86,7 +86,7 @@ And this is the attribution line.
 
 On the `quote` layout (`inkflow:default-zone="quote"`, no `zone-title`),
 both lines above land in `zone-quote`.
-On the `default` layout (`inkflow:default-zone="content"`, has `zone-title`),
+On the `content` layout (`inkflow:default-zone="content"`, has `zone-title`),
 `# H1` still routes to `zone-title` as usual.
 
 To route content to a specific zone regardless of the default, use an explicit marker:
@@ -386,7 +386,7 @@ Use `builtin:` or relative paths instead:
 <!-- theme/layouts/content.svg -->
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:inkflow="urn:inkflow"
-     inkflow:parent="builtin:default"
+     inkflow:parent="builtin:content"
      viewBox="0 0 1920 1080" width="1920" height="1080">
   ...
 </svg>
@@ -422,7 +422,7 @@ Slide("my-layout", md="custom")
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:inkflow="urn:inkflow"
-     inkflow:parent="builtin:default"
+     inkflow:parent="builtin:content"
      inkflow:default-zone="content"
      viewBox="0 0 1920 1080" width="1920" height="1080">
 
@@ -436,7 +436,7 @@ Slide("my-layout", md="custom")
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:inkflow="urn:inkflow"
-     inkflow:parent="builtin:default"
+     inkflow:parent="builtin:content"
      inkflow:default-zone="left"
      viewBox="0 0 1920 1080" width="1920" height="1080">
 

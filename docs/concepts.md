@@ -89,10 +89,10 @@ video — or, when most of the slide content is text, by pointing `md=` at a
 Markdown file instead:
 
 ```python
-Slide("default", md="intro")
+Slide("content", md="intro")
 ```
 
-`"default"` here is still an SVG — a reusable **layout** (see below) that defines
+`"content"` here is still an SVG — a reusable **layout** (see below) that defines
 zones and little else. Any SVG can define zones, whether it's a one-off slide or
 a shared layout; `md=` fills whatever zones the referenced SVG defines. Within
 the Markdown file, `::zone-name::` markers route sections to different zones,

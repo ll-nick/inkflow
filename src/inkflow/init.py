@@ -16,7 +16,7 @@ def main() -> Deck:
             # 1. A pure SVG you drew. Point a Slide at it and you are done.
             Slide("title", notes="notes/title.md"),
             # 2. A built-in layout, its zone filled with Markdown (slides/guide.md).
-            Slide("default", md="guide", notes="notes/guide.md"),
+            Slide("content", md="guide", notes="notes/guide.md"),
             # 3. Your own SVG: it inherits a themed background via inkflow:parent,
             #    carries its own zone (slides/diagram.md), and animates an element
             #    by id -- here the "Browser" box appears once you click. Open

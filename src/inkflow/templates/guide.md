@@ -9,7 +9,7 @@ title
 : a plain SVG: `slides/title.svg`. Draw an SVG, point a `Slide` at it, done.
 
 this slide
-: a built-in layout (`default`) with its zone filled from `slides/guide.md`.
+: a built-in layout (`content`) with its zone filled from `slides/guide.md`.
 
 diagram
 : is a more advanced example using a parent layout, a `TextBox` zone and an animation.

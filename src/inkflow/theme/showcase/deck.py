@@ -16,7 +16,7 @@ def main() -> Deck:
                     )
                 },
             ),
-            Slide("default", md="default"),
+            Slide("content", md="content"),
             Slide("section", md="section"),
             Slide("center", md="center"),
             Slide("two-cols", md="two-cols"),

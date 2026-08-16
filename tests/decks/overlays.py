@@ -44,7 +44,7 @@ Push, the footer and logo slide in alongside the content.
 
 def _slide(slide_id: str, title: str, body: str, **kwargs: object) -> Slide:
     return Slide(
-        "builtin:default",
+        "builtin:content",
         id=slide_id,
         zones={"title": f"# {title}", "content": Inline(body)},
         **kwargs,  # pyright: ignore[reportArgumentType]
@@ -68,7 +68,7 @@ def main() -> Deck:
             # Not via _slide(): this one fills a third zone that the overlay
             # declares, rather than the layout.
             Slide(
-                "builtin:default",
+                "builtin:content",
                 id="overlay-zone",
                 zones={
                     "title": "# Content in an overlay zone",

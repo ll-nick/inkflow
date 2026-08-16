@@ -638,11 +638,11 @@ class TestSlideId:
         assert _infer_slide_id(slide) == "my-cover"
 
     def test_infer_slide_id_from_md_stem(self) -> None:
-        slide = Slide("default", md="slides/08-markdown.md")
+        slide = Slide("content", md="slides/08-markdown.md")
         assert _infer_slide_id(slide) == "08-markdown"
 
     def test_infer_slide_id_from_md_stem_no_numeric_strip(self) -> None:
-        slide = Slide("default", md="slides/01-intro.md")
+        slide = Slide("content", md="slides/01-intro.md")
         assert _infer_slide_id(slide) == "01-intro"
 
     def test_infer_slide_id_inline_md_falls_back_to_src(self) -> None:

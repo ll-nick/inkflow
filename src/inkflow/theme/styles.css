@@ -13,20 +13,9 @@
  * rule would become a global default that every custom theme inherits and has to
  * override. Themes load after this file, so they can restyle any of it. */
 
-/* default ------------------------------------------------------------------ */
-.layout-default #zone-title {
-    --inkflow-valign: end;
-}
-.layout-default #zone-subtitle {
-    --inkflow-valign: start;
-}
-
-.layout-default #zone-title .inkflow-content h1 {
+/* content -------------------------------------------------------------------- */
+.layout-content #zone-title .inkflow-content h1 {
     color: var(--inkflow-accent);
-}
-.layout-default #zone-subtitle .inkflow-content {
-    color: var(--inkflow-text-muted);
-    font-size: 0.9em;
 }
 
 /* cover -------------------------------------------------------------------- */

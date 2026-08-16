@@ -63,7 +63,7 @@ class TestVerifySlideSource:
         issues = verify_slide(slide, tmp_path, None, _preview(tmp_path))
         errors = [msg for level, msg in issues if level == "error"]
         assert any("nonexistent-layout" in m and "not found" in m for m in errors)
-        assert any("Available:" in m and "default" in m for m in errors)
+        assert any("Available:" in m and "content" in m for m in errors)
 
     def test_clean_slide_has_no_issues(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)
