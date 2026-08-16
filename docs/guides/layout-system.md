@@ -175,6 +175,9 @@ against `overlays/` instead of `layouts/`:
 Layouts and overlays are separate namespaces,
 so a bare name always means one or the other and never both.
 
+`inkflow sync` previews chrome in your SVG editor too,
+see [Which overlays a file previews](#which-overlays-a-file-previews).
+
 ### Overlays can inherit too
 
 `inkflow:parent` on an overlay means "drawn behind me *within this overlay*".
@@ -263,12 +266,15 @@ inkflow parent strip slides/new.svg
 ## Previewing layouts in Inkscape
 
 `inkflow sync` writes each ancestor as a locked layer into the slide SVG,
-so you can see the inherited background and zone positions while editing in your SVG editor:
+and the overlays the slide gets at runtime as locked layers on top of it,
+so you can see the inherited background, the zone positions,
+and how much room the chrome needs while editing in your SVG editor:
 
 ```bash
 inkflow sync
 ```
 
+Bottom to top, a synced slide holds the ancestor chain, its own content, then the overlays.
 These layers are for authoring reference only.
 The pipeline strips them before serving. They never appear in the browser.
 
@@ -279,6 +285,95 @@ inkflow sync --check
 ```
 
 Exits with code 1 if any files need updating (useful in CI).
+
+### Which overlays a file previews
+
+`sync` works on files, overlays are declared on slides,
+and one file can back many slides that disagree,
+so the answer is resolved in three steps:
+
+1. An explicit `inkflow:preview-overlays` attribute on the file wins.
+   Space-separated names, `""` for none.
+2. Otherwise, if every slide backed by this file agrees, that.
+   A slide backs its own `src` and every layout in that file's chain.
+3. Otherwise the deck default.
+
+`sync` prints which rule fired next to each file,
+so step 3 is never silent:
+
+```
+    Injected  slides/intro.svg (1 overlay layer, slides agree)
+    Injected  layouts/content.svg (1 overlay layer, deck default overlays)
+    Injected  overlays/footer.svg (overlay file)
+```
+
+Step 3 is a guess, and it deliberately errs toward *showing* chrome:
+the question you are answering in Inkscape is how much room to leave,
+and a preview showing chrome a slide will not have costs you some empty space,
+while the opposite causes overlap.
+When the guess is wrong for a given file, pin it with the attribute:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkflow="urn:inkflow"
+     inkflow:parent="content"
+     inkflow:preview-overlays="footer logo"
+     viewBox="0 0 1920 1080">
+```
+
+### Authoring an overlay itself
+
+An overlay file never receives chrome,
+otherwise `sync` would stamp the deck's footer onto the footer you are drawing.
+It can name a *backdrop* instead:
+something rendered behind it purely as reference,
+so you are not positioning chrome against a checkerboard.
+
+```xml
+<!-- overlays/footer.svg -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkflow="urn:inkflow"
+     inkflow:preview="content"
+     viewBox="0 0 1920 1080">
+```
+
+`inkflow:preview` takes a layout name, any of the prefixes,
+or a relative path.
+A path is the useful form for a deck of hand-drawn SVGs with no layouts at all,
+where the honest backdrop is a real slide:
+
+```xml
+     inkflow:preview="../slides/01-title.svg"
+```
+
+The slide's own layout chain comes along with it,
+exactly as when you edit that slide.
+
+There is **no default**.
+Without the attribute an overlay gets the preview styles and nothing behind it,
+and `sync` says so:
+
+```
+    Injected  overlays/footer.svg (overlay file, no backdrop)
+    Injected  overlays/logo.svg (overlay file, backdrop: content)
+```
+
+An overlay cannot know what it lands on,
+and guessing at the theme's `base` would be wrong in exactly the case that matters:
+a deck built on no layouts gets chrome positioned against a canvas of the wrong size
+in a background colour the deck never paints.
+
+The name says what it is: a preview choice, not a structural claim.
+Picking `content` as a backdrop while the overlay lands on `two-cols` at runtime
+is not a contradiction.
+
+Both attributes are authoring hints.
+Neither is ever read by the serve or build pipeline.
+
+A file counts as an overlay when it lives in an `overlays/` directory
+or the deck references it as an overlay.
+The first half covers drafts not yet added to `deck.py`,
+the second covers overlays parked outside the convention by a relative path.
 
 ## Authoring a theme
 
@@ -304,6 +399,11 @@ inkflow sync --no-deck layouts/*.svg
 ```
 
 Attempting to use `local:` or `theme:` with `--no-deck` raises an error immediately.
+
+With no deck there is no slide-to-overlay mapping to derive,
+so overlay previews come from `inkflow:preview-overlays` alone
+and every other file is synced without chrome.
+A theme overlay still gets whatever backdrop it names.
 
 ## Writing a custom layout
 
