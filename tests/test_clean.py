@@ -6,7 +6,7 @@ from pathlib import Path
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg, strip_layout_layers
+from inkflow.clean import clean_inkscape_svg, strip_preview_layers
 
 _INKSCAPE_SVG = textwrap.dedent("""\
     <?xml version="1.0" encoding="UTF-8"?>
@@ -62,7 +62,7 @@ _PREVIEW_SVG = textwrap.dedent("""\
 """)
 
 
-class TestStripLayoutLayers:
+class TestStripPreviewLayers:
     def _root_with_layers(self) -> etree._Element:  # pyright: ignore[reportPrivateUsage]
         return etree.fromstring(
             b"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow">
@@ -74,7 +74,7 @@ class TestStripLayoutLayers:
 
     def test_removes_marked_direct_children(self) -> None:
         root = self._root_with_layers()
-        strip_layout_layers(root)
+        strip_preview_layers(root)
         ids = [el.get("id") or el.get(ns.INKFLOW_LAYOUT_SRC) for el in root]
         assert "/some/file.svg" not in ids
         assert "content" in ids
@@ -82,7 +82,7 @@ class TestStripLayoutLayers:
 
     def test_leaves_unmarked_groups(self) -> None:
         root = self._root_with_layers()
-        strip_layout_layers(root)
+        strip_preview_layers(root)
         assert root.find('.//{http://www.w3.org/2000/svg}g[@id="content"]') is not None
 
     def test_does_not_descend_into_nested(self) -> None:
@@ -93,7 +93,7 @@ class TestStripLayoutLayers:
               </g>
             </svg>"""
         )
-        strip_layout_layers(root)
+        strip_preview_layers(root)
         # The outer group remains; the nested marked group is NOT removed
         # (only direct children are stripped).
         outer = root.find('.//{http://www.w3.org/2000/svg}g[@id="outer"]')

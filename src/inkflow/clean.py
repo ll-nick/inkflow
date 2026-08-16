@@ -20,10 +20,17 @@ _PRESERVE_ATTRS: frozenset[str] = frozenset(
 )
 
 
-def strip_layout_layers(root: SvgElement) -> None:
-    """Remove direct-child <g> elements injected by inject_layout_layers."""
-    to_remove = [el for el in root if el.get(ns.INKFLOW_LAYOUT_SRC) is not None]
-    for el in to_remove:
+def is_preview_layer(el: SvgElement) -> bool:
+    """True for a <g> injected by inject_preview_layers, either layer class."""
+    return (
+        el.get(ns.INKFLOW_LAYOUT_SRC) is not None
+        or el.get(ns.INKFLOW_OVERLAY_SRC) is not None
+    )
+
+
+def strip_preview_layers(root: SvgElement) -> None:
+    """Remove direct-child <g> elements injected by inject_preview_layers."""
+    for el in [el for el in root if is_preview_layer(el)]:
         root.remove(el)
 
 
@@ -31,11 +38,30 @@ def clean_inkscape_tree(src: Path, keep_preview: bool = False) -> SvgElement:
     """Parse an SVG file, strip Inkscape/Sodipodi editor metadata, return the root.
 
     When keep_preview is False (default), also removes inkflow preview content
-    (injected layout layers and the inkflow-preview style block) so the tree is
+    (injected layout/overlay layers and the inkflow-preview style block) so the tree is
     suitable for the presentation pipeline.  Pass keep_preview=True to preserve
     that content for Inkscape editing (used by the clean CLI and pre-commit hook).
     """
     root = parse_svg_file(src)
+
+    # Before the namespace cleanup, not after: the injected layers are the only
+    # users of the inkscape/sodipodi prefixes in an otherwise clean file, so
+    # dropping them afterwards would leave the declarations stranded on the root
+    # and make the cleaned output of a synced file differ from an unsynced one.
+    # Layer hashes are taken from exactly this output, so that difference would
+    # report every file whose ancestor or overlay has been synced as stale.
+    if not keep_preview:
+        strip_preview_layers(root)
+        for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
+            parent = el.getparent()
+            if parent is not None:
+                parent.remove(el)
+                # The <defs> may exist only to hold that style, and an empty one
+                # left behind would be the same stale-forever hash difference.
+                if parent.tag == f"{{{ns.SVG}}}defs" and len(parent) == 0:
+                    grandparent = parent.getparent()
+                    if grandparent is not None:
+                        grandparent.remove(parent)
 
     for ns_uri in _INKSCAPE_NAMESPACES:
         for el in root.findall(f".//{{{ns_uri}}}*"):
@@ -55,13 +81,6 @@ def clean_inkscape_tree(src: Path, keep_preview: bool = False) -> SvgElement:
             del el.attrib[k]
 
     etree.cleanup_namespaces(root)
-
-    if not keep_preview:
-        strip_layout_layers(root)
-        for el in root.findall(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]'):
-            parent = el.getparent()
-            if parent is not None:
-                parent.remove(el)
 
     return root
 
