@@ -11,11 +11,14 @@ from inkflow import ns
 from inkflow.layout import (
     AssetKind,
     LayoutInfo,
+    PreviewLayer,
+    PreviewLayers,
+    are_preview_layers_current,
+    chain_layers,
     create_slide,
     discover_layouts,
     discover_overlays,
-    inject_layout_layers,
-    is_layout_current,
+    inject_preview_layers,
     layout_zones,
     resolve_chain,
     resolve_parent_path,
@@ -143,46 +146,50 @@ class TestResolveChain:
             resolve_chain(a, tmp_path, None)
 
 
-# ── inject_layout_layers / is_layout_current ─────────────────────────────────
+# ── inject_preview_layers / are_preview_layers_current ───────────────────────
 
 
-class TestInjectLayoutLayers:
+def _behind(slide: Path, chain: list[Path]) -> PreviewLayers:
+    return PreviewLayers(behind=chain_layers(slide, chain))
+
+
+class TestInjectPreviewLayers:
     def test_injects_and_returns_true(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
         slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
-        chain = [main.resolve()]
-        assert inject_layout_layers(slide, chain) is True
+        layers = _behind(slide, [main.resolve()])
+        assert inject_preview_layers(slide, layers) is True
         root = etree.parse(slide).getroot()
-        layers = [el for el in root if el.get(ns.INKFLOW_LAYOUT_SRC)]
-        assert len(layers) == 1
-        assert layers[0].get(ns.INKFLOW_LAYOUT_SRC) == "./main.svg"
+        injected = [el for el in root if el.get(ns.INKFLOW_LAYOUT_SRC)]
+        assert len(injected) == 1
+        assert injected[0].get(ns.INKFLOW_LAYOUT_SRC) == "./main.svg"
 
     def test_idempotent_returns_false(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
         slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
-        chain = [main.resolve()]
-        inject_layout_layers(slide, chain)
-        assert inject_layout_layers(slide, chain) is False
+        layers = _behind(slide, [main.resolve()])
+        inject_preview_layers(slide, layers)
+        assert inject_preview_layers(slide, layers) is False
 
-    def test_is_layout_current_after_inject(self, tmp_path: Path) -> None:
+    def test_current_after_inject(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
         slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
-        chain = [main.resolve()]
-        inject_layout_layers(slide, chain)
-        assert is_layout_current(slide, chain) is True
+        layers = _behind(slide, [main.resolve()])
+        inject_preview_layers(slide, layers)
+        assert are_preview_layers_current(slide, layers) is True
 
     def test_stale_after_ancestor_change(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
         slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
-        chain = [main.resolve()]
-        inject_layout_layers(slide, chain)
+        layers = _behind(slide, [main.resolve()])
+        inject_preview_layers(slide, layers)
         main.write_text(_SIMPLE_SVG.replace("1e1e2e", "313244"), encoding="utf-8")
-        assert is_layout_current(slide, chain) is False
+        assert are_preview_layers_current(slide, layers) is False
 
     def test_ancestor_content_appears_in_slide(self, tmp_path: Path) -> None:
         main = _write_svg(tmp_path / "main.svg")
         slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
-        inject_layout_layers(slide, [main.resolve()])
+        inject_preview_layers(slide, _behind(slide, [main.resolve()]))
         content = slide.read_text(encoding="utf-8")
         assert "1e1e2e" in content  # rect from main.svg is present
 
@@ -199,10 +206,65 @@ class TestInjectLayoutLayers:
         """)
         main = _write_svg(tmp_path / "main.svg", main_svg)
         slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
-        inject_layout_layers(slide, [main.resolve()])
+        inject_preview_layers(slide, _behind(slide, [main.resolve()]))
         content = slide.read_text(encoding="utf-8")
         assert "bg-grad" in content
         assert "linearGradient" in content
+
+
+class TestInjectOverlayLayers:
+    def _slide_with_overlay(self, tmp_path: Path) -> tuple[Path, PreviewLayers]:
+        main = _write_svg(tmp_path / "main.svg")
+        overlay = _write_svg(
+            tmp_path / "overlays" / "footer.svg",
+            _SIMPLE_SVG.replace('id="bg"', 'id="footer-mark"'),
+        )
+        slide = _write_svg(tmp_path / "slide.svg", _svg_with_parent("./main.svg"))
+        layers = PreviewLayers(
+            behind=chain_layers(slide, [main.resolve()]),
+            overlays=[[PreviewLayer(overlay.resolve(), "footer")]],
+        )
+        return slide, layers
+
+    def test_overlay_layers_come_last(self, tmp_path: Path) -> None:
+        slide, layers = self._slide_with_overlay(tmp_path)
+        inject_preview_layers(slide, layers)
+        root = etree.parse(slide).getroot()
+        markers = [
+            "layout" if el.get(ns.INKFLOW_LAYOUT_SRC) else "overlay"
+            for el in root
+            if el.get(ns.INKFLOW_LAYOUT_SRC) or el.get(ns.INKFLOW_OVERLAY_SRC)
+        ]
+        assert markers == ["layout", "overlay"]
+        assert root[-1].get(ns.INKFLOW_OVERLAY_SRC) == "footer"
+
+    def test_stale_when_overlay_changes(self, tmp_path: Path) -> None:
+        slide, layers = self._slide_with_overlay(tmp_path)
+        inject_preview_layers(slide, layers)
+        assert are_preview_layers_current(slide, layers) is True
+        overlay = layers.overlays[0][0].path
+        overlay.write_text(_SIMPLE_SVG.replace("1e1e2e", "313244"), encoding="utf-8")
+        assert are_preview_layers_current(slide, layers) is False
+
+    def test_stale_when_overlay_removed(self, tmp_path: Path) -> None:
+        slide, layers = self._slide_with_overlay(tmp_path)
+        inject_preview_layers(slide, layers)
+        without = PreviewLayers(behind=layers.behind)
+        assert are_preview_layers_current(slide, without) is False
+        assert inject_preview_layers(slide, without) is True
+        root = etree.parse(slide).getroot()
+        assert not [el for el in root if el.get(ns.INKFLOW_OVERLAY_SRC)]
+
+    def test_ancestor_overlay_layers_do_not_leak_into_child(
+        self, tmp_path: Path
+    ) -> None:
+        # A synced layout carries its own overlay preview. Inlining it as an
+        # ancestor layer must not drag that chrome in a second time.
+        layout, layout_layers = self._slide_with_overlay(tmp_path)
+        inject_preview_layers(layout, layout_layers)
+        slide = _write_svg(tmp_path / "child.svg", _svg_with_parent("./slide.svg"))
+        inject_preview_layers(slide, _behind(slide, [layout.resolve()]))
+        assert "footer-mark" not in slide.read_text(encoding="utf-8")
 
 
 # ── discover_layouts ──────────────────────────────────────────────────────────
