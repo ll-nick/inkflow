@@ -1,6 +1,6 @@
 <svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="./numbered" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg2">
-  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="d40175e7"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
-</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="2b667c1b"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
+  <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="0e0184e9"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
+</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="./numbered" inkflow:layout-hash="6a4a92fb"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
   <text id="zone-slide-total" x="1831.1567" y="1034.5802" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">99</text>
   <text id="text1" x="1816.5184" y="1032.2501" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">/</text>
 </g><defs id="defs2">
@@ -41,6 +41,6 @@
 .inkflow-fill-grey { fill: #6c7086; }
 .inkflow-stroke-grey { stroke: #6c7086; }</style></defs>
   <rect id="zone-title" x="80" y="60" width="840" height="120" style="stroke-width:0.69085"/>
-  <rect id="zone-content" x="80" y="220" width="840" height="780"/>
+  <rect id="zone-content" x="80" y="220" width="840" height="740"/>
   <rect id="zone-media" x="1000" y="0" width="920" height="1080" style="stroke-width:1.23146"/>
 </svg>

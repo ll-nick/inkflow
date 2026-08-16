@@ -41,6 +41,6 @@
 .inkflow-stroke-pink { stroke: #f5c2e7; }
 .inkflow-fill-grey { fill: #6c7086; }
 .inkflow-stroke-grey { stroke: #6c7086; }</style></defs>
-  <rect id="zone-left" x="80" y="220" width="840" height="780"/>
-  <rect id="zone-right" x="1000" y="220" width="840" height="780"/>
+  <rect id="zone-left" x="80" y="220" width="840" height="740"/>
+  <rect id="zone-right" x="1000" y="220" width="840" height="740"/>
 </svg>
