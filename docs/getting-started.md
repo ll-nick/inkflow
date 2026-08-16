@@ -6,9 +6,11 @@ This page takes you from zero to a running presentation in about five minutes.
 
 - Python 3.11 or newer
 - [uv](https://docs.astral.sh/uv/) (recommended), or pip
+- A web browser
 - An SVG editor.
   [Inkscape](https://inkscape.org/) is the primary authoring tool,
   but any editor that exports standard SVG works
+- (Currently only tested on Linux)
 
 ## Run the demo
 
@@ -39,8 +41,8 @@ Here are a few shortcuts to get you started:
 |---|---|
 | `←` / `→` | Navigate slides step-wise |
 | `↓` / `↑` | Jump to next / previous slide (skip steps) |
-| `g` + number + `Enter` | Go to slide number |
 | `f` | Toggle fullscreen |
+| `g` + number + `Enter` | Go to slide number |
 | `?` | Show all shortcuts |
 
 !!! warning "Decks are executable code"
