@@ -7,10 +7,9 @@ from pathlib import Path
 import click
 
 from inkflow import logging as inkflow_logging
+from inkflow import sync
 from inkflow.enums import ColorMode
-from inkflow.layout import resolve_chain
 from inkflow.manifest import Deck
-from inkflow.pipeline import resolve_slide_src
 from inkflow.server import load_deck
 from inkflow.themes import Theme
 
@@ -123,23 +122,31 @@ class Project:
         """Every project-local SVG the deck resolves to, deduplicated.
 
         For each slide this collects its base SVG plus every ancestor in its layout
-        chain, then keeps only files inside the project directory. Built-in and
-        theme layouts, and anything referenced by a path outside the project,
-        are left out of the default sweep — name them explicitly to touch them.
+        chain, then adds the project's overlay files (which no slide *is* backed by,
+        yet still want a backdrop and preview styles), and keeps only files inside
+        the project directory. Built-in and theme layouts, and anything referenced by
+        a path outside the project, are left out of the default sweep — name them
+        explicitly to touch them.
         """
+        try:
+            backing = sync.slides_by_file(self.deck, self.dir, self.theme)
+            overlays = sync.overlay_files(self.deck, self.dir, self.theme)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+
         seen: dict[Path, Target] = {}
-        for slide in self.deck.slides:
-            base = resolve_slide_src(slide.src, self.dir, self.theme)
-            try:
-                chain = resolve_chain(base, self.dir, self.theme)
-            except ValueError as exc:
-                raise click.ClickException(str(exc)) from exc
-            for path in (base, *chain):
-                resolved = path.resolve()
-                if resolved in seen or not resolved.is_relative_to(self.dir):
-                    continue
-                seen[resolved] = Target(resolved, str(resolved.relative_to(self.dir)))
+        for resolved in [*backing, *sorted(overlays)]:
+            if resolved in seen or not resolved.is_relative_to(self.dir):
+                continue
+            seen[resolved] = Target(resolved, str(resolved.relative_to(self.dir)))
         return list(seen.values())
+
+    def preview_context(self, dark_mode: bool) -> sync.PreviewContext:
+        """The per-run data every preview plan for this project derives from."""
+        try:
+            return sync.build_context(self.deck, self.dir, self.theme, dark_mode)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
 
 
 def load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:

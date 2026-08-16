@@ -24,11 +24,13 @@ from inkflow.cli._common import (
 )
 from inkflow.layout import (
     AssetKind,
+    PreviewLayers,
+    are_preview_layers_current,
+    chain_layers,
     create_slide,
     discover_layouts,
     discover_overlays,
-    inject_layout_layers,
-    is_layout_current,
+    inject_preview_layers,
     layout_zones,
     resolve_chain,
     resolve_parent_path,
@@ -165,7 +167,9 @@ def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> N
 
     chain = resolve_chain(svg_path, project_dir, theme)
     if chain:
-        inject_layout_layers(svg_path, chain)
+        inject_preview_layers(
+            svg_path, PreviewLayers(behind=chain_layers(svg_path, chain))
+        )
         report("Injected", svg_path.name)
 
 
@@ -246,6 +250,27 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
     console.print(f'    Slide("{output_rel}"),', markup=False)
 
 
+def _sync_label(label: str, plan: sync.PreviewPlan) -> str:
+    """Append which rule decided this file's chrome, so rule 3 is never silent.
+
+    Falling back to the deck default is a guess by design (a shared layout has no
+    per-slide answer), so naming the rule is what points at
+    ``inkflow:preview-overlays`` when the guess is wrong. An overlay file reports
+    its backdrop for the same reason: there is no default, so "no backdrop" has to
+    be visible rather than look like nothing happened.
+    """
+    if plan.is_overlay:
+        backdrop = f"backdrop: {plan.backdrop.ref}" if plan.backdrop else "no backdrop"
+        return f"{label} ({sync.PreviewRule.OVERLAY_FILE}, {backdrop})"
+    if plan.rule is sync.PreviewRule.NO_DECK:
+        return f"{label} (no deck, {sync.PreviewRule.ATTRIBUTE} only)"
+    if not plan.layers.overlays:
+        return label
+    count = sum(len(chain) for chain in plan.layers.overlays)
+    plural = "" if count == 1 else "s"
+    return f"{label} ({count} overlay layer{plural}, {plan.rule})"
+
+
 @main.command("sync")
 @click.argument("files", nargs=-1, type=click.Path(path_type=Path))
 @click.option(
@@ -263,56 +288,58 @@ def sync_cmd(
     no_deck: bool,
     color_mode: str | None,
 ) -> None:
-    """Refresh layout layers and preview styles in slide SVG(s).
+    """Refresh layout layers, overlay layers and preview styles in slide SVG(s).
 
-    Injects ancestor layout layers for editor preview and a style block so
-    Inkscape renders semantic CSS classes (e.g. inkflow-fill-accent) with the
-    correct theme colors.
+    Injects ancestor layout layers below the slide and the overlays it gets at
+    runtime above it, plus a style block so Inkscape renders semantic CSS classes
+    (e.g. inkflow-fill-accent) with the correct theme colors.
+
+    Which overlays a file previews is decided by, in order: an explicit
+    `inkflow:preview-overlays` attribute on the file, agreement among the slides
+    backed by it, or the deck default. The rule that fired is shown per file.
+    Overlay files themselves get no chrome, only an `inkflow:preview` backdrop.
 
     If FILES is omitted, refreshes every project-local SVG the deck uses
-    (each slide and its local layout ancestors).
+    (each slide, its local layout ancestors, and the project's overlays).
     Use `--no-deck` when authoring a theme without a project deck.py.
     """
     project = load_project_or_none(deck_path, no_deck)
     deck_obj = project.deck if project else None
-    project_dir = project.dir if project else None
-    theme = project.theme if project else None
     dark_mode = resolve_dark_mode(color_mode, deck_obj, no_deck)
     targets = targets_or_deck_slides(files, project)
-
-    preview_css = sync.build_preview_css(deck_obj, project_dir, dark_mode)
+    ctx = (
+        project.preview_context(dark_mode)
+        if project
+        else sync.build_context(None, None, None, dark_mode)
+    )
 
     stale_found = False
     for target in targets:
         try:
-            chain = resolve_chain(target.path, project_dir, theme)
+            plan = sync.plan_preview(target.path, ctx)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
-        if not chain:
-            if not (files or no_deck):
-                continue
-            if check:
-                if is_layout_current(target.path, [], preview_css):
-                    report("Ok", target.label)
-                else:
-                    report("Stale", target.label, style="yellow")
-                    stale_found = True
-            else:
-                inject_layout_layers(target.path, [], preview_css)
-                report("No parent", target.label, style="dim")
+        # A file with no layers only gains the preview style block, which is worth
+        # writing when it was named explicitly but not when sweeping the whole deck.
+        # An overlay file is the exception: it is swept precisely to get that block,
+        # and it legitimately has no layers until it names a backdrop.
+        if plan.is_bare and not plan.is_overlay and not (files or no_deck):
             continue
+        label = _sync_label(target.label, plan)
         if check:
-            if is_layout_current(target.path, chain, preview_css):
-                report("Ok", target.label)
+            if are_preview_layers_current(target.path, plan.layers):
+                report("Ok", label)
             else:
-                report("Stale", target.label, style="yellow")
+                report("Stale", label, style="yellow")
                 stale_found = True
+            continue
+        changed = inject_preview_layers(target.path, plan.layers)
+        if plan.is_bare and not plan.is_overlay:
+            report("No parent", label, style="dim")
+        elif changed:
+            report("Injected", label)
         else:
-            changed = inject_layout_layers(target.path, chain, preview_css)
-            if changed:
-                report("Injected", target.label)
-            else:
-                report("Up to date", target.label, style="dim")
+            report("Up to date", label, style="dim")
 
     if check and stale_found:
         sys.exit(1)

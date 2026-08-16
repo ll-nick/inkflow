@@ -2,20 +2,27 @@ from __future__ import annotations
 
 import hashlib
 import importlib.resources
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_svg, clean_inkscape_tree, strip_layout_layers
+from inkflow.clean import (
+    clean_inkscape_tree,
+    is_preview_layer,
+    strip_preview_layers,
+)
 from inkflow.ns import (
     INKFLOW_DEFAULT_ZONE,
     INKFLOW_LAYOUT_HASH,
     INKFLOW_LAYOUT_SRC,
+    INKFLOW_OVERLAY_HASH,
+    INKFLOW_OVERLAY_SRC,
     INKFLOW_PARENT,
 )
 from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
@@ -200,7 +207,7 @@ def resolve_chain(
 
 
 def strip_parent(svg_path: Path) -> bool:
-    """Remove inkflow:parent and injected layout layers from svg_path in place.
+    """Remove inkflow:parent and injected preview layers from svg_path in place.
 
     Returns True if the file had an inkflow:parent attribute.
     """
@@ -208,7 +215,7 @@ def strip_parent(svg_path: Path) -> bool:
     had_parent = INKFLOW_PARENT in root.attrib
     if had_parent:
         del root.attrib[INKFLOW_PARENT]
-    strip_layout_layers(root)
+    strip_preview_layers(root)
     svg_path.write_text(
         etree.tostring(root, encoding="unicode", xml_declaration=False),
         encoding="utf-8",
@@ -216,19 +223,70 @@ def strip_parent(svg_path: Path) -> bool:
     return had_parent
 
 
-# ── inject_layout_layers ──────────────────────────────────────────────────────
+# ── Preview layers ────────────────────────────────────────────────────────────
 
 
-def _layer_hashes(chain: list[Path]) -> dict[str, str]:
+class PreviewLayer(NamedTuple):
+    """One SVG to inline as a locked editor layer, and the string that named it.
+
+    ``ref`` is recorded in the marker attribute and compared on the next sync, so
+    it has to be the authored reference (an ``inkflow:parent`` value, an
+    ``inkflow:preview`` backdrop, or an ``Overlay.src``) rather than a path.
+    """
+
+    path: Path
+    ref: str
+
+
+@dataclass(frozen=True)
+class PreviewLayers:
+    """Everything injected into one file for editor preview.
+
+    ``behind`` is painted below the file's own content (a backdrop plus the
+    ancestor chain, root first), ``overlays`` above it, one inner list per overlay
+    holding ``[*ancestors, overlay]``. Both classes are marked, locked, and
+    stripped again by the serve/build pipeline.
+    """
+
+    behind: Sequence[PreviewLayer] = ()
+    overlays: Sequence[Sequence[PreviewLayer]] = ()
+    preview_css: str = ""
+
+    def flat_overlays(self) -> list[PreviewLayer]:
+        """Overlay layers in paint order, ancestors before the overlay itself."""
+        return [layer for chain in self.overlays for layer in chain]
+
+
+class _LayerClass(NamedTuple):
+    """The marker attributes and label prefix distinguishing a layer class."""
+
+    src_attr: str
+    hash_attr: str
+    label: str
+
+
+_BEHIND = _LayerClass(INKFLOW_LAYOUT_SRC, INKFLOW_LAYOUT_HASH, "layout")
+_OVERLAY = _LayerClass(INKFLOW_OVERLAY_SRC, INKFLOW_OVERLAY_HASH, "overlay")
+
+
+def _layer_hashes(layers: Sequence[PreviewLayer]) -> dict[str, str]:
+    """Digest each layer source by its cleaned, canonical content.
+
+    Canonical rather than serialized: injecting layers into a file rewrites it
+    without the original indentation, so a formatting-sensitive digest would flag
+    every file whose ancestor or overlay has itself been synced as stale forever.
+    """
     hashes: dict[str, str] = {}
-    for p in chain:
-        cleaned = clean_inkscape_svg(p).encode()
-        hashes[str(p.resolve())] = hashlib.sha1(cleaned).hexdigest()[:8]
+    for layer in layers:
+        cleaned = etree.tostring(clean_inkscape_tree(layer.path), encoding="unicode")
+        canonical: str = etree.canonicalize(cleaned, strip_text=True)  # pyright: ignore[reportAny]
+        digest = hashlib.sha1(canonical.encode()).hexdigest()
+        hashes[str(layer.path.resolve())] = digest[:8]
     return hashes
 
 
-def _chain_refs(svg_path: Path, chain: list[Path]) -> list[str]:
-    """Return the inkflow:parent ref string for each ancestor in the chain.
+def chain_layers(svg_path: Path, chain: list[Path]) -> list[PreviewLayer]:
+    """Pair each ancestor with the inkflow:parent value that named it.
 
     The ref for chain[i] is the inkflow:parent value on its child — chain[i+1]
     for all but the last entry, svg_path for the last.
@@ -236,7 +294,10 @@ def _chain_refs(svg_path: Path, chain: list[Path]) -> list[str]:
     if not chain:
         return []
     children = [*chain[1:], svg_path]
-    return [_read_parent_attr(child) or "" for child in children]
+    return [
+        PreviewLayer(path, _read_parent_attr(child) or "")
+        for path, child in zip(chain, children, strict=True)
+    ]
 
 
 _LAYER_ATTRS: dict[str, str] = {
@@ -245,42 +306,56 @@ _LAYER_ATTRS: dict[str, str] = {
 }
 
 
-def is_layout_current(svg_path: Path, chain: list[Path], preview_css: str = "") -> bool:
-    """Return True if svg_path has up-to-date layout layers and preview style."""
-    root = parse_svg_file(svg_path)
-    existing = [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]
-    if len(existing) != len(chain):
+def _layers_match(
+    root: SvgElement, expected: Sequence[PreviewLayer], layer_class: _LayerClass
+) -> bool:
+    existing = [el for el in root if el.get(layer_class.src_attr) is not None]
+    if len(existing) != len(expected):
         return False
-    new_hashes = _layer_hashes(chain)
-    refs = _chain_refs(svg_path, chain)
-    for el, p, ref in zip(existing, chain, refs, strict=True):
-        if el.get(INKFLOW_LAYOUT_SRC) != ref:
+    hashes = _layer_hashes(expected)
+    for el, layer in zip(existing, expected, strict=True):
+        if el.get(layer_class.src_attr) != layer.ref:
             return False
-        if el.get(INKFLOW_LAYOUT_HASH) != new_hashes[str(p.resolve())]:
+        if el.get(layer_class.hash_attr) != hashes[str(layer.path.resolve())]:
             return False
         if any(el.get(attr) != val for attr, val in _LAYER_ATTRS.items()):
             return False
-    if preview_css:
+    return True
+
+
+def are_preview_layers_current(svg_path: Path, layers: PreviewLayers) -> bool:
+    """Return True if svg_path already carries exactly these layers and style."""
+    root = parse_svg_file(svg_path)
+    if not _layers_match(root, layers.behind, _BEHIND):
+        return False
+    if not _layers_match(root, layers.flat_overlays(), _OVERLAY):
+        return False
+    if layers.preview_css:
         style_el = root.find(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]')
-        if style_el is None or (style_el.text or "").strip() != preview_css.strip():
+        if (
+            style_el is None
+            or (style_el.text or "").strip() != layers.preview_css.strip()
+        ):
             return False
     return True
 
 
 def _build_layer_group(
-    ancestor_path: Path, ref: str, hashes: dict[str, str]
+    layer: PreviewLayer, hashes: dict[str, str], layer_class: _LayerClass
 ) -> SvgElement:
-    anc_root = parse_svg_file(ancestor_path)
-    strip_layout_layers(anc_root)
+    anc_root = parse_svg_file(layer.path)
+    strip_preview_layers(anc_root)
 
     g = etree.Element(
         f"{{{ns.SVG}}}g",
         {
             f"{{{ns.INKSCAPE}}}groupmode": "layer",
-            f"{{{ns.INKSCAPE}}}label": f"__inkflow:layout:{ancestor_path.stem}__",
+            f"{{{ns.INKSCAPE}}}label": (
+                f"__inkflow:{layer_class.label}:{layer.path.stem}__"
+            ),
             f"{{{ns.SODIPODI}}}insensitive": "true",
-            INKFLOW_LAYOUT_SRC: ref,
-            INKFLOW_LAYOUT_HASH: hashes[str(ancestor_path.resolve())],
+            layer_class.src_attr: layer.ref,
+            layer_class.hash_attr: hashes[str(layer.path.resolve())],
         },
     )
 
@@ -340,9 +415,13 @@ def create_slide(
     )
     output_path.write_text(svg_content, encoding="utf-8")
 
+    # Layout layers only: the new slide is not in deck.py yet, so there is nothing
+    # to resolve overlays from. `inkflow sync` adds the chrome once it is.
     chain = resolve_chain(output_path, project_dir, theme)
     if chain:
-        inject_layout_layers(output_path, chain)
+        inject_preview_layers(
+            output_path, PreviewLayers(behind=chain_layers(output_path, chain))
+        )
 
 
 def _update_preview_style(
@@ -361,31 +440,39 @@ def _update_preview_style(
     style_el.text = preview_css
 
 
-def inject_layout_layers(
-    svg_path: Path, chain: list[Path], preview_css: str = ""
-) -> bool:
-    """Inject ancestor SVGs as locked Inkscape layers into svg_path in place.
+def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
+    """Inject preview layers as locked Inkscape layers into svg_path in place.
 
-    Also writes a ``<style id="inkflow-preview">`` block when ``preview_css``
-    is provided, so Inkscape renders semantic classes with the correct colors.
+    Ancestors are inserted below the file's own content and overlays appended
+    above it, so the Inkscape layer stack matches runtime paint order. Also writes
+    a ``<style id="inkflow-preview">`` block when ``preview_css`` is provided, so
+    Inkscape renders semantic classes with the correct colors.
     Returns True if the file was modified, False if already up to date.
     """
-    if is_layout_current(svg_path, chain, preview_css):
+    if are_preview_layers_current(svg_path, layers):
         return False
 
     root = parse_svg_file(svg_path)
-    hashes = _layer_hashes(chain)
+    overlay_layers = layers.flat_overlays()
+    hashes = _layer_hashes([*layers.behind, *overlay_layers])
 
-    for el in [el for el in root if el.get(INKFLOW_LAYOUT_SRC) is not None]:
+    for el in [el for el in root if is_preview_layer(el)]:
         root.remove(el)
 
-    refs = _chain_refs(svg_path, chain)
-    for i, (ancestor_path, ref) in enumerate(zip(chain, refs, strict=True)):
-        root.insert(i, _build_layer_group(ancestor_path, ref, hashes))
+    for i, layer in enumerate(layers.behind):
+        root.insert(i, _build_layer_group(layer, hashes, _BEHIND))
+    for layer in overlay_layers:
+        root.append(_build_layer_group(layer, hashes, _OVERLAY))
 
-    _update_preview_style(root, preview_css)
+    _update_preview_style(root, layers.preview_css)
 
-    out = with_namespaces(root, {"inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI})
+    # inkflow among them: the marker attributes are the first use of that namespace
+    # in a file with no inkflow:parent (an overlay), and without the declaration they
+    # serialize under a generated ns0-style prefix that is unreadable in an editor.
+    out = with_namespaces(
+        root,
+        {"inkflow": ns.INKFLOW, "inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI},
+    )
     svg_path.write_text(
         etree.tostring(out, encoding="unicode", xml_declaration=False),
         encoding="utf-8",

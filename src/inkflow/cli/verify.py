@@ -5,7 +5,6 @@ from pathlib import Path
 
 import click
 
-from inkflow import colors, loaders
 from inkflow.cli._common import Project, deck_option, main
 from inkflow.enums import ColorMode
 from inkflow.logging import console
@@ -54,19 +53,14 @@ def verify_cmd(
             if resolve_slide_src(s.src, project_dir, theme) in resolved_files
         ]
 
-    css = loaders.load_deck_styles(deck_obj, project_dir)
-    preview_css = colors.build_preview_style(
-        # effective_mode, not mode: a deck that defers to its theme has mode=None,
-        # which would silently build the light preview here and disagree with the
-        # dark one `inkflow sync` wrote, reporting every slide as stale.
-        colors.extract_tokens(css, deck_obj.effective_mode == ColorMode.DARK)
-    )
+    # effective_mode, not mode: a deck that defers to its theme has mode=None, which
+    # would silently build the light preview here and disagree with the dark one
+    # `inkflow sync` wrote, reporting every slide as stale.
+    preview = project.preview_context(deck_obj.effective_mode == ColorMode.DARK)
 
     has_error = has_warn = False
     for slide in slides:
-        issues = verify_slide(
-            slide, project_dir, theme, preview_css, deck_obj.effective_overlays
-        )
+        issues = verify_slide(slide, project_dir, theme, preview)
         for level, _ in issues:
             if level == "error":
                 has_error = True

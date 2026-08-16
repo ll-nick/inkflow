@@ -66,7 +66,13 @@ src/
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer
                                writing. `AssetKind` (layouts/overlays) selects the searched
                                subdir, so `resolve_parent_path`/`resolve_chain` serve both
-                               namespaces with one grammar
+                               namespaces with one grammar. `inject_preview_layers` /
+                               `are_preview_layers_current` take a `PreviewLayers`
+                               (`behind` + `overlays` + css), each layer a
+                               `PreviewLayer(path, ref)` — refs come from the caller since
+                               a backdrop or an overlay is not named by an inkflow:parent.
+                               Layer digests are canonical (c14n, whitespace-stripped), so a
+                               synced ancestor does not read as stale forever
     overlay.py        the `Overlay` DSL type (src only). Its own module because both
                                `themes` and `manifest` reference it, same as `Transition`
     markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
@@ -100,10 +106,13 @@ src/
                                fall through to the built-in layouts; skipped when the
                                built-in is itself active) → active theme styles.css →
                                project styles.css
-    sync.py           reusable layout-preview sync (`build_preview_css`,
-                               `sync_slides`): injects ancestor layout layers + a theme
-                               preview <style> into slide SVGs; shared by the `sync`
-                               command and `init` (run live after scaffolding)
+    sync.py           reusable preview sync: `PreviewContext` (deck-derived data resolved
+                               once per run: preview CSS, slides-by-file, overlay files),
+                               `plan_preview` (the single answer to "what does this file
+                               preview", shared by `sync`, `sync --check` and `verify`),
+                               `PreviewRule` (which of the three overlay rules fired),
+                               `sync_slides`; shared by the `sync` command and `init`
+                               (run live after scaffolding)
     logging.py        unified log sink over stdlib logging: `logger`, shared Rich
                                `console`, `report` (cargo-style status), `collect_logs`
                                (per-rebuild capture), and three independent sinks
@@ -269,7 +278,9 @@ Overlays live in `overlays/` and resolve through `resolve_parent_path(..., Asset
 
 Overlays become part of the slide SVG, so they travel with it during a transition (chrome slides with a `Push`, dips mid-`Crossfade`; `Cut`/`Morph` are unaffected). Accepted and documented; a persistent chrome layer outside the stage would be the alternative if it ever grates.
 
-`inkflow sync` does **not** yet inject overlay preview layers (planned): sync works on files but overlays are declared on slides, so the file→overlays mapping is many-to-one and needs a resolution rule (explicit `inkflow:preview-overlays` attribute → unanimous slides → deck default).
+**Overlay preview in `sync` resolves a file→overlays mapping that has no single right answer.** `sync` works on files, overlays are declared on slides, so a shared layout is backed by slides that may disagree. `sync.plan_preview` decides in three steps: an explicit `inkflow:preview-overlays` attribute on the file → what every slide backing it agrees on → the deck default. The last is a guess and biases toward *showing* chrome (over-reserved space beats overlap), so the fired rule is printed per file (`PreviewRule`) and points at the attribute when the guess is wrong. `--no-deck` has no mapping to derive and uses the attribute only. A file that is itself an overlay (in an `overlays/` dir **or** referenced as one by the deck — the union covers drafts and off-convention paths) gets no chrome, only whatever `inkflow:preview` names as a backdrop (a layout, or a relative path to a real slide). There is deliberately **no default backdrop**: an overlay cannot know what it lands on, and falling back to the theme's `base` previews chrome against the wrong canvas size and a background colour the deck never paints whenever the deck is built on raw SVGs rather than layouts. `sync` reports `no backdrop` so the omission is visible. Both attributes are authoring-only and never read by the pipeline.
+
+Layer classes: `inkflow:layout-src`/`-hash` marks what goes *behind* (backdrop + ancestor chain), `inkflow:overlay-src`/`-hash` what goes on top. `clean.strip_preview_layers` removes both, which is what keeps a synced slide from painting its chrome twice (once from the preview, once from runtime composition) and keeps an ancestor's own overlay layers from leaking into every child. `verify` shares `plan_preview` (so it cannot disagree about staleness) and skips files outside the project dir, which `sync` would never write.
 
 ## Server
 

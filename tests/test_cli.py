@@ -22,6 +22,22 @@ _SLIDE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+_OVERLAY_DECK = textwrap.dedent("""\
+    from inkflow import Deck, Overlay, Slide
+
+    def main():
+        return Deck(
+            slides=[Slide("slides/01.svg")],
+            overlays=[Overlay("footer")],
+        )
+""")
+
+_OVERLAY_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <text id="footer" x="80" y="1050">chrome</text>
+    </svg>
+""")
+
 # An SVG carrying Inkscape editor metadata that `clean` strips.
 _DIRTY_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg"
@@ -305,6 +321,56 @@ class TestSyncCheck:
             assert written.exit_code == 0
             fresh = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
             assert fresh.exit_code == 0
+
+
+class TestSyncOverlays:
+    def _overlay_project(self) -> None:
+        Path("deck.py").write_text(_OVERLAY_DECK, encoding="utf-8")
+        Path("overlays").mkdir()
+        Path("overlays/footer.svg").write_text(_OVERLAY_SVG, encoding="utf-8")
+
+    @pytest.mark.usefixtures("project")
+    def test_sweep_covers_overlays_and_reports_the_rule(
+        self, runner: CliRunner
+    ) -> None:
+        self._overlay_project()
+        result = runner.invoke(main, ["sync"])
+        assert result.exit_code == 0
+        assert "overlays/footer.svg" in result.output
+        assert "overlay file, no backdrop" in result.output
+        assert "slides agree" in result.output
+        assert "overlay-src" in Path("slides/01.svg").read_text(encoding="utf-8")
+        # Named no backdrop, so it gets the preview styles and nothing else.
+        footer = Path("overlays/footer.svg").read_text(encoding="utf-8")
+        assert 'id="inkflow-preview"' in footer
+        assert "layout-src" not in footer
+        assert "overlay-src" not in footer
+
+    @pytest.mark.usefixtures("project")
+    def test_overlay_backdrop_is_reported_when_named(self, runner: CliRunner) -> None:
+        self._overlay_project()
+        backdrop = 'xmlns:inkflow="urn:inkflow" inkflow:preview="../slides/01.svg"'
+        Path("overlays/footer.svg").write_text(
+            _OVERLAY_SVG.replace(
+                'xmlns="http://www.w3.org/2000/svg"',
+                f'xmlns="http://www.w3.org/2000/svg" {backdrop}',
+            ),
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["sync"])
+        assert "backdrop: ../slides/01.svg" in result.output
+        assert "layout-src" in Path("overlays/footer.svg").read_text(encoding="utf-8")
+
+    @pytest.mark.usefixtures("project")
+    def test_check_is_clean_right_after_sync(self, runner: CliRunner) -> None:
+        self._overlay_project()
+        assert runner.invoke(main, ["sync"]).exit_code == 0
+        assert runner.invoke(main, ["sync", "--check"]).exit_code == 0
+        assert runner.invoke(main, ["verify"]).exit_code == 0
+        Path("overlays/footer.svg").write_text(
+            _OVERLAY_SVG.replace("footer", "footer2"), encoding="utf-8"
+        )
+        assert runner.invoke(main, ["sync", "--check"]).exit_code == 1
 
 
 class TestVerify:

@@ -114,18 +114,27 @@ def resolve_slide_src(src: str, project_dir: Path, theme: Theme | None = None) -
 
 def resolve_overlay_chains(
     overlays: Sequence[Overlay],
-    project_dir: Path,
+    project_dir: Path | None,
     theme: Theme | None = None,
+    base_dir: Path | None = None,
 ) -> list[list[Path]]:
     """Resolve each overlay to a root-first path list, ``[*ancestors, overlay]``.
 
     Bare names resolve in the overlay namespace at every level, including an
     overlay's own ``inkflow:parent``, so chrome can only ever inherit chrome.
+
+    ``base_dir`` is what a relative ``src`` is relative to, the project directory
+    for the deck's own overlays. Authoring tools resolve an overlay named by a file
+    attribute against that file instead, which is also the path that works without
+    a project at all.
     """
+    base = base_dir if base_dir is not None else project_dir
+    if base is None:
+        raise ValueError("resolving overlays requires a project directory or base_dir")
     chains: list[list[Path]] = []
     for overlay in overlays:
         path = resolve_parent_path(
-            overlay.src, project_dir, project_dir, theme, AssetKind.OVERLAY
+            overlay.src, base, project_dir, theme, AssetKind.OVERLAY
         )
         ancestors = resolve_chain(path, project_dir, theme, AssetKind.OVERLAY)
         chains.append([*ancestors, path])

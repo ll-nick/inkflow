@@ -9,7 +9,7 @@ from typing import cast
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_tree, strip_layout_layers
+from inkflow.clean import clean_inkscape_tree, strip_preview_layers
 from inkflow.svgio import SvgElement
 
 
@@ -123,7 +123,7 @@ def _slide_defs(slide_root: SvgElement) -> SvgElement:
 
 def compose_with_ancestors(slide_root: SvgElement, chain: list[Path]) -> SvgElement:
     """Prepend ancestor SVG content below the slide's own, mutating slide_root."""
-    strip_layout_layers(slide_root)
+    strip_preview_layers(slide_root)
 
     ancestor_groups, merged_defs = _read_groups(chain)
 
