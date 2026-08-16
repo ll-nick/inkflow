@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from inkflow.animations import Animation, PlayVideo
 from inkflow.clean import clean_inkscape_tree
 from inkflow.layout import (
+    are_preview_layers_current,
     discover_layouts,
-    is_layout_current,
     resolve_chain,
     resolve_default_zone,
 )
 from inkflow.loaders import load_md, resolve_content_src
 from inkflow.manifest import Inline, Media, Slide, Video
-from inkflow.overlay import Overlay
 from inkflow.pipeline import resolve_overlay_chains, resolve_slide_src
 from inkflow.svg import (
     compose_overlays,
@@ -22,6 +20,7 @@ from inkflow.svg import (
     duplicate_zone_ids,
     is_full_canvas_fill,
 )
+from inkflow.sync import PreviewContext, plan_preview, slide_overlays
 from inkflow.zones import build_slide_content, parse_markdown_zones
 
 if TYPE_CHECKING:
@@ -178,12 +177,20 @@ def _check_overlays(overlay_chains: list[list[Path]]) -> list[Issue]:
     return issues
 
 
-def _check_sync(
-    src: Path, project_dir: Path | None, theme: Theme | None, preview_css: str
-) -> list[Issue]:
-    chain = resolve_chain(src, project_dir, theme)
-    if not is_layout_current(src, chain, preview_css):
-        return [("warn", "layout layers stale — run inkflow sync")]
+def _check_sync(src: Path, preview: PreviewContext) -> list[Issue]:
+    """Staleness through the same plan ``sync`` writes, so the two agree.
+
+    Deriving the expected layers here instead would disagree the moment a file is
+    backed by slides that want different chrome, reporting a correctly synced file
+    as stale forever.
+    """
+    # Only files `inkflow sync` would actually write: a slide built straight on a
+    # built-in or theme layout resolves outside the project, and nothing may edit
+    # those, so reporting them as stale would be advice no one can follow.
+    if preview.project_dir is None or not src.is_relative_to(preview.project_dir):
+        return []
+    if not are_preview_layers_current(src, plan_preview(src, preview).layers):
+        return [("warn", "preview layers stale — run inkflow sync")]
     return []
 
 
@@ -210,14 +217,14 @@ def verify_slide(
     slide: Slide,
     project_dir: Path,
     theme: Theme | None,
-    preview_css: str,
-    deck_overlays: Sequence[Overlay] = (),
+    preview: PreviewContext,
 ) -> list[Issue]:
     """Return all (level, message) issues for one slide. Empty list means clean.
 
-    ``deck_overlays`` is the deck's resolved overlay list, which the slide may
-    override. Overlays are composed into the tree before the id checks run, since
-    a zone or animation target may legitimately live in the chrome.
+    ``preview`` carries the deck (whose overlays the slide may override) and the
+    preview styles the sync check compares against. Overlays are composed into the
+    tree before the id checks run, since a zone or animation target may legitimately
+    live in the chrome.
     """
     try:
         src = resolve_slide_src(slide.src, project_dir, theme)
@@ -228,7 +235,11 @@ def verify_slide(
 
     issues = _check_files(slide, project_dir)
 
-    overlays = slide.overlays if slide.overlays is not None else deck_overlays
+    overlays = (
+        slide_overlays(slide, preview.deck)
+        if preview.deck is not None
+        else slide.overlays or []
+    )
     try:
         root = clean_inkscape_tree(src)
         chain = resolve_chain(src, project_dir, theme)
@@ -258,5 +269,5 @@ def verify_slide(
         )
         for zone_id in duplicate_zone_ids(root)
     ]
-    issues += _check_sync(src, project_dir, theme, preview_css)
+    issues += _check_sync(src, preview)
     return issues
