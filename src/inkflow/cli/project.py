@@ -25,10 +25,7 @@ def _sync_layout_previews(target: Path) -> None:
         dark_mode = resolve_dark_mode(None, project.deck, False)
         sync.sync_slides(
             [t.path for t in project.slide_targets()],
-            project_dir=project.dir,
-            theme=project.theme,
-            deck_obj=project.deck,
-            dark_mode=dark_mode,
+            project.preview_context(dark_mode),
         )
     except Exception as exc:
         logger.warning(f"could not inject layout previews: {exc}")
