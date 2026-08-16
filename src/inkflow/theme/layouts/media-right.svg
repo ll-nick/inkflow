@@ -42,5 +42,5 @@
 .inkflow-stroke-grey { stroke: #6c7086; }</style></defs>
   <rect id="zone-title" x="80" y="60" width="840" height="120" style="stroke-width:0.69085"/>
   <rect id="zone-content" x="80" y="220" width="840" height="780"/>
-  <rect id="zone-media" x="1000" y="-1.1368684e-13" width="920" height="1080" style="stroke-width:1.23146"/>
+  <rect id="zone-media" x="1000" y="0" width="920" height="1080" style="stroke-width:1.23146"/>
 </svg>
