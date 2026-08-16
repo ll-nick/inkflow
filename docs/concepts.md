@@ -44,10 +44,7 @@ def main() -> Deck:
     )
 ```
 
-The manifest records intent, not rendering.
-"Fade in `headline`, then `subtitle`" is a declaration — you state each cue's
-intent through its `trigger` and Inkflow infers the concrete steps.
-The pipeline handles the CSS classes and timing.
+The above example is a single slide with two animated elements: `headline` and `subtitle`.
 
 !!! warning "Decks are executable code"
     A `deck.py` is a Python program that Inkflow imports and runs. Serving,
@@ -57,20 +54,10 @@ The pipeline handles the CSS classes and timing.
 
 A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
-Elements targeted by an entrance animation start hidden and appear when their step
-is reached. Each cue declares a `Trigger` (the default `ON_CLICK` takes the next
+Each animation declares a `Trigger` (the default `ON_CLICK` takes the next
 step, `WITH_PREVIOUS` shares the previous one, `AFTER_PREVIOUS` shares it but
 plays itself once the previous cue finishes), and Inkflow works out the step
 numbers from the triggers and order.
-
-Each animation has a **kind** (`enter`, `exit`, or `emphasis`), so one element can carry
-several cues that compose into a single lifecycle — enter, be emphasized, exit, even
-re-enter — at different steps. Stepping backward plays each animation in reverse.
-An `AFTER_PREVIOUS` chain plays as one atomic run:
-one press forward runs it, a forward press mid-run snaps it to the end,
-and one press back mirrors it.
-A cue on the slide-entry step animates on arrival, just after the transition,
-rather than being shown already finished.
 
 ## Zones and Markdown
 
@@ -81,22 +68,30 @@ Inkflow serves it as-is.
 Two things SVG editors do not handle well: formatted text and video.
 Text reflow, bullet lists, tables, and code blocks have no equivalent in SVG.
 Video is simply not something an SVG file contains.
-For both cases, Inkflow lets you mark a rectangular area in the SVG as a zone
+For both cases, Inkflow lets you mark an area in the SVG as a zone
 by giving it an ID like `zone-title` or `zone-content`.
-Inkflow replaces that rectangle with your content at build time.
-You fill zones from `deck.py` using `TextBox` for text or `Media` for images and
-video — or, when most of the slide content is text, by pointing `md=` at a
-Markdown file instead:
+Inkflow replaces that element with your content at build time.
+You fill zones from `deck.py` using `TextBox`, `Image`, or `Video` objects
+that specify the content for each zone:
+
+```python
+Slide(
+    "content.svg",
+    zones={
+        "title": TextBox("Hello world"),
+        "content": Image("assets/photo.jpg"),
+    },
+)
+```
+
+One shortcut for slides with mostly `TextBox` content is to use the `md=` parameter on `Slide`:
 
 ```python
 Slide("content", md="intro")
 ```
 
-`"content"` here is still an SVG — a reusable **layout** (see below) that defines
-zones and little else. Any SVG can define zones, whether it's a one-off slide or
-a shared layout; `md=` fills whatever zones the referenced SVG defines. Within
-the Markdown file, `::zone-name::` markers route sections to different zones,
-and `::step::` markers split content into reveal steps.
+This uses `slides/intro.md` to fill the zones defined in a slide or layout (see below) called `content.svg`.
+See the [guide](guides/slides.md) for details on what these Markdown files can contain and how they map to zones.
 
 ## The layout system
 
@@ -114,13 +109,13 @@ theme/main.svg          ← background, brand elements (chain ends here)
 
 Inkflow resolves the full chain at build time and composites the layers in memory.
 The SVG files on disk are not modified.
-`inkflow sync` can optionally write locked preview layers into each SVG
+[`inkflow sync`](reference/cli.md#inkflow-sync) can optionally write locked preview layers into each SVG
 so you can see the inherited background while editing in Inkscape.
 
 ## Overlays
 
 Inheritance answers "what am I built on", and composites behind a slide.
-Chrome that cuts across layouts asks a different question:
+Elements that cut across layouts, such as a brand logo, ask a different question:
 "what goes on top of every slide, regardless of what it is built on".
 
 Overlays are that second axis.
@@ -133,21 +128,21 @@ Deck(
 )
 ```
 
-Keeping the two axes separate is what lets a logo reach every layout
-without a wrapper layout for each one,
-and it means a deck that is otherwise pure Markdown never has to maintain a custom SVG.
-Overlays can inherit from other overlays, so shared chrome stays in one file.
+Overlays can inherit from other overlays.
 See the [layout system guide](guides/layout-system.md#overlays) for the full picture.
 
 ## Themes
 
-A theme is a directory that bundles a set of layouts, a CSS stylesheet, and/or custom JavaScript.
-It defines the visual identity of a deck: background, color palette, typography.
-Inkflow ships with a built-in theme.
-To use your own, point `Deck` at the directory:
+A theme bundles a color palette, typography setting, a set of layouts,
+overlays, a CSS stylesheet, and/or custom JavaScript.
+It's a regular Python class that subclasses `inkflow.themes.Theme`.
+By default, a deck uses the built-in theme.
+To use your own, point `Deck` at it:
 
 ```python
-Deck(theme="./my-theme")
+from my_package import MyTheme
+
+Deck(theme=MyTheme())
 ```
 
 The CSS stylesheet is injected into every slide.
@@ -178,3 +173,5 @@ Slides are embedded as JSON.
 Navigation and step animation are handled client-side.
 The WebSocket connection listens for file changes and swaps slide content in place
 (preserving the current slide index) without a full page reload.
+Launching multiple browser windows connects them all to the same WebSocket and stay in sync by default.
+Open a second window and press `p` to see the presenter view with notes and upcoming slides.
