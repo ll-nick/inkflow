@@ -19,8 +19,9 @@ active theme first, then fall back to these built-ins.
 | Layout | Purpose |
 |---|---|
 | `cover` | Title slide — large title, subtitle, and an optional full-bleed `media` zone |
-| `default` | Standard content slide — title, subtitle, and a content zone for bullets/prose |
-| `section` | Section divider — large heading to break the deck into parts |
+| `section` | Section divider — title and subtitle |
+| `title` | Bare title, no content zone — shared ancestor of `content` and `two-cols` |
+| `content` | Standard content slide — title and a content zone for bullets/prose |
 | `center` | Single centered block — ideal for one statement or image |
 | `two-cols` | Two independent content columns beneath a shared title |
 | `fact` | A single large fact with a supporting caption |

@@ -624,18 +624,17 @@ The built-in theme ships these:
 
 | Name | Zones | Use for |
 |---|---|---|
-| `cover` | title, subtitle | Title / opening slide |
-| `section` | title | Section divider |
+| `cover` | title, subtitle, media | Title / opening slide |
+| `section` | title, subtitle | Section divider |
+| `title` | title | Bare title, no content zone |
 | `content` | title, content | Standard text slide |
-| `center` | title, content | Centered content |
+| `center` | content | Centered content |
 | `two-cols` | title, left, right | Two-column comparison |
-| `two-cols-header` | title, left, right | Two columns with wide header |
-| `fact` | title, content | Big number or key fact |
-| `quote` | title, content | Pull quote |
-| `statement` | title, content | Bold statement |
+| `fact` | fact, caption | Big number or key fact |
+| `quote` | quote, attribution | Pull quote |
 | `media-left` | title, content, media | Text + image/video (image left) |
 | `media-right` | title, content, media | Text + image/video (image right) |
-| `end` | title, content | Thank-you / closing slide |
+| `end` | title, subtitle | Thank-you / closing slide |
 
 ### Referencing project layouts
 
