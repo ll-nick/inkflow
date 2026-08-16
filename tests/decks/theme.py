@@ -78,8 +78,8 @@ def main() -> Deck:
     return Deck(
         theme=Sunset(),
         slides=[
-            Slide("default", id="sunset", md=_INTRO),
-            Slide("default", md=_MARKDOWN),
+            Slide("content", id="sunset", md=_INTRO),
+            Slide("content", md=_MARKDOWN),
             Slide(
                 "center", md=Inline("# Centered\n\nvia the `center` built-in layout")
             ),

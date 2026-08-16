@@ -87,7 +87,7 @@ The starter deck has three slides, each showing a different way to author one:
 
 1. **`slides/title.svg`** — a plain SVG you drew. No layout, no zones: draw an SVG,
    point a `Slide` at it, done.
-2. **A built-in layout filled with Markdown** — `Slide("default", md="guide")` pulls
+2. **A built-in layout filled with Markdown** — `Slide("content", md="guide")` pulls
    `slides/guide.md` into the layout's content zone. `slides/guide.md` itself explains
    how the template works.
 3. **`slides/diagram.svg`** — your own SVG that inherits a themed background via
@@ -106,7 +106,7 @@ Speaker notes for each slide live in `notes/` and show only in the presenter pan
   ```python
   from inkflow import Slide, TextBox
 
-  Slide("default", zones={"title": TextBox("My Talk")})
+  Slide("content", zones={"title": TextBox("My Talk")})
   ```
 
 - Draw your own shape in any slide SVG and give it an ID (in Inkscape, select it and

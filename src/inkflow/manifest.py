@@ -104,7 +104,7 @@ class Image(_MediaBase):
     Pass it as a value in a slide's ``zones`` dict to inject it into that zone.
 
     ```python
-    Slide("default", md="bullets", zones={"media": Image("photo.jpg")})
+    Slide("content", md="bullets", zones={"media": Image("photo.jpg")})
     ```
     """
 
@@ -178,12 +178,12 @@ class Slide:
     Slide("title", animations=[animations.FadeIn("headline")])
 
     # Reusable layout with Markdown-filled zones
-    Slide("default", md="bullets", zones={"media": Image("photo.jpg")})
+    Slide("content", md="bullets", zones={"media": Image("photo.jpg")})
     ```
     """
 
     src: str
-    """Reference to the slide's SVG file. A bare name (e.g. ``"default"``) is
+    """Reference to the slide's SVG file. A bare name (e.g. ``"content"``) is
     looked up in ``slides/`` first, then searched across layouts (project →
     theme → built-in); prefix with ``local:``, ``theme:``, or ``builtin:`` to
     pin to one of those directly."""
