@@ -1,6 +1,6 @@
 [project]
 name = "inkflow"
-version = "0.2.0"
+version = "0.3.0"
 description = "Beautiful slides from SVG. Your editor, your style."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -68,10 +68,7 @@ DEP002 = ["brotli"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/inkflow"]
 artifacts = ["src/inkflow/theme/**", "src/inkflow/templates/**"]
-exclude = [
-  "src/inkflow/theme/showcase/**",
-  "src/inkflow/theme/**/__pycache__/**"
-]
+exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**"]
 
 [tool.pyright]
 reportUnusedCallResult = "none"
