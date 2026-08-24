@@ -5,5 +5,6 @@ def main() -> Deck:
     return Deck(
         slides=[
             Slide("title"),
+            Slide("just-svg"),
         ],
     )
