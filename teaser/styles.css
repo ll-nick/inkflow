@@ -1,0 +1,5 @@
+.layout-top-centered #zone-content {
+    font-size: 90pt;
+    --inkflow-align: center;
+    --inkflow-valign: top;
+}
