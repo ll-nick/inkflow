@@ -1,4 +1,5 @@
-from inkflow import Deck, Slide, transitions
+from inkflow import Deck, Slide
+from inkflow.transitions import Morph
 
 
 def main() -> Deck:
@@ -6,6 +7,11 @@ def main() -> Deck:
         slides=[
             Slide("title"),
             Slide("just-svg"),
-            Slide("just-md", md="just-md", transition=transitions.Morph()),
+            Slide("just-md", md="just-md", transition=Morph()),
+            Slide(
+                "get-started",
+                md="get-started",
+                transition=Morph(),
+            ),
         ],
     )
