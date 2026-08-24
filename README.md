@@ -16,6 +16,10 @@
 > **Early-stage software.**
 > Expect bugs, missing features, and breaking changes.
 
+## Teaser
+
+https://github.com/user-attachments/assets/426628b3-817b-4861-b4eb-974bf9fdaf37
+
 ## The idea
 
 Every presentation tool makes you choose.
