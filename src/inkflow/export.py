@@ -173,10 +173,12 @@ def build_pdf(
 
 def _find_chromium() -> str | None:
     for name in (
+        "chrome",
         "chromium",
         "chromium-browser",
         "google-chrome",
         "google-chrome-stable",
+        "msedge",  # Chromium-based Edge, ships with Windows
     ):
         if found := shutil.which(name):
             return found
