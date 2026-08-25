@@ -60,7 +60,9 @@ The blank page is a text cursor, not a canvas.
 **Inkflow gives you both.**
 Your authoring environment is a proper vector editor.
 Draw freely, iterate visually.
-Your source files are SVG, Markdown, and Python: open formats, plain text, not tied to any software or service.
+Your source files are SVG, Markdown, and Python:
+open formats, plain text, not tied to any software or service ---
+fully compatible with version control and your favorite coding agent.
 
 ## How it works
 

@@ -45,8 +45,11 @@ But you describe layout in markup instead of drawing it.
 Creativity suffers when moving a box means editing a number.
 
 **Inkflow gives you both.**
-Draw in any SVG editor.
-Keep everything in plain text.
+Your authoring environment is a proper vector editor.
+Draw freely, iterate visually.
+Your source files are SVG, Markdown, and Python:
+open formats, plain text, not tied to any software or service ---
+fully compatible with version control and your favorite coding agent.
 
 ## How it works
 
