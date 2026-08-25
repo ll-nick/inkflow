@@ -18,7 +18,7 @@
 
 ## Teaser
 
-https://github.com/user-attachments/assets/426628b3-817b-4861-b4eb-974bf9fdaf37
+[Watch on GitHub](https://github.com/user-attachments/assets/426628b3-817b-4861-b4eb-974bf9fdaf37)
 
 ## The idea
 
