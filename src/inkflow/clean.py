@@ -85,7 +85,27 @@ def clean_inkscape_tree(src: Path, keep_preview: bool = False) -> SvgElement:
     return root
 
 
+def _protect_text_whitespace(root: SvgElement) -> None:
+    """Stop pretty-printing from injecting whitespace into <text>/<tspan> runs.
+
+    lxml's pretty_print inserts newline+indent text/tail nodes wherever it finds
+    None, unaware that Inkscape always sets xml:space="preserve" on the document,
+    which makes that inserted whitespace render as literal glyph-width gaps (e.g.
+    between adjacent tspans coloured separately). Pinning every text/tail in a
+    <text> subtree to "" (rather than None) tells lxml content is already present,
+    so it leaves the subtree untouched.
+    """
+    for text_el in root.iter(f"{{{ns.SVG}}}text"):
+        text_el.text = text_el.text if text_el.text is not None else ""
+        for el in text_el.iter():
+            if el is text_el:
+                continue
+            el.text = el.text if el.text is not None else ""
+            el.tail = el.tail if el.tail is not None else ""
+
+
 def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
     """Cleaned SVG as a pretty-printed string. See ``clean_inkscape_tree``."""
     root = clean_inkscape_tree(src, keep_preview)
+    _protect_text_whitespace(root)
     return etree.tostring(root, encoding="unicode", pretty_print=True)

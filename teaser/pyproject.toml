@@ -1,0 +1,10 @@
+[project]
+name = "teaser"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "inkflow",
+]
+
+[tool.uv.sources]
+inkflow = { path = "..", editable = true }

@@ -10,7 +10,6 @@ This page takes you from zero to a running presentation in about five minutes.
 - An SVG editor.
   [Inkscape](https://inkscape.org/) is the primary authoring tool,
   but any editor that exports standard SVG works
-- (Currently only tested on Linux)
 
 ## Run the demo
 

@@ -38,6 +38,22 @@ _INKSCAPE_LAYER_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+# Adjacent tspans with no separating whitespace, as Inkscape saves them, under
+# xml:space="preserve" — pretty-printing must not inject whitespace between them.
+_MULTI_TSPAN_SVG = textwrap.dedent("""\
+    <?xml version="1.0" encoding="UTF-8"?>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+         xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+         inkscape:version="1.3.2"
+         xml:space="preserve"
+         width="100" height="100">
+      <sodipodi:namedview id="namedview1" inkscape:zoom="1.0"/>
+      <text xml:space="preserve" id="logo-text" x="0" y="0">""") + (
+    '<tspan id="wrap"><tspan id="a">ink</tspan><tspan id="b">flow</tspan></tspan>'
+    "</text>\n    </svg>\n"
+)
+
 # SVG with an injected layout layer group and an inkflow-preview style block.
 _PREVIEW_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg"
@@ -129,6 +145,14 @@ class TestCleanInkscapeSvg:
         result = clean_inkscape_svg(svg_file)
         assert "http://www.inkscape.org/namespaces/inkscape" not in result
         assert "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" not in result
+
+    def test_does_not_inject_whitespace_between_adjacent_tspans(
+        self, tmp_path: Path
+    ) -> None:
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(_MULTI_TSPAN_SVG, encoding="utf-8")
+        result = clean_inkscape_svg(svg_file)
+        assert '<tspan id="a">ink</tspan><tspan id="b">flow</tspan>' in result
 
     def test_preserves_layer_structural_attributes(self, tmp_path: Path) -> None:
         svg_file = tmp_path / "test.svg"
