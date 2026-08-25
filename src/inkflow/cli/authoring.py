@@ -242,10 +242,10 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
 
     base = project_dir or Path.cwd()
     try:
-        output_rel = output_path.relative_to(base)
+        output_rel = output_path.relative_to(base).as_posix()
     except ValueError:
-        output_rel = output_path
-    report("Created", str(output_rel))
+        output_rel = output_path.as_posix()
+    report("Created", output_rel)
     console.print("  add to deck.py:", markup=False)
     console.print(f'    Slide("{output_rel}"),', markup=False)
 
