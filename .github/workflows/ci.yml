@@ -38,7 +38,12 @@ jobs:
       - run: mise run test-js
 
       - name: Check SVGs are clean
-        run: git ls-files '*.svg' | xargs --no-run-if-empty uv run inkflow clean --check
+        shell: bash
+        run: |
+          svgs="$(git ls-files '*.svg')"
+          if [ -n "$svgs" ]; then
+            echo "$svgs" | xargs uv run inkflow clean --check
+          fi
 
       - name: Build demo deck
         run: uv run inkflow build --deck demo/deck.py
