@@ -47,15 +47,14 @@ Take a look at the [demo](https://ll-nick.github.io/inkflow/demo/) for some more
 Every presentation tool makes you choose.
 
 **Visual editors** (PowerPoint, Keynote, Google Slides) give you a canvas.
-Drag shapes, resize freely, iterate until it looks right.
+Drag shapes, tweak spacing, iterate until it looks right.
 But your work lives in proprietary formats tied to a platform or subscription,
 and exporting to anything else means fighting a lossy conversion.
 
 **Code-based tools** (Beamer, Slidev, reveal.js) keep everything as plain text.
-Files are diffable, version-controlled, reproducible.
+Diffable, version-controlled, editor-agnostic.
 But you describe layout in markup instead of drawing it.
-Creativity suffers when moving a box means editing a coordinate.
-The blank page is a text cursor, not a canvas.
+Creativity suffers when moving a box means editing a number.
 
 **Inkflow gives you both.**
 Your authoring environment is a proper vector editor.
@@ -66,7 +65,21 @@ fully compatible with version control and your favorite coding agent.
 
 ## How it works
 
-A deck is a plain Python file:
+1. **Draw each slide as an SVG.** Use Inkscape, Figma, or any editor that exports SVG.
+   No special markup, no plugin — draw exactly as you normally would.
+2. **List your slides in `deck.py`.** A small Python file says which slides to show,
+   in what order, and which elements animate or transition in.
+3. **Run `inkflow serve`.** A browser tab opens with your presentation. Save a change
+   in your editor and it appears instantly, without losing your place.
+
+That's the core loop --- the rest is there once you need it:
+reusable layouts that inherit from each other like master slides,
+Markdown-filled zones for text-heavy slides,
+a presenter view with speaker notes,
+one-command export to static HTML or PDF,
+and more.
+
+### An example `deck.py`
 
 ```python
 from inkflow import (
@@ -83,15 +96,15 @@ from inkflow import (
 
 def main() -> Deck:
     return Deck(
-        # Chrome composited on top of every slide, whatever layout it uses
+        # Elements, such as a logo, composited on top of every slide
         overlays=[Overlay("footer")],
         slides=[
-            # SVG slide: draw freely in Inkscape, animate elements by id
+            # SVG slide: draw freely in any editor, animate elements by id
             Slide(
                 "title.svg",
-                # Opt a single slide out of the deck's chrome
+                # Opt a single slide out of the deck's overlays
                 overlays=[],
-                # Each cue's Trigger decides when it fires (default: on next click)
+                # Animate individual elements by id
                 animations=[
                     animations.FadeIn("headline"),
                     animations.FadeIn("subtitle"),
@@ -101,7 +114,7 @@ def main() -> Deck:
                 "diagram.svg",
                 # Fill predefined content zones using Markdown
                 md="diagram.md",
-                # Set a transition for the whole slide, and multiple animations for individual elements
+                # Set a transition for this slide
                 transition=transitions.Crossfade(),
                 animations=[
                     animations.Bounce("box-a"),
@@ -112,8 +125,7 @@ def main() -> Deck:
                 # Reuse a built-in, theme or project-local layout
                 "media-right",
                 md="image.md",
-                # Fill a named zone with an image, or a video with playback control
-                # (autoplay, loop, mute, trim, and a PlayVideo cue to start on a step)
+                # Fill a named zone with an image or a video
                 zones={"media": Image("assets/photo.jpg", fit=MediaFit.COVER)},
             ),
             Slide(
@@ -123,6 +135,10 @@ def main() -> Deck:
             ),
         ],
     )
+```
+
+```bash
+inkflow serve   # open http://localhost:7777
 ```
 
 When you run `inkflow serve`,
