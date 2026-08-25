@@ -38,7 +38,7 @@ It is where things like slide order, transitions, animations, and Markdown conte
 I then switch to the Markdown file referenced for slide three for a quick edit --- hot reloading the slide in the browser just like before.
 
 That's it!
-Take a look at the demo linked above for some more advanced examples you can try in your own pace.
+Take a look at the [demo](https://ll-nick.github.io/inkflow/demo/) for some more advanced examples you can try at your own pace.
 
 </details>
 

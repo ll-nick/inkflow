@@ -7,6 +7,30 @@
 
 ---
 
+## The idea in under 40 seconds
+
+<video controls muted playsinline style="max-width: 100%;">
+  <source src="assets/teaser.mp4" type="video/mp4">
+</video>
+
+??? note "Too fast? Too small? Click here for an explanation."
+    At first, `inkflow serve` is launched in the terminal in the bottom left.
+    It builds the slide deck and serves it to the browser.
+    Using the `o` key, the browser in the middle of the screen opens to the presentation.
+
+    After navigating to the second slide, the Inkscape editor on the right is used to edit the SVG the slide is based on.
+    The slide is automatically reloaded in the browser upon saving the file.
+
+    Using a morph transition, we move on to the third slide.
+    This one makes use of Markdown to fill in a predefined content zone in the SVG.
+
+    The terminal on the top left (*I use Neovim by the way*) shows the `deck.py` file.
+    It is where things like slide order, transitions, animations, and Markdown content are defined.
+    I then switch to the Markdown file referenced for slide three for a quick edit --- hot reloading the slide in the browser just like before.
+
+    That's it!
+    Take a look at the [demo](demo/index.html) for some more advanced examples you can try at your own pace.
+
 ## Why Inkflow?
 
 Every presentation tool makes you choose.
