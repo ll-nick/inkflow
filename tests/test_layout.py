@@ -109,6 +109,17 @@ class TestResolveParentPath:
         with pytest.raises(ValueError, match="not found"):
             resolve_parent_path("nonexistent-layout", svg, tmp_path, None)
 
+    def test_os_native_absolute_path(self, tmp_path: Path) -> None:
+        # Exercises the OS-native absolute-path branch with whatever separator
+        # style the host OS actually produces (backslash-drive on Windows,
+        # leading-slash on POSIX) rather than hardcoding one platform's syntax.
+        layout = tmp_path / "elsewhere" / "layout.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_SIMPLE_SVG, encoding="utf-8")
+        svg = tmp_path / "01.svg"
+        result = resolve_parent_path(str(layout), svg, tmp_path, None)
+        assert result == layout.resolve()
+
 
 # ── resolve_chain ─────────────────────────────────────────────────────────────
 
