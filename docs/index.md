@@ -26,7 +26,7 @@
 
     The terminal on the top left (*I use Neovim by the way*) shows the `deck.py` file.
     It is where things like slide order, transitions, animations, and Markdown content are defined.
-    I then switch to the Markdown file referenced for slide three for a quick edit --- hot reloading the slide in the browser just like before.
+    I then switch to the Markdown file referenced for slide three for a quick edit—hot reloading the slide in the browser just like before.
 
     That's it!
     Take a look at the [demo](demo/index.html) for some more advanced examples you can try at your own pace.
@@ -49,19 +49,18 @@ Creativity suffers when moving a box means editing a number.
 Your authoring environment is a proper vector editor.
 Draw freely, iterate visually.
 Your source files are SVG, Markdown, and Python:
-open formats, plain text, not tied to any software or service ---
-fully compatible with version control and your favorite coding agent.
+open formats, plain text, not tied to any software or service—fully compatible with version control and your favorite coding agent.
 
 ## How it works
 
 1. **Draw each slide as an SVG.** Use Inkscape, Figma, or any editor that exports SVG.
-   No special markup, no plugin — draw exactly as you normally would.
+   No special markup, no plugin—draw exactly as you normally would.
 2. **List your slides in `deck.py`.** A small Python file says which slides to show,
    in what order, and which elements animate or transition in.
 3. **Run `inkflow serve`.** A browser tab opens with your presentation. Save a change
    in your editor and it appears instantly, without losing your place.
 
-That's the core loop --- the rest is there once you need it:
+That's the core loop—the rest is there once you need it:
 reusable layouts that inherit from each other like master slides,
 Markdown-filled zones for text-heavy slides,
 a presenter view with speaker notes,
