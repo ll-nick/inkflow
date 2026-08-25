@@ -94,7 +94,8 @@ def resolve_parent_path(
       theme:foo      →  {theme_dir}/layouts/foo.svg      (requires theme)
       builtin:foo    →  {builtin_theme_dir}/layouts/foo.svg
       ./foo, ../foo  →  relative to base_dir
-      /absolute      →  literal filesystem path
+      /absolute      →  literal filesystem path (OS-native: also ``C:\\...``,
+                         ``C:/...``, ``\\\\server\\share\\...`` on Windows)
 
     Bare single-part name (no prefix, no separator):
       Three-level search: project → theme → built-in.
@@ -139,7 +140,7 @@ def resolve_parent_path(
     if parent_str.startswith(("./", "../")):
         return _with_svg((base_dir / parent_str).resolve())
 
-    if parent_str.startswith("/"):
+    if Path(parent_str).is_absolute():
         return _with_svg(Path(parent_str))
 
     # Multi-part relative path (has /) — relative to base_dir

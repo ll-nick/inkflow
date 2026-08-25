@@ -98,7 +98,7 @@ def resolve_targets(files: Iterable[Path]) -> list[Target]:
         resolved = file.resolve()
         if not resolved.exists():
             raise click.ClickException(f"file not found: {resolved}")
-        targets.append(Target(resolved, str(file)))
+        targets.append(Target(resolved, file.as_posix()))
     return targets
 
 
@@ -138,7 +138,7 @@ class Project:
         for resolved in [*backing, *sorted(overlays)]:
             if resolved in seen or not resolved.is_relative_to(self.dir):
                 continue
-            seen[resolved] = Target(resolved, str(resolved.relative_to(self.dir)))
+            seen[resolved] = Target(resolved, resolved.relative_to(self.dir).as_posix())
         return list(seen.values())
 
     def preview_context(self, dark_mode: bool) -> sync.PreviewContext:

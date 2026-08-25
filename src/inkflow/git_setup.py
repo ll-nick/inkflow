@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 from inkflow.logging import logger, report
+from inkflow.os_compat import venv_executable
 
 GITIGNORE = """\
 # Python
@@ -38,6 +39,8 @@ mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM \\
 
 if [ -x ".venv/bin/inkflow" ]; then
     INKFLOW=".venv/bin/inkflow"
+elif [ -x ".venv/Scripts/inkflow.exe" ]; then
+    INKFLOW=".venv/Scripts/inkflow.exe"
 elif command -v inkflow &>/dev/null; then
     INKFLOW="inkflow"
 else
@@ -87,13 +90,13 @@ def resolve_textconv(root: Path) -> str:
     Prefers a local .venv/bin/inkflow if it exists,
     otherwise falls back to global inkflow.
     """
-    venv_bin = root / ".venv" / "bin" / "inkflow"
+    venv_bin = venv_executable(root / ".venv", "inkflow")
     if venv_bin.exists():
-        return ".venv/bin/inkflow clean --stdout"
-    if subprocess.run(["which", "inkflow"], capture_output=True).returncode == 0:
+        return f"{venv_bin.relative_to(root).as_posix()} clean --stdout"
+    if shutil.which("inkflow"):
         return "inkflow clean --stdout"
     raise RuntimeError(
-        "inkflow not found — no .venv/bin/inkflow in repo root "
+        f"inkflow not found — no {venv_bin.relative_to(root).as_posix()} in repo root "
         + "and inkflow is not on PATH. "
         + "Install inkflow globally to continue."
     )
@@ -105,7 +108,7 @@ def ensure_hook(hooks_dir: Path) -> bool:
     hook = hooks_dir / "pre-commit"
     created = not hook.exists()
     if created:
-        hook.write_text(HOOK_SCRIPT)
+        hook.write_text(HOOK_SCRIPT, encoding="utf-8", newline="\n")
     hook.chmod(hook.stat().st_mode | 0o111)  # chmod +x
     return created
 
