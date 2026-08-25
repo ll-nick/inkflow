@@ -52,9 +52,11 @@ jobs:
         run: uv run inkflow build --deck src/inkflow/theme/showcase/deck.py
 
       - name: Build init deck
+        shell: bash
         run: |
-          uv run inkflow init /tmp/test-init
-          uv run inkflow build --deck /tmp/test-init/deck.py
+          tmp_dir=$(mktemp -d)
+          uv run inkflow init "$tmp_dir/test-init"
+          uv run inkflow build --deck "$tmp_dir/test-init/deck.py"
 
   export:
     runs-on: ubuntu-latest
