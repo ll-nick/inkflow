@@ -9,12 +9,9 @@ import importlib.resources
 import importlib.util
 import json
 import os
-import signal
 import sys
-import termios
 import time
 import traceback
-import tty
 import webbrowser
 from collections.abc import Awaitable, Callable
 from html import escape as escape_html
@@ -34,6 +31,7 @@ from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.logging import Levels, collect_logs, logger, report
 from inkflow.manifest import Deck
+from inkflow.os_compat import install_shutdown_handler, raw_keypresses
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.titles import resolve_deck_title
 from inkflow.tui import LiveUI
@@ -448,17 +446,7 @@ async def _read_keys(
         return
 
     loop = asyncio.get_running_loop()
-    queue: asyncio.Queue[str] = asyncio.Queue()
-
-    def _on_stdin() -> None:
-        ch = sys.stdin.read(1)
-        loop.call_soon_threadsafe(queue.put_nowait, ch)
-
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setcbreak(fd)  # single-char reads, output processing (ONLCR) intact
-        loop.add_reader(fd, _on_stdin)
+    async with raw_keypresses(loop) as queue:
         while True:
             ch = await queue.get()
             if ch in ("\x04", "q"):  # Ctrl-D, q (Ctrl-C handled via SIGINT)
@@ -471,9 +459,6 @@ async def _read_keys(
                     await rebuild(deck_path, ui, levels)
             elif ch == "t":
                 ui.toggle_trace()
-    finally:
-        loop.remove_reader(fd)
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
@@ -487,8 +472,7 @@ async def serve(
     shutdown = asyncio.Event()
 
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, shutdown.set)
-    loop.add_signal_handler(signal.SIGTERM, shutdown.set)
+    uninstall_shutdown_handler = install_shutdown_handler(loop, shutdown)
 
     try:
         http_handler = make_http_handler(ws_port, deck_path.parent)
@@ -550,5 +534,4 @@ async def serve(
                 else:
                     raise
     finally:
-        loop.remove_signal_handler(signal.SIGINT)
-        loop.remove_signal_handler(signal.SIGTERM)
+        uninstall_shutdown_handler()
