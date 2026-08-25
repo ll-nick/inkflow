@@ -16,7 +16,7 @@
 > **Early-stage software.**
 > Expect bugs, missing features, and breaking changes.
 
-## The Idea In Under 40 Seconds
+## The idea in under 40 seconds
 
 [Watch on GitHub](https://github.com/user-attachments/assets/426628b3-817b-4861-b4eb-974bf9fdaf37)
 
@@ -42,7 +42,7 @@ Take a look at the demo linked above for some more advanced examples you can try
 
 </details>
 
-## The idea
+## Why Inkflow?
 
 Every presentation tool makes you choose.
 
