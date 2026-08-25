@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import cast
+
+import pytest
 
 from inkflow.enums import ColorMode
 from inkflow.server import (
@@ -142,6 +145,10 @@ def test_resolve_asset_valid(tmp_path: Path) -> None:
     assert result == img
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="creating symlinks needs Developer Mode/admin rights on Windows",
+)
 def test_resolve_asset_symlink_outside_project(tmp_path: Path) -> None:
     # A symlink inside project_dir that points outside it should be served.
     outside = tmp_path / "shared"
