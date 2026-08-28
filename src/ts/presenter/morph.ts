@@ -18,6 +18,50 @@ import { ProgressDriver } from "./progress-driver";
 const LEAF_SELECTOR =
     "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
 
+// A definition subtree paints only where a url(#…) reference pulls it in, so its
+// contents are not slide geometry and take no part in the morph. Blink lays out
+// marker contents, so their leaves have a screen CTM and would otherwise pass every
+// filter here. Inkscape reuses stock marker ids across files, so a shared
+// marker#ConcaveTriangle opened a scope pairing the two slides' marker internals:
+// the incoming arrowhead was driven by a morph transform, and an unpaired marker
+// path was ghosted into the visible tree as a top-level child of the slide.
+//
+// `clipPath` keeps its SVG capitalisation on purpose: a type selector matches
+// case-insensitively only for elements in the HTML namespace.
+const DEFINITION_SUBTREE_SELECTOR =
+    "defs, marker, symbol, clipPath, mask, pattern";
+
+export function isDefinitionContent(element: Element): boolean {
+    return element.closest(DEFINITION_SUBTREE_SELECTOR) !== null;
+}
+
+// Ids under `root` a morph may pair on, definition ids excluded so they never open
+// a scope.
+function pairableDescendantIds(root: Element): Set<string> {
+    const ids = new Set<string>();
+    for (const element of root.querySelectorAll("[id]"))
+        if (!isDefinitionContent(element)) ids.add(element.id);
+    return ids;
+}
+
+// As above plus `root`'s own id, since a top-level child is matched by it too.
+export function collectPairableIds(root: Element): Set<string> {
+    const ids = pairableDescendantIds(root);
+    if (root.id && !isDefinitionContent(root)) ids.add(root.id);
+    return ids;
+}
+
+// The leaves a morph may pair: renderable tags, outside any definition subtree, and
+// laid out — a null screen CTM means no layout box, so there is no geometry to morph.
+function pairableLeaves(root: Element): SVGGraphicsElement[] {
+    return Array.from(
+        root.querySelectorAll<SVGGraphicsElement>(LEAF_SELECTOR),
+    ).filter(
+        (element) =>
+            !isDefinitionContent(element) && element.getScreenCTM() !== null,
+    );
+}
+
 // Length attributes that must NOT inherit a non-uniform box scale: a rect
 // stretched 2× wide should keep round (not oval) corners and even stroke. We morph
 // the *visual* value and divide the current scale back out (rx by x, ry by y,
@@ -274,28 +318,17 @@ function snapshotLeaf(element: SVGGraphicsElement): LeafSnapshot {
 }
 
 function snapshotLeaves(svg: Element): LeafSnapshotSet {
-    const ids = new Set<string>();
-    for (const el of svg.querySelectorAll("[id]")) ids.add(el.id);
-    const leaves: LeafSnapshot[] = [];
-    for (const el of svg.querySelectorAll<SVGGraphicsElement>(LEAF_SELECTOR)) {
-        if (!el.getScreenCTM()) continue;
-        leaves.push(snapshotLeaf(el));
-    }
-    return { ids, leaves };
-}
-
-function collectIds(root: Element): Set<string> {
-    const ids = new Set<string>();
-    if (root.id) ids.add(root.id);
-    for (const element of root.querySelectorAll("[id]")) ids.add(element.id);
-    return ids;
+    return {
+        ids: pairableDescendantIds(svg),
+        leaves: pairableLeaves(svg).map(snapshotLeaf),
+    };
 }
 
 function snapshotTopLevelChildren(svg: Element): ChildSnapshot[] {
     return Array.from(svg.children).map((child, index) => ({
         element: child.cloneNode(true) as Element,
         html: child.outerHTML,
-        ids: collectIds(child),
+        ids: collectPairableIds(child),
         index,
     }));
 }
@@ -467,10 +500,7 @@ function buildLeafTasks(
     }
 
     const newByScope = new Map<string, SVGGraphicsElement[]>();
-    for (const el of svgRoot.querySelectorAll<SVGGraphicsElement>(
-        LEAF_SELECTOR,
-    )) {
-        if (!el.getScreenCTM()) continue;
+    for (const el of pairableLeaves(svgRoot)) {
         const scope = nearestMatchedId(ancestorIdChain(el), matchedIds);
         if (!scope) continue;
         (newByScope.get(scope) ?? newByScope.set(scope, []).get(scope)!).push(
@@ -615,9 +645,7 @@ function buildOrphanTasks(
         !nearestMatchedId(ancestorIds, matchedIds) &&
         ancestorIds.some((id) => scope.has(id));
 
-    const newLeaves = Array.from(
-        svgRoot.querySelectorAll<SVGGraphicsElement>(LEAF_SELECTOR),
-    ).filter((el) => el.getScreenCTM());
+    const newLeaves = pairableLeaves(svgRoot);
     const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
     const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
 
@@ -642,7 +670,7 @@ function buildTasks(
     oldLeaves: LeafSnapshotSet,
     oldChildren: ChildSnapshot[],
 ): AnimationTask[] {
-    const newIds = collectIds(svgRoot);
+    const newIds = collectPairableIds(svgRoot);
     const matchedIds = new Set<string>();
     for (const id of oldLeaves.ids) if (newIds.has(id)) matchedIds.add(id);
 
@@ -652,7 +680,7 @@ function buildTasks(
         (child, index) => ({
             element: child,
             html: child.outerHTML,
-            ids: collectIds(child),
+            ids: collectPairableIds(child),
             index,
         }),
     );
