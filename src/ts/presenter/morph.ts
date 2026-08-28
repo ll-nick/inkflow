@@ -62,6 +62,39 @@ function pairableLeaves(root: Element): SVGGraphicsElement[] {
     );
 }
 
+// Inline style properties a morph writes over. finalize restores exactly what the
+// element had rather than removing them, because a blanket removal also drops
+// declarations the *author* wrote: an arrow styled `fill:none;stroke:#b4befe` falls
+// back to the SVG defaults of black fill and no stroke, and a <text> sized only by
+// inline `font-size` collapses to the inherited size.
+const MORPH_OWNED_STYLE_PROPERTIES = [
+    ...INTERPOLATED_ATTRIBUTES,
+    "font-size",
+    "transform-box",
+    "transform-origin",
+];
+
+export function readInlineStyle(element: Element): Record<string, string> {
+    const declarations: Record<string, string> = {};
+    for (const property of MORPH_OWNED_STYLE_PROPERTIES) {
+        const value = (element as SVGElement).style.getPropertyValue(property);
+        if (value) declarations[property] = value;
+    }
+    return declarations;
+}
+
+export function restoreInlineStyle(
+    element: Element,
+    declarations: Record<string, string>,
+): void {
+    const style = (element as SVGElement).style;
+    for (const property of MORPH_OWNED_STYLE_PROPERTIES) {
+        const original = declarations[property];
+        if (original) style.setProperty(property, original);
+        else style.removeProperty(property);
+    }
+}
+
 // Length attributes that must NOT inherit a non-uniform box scale: a rect
 // stretched 2× wide should keep round (not oval) corners and even stroke. We morph
 // the *visual* value and divide the current scale back out (rx by x, ry by y,
@@ -91,6 +124,7 @@ interface CommonMorph {
     element: SVGGraphicsElement;
     fromAttributes: Record<string, string>;
     toAttributes: Record<string, string>;
+    originalInlineStyle: Record<string, string>;
 }
 // A box morph reconstructs the element's transform each frame as
 // parent⁻¹ · M(p) · B_to⁻¹, where M(p) is the affine-interpolated frame, parent is
@@ -350,6 +384,7 @@ function createLeafMorph(
     if (kind !== snapshot.kind) return null; // structure changed; skip (will snap)
     const fromAttributes = snapshot.fromAttributes;
     const toAttributes = readInterpolatedAttributes(element);
+    const originalInlineStyle = readInlineStyle(element);
 
     if (
         kind === "line" &&
@@ -369,6 +404,7 @@ function createLeafMorph(
             element,
             fromAttributes,
             toAttributes,
+            originalInlineStyle,
             from: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y },
             to: {
                 x1: element.x1.baseVal.value,
@@ -392,6 +428,7 @@ function createLeafMorph(
             element,
             fromAttributes,
             toAttributes,
+            originalInlineStyle,
             parentCTM: parentScreenCTM(element),
             originalTransform: element.getAttribute("transform") ?? "",
             anchorLocalX: anchor.x,
@@ -433,6 +470,7 @@ function createLeafMorph(
             element,
             fromAttributes,
             toAttributes,
+            originalInlineStyle,
             originalTransform: element.getAttribute("transform") ?? "",
             fromComp: snapshot.frame,
             toComp: captured.comp,
@@ -853,9 +891,10 @@ function tickTasks(tasks: AnimationTask[], rawProgress: number): void {
 // ── finalize (snap to the new slide's natural state) ─────────────────────────
 
 function finalizeMorph(morph: Morph): void {
-    for (const attribute of INTERPOLATED_ATTRIBUTES) {
-        morph.element.style.removeProperty(attribute);
-    }
+    // Put back the element's own inline declarations. This also releases the
+    // reference-frame pin (transform-box / transform-origin) that applyBox sets, so an
+    // animation class's own values govern the element again if it later animates.
+    restoreInlineStyle(morph.element, morph.originalInlineStyle);
 
     if (morph.kind === "line") {
         morph.element.setAttribute("x1", String(morph.to.x1));
@@ -874,18 +913,12 @@ function finalizeMorph(morph: Morph): void {
         if (morph.originalTransform)
             morph.element.setAttribute("transform", morph.originalTransform);
         else morph.element.removeAttribute("transform");
-        morph.element.style.fontSize = "";
         return;
     }
 
     if (morph.originalTransform)
         morph.element.setAttribute("transform", morph.originalTransform);
     else morph.element.removeAttribute("transform");
-    // Release the reference-frame pin so an animation class's transform-box /
-    // transform-origin (zoom's fill-box + center) govern the element again if it
-    // later animates.
-    morph.element.style.removeProperty("transform-box");
-    morph.element.style.removeProperty("transform-origin");
     // Restore the new slide's natural lengths; drop ry if we only added it to hold
     // the corner uniform (the new element had none of its own).
     if (morph.toLengths.rx !== undefined)
