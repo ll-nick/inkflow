@@ -812,6 +812,28 @@
 
   // src/ts/presenter/morph.ts
   var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
+  var DEFINITION_SUBTREE_SELECTOR = "defs, marker, symbol, clipPath, mask, pattern";
+  function isDefinitionContent(element) {
+    return element.closest(DEFINITION_SUBTREE_SELECTOR) !== null;
+  }
+  function pairableDescendantIds(root) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const element of root.querySelectorAll("[id]"))
+      if (!isDefinitionContent(element)) ids.add(element.id);
+    return ids;
+  }
+  function collectPairableIds(root) {
+    const ids = pairableDescendantIds(root);
+    if (root.id && !isDefinitionContent(root)) ids.add(root.id);
+    return ids;
+  }
+  function pairableLeaves(root) {
+    return Array.from(
+      root.querySelectorAll(LEAF_SELECTOR)
+    ).filter(
+      (element) => !isDefinitionContent(element) && element.getScreenCTM() !== null
+    );
+  }
   var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
   function captureFrame(element) {
     const bbox = element.getBBox();
@@ -915,26 +937,16 @@
     };
   }
   function snapshotLeaves(svg) {
-    const ids = /* @__PURE__ */ new Set();
-    for (const el of svg.querySelectorAll("[id]")) ids.add(el.id);
-    const leaves = [];
-    for (const el of svg.querySelectorAll(LEAF_SELECTOR)) {
-      if (!el.getScreenCTM()) continue;
-      leaves.push(snapshotLeaf(el));
-    }
-    return { ids, leaves };
-  }
-  function collectIds(root) {
-    const ids = /* @__PURE__ */ new Set();
-    if (root.id) ids.add(root.id);
-    for (const element of root.querySelectorAll("[id]")) ids.add(element.id);
-    return ids;
+    return {
+      ids: pairableDescendantIds(svg),
+      leaves: pairableLeaves(svg).map(snapshotLeaf)
+    };
   }
   function snapshotTopLevelChildren(svg) {
     return Array.from(svg.children).map((child, index) => ({
       element: child.cloneNode(true),
       html: child.outerHTML,
-      ids: collectIds(child),
+      ids: collectPairableIds(child),
       index
     }));
   }
@@ -1039,10 +1051,7 @@
       );
     }
     const newByScope = /* @__PURE__ */ new Map();
-    for (const el of svgRoot.querySelectorAll(
-      LEAF_SELECTOR
-    )) {
-      if (!el.getScreenCTM()) continue;
+    for (const el of pairableLeaves(svgRoot)) {
       const scope = nearestMatchedId(ancestorIdChain(el), matchedIds);
       if (!scope) continue;
       (newByScope.get(scope) ?? newByScope.set(scope, []).get(scope)).push(
@@ -1132,9 +1141,7 @@
     const oldScope = matchedContainingChildIds(oldChildren, matchedIds);
     const newScope = matchedContainingChildIds(newChildren, matchedIds);
     const isOrphan = (ancestorIds, scope) => !nearestMatchedId(ancestorIds, matchedIds) && ancestorIds.some((id) => scope.has(id));
-    const newLeaves = Array.from(
-      svgRoot.querySelectorAll(LEAF_SELECTOR)
-    ).filter((el) => el.getScreenCTM());
+    const newLeaves = pairableLeaves(svgRoot);
     const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
     const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
     const tasks = [];
@@ -1147,14 +1154,14 @@
     return tasks;
   }
   function buildTasks(svgRoot, oldLeaves, oldChildren) {
-    const newIds = collectIds(svgRoot);
+    const newIds = collectPairableIds(svgRoot);
     const matchedIds = /* @__PURE__ */ new Set();
     for (const id of oldLeaves.ids) if (newIds.has(id)) matchedIds.add(id);
     const newChildren = Array.from(svgRoot.children).map(
       (child, index) => ({
         element: child,
         html: child.outerHTML,
-        ids: collectIds(child),
+        ids: collectPairableIds(child),
         index
       })
     );
