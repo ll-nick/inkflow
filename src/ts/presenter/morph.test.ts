@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, test } from "vitest";
-import { collectPairableIds, isDefinitionContent } from "./morph";
+import {
+    collectPairableIds,
+    isDefinitionContent,
+    readInlineStyle,
+    restoreInlineStyle,
+} from "./morph";
 
 // two slides that share nothing but stock Inkscape marker ids, plus one real matching element.
 const SLIDE = `
@@ -57,5 +62,52 @@ describe("collectPairableIds", () => {
         expect(collectPairableIds(byId("layer1"))).toEqual(
             new Set(["layer1", "trajectory-arrow", "text6"]),
         );
+    });
+});
+
+describe("inline style round trip", () => {
+    // A morph writes fill/stroke/font-size over the element while it animates. Finalize
+    // used to blanket-remove those properties, which also dropped the author's own
+    // declarations: an arrow styled `fill:none;stroke:#b4befe` came out of the morph
+    // with the SVG defaults, black fill and no stroke.
+    const AUTHORED = "fill:none;stroke:#b4befe;stroke-width:6;font-size:64px";
+
+    function arrow(): SVGElement {
+        document.body.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg">
+            <path id="a-generate" style="${AUTHORED}"/></svg>`;
+        return document.querySelector("#a-generate") as SVGElement;
+    }
+
+    test("author declarations survive a morph that overwrites them", () => {
+        const element = arrow();
+        const original = readInlineStyle(element);
+
+        element.style.setProperty("fill", "#ff0000");
+        element.style.setProperty("stroke", "#00ff00");
+        element.style.setProperty("font-size", "10px");
+
+        restoreInlineStyle(element, original);
+
+        expect(element.style.getPropertyValue("fill")).toBe("none");
+        expect(element.style.getPropertyValue("stroke")).toBe("#b4befe");
+        expect(element.style.getPropertyValue("font-size")).toBe("64px");
+    });
+
+    test("properties the morph added, and the author did not write, are removed", () => {
+        const element = arrow();
+        const original = readInlineStyle(element);
+
+        element.style.setProperty("opacity", "0.5");
+
+        restoreInlineStyle(element, original);
+
+        expect(element.style.getPropertyValue("opacity")).toBe("");
+    });
+
+    test("untouched declarations are left alone", () => {
+        const element = arrow();
+        restoreInlineStyle(element, readInlineStyle(element));
+
+        expect(element.style.getPropertyValue("stroke-width")).toBe("6");
     });
 });
