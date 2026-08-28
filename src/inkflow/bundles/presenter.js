@@ -834,6 +834,28 @@
       (element) => !isDefinitionContent(element) && element.getScreenCTM() !== null
     );
   }
+  var MORPH_OWNED_STYLE_PROPERTIES = [
+    ...INTERPOLATED_ATTRIBUTES,
+    "font-size",
+    "transform-box",
+    "transform-origin"
+  ];
+  function readInlineStyle(element) {
+    const declarations = {};
+    for (const property of MORPH_OWNED_STYLE_PROPERTIES) {
+      const value = element.style.getPropertyValue(property);
+      if (value) declarations[property] = value;
+    }
+    return declarations;
+  }
+  function restoreInlineStyle(element, declarations) {
+    const style = element.style;
+    for (const property of MORPH_OWNED_STYLE_PROPERTIES) {
+      const original = declarations[property];
+      if (original) style.setProperty(property, original);
+      else style.removeProperty(property);
+    }
+  }
   var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
   function captureFrame(element) {
     const bbox = element.getBBox();
@@ -958,6 +980,7 @@
     if (kind !== snapshot.kind) return null;
     const fromAttributes = snapshot.fromAttributes;
     const toAttributes = readInterpolatedAttributes(element);
+    const originalInlineStyle = readInlineStyle(element);
     if (kind === "line" && element instanceof SVGLineElement && snapshot.endpointsScreen) {
       const screenInverse = (element.getScreenCTM() ?? new DOMMatrix()).inverse();
       const s = snapshot.endpointsScreen;
@@ -968,6 +991,7 @@
         element,
         fromAttributes,
         toAttributes,
+        originalInlineStyle,
         from: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y },
         to: {
           x1: element.x1.baseVal.value,
@@ -986,6 +1010,7 @@
         element,
         fromAttributes,
         toAttributes,
+        originalInlineStyle,
         parentCTM: parentScreenCTM(element),
         originalTransform: element.getAttribute("transform") ?? "",
         anchorLocalX: anchor.x,
@@ -1007,6 +1032,7 @@
         element,
         fromAttributes,
         toAttributes,
+        originalInlineStyle,
         originalTransform: element.getAttribute("transform") ?? "",
         fromComp: snapshot.frame,
         toComp: captured.comp,
@@ -1294,9 +1320,7 @@
     }
   }
   function finalizeMorph(morph) {
-    for (const attribute of INTERPOLATED_ATTRIBUTES) {
-      morph.element.style.removeProperty(attribute);
-    }
+    restoreInlineStyle(morph.element, morph.originalInlineStyle);
     if (morph.kind === "line") {
       morph.element.setAttribute("x1", String(morph.to.x1));
       morph.element.setAttribute("y1", String(morph.to.y1));
@@ -1313,14 +1337,11 @@
       if (morph.originalTransform)
         morph.element.setAttribute("transform", morph.originalTransform);
       else morph.element.removeAttribute("transform");
-      morph.element.style.fontSize = "";
       return;
     }
     if (morph.originalTransform)
       morph.element.setAttribute("transform", morph.originalTransform);
     else morph.element.removeAttribute("transform");
-    morph.element.style.removeProperty("transform-box");
-    morph.element.style.removeProperty("transform-origin");
     if (morph.toLengths.rx !== void 0)
       morph.element.setAttribute("rx", String(morph.toLengths.rx));
     if (morph.toLengths.ry !== void 0)
