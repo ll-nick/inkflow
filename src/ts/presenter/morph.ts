@@ -62,6 +62,22 @@ function pairableLeaves(root: Element): SVGGraphicsElement[] {
     );
 }
 
+// Every node the morph splices into the incoming slide carries this, so cleanup can
+// find them by selector. The task list is not a safe owner of that cleanup: if
+// buildTasks throws partway through, `this.tasks` is never assigned, and the ghosts
+// already spliced in become unreachable — permanently, because cancel() then iterates
+// the same empty list. A selector sweep does not depend on the build having finished.
+const GHOST_ATTRIBUTE = "data-morph-ghost";
+
+export function markGhost(element: Element): void {
+    element.setAttribute(GHOST_ATTRIBUTE, "");
+}
+
+export function removeGhosts(root: ParentNode): void {
+    for (const ghost of root.querySelectorAll(`[${GHOST_ATTRIBUTE}]`))
+        ghost.remove();
+}
+
 // Inline style properties a morph writes over. finalize restores exactly what the
 // element had rather than removing them, because a blanket removal also drops
 // declarations the *author* wrote: an arrow styled `fill:none;stroke:#b4befe` falls
@@ -498,6 +514,7 @@ function buildLeafExit(
         .inverse()
         .multiply(snapshot.screenCTM);
     ghost.setAttribute("transform", matrixToSvgTransform(placement));
+    markGhost(ghost);
     svgRoot.appendChild(ghost);
     const startOpacity = parseFloat(snapshot.fromAttributes.opacity ?? "1");
     return {
@@ -620,6 +637,7 @@ function buildCrossfadeTasks(
         // Insert at the element's original depth rather than on top, so an exiting
         // background fades out behind the new content instead of covering it (which
         // would make the persisting content flash away and back).
+        markGhost(clone);
         svgRoot.insertBefore(clone, newChildElements[child.index] ?? null);
         // Fade from the element's current opacity, not a hard 1: when a morph is
         // reversed mid-flight the snapshotted element is already partly faded, and
@@ -968,6 +986,11 @@ export class MorphTransition {
     // markup so a full reversal can restore the real previous slide.
     prepare({ stage }: { stage: HTMLElement }): void {
         this.stage = stage;
+        // Drop any ghost a previous morph failed to clean up, before anything reads
+        // the outgoing DOM. prepare() runs before the framework swaps the new slide
+        // in, so a survivor would otherwise be captured into oldHtml, snapshotted as
+        // an outgoing leaf, and re-ghosted into the next slide.
+        removeGhosts(stage);
         this.oldHtml = stage.innerHTML;
         const beforeSvg = stage.querySelector("svg");
         this.oldLeaves = beforeSvg
@@ -1019,11 +1042,11 @@ export class MorphTransition {
         if (!signal.aborted) this.settle();
     }
 
-    cancel(_ctx: { stage: HTMLElement; params: TransitionData }): void {
+    cancel({ stage }: { stage: HTMLElement; params: TransitionData }): void {
         // Superseded by a non-reverse transition; the framework swaps the new slide
-        // in next, so just remove the reconstructed exit ghosts.
-        for (const task of this.tasks)
-            if (task.type === "exit") task.element.remove();
+        // in next, so just remove the reconstructed exit ghosts. Swept by selector
+        // rather than walked from this.tasks, which is empty when the build threw.
+        removeGhosts(stage);
     }
 
     // progress 1 → the new slide is fully formed; snap it to its natural state.
@@ -1032,5 +1055,8 @@ export class MorphTransition {
     private settle(): void {
         if (this.driver.value >= 1) finalizeTasks(this.tasks);
         else this.stage.innerHTML = this.oldHtml;
+        // Backstop: finalizeTasks removes the ghosts it knows about, this catches any
+        // the task list never learned of.
+        removeGhosts(this.stage);
     }
 }
