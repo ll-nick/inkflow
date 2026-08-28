@@ -834,6 +834,14 @@
       (element) => !isDefinitionContent(element) && element.getScreenCTM() !== null
     );
   }
+  var GHOST_ATTRIBUTE = "data-morph-ghost";
+  function markGhost(element) {
+    element.setAttribute(GHOST_ATTRIBUTE, "");
+  }
+  function removeGhosts(root) {
+    for (const ghost of root.querySelectorAll(`[${GHOST_ATTRIBUTE}]`))
+      ghost.remove();
+  }
   var MORPH_OWNED_STYLE_PROPERTIES = [
     ...INTERPOLATED_ATTRIBUTES,
     "font-size",
@@ -1050,6 +1058,7 @@
     const ghost = snapshot.clone;
     const placement = (svgRoot.getScreenCTM() ?? new DOMMatrix()).inverse().multiply(snapshot.screenCTM);
     ghost.setAttribute("transform", matrixToSvgTransform(placement));
+    markGhost(ghost);
     svgRoot.appendChild(ghost);
     const startOpacity = parseFloat(snapshot.fromAttributes.opacity ?? "1");
     return {
@@ -1131,6 +1140,7 @@
       if (newHtml.has(child.html)) continue;
       const clone = child.element;
       if (!(clone instanceof SVGGraphicsElement)) continue;
+      markGhost(clone);
       svgRoot.insertBefore(clone, newChildElements[child.index] ?? null);
       const startOpacity = parseFloat(
         clone.style.opacity || clone.getAttribute("opacity") || "1"
@@ -1376,6 +1386,7 @@
     // markup so a full reversal can restore the real previous slide.
     prepare({ stage: stage4 }) {
       this.stage = stage4;
+      removeGhosts(stage4);
       this.oldHtml = stage4.innerHTML;
       const beforeSvg = stage4.querySelector("svg");
       this.oldLeaves = beforeSvg ? snapshotLeaves(beforeSvg) : { ids: /* @__PURE__ */ new Set(), leaves: [] };
@@ -1415,9 +1426,8 @@
       );
       if (!signal.aborted) this.settle();
     }
-    cancel(_ctx) {
-      for (const task of this.tasks)
-        if (task.type === "exit") task.element.remove();
+    cancel({ stage: stage4 }) {
+      removeGhosts(stage4);
     }
     // progress 1 → the new slide is fully formed; snap it to its natural state.
     // progress 0 → reversed all the way back; the morphed elements only *look* like
@@ -1425,6 +1435,7 @@
     settle() {
       if (this.driver.value >= 1) finalizeTasks(this.tasks);
       else this.stage.innerHTML = this.oldHtml;
+      removeGhosts(this.stage);
     }
   };
 
@@ -1434,6 +1445,9 @@
   var registry = /* @__PURE__ */ new Map();
   function registerTransition(name, factory) {
     registry.set(name, factory);
+  }
+  function reportTransitionFailure(error) {
+    console.error("inkflow: transition failed", error);
   }
   var liveInstance = null;
   var liveController = null;
@@ -1709,7 +1723,10 @@
       inst2.reverse({ stage: stage2, params, signal: newCtrl.signal }).then(() => {
         if (!newCtrl.signal.aborted) settleContent();
         settle2(true);
-      }).catch(() => settle2(false));
+      }).catch((error) => {
+        reportTransitionFailure(error);
+        settle2(false);
+      });
       return;
     }
     cancelInflight(true);
@@ -1744,7 +1761,10 @@
     inst.start({ stage: stage2, params, signal: ctrl.signal }).then(() => {
       if (entering && !ctrl.signal.aborted) applyCurrentStep();
       settle(true);
-    }).catch(() => settle(false));
+    }).catch((error) => {
+      reportTransitionFailure(error);
+      settle(false);
+    });
   }
 
   // src/ts/presenter/ui.ts
