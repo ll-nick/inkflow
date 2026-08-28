@@ -83,6 +83,10 @@ export function registerTransition(
     registry.set(name, factory);
 }
 
+function reportTransitionFailure(error: unknown): void {
+    console.error("inkflow: transition failed", error);
+}
+
 // ── In-flight state ───────────────────────────────────────────────────────────
 
 let liveInstance: Transition | null = null;
@@ -534,7 +538,10 @@ export function loadSlide(
                 if (!newCtrl.signal.aborted) settleContent();
                 settle(true);
             })
-            .catch(() => settle(false));
+            .catch((error) => {
+                reportTransitionFailure(error);
+                settle(false);
+            });
 
         return;
     }
@@ -587,5 +594,8 @@ export function loadSlide(
             if (entering && !ctrl.signal.aborted) applyCurrentStep();
             settle(true);
         })
-        .catch(() => settle(false));
+        .catch((error) => {
+            reportTransitionFailure(error);
+            settle(false);
+        });
 }

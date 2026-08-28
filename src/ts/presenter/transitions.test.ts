@@ -14,6 +14,7 @@ type LoadSlide = (
 
 let loadSlide: LoadSlide;
 let registerProgressTransition: typeof import("./transitions").registerProgressTransition;
+let registerTransition: typeof import("./transitions").registerTransition;
 let inflightDirection: typeof import("./transitions").inflightDirection;
 let snapInflight: typeof import("./transitions").snapInflight;
 let maxStep: typeof import("./status").maxStep;
@@ -31,6 +32,7 @@ beforeAll(async () => {
     ({
         loadSlide,
         registerProgressTransition,
+        registerTransition,
         inflightDirection,
         snapInflight,
     } = await import("./transitions"));
@@ -332,5 +334,33 @@ describe("loadSlide interruption", () => {
 
         // cancel-and-snap ran the crossfade's then, which cleared the flag.
         expect(state._syncingFromServer).toBe(false);
+    });
+});
+
+describe("a transition that throws", () => {
+    // Every built-in start() is async, so a throw inside it surfaces only as a rejected
+    // promise. The catch that keeps `then` firing used to discard it, which is why a
+    // morph that died while building its task list could corrupt the slide with nothing
+    // logged and no uncaught error. (A non-async start() that throws synchronously
+    // escapes loadSlide instead and is already visible in the console.)
+    test("is reported, and still settles exactly once", async () => {
+        const logged = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
+        registerTransition("explodes", () => ({
+            async start(): Promise<void> {
+                throw new Error("boom");
+            },
+        }));
+
+        loadSlide(null, { type: "explodes", duration: 0.5 });
+        await vi.waitFor(() => expect(logged).toHaveBeenCalled());
+
+        expect(logged.mock.calls[0][1]).toBeInstanceOf(Error);
+        // The framework releases the failed transition rather than staying in flight,
+        // so the next navigation is not treated as a mid-transition press.
+        expect(inflightDirection()).toBeNull();
+
+        logged.mockRestore();
     });
 });
