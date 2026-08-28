@@ -7,6 +7,7 @@ import {
     readInlineStyle,
     removeGhosts,
     restoreInlineStyle,
+    sameIntrinsicShape,
 } from "./morph";
 
 // two slides that share nothing but stock Inkscape marker ids, plus one real matching element.
@@ -68,10 +69,8 @@ describe("collectPairableIds", () => {
 });
 
 describe("inline style round trip", () => {
-    // A morph writes fill/stroke/font-size over the element while it animates. Finalize
-    // used to blanket-remove those properties, which also dropped the author's own
-    // declarations: an arrow styled `fill:none;stroke:#b4befe` came out of the morph
-    // with the SVG defaults, black fill and no stroke.
+    // Finalize used to blanket-remove the properties a morph writes, which also dropped
+    // the author's own: `fill:none;stroke:#b4befe` came out as the SVG defaults.
     const AUTHORED = "fill:none;stroke:#b4befe;stroke-width:6;font-size:64px";
 
     function arrow(): SVGElement {
@@ -115,11 +114,8 @@ describe("inline style round trip", () => {
 });
 
 describe("ghost sweep", () => {
-    // The morph splices clones of the outgoing slide into the incoming one and relies
-    // on its task list to take them out again. If the build throws partway, that list
-    // is never assigned and the clones already spliced in are unreachable. Tagging them
-    // at creation makes cleanup a selector query, which does not care how far the build
-    // got.
+    // Cleanup used to walk the task list, which is never assigned if the build throws
+    // partway. A selector sweep does not care how far the build got.
     beforeEach(() => {
         document.body.innerHTML = `<div id="stage"><svg id="inkflow-slide-4">
             <g id="keep"><rect id="real"/></g></svg></div>`;
@@ -154,5 +150,79 @@ describe("ghost sweep", () => {
         removeGhosts(stage());
 
         expect(stage().innerHTML).toBe(before);
+    });
+});
+
+describe("sameIntrinsicShape", () => {
+    // A box morph moves a shape, it cannot turn one shape into another, so a pair that
+    // fails this crossfades rather than snapping to the destination on frame 0.
+    function pair(first: string, second: string): [Element, Element] {
+        document.body.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg">${first}${second}</svg>`;
+        const svg = document.querySelector("svg") as SVGSVGElement;
+        return [svg.children[0], svg.children[1]];
+    }
+
+    test("the same shape moved and resized still morphs", () => {
+        expect(
+            sameIntrinsicShape(
+                ...pair(
+                    '<rect x="0" y="0" width="10" height="10"/>',
+                    '<rect x="90" y="90" width="40" height="20" rx="8"/>',
+                ),
+            ),
+        ).toBe(true);
+    });
+
+    test("a circle and an ellipse are one family", () => {
+        expect(
+            sameIntrinsicShape(
+                ...pair('<circle r="10"/>', '<ellipse rx="30" ry="10"/>'),
+            ),
+        ).toBe(true);
+    });
+
+    test("a rect and a circle do not morph", () => {
+        expect(
+            sameIntrinsicShape(
+                ...pair('<rect width="10" height="10"/>', '<circle r="10"/>'),
+            ),
+        ).toBe(false);
+    });
+
+    test("paths morph only when their data is identical", () => {
+        expect(
+            sameIntrinsicShape(
+                ...pair('<path d="M 0 0 L 9 9"/>', '<path d="M 0 0 L 9 9"/>'),
+            ),
+        ).toBe(true);
+        expect(
+            sameIntrinsicShape(
+                ...pair('<path d="M 0 0 L 9 9"/>', '<path d="M 0 0 L 9 1"/>'),
+            ),
+        ).toBe(false);
+    });
+
+    test("an image morphs only while it shows the same file", () => {
+        expect(
+            sameIntrinsicShape(
+                ...pair('<image href="a.png"/>', '<image href="a.png"/>'),
+            ),
+        ).toBe(true);
+        expect(
+            sameIntrinsicShape(
+                ...pair('<image href="a.png"/>', '<image href="b.png"/>'),
+            ),
+        ).toBe(false);
+    });
+
+    test("polygons morph only while their points match", () => {
+        expect(
+            sameIntrinsicShape(
+                ...pair(
+                    '<polygon points="0,0 10,0 5,9"/>',
+                    '<polygon points="0,0 10,0 5,4"/>',
+                ),
+            ),
+        ).toBe(false);
     });
 });

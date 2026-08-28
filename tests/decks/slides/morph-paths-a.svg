@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <!-- #arrowhead-tip is deliberately given a matching id on both slides: it
+         must not be paired, since definition subtrees never morph. -->
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path id="arrowhead-tip" d="M 0 0 L 10 5 L 0 10 Z" fill="#f9e2af"/>
+    </marker>
+  </defs>
+  <rect width="1920" height="1080" fill="#222831"/>
+  <text x="960" y="120" font-family="sans-serif" font-size="64" fill="#ffffff" text-anchor="middle">paths that interpolate</text>
+  <text x="960" y="180" font-family="sans-serif" font-size="34" fill="#9aa0a6" text-anchor="middle">should travel and bend, never snap</text>
+
+  <text x="180" y="330" font-family="sans-serif" font-size="30" fill="#9aa0a6">straight (H)</text>
+  <path id="straight" d="M 300 380 H 760" style="fill:none;stroke:#8ec07c;stroke-width:10"/>
+
+  <text x="180" y="590" font-family="sans-serif" font-size="30" fill="#9aa0a6">cubic</text>
+  <path id="curve" d="M 300 640 C 420 540 560 740 700 640" style="fill:none;stroke:#89b4fa;stroke-width:10"/>
+
+  <text x="180" y="850" font-family="sans-serif" font-size="30" fill="#9aa0a6">cubic with marker-end</text>
+  <path id="arrow" d="M 300 900 C 420 800 560 1000 700 900" style="fill:none;stroke:#f9e2af;stroke-width:10;marker-end:url(#arrowhead)"/>
+</svg>

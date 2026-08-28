@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#222831"/>
+  <text x="960" y="120" font-family="sans-serif" font-size="64" fill="#ffffff" text-anchor="middle">fallbacks</text>
+  <text x="960" y="180" font-family="sans-serif" font-size="34" fill="#9aa0a6" text-anchor="middle">only the same shape can morph. The rest crossfade where they stand</text>
+
+  <text x="140" y="400" font-family="sans-serif" font-size="30" fill="#8ec07c">same shape, moved</text>
+  <rect id="moved" x="150" y="500" width="340" height="200" rx="24" fill="#8ec07c"/>
+
+  <text x="740" y="400" font-family="sans-serif" font-size="30" fill="#fab387">rect meets circle</text>
+  <rect id="shape" x="760" y="500" width="280" height="280" fill="#fab387"/>
+
+  <text x="1300" y="400" font-family="sans-serif" font-size="30" fill="#f38ba8">one cubic meets three</text>
+  <path id="incompatible" d="M 1320 640 C 1440 540 1580 740 1720 640" style="fill:none;stroke:#f38ba8;stroke-width:10"/>
+</svg>

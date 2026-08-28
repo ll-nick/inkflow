@@ -9,6 +9,14 @@ import {
     matrixScaleY,
     readInterpolatedAttributes,
 } from "../shared/morph-math";
+import type { Segment } from "../shared/path-data";
+import {
+    areCompatible,
+    interpolateSegments,
+    parsePathData,
+    serializePathData,
+    transformSegments,
+} from "../shared/path-data";
 import type { TransitionData } from "../shared/types";
 import { ProgressDriver } from "./progress-driver";
 
@@ -85,6 +93,7 @@ export function removeGhosts(root: ParentNode): void {
 // inline `font-size` collapses to the inherited size.
 const MORPH_OWNED_STYLE_PROPERTIES = [
     ...INTERPOLATED_ATTRIBUTES,
+    "stroke-width",
     "font-size",
     "transform-box",
     "transform-origin",
@@ -175,19 +184,32 @@ interface LineMorph extends CommonMorph {
     fromStrokeWidth: number | undefined;
     toStrokeWidth: number | undefined;
 }
-type Morph = BoxMorph | TextMorph | LineMorph;
+// Interpolates `d` itself, so the outline bends rather than arriving whole on frame 0.
+// Writes no transform, which is why markers stay correctly scaled and oriented.
+interface PathMorph extends CommonMorph {
+    kind: "path";
+    element: SVGPathElement;
+    from: Segment[]; // both already in the new element's own local space
+    to: Segment[];
+    originalPathData: string;
+    fromStrokeWidth: number | undefined;
+    toStrokeWidth: number | undefined;
+}
+type Morph = BoxMorph | TextMorph | LineMorph | PathMorph;
 
 type AnimationTask =
     | { type: "morph"; morph: Morph }
     | { type: "fadeIn"; element: SVGGraphicsElement; targetOpacity: number }
     | { type: "exit"; element: SVGGraphicsElement; startOpacity: number };
 
-type MorphKind = Morph["kind"];
+// How two leaves are paired. Not `Morph["kind"]`: a path morph is chosen within the box
+// case rather than being a pairing kind of its own.
+type LeafKind = "box" | "text" | "line";
 
 // Snapshot of one before-swap leaf, plus its ancestor-id chain so it can be paired
 // with a new leaf once the matched ids are known.
 interface LeafSnapshot {
-    kind: MorphKind;
+    kind: LeafKind;
     ancestorIds: string[]; // nearest-first, includes the leaf's own id if any
     fromAttributes: Record<string, string>;
     clone: SVGGraphicsElement; // detached deep clone, re-rooted as an exit ghost
@@ -197,6 +219,7 @@ interface LeafSnapshot {
     lengths?: Lengths;
     textPose?: TextScreenPose;
     endpointsScreen?: Endpoints; // screen coords (line)
+    pathScreen?: Segment[]; // box: normalized <path> geometry, in screen coords
     strokeWidth?: number; // line
 }
 
@@ -253,15 +276,32 @@ function captureFrame(element: SVGGraphicsElement): CapturedFrame {
     };
 }
 
+// stroke-width comes from the computed style, not the attribute: authored SVGs commonly
+// set it inline, where an attribute read missed it and the counter-scaling never ran.
+// rx/ry stay attribute-only, which is where an editor writes them.
 function readLengthAttributes(element: Element): Lengths {
     const lengths: Lengths = {};
-    for (const name of LENGTH_ATTRIBUTES) {
+    for (const name of ["rx", "ry"] as const) {
         const raw = element.getAttribute(name);
         if (raw === null) continue;
         const value = parseFloat(raw);
         if (Number.isFinite(value)) lengths[name] = value;
     }
+    const strokeWidth = parseFloat(getComputedStyle(element).strokeWidth);
+    if (Number.isFinite(strokeWidth)) lengths["stroke-width"] = strokeWidth;
     return lengths;
+}
+
+// Screen space, so it can be compared against a path on the other slide whose ancestors
+// carry different transforms.
+function screenPathSegments(element: SVGGraphicsElement): Segment[] | null {
+    if (!(element instanceof SVGPathElement)) return null;
+    const segments = parsePathData(element.getAttribute("d") ?? "");
+    if (!segments) return null;
+    return transformSegments(
+        segments,
+        element.getScreenCTM() ?? new DOMMatrix(),
+    );
 }
 
 function readFontSize(node: SVGTextElement): number {
@@ -308,7 +348,7 @@ function captureEndpointsScreen(node: SVGLineElement): Endpoints {
     return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
 }
 
-function leafKind(element: Element): MorphKind {
+function leafKind(element: Element): LeafKind {
     if (element instanceof SVGLineElement) return "line";
     if (element instanceof SVGTextElement) return "text";
     return "box";
@@ -364,6 +404,7 @@ function snapshotLeaf(element: SVGGraphicsElement): LeafSnapshot {
         frame: captured.comp,
         screenScale: captured.screenScale,
         lengths: readLengthAttributes(element),
+        pathScreen: screenPathSegments(element) ?? undefined,
     };
 }
 
@@ -392,6 +433,67 @@ function nearestMatchedId(
     return ancestorIds.find((id) => matchedIds.has(id));
 }
 
+// Attributes that define an element's form beyond the box a morph animates.
+const SHAPE_ATTRIBUTES: Record<string, readonly string[]> = {
+    path: ["d"],
+    polygon: ["points"],
+    polyline: ["points"],
+    image: ["href", "xlink:href"],
+    use: ["href", "xlink:href"],
+};
+
+// An ellipse squeezed into a circle's box *is* that circle, so those two are one form.
+// Every other tag stands alone.
+const SHAPE_FAMILY: Record<string, string> = {
+    circle: "ellipse",
+    ellipse: "ellipse",
+};
+
+// A box morph animates position, scale, rotation and skew of the *destination* element,
+// which reads as motion only if both are the same form to begin with: hand it a rect and
+// a circle and the circle is on screen whole at frame 0. Nothing should snap during a
+// morph, so a pair that fails this crossfades in place instead.
+export function sameIntrinsicShape(from: Element, to: Element): boolean {
+    const family = (element: Element) =>
+        SHAPE_FAMILY[element.tagName] ?? element.tagName;
+    if (family(from) !== family(to)) return false;
+    return (SHAPE_ATTRIBUTES[to.tagName] ?? []).every(
+        (attribute) =>
+            from.getAttribute(attribute) === to.getAttribute(attribute),
+    );
+}
+
+// Null when the pair cannot be interpolated segment by segment, and the caller falls
+// back to the box morph.
+function createPathMorph(
+    element: SVGGraphicsElement,
+    snapshot: LeafSnapshot,
+    common: CommonMorph,
+): PathMorph | null {
+    if (!(element instanceof SVGPathElement) || !snapshot.pathScreen)
+        return null;
+    const originalPathData = element.getAttribute("d") ?? "";
+    const to = parsePathData(originalPathData);
+    if (!to || !areCompatible(snapshot.pathScreen, to)) return null;
+
+    // Into the new element's local space, as the line morph does with its endpoints, so
+    // every frame is a lerp and a write.
+    const screenInverse = (element.getScreenCTM() ?? new DOMMatrix()).inverse();
+    // A singular ancestor transform inverts to all-NaN rather than throwing.
+    if (!Number.isFinite(screenInverse.a)) return null;
+
+    return {
+        ...common,
+        kind: "path",
+        element,
+        from: transformSegments(snapshot.pathScreen, screenInverse),
+        to,
+        originalPathData,
+        fromStrokeWidth: snapshot.lengths?.["stroke-width"],
+        toStrokeWidth: readLengthAttributes(element)["stroke-width"],
+    };
+}
+
 function createLeafMorph(
     element: SVGGraphicsElement,
     snapshot: LeafSnapshot,
@@ -401,6 +503,12 @@ function createLeafMorph(
     const fromAttributes = snapshot.fromAttributes;
     const toAttributes = readInterpolatedAttributes(element);
     const originalInlineStyle = readInlineStyle(element);
+    const common: CommonMorph = {
+        element,
+        fromAttributes,
+        toAttributes,
+        originalInlineStyle,
+    };
 
     if (
         kind === "line" &&
@@ -417,10 +525,8 @@ function createLeafMorph(
         const p2 = new DOMPoint(s.x2, s.y2).matrixTransform(screenInverse);
         return {
             kind: "line",
+            ...common,
             element,
-            fromAttributes,
-            toAttributes,
-            originalInlineStyle,
             from: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y },
             to: {
                 x1: element.x1.baseVal.value,
@@ -438,13 +544,14 @@ function createLeafMorph(
         element instanceof SVGTextElement &&
         snapshot.textPose
     ) {
+        // A text morph animates the pose, never the glyphs, so two different strings
+        // would swap on frame 0.
+        if (snapshot.clone.textContent !== element.textContent) return null;
         const anchor = textAnchorLocal(element);
         return {
             kind: "text",
+            ...common,
             element,
-            fromAttributes,
-            toAttributes,
-            originalInlineStyle,
             parentCTM: parentScreenCTM(element),
             originalTransform: element.getAttribute("transform") ?? "",
             anchorLocalX: anchor.x,
@@ -453,6 +560,11 @@ function createLeafMorph(
             to: captureTextScreenPose(element),
         };
     }
+
+    // Before the box morph's zero-area guard: a straight arrow has no box frame at all,
+    // but its two segments interpolate perfectly well.
+    const pathMorph = createPathMorph(element, snapshot, common);
+    if (pathMorph) return pathMorph;
 
     if (snapshot.frame && snapshot.screenScale) {
         const captured = captureFrame(element);
@@ -466,6 +578,9 @@ function createLeafMorph(
         // content (a plain shape, or an image moving across slides in an injected
         // zone) keep the geometry morph.
         if (snapshot.clone.innerHTML !== element.innerHTML) return null;
+        // Same reasoning one level out: a box morph moves a shape, it does not turn
+        // one shape into another.
+        if (!sameIntrinsicShape(snapshot.clone, element)) return null;
         const bTo = new DOMMatrix()
             .translate(captured.bbox.x, captured.bbox.y)
             .scale(captured.bbox.width, captured.bbox.height);
@@ -483,10 +598,7 @@ function createLeafMorph(
         element.style.setProperty("transform-origin", "0 0");
         return {
             kind: "box",
-            element,
-            fromAttributes,
-            toAttributes,
-            originalInlineStyle,
+            ...common,
             originalTransform: element.getAttribute("transform") ?? "",
             fromComp: snapshot.frame,
             toComp: captured.comp,
@@ -860,6 +972,36 @@ function applyText(morph: TextMorph, easedProgress: number): void {
     morph.element.style.fontSize = `${lerp(morph.from.fontSize, morph.to.fontSize)}px`;
 }
 
+// No transform is applied, so the width interpolates directly. Written to the inline
+// style, since an authored inline value would outrank the attribute.
+function applyStrokeWidth(
+    element: SVGGraphicsElement,
+    from: number | undefined,
+    to: number | undefined,
+    easedProgress: number,
+): void {
+    if (from === undefined || to === undefined) return;
+    element.style.setProperty(
+        "stroke-width",
+        String(from + (to - from) * easedProgress),
+    );
+}
+
+function applyPath(morph: PathMorph, easedProgress: number): void {
+    morph.element.setAttribute(
+        "d",
+        serializePathData(
+            interpolateSegments(morph.from, morph.to, easedProgress),
+        ),
+    );
+    applyStrokeWidth(
+        morph.element,
+        morph.fromStrokeWidth,
+        morph.toStrokeWidth,
+        easedProgress,
+    );
+}
+
 function applyLine(morph: LineMorph, easedProgress: number): void {
     const lerp = (from: number, to: number) =>
         from + (to - from) * easedProgress;
@@ -868,19 +1010,18 @@ function applyLine(morph: LineMorph, easedProgress: number): void {
     element.setAttribute("y1", String(lerp(morph.from.y1, morph.to.y1)));
     element.setAttribute("x2", String(lerp(morph.from.x2, morph.to.x2)));
     element.setAttribute("y2", String(lerp(morph.from.y2, morph.to.y2)));
-    if (
-        morph.fromStrokeWidth !== undefined &&
-        morph.toStrokeWidth !== undefined
-    )
-        element.setAttribute(
-            "stroke-width",
-            String(lerp(morph.fromStrokeWidth, morph.toStrokeWidth)),
-        );
+    applyStrokeWidth(
+        element,
+        morph.fromStrokeWidth,
+        morph.toStrokeWidth,
+        easedProgress,
+    );
 }
 
 function tickMorph(morph: Morph, easedProgress: number): void {
     if (morph.kind === "box") applyBox(morph, easedProgress);
     else if (morph.kind === "text") applyText(morph, easedProgress);
+    else if (morph.kind === "path") applyPath(morph, easedProgress);
     else applyLine(morph, easedProgress);
     applyColorAttributes(morph, easedProgress);
 }
@@ -914,16 +1055,20 @@ function finalizeMorph(morph: Morph): void {
     // animation class's own values govern the element again if it later animates.
     restoreInlineStyle(morph.element, morph.originalInlineStyle);
 
+    // Neither of these restores stroke-width: they only wrote it inline, and
+    // restoreInlineStyle has already put the authored value back.
+    if (morph.kind === "path") {
+        // The authored string, not a re-serialization, so the element ends the morph
+        // byte-identical to how the slide declared it.
+        morph.element.setAttribute("d", morph.originalPathData);
+        return;
+    }
+
     if (morph.kind === "line") {
         morph.element.setAttribute("x1", String(morph.to.x1));
         morph.element.setAttribute("y1", String(morph.to.y1));
         morph.element.setAttribute("x2", String(morph.to.x2));
         morph.element.setAttribute("y2", String(morph.to.y2));
-        if (morph.toStrokeWidth !== undefined)
-            morph.element.setAttribute(
-                "stroke-width",
-                String(morph.toStrokeWidth),
-            );
         return;
     }
 
@@ -945,11 +1090,6 @@ function finalizeMorph(morph: Morph): void {
         morph.element.setAttribute("ry", String(morph.toLengths.ry));
     else if (morph.fromLengths.rx !== undefined)
         morph.element.removeAttribute("ry");
-    if (morph.toLengths["stroke-width"] !== undefined)
-        morph.element.setAttribute(
-            "stroke-width",
-            String(morph.toLengths["stroke-width"]),
-        );
 }
 
 function finalizeTasks(tasks: AnimationTask[]): void {

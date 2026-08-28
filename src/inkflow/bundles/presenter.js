@@ -810,6 +810,202 @@
     return Math.abs(m.a * m.d - m.b * m.c) / scaleX;
   }
 
+  // src/ts/shared/path-data.ts
+  var ARGUMENT_COUNT = {
+    M: 2,
+    L: 2,
+    H: 1,
+    V: 1,
+    C: 6,
+    S: 4,
+    Q: 4,
+    T: 2,
+    A: 7
+  };
+  var TOKEN_PATTERN = /([MmZzLlHhVvCcSsQqTtAa])|([+-]?(?:\d*\.\d+|\d+\.?)(?:[eE][+-]?\d+)?)/g;
+  function tokenize(d) {
+    const tokens = [];
+    let consumed = 0;
+    TOKEN_PATTERN.lastIndex = 0;
+    for (let match = TOKEN_PATTERN.exec(d); match; match = TOKEN_PATTERN.exec(d)) {
+      if (/[^\s,]/.test(d.slice(consumed, match.index))) return null;
+      consumed = match.index + match[0].length;
+      tokens.push(
+        match[1] ? { command: match[1] } : { value: Number(match[2]) }
+      );
+    }
+    return /[^\s,]/.test(d.slice(consumed)) ? null : tokens;
+  }
+  function reflect(about, control) {
+    return { x: 2 * about.x - control.x, y: 2 * about.y - control.y };
+  }
+  function cubicFromQuadratic(from, control, to) {
+    return [
+      {
+        x: from.x + 2 / 3 * (control.x - from.x),
+        y: from.y + 2 / 3 * (control.y - from.y)
+      },
+      {
+        x: to.x + 2 / 3 * (control.x - to.x),
+        y: to.y + 2 / 3 * (control.y - to.y)
+      },
+      to
+    ];
+  }
+  function parsePathData(d) {
+    const tokens = tokenize(d);
+    if (!tokens || tokens.length === 0) return null;
+    const segments = [];
+    let current = { x: 0, y: 0 };
+    let subpathStart = { x: 0, y: 0 };
+    let previousCubicControl = null;
+    let previousQuadraticControl = null;
+    let previousCommand = "";
+    let command = "";
+    let index = 0;
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if ("command" in token) {
+        command = token.command;
+        index++;
+      } else if (command === "") {
+        return null;
+      }
+      const upper = command.toUpperCase();
+      const relative = command !== upper;
+      if (upper === "Z") {
+        segments.push({ type: "Z", points: [] });
+        current = subpathStart;
+        previousCubicControl = null;
+        previousQuadraticControl = null;
+        previousCommand = upper;
+        if (index < tokens.length && !("command" in tokens[index]))
+          return null;
+        continue;
+      }
+      const arity = ARGUMENT_COUNT[upper];
+      if (arity === void 0) return null;
+      const args = [];
+      for (let offset = 0; offset < arity; offset++) {
+        const argument = tokens[index + offset];
+        if (!argument || "command" in argument) return null;
+        args.push(argument.value);
+      }
+      index += arity;
+      const origin = current;
+      const at = (i) => relative ? { x: origin.x + args[i], y: origin.y + args[i + 1] } : { x: args[i], y: args[i + 1] };
+      switch (upper) {
+        case "M": {
+          const end = at(0);
+          segments.push({ type: "M", points: [end] });
+          current = end;
+          subpathStart = end;
+          command = relative ? "l" : "L";
+          break;
+        }
+        case "L": {
+          const end = at(0);
+          segments.push({ type: "L", points: [end] });
+          current = end;
+          break;
+        }
+        case "H": {
+          const end = {
+            x: relative ? origin.x + args[0] : args[0],
+            y: origin.y
+          };
+          segments.push({ type: "L", points: [end] });
+          current = end;
+          break;
+        }
+        case "V": {
+          const end = {
+            x: origin.x,
+            y: relative ? origin.y + args[0] : args[0]
+          };
+          segments.push({ type: "L", points: [end] });
+          current = end;
+          break;
+        }
+        case "C": {
+          const points = [at(0), at(2), at(4)];
+          segments.push({ type: "C", points });
+          current = points[2];
+          previousCubicControl = points[1];
+          break;
+        }
+        case "S": {
+          const control1 = previousCubicControl && (previousCommand === "C" || previousCommand === "S") ? reflect(origin, previousCubicControl) : origin;
+          const points = [control1, at(0), at(2)];
+          segments.push({ type: "C", points });
+          current = points[2];
+          previousCubicControl = points[1];
+          break;
+        }
+        case "Q": {
+          const control = at(0);
+          const end = at(2);
+          segments.push({
+            type: "C",
+            points: cubicFromQuadratic(origin, control, end)
+          });
+          current = end;
+          previousQuadraticControl = control;
+          break;
+        }
+        case "T": {
+          const control = previousQuadraticControl && (previousCommand === "Q" || previousCommand === "T") ? reflect(origin, previousQuadraticControl) : origin;
+          const end = at(0);
+          segments.push({
+            type: "C",
+            points: cubicFromQuadratic(origin, control, end)
+          });
+          current = end;
+          previousQuadraticControl = control;
+          break;
+        }
+        default:
+          return null;
+      }
+      if (upper !== "C" && upper !== "S") previousCubicControl = null;
+      if (upper !== "Q" && upper !== "T") previousQuadraticControl = null;
+      previousCommand = upper;
+    }
+    return segments.length > 0 ? segments : null;
+  }
+  function transformSegments(segments, matrix) {
+    return segments.map((segment) => ({
+      type: segment.type,
+      points: segment.points.map((point) => ({
+        x: matrix.a * point.x + matrix.c * point.y + matrix.e,
+        y: matrix.b * point.x + matrix.d * point.y + matrix.f
+      }))
+    }));
+  }
+  function areCompatible(from, to) {
+    return from.length === to.length && from.every((segment, index) => segment.type === to[index].type);
+  }
+  function interpolateSegments(from, to, t) {
+    return from.map((segment, index) => ({
+      type: segment.type,
+      points: segment.points.map((point, pointIndex) => {
+        const target = to[index].points[pointIndex];
+        return {
+          x: point.x + (target.x - point.x) * t,
+          y: point.y + (target.y - point.y) * t
+        };
+      })
+    }));
+  }
+  function round(value) {
+    return Math.round(value * 1e3) / 1e3;
+  }
+  function serializePathData(segments) {
+    return segments.map(
+      (segment) => segment.type === "Z" ? "Z" : `${segment.type} ${segment.points.map((point) => `${round(point.x)} ${round(point.y)}`).join(" ")}`
+    ).join(" ");
+  }
+
   // src/ts/presenter/morph.ts
   var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
   var DEFINITION_SUBTREE_SELECTOR = "defs, marker, symbol, clipPath, mask, pattern";
@@ -844,6 +1040,7 @@
   }
   var MORPH_OWNED_STYLE_PROPERTIES = [
     ...INTERPOLATED_ATTRIBUTES,
+    "stroke-width",
     "font-size",
     "transform-box",
     "transform-origin"
@@ -864,7 +1061,6 @@
       else style.removeProperty(property);
     }
   }
-  var LENGTH_ATTRIBUTES = ["stroke-width", "rx", "ry"];
   function captureFrame(element) {
     const bbox = element.getBBox();
     const screenCTM = DOMMatrix.fromMatrix(element.getScreenCTM());
@@ -877,13 +1073,24 @@
   }
   function readLengthAttributes(element) {
     const lengths = {};
-    for (const name of LENGTH_ATTRIBUTES) {
+    for (const name of ["rx", "ry"]) {
       const raw = element.getAttribute(name);
       if (raw === null) continue;
       const value = parseFloat(raw);
       if (Number.isFinite(value)) lengths[name] = value;
     }
+    const strokeWidth = parseFloat(getComputedStyle(element).strokeWidth);
+    if (Number.isFinite(strokeWidth)) lengths["stroke-width"] = strokeWidth;
     return lengths;
+  }
+  function screenPathSegments(element) {
+    if (!(element instanceof SVGPathElement)) return null;
+    const segments = parsePathData(element.getAttribute("d") ?? "");
+    if (!segments) return null;
+    return transformSegments(
+      segments,
+      element.getScreenCTM() ?? new DOMMatrix()
+    );
   }
   function readFontSize(node) {
     const px = parseFloat(getComputedStyle(node).fontSize);
@@ -963,7 +1170,8 @@
       ...common,
       frame: captured.comp,
       screenScale: captured.screenScale,
-      lengths: readLengthAttributes(element)
+      lengths: readLengthAttributes(element),
+      pathScreen: screenPathSegments(element) ?? void 0
     };
   }
   function snapshotLeaves(svg) {
@@ -983,12 +1191,55 @@
   function nearestMatchedId(ancestorIds, matchedIds) {
     return ancestorIds.find((id) => matchedIds.has(id));
   }
+  var SHAPE_ATTRIBUTES = {
+    path: ["d"],
+    polygon: ["points"],
+    polyline: ["points"],
+    image: ["href", "xlink:href"],
+    use: ["href", "xlink:href"]
+  };
+  var SHAPE_FAMILY = {
+    circle: "ellipse",
+    ellipse: "ellipse"
+  };
+  function sameIntrinsicShape(from, to) {
+    const family = (element) => SHAPE_FAMILY[element.tagName] ?? element.tagName;
+    if (family(from) !== family(to)) return false;
+    return (SHAPE_ATTRIBUTES[to.tagName] ?? []).every(
+      (attribute) => from.getAttribute(attribute) === to.getAttribute(attribute)
+    );
+  }
+  function createPathMorph(element, snapshot, common) {
+    if (!(element instanceof SVGPathElement) || !snapshot.pathScreen)
+      return null;
+    const originalPathData = element.getAttribute("d") ?? "";
+    const to = parsePathData(originalPathData);
+    if (!to || !areCompatible(snapshot.pathScreen, to)) return null;
+    const screenInverse = (element.getScreenCTM() ?? new DOMMatrix()).inverse();
+    if (!Number.isFinite(screenInverse.a)) return null;
+    return {
+      ...common,
+      kind: "path",
+      element,
+      from: transformSegments(snapshot.pathScreen, screenInverse),
+      to,
+      originalPathData,
+      fromStrokeWidth: snapshot.lengths?.["stroke-width"],
+      toStrokeWidth: readLengthAttributes(element)["stroke-width"]
+    };
+  }
   function createLeafMorph(element, snapshot) {
     const kind = leafKind(element);
     if (kind !== snapshot.kind) return null;
     const fromAttributes = snapshot.fromAttributes;
     const toAttributes = readInterpolatedAttributes(element);
     const originalInlineStyle = readInlineStyle(element);
+    const common = {
+      element,
+      fromAttributes,
+      toAttributes,
+      originalInlineStyle
+    };
     if (kind === "line" && element instanceof SVGLineElement && snapshot.endpointsScreen) {
       const screenInverse = (element.getScreenCTM() ?? new DOMMatrix()).inverse();
       const s = snapshot.endpointsScreen;
@@ -996,10 +1247,8 @@
       const p2 = new DOMPoint(s.x2, s.y2).matrixTransform(screenInverse);
       return {
         kind: "line",
+        ...common,
         element,
-        fromAttributes,
-        toAttributes,
-        originalInlineStyle,
         from: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y },
         to: {
           x1: element.x1.baseVal.value,
@@ -1012,13 +1261,12 @@
       };
     }
     if (kind === "text" && element instanceof SVGTextElement && snapshot.textPose) {
+      if (snapshot.clone.textContent !== element.textContent) return null;
       const anchor = textAnchorLocal(element);
       return {
         kind: "text",
+        ...common,
         element,
-        fromAttributes,
-        toAttributes,
-        originalInlineStyle,
         parentCTM: parentScreenCTM(element),
         originalTransform: element.getAttribute("transform") ?? "",
         anchorLocalX: anchor.x,
@@ -1027,20 +1275,20 @@
         to: captureTextScreenPose(element)
       };
     }
+    const pathMorph = createPathMorph(element, snapshot, common);
+    if (pathMorph) return pathMorph;
     if (snapshot.frame && snapshot.screenScale) {
       const captured = captureFrame(element);
       if (captured.bbox.width === 0 || captured.bbox.height === 0)
         return null;
       if (snapshot.clone.innerHTML !== element.innerHTML) return null;
+      if (!sameIntrinsicShape(snapshot.clone, element)) return null;
       const bTo = new DOMMatrix().translate(captured.bbox.x, captured.bbox.y).scale(captured.bbox.width, captured.bbox.height);
       element.style.setProperty("transform-box", "view-box");
       element.style.setProperty("transform-origin", "0 0");
       return {
         kind: "box",
-        element,
-        fromAttributes,
-        toAttributes,
-        originalInlineStyle,
+        ...common,
         originalTransform: element.getAttribute("transform") ?? "",
         fromComp: snapshot.frame,
         toComp: captured.comp,
@@ -1290,6 +1538,27 @@
     morph.element.setAttribute("transform", matrixToSvgTransform(local));
     morph.element.style.fontSize = `${lerp2(morph.from.fontSize, morph.to.fontSize)}px`;
   }
+  function applyStrokeWidth(element, from, to, easedProgress) {
+    if (from === void 0 || to === void 0) return;
+    element.style.setProperty(
+      "stroke-width",
+      String(from + (to - from) * easedProgress)
+    );
+  }
+  function applyPath(morph, easedProgress) {
+    morph.element.setAttribute(
+      "d",
+      serializePathData(
+        interpolateSegments(morph.from, morph.to, easedProgress)
+      )
+    );
+    applyStrokeWidth(
+      morph.element,
+      morph.fromStrokeWidth,
+      morph.toStrokeWidth,
+      easedProgress
+    );
+  }
   function applyLine(morph, easedProgress) {
     const lerp2 = (from, to) => from + (to - from) * easedProgress;
     const element = morph.element;
@@ -1297,15 +1566,17 @@
     element.setAttribute("y1", String(lerp2(morph.from.y1, morph.to.y1)));
     element.setAttribute("x2", String(lerp2(morph.from.x2, morph.to.x2)));
     element.setAttribute("y2", String(lerp2(morph.from.y2, morph.to.y2)));
-    if (morph.fromStrokeWidth !== void 0 && morph.toStrokeWidth !== void 0)
-      element.setAttribute(
-        "stroke-width",
-        String(lerp2(morph.fromStrokeWidth, morph.toStrokeWidth))
-      );
+    applyStrokeWidth(
+      element,
+      morph.fromStrokeWidth,
+      morph.toStrokeWidth,
+      easedProgress
+    );
   }
   function tickMorph(morph, easedProgress) {
     if (morph.kind === "box") applyBox(morph, easedProgress);
     else if (morph.kind === "text") applyText(morph, easedProgress);
+    else if (morph.kind === "path") applyPath(morph, easedProgress);
     else applyLine(morph, easedProgress);
     applyColorAttributes(morph, easedProgress);
   }
@@ -1331,16 +1602,15 @@
   }
   function finalizeMorph(morph) {
     restoreInlineStyle(morph.element, morph.originalInlineStyle);
+    if (morph.kind === "path") {
+      morph.element.setAttribute("d", morph.originalPathData);
+      return;
+    }
     if (morph.kind === "line") {
       morph.element.setAttribute("x1", String(morph.to.x1));
       morph.element.setAttribute("y1", String(morph.to.y1));
       morph.element.setAttribute("x2", String(morph.to.x2));
       morph.element.setAttribute("y2", String(morph.to.y2));
-      if (morph.toStrokeWidth !== void 0)
-        morph.element.setAttribute(
-          "stroke-width",
-          String(morph.toStrokeWidth)
-        );
       return;
     }
     if (morph.kind === "text") {
@@ -1358,11 +1628,6 @@
       morph.element.setAttribute("ry", String(morph.toLengths.ry));
     else if (morph.fromLengths.rx !== void 0)
       morph.element.removeAttribute("ry");
-    if (morph.toLengths["stroke-width"] !== void 0)
-      morph.element.setAttribute(
-        "stroke-width",
-        String(morph.toLengths["stroke-width"])
-      );
   }
   function finalizeTasks(tasks) {
     for (const task of tasks) {

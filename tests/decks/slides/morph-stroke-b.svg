@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#222831"/>
+  <text x="960" y="120" font-family="sans-serif" font-size="64" fill="#ffffff" text-anchor="middle">stroke width</text>
+  <text x="960" y="180" font-family="sans-serif" font-size="34" fill="#9aa0a6" text-anchor="middle">should thicken smoothly, and stay dashed and blue</text>
+  <path id="thick" d="M 260 500 C 620 820 1300 260 1660 500" style="fill:none;stroke:#b4befe;stroke-width:40;stroke-dasharray:36,18"/>
+</svg>
