@@ -26,6 +26,7 @@ from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
+from inkflow.assets import AssetRoots
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
@@ -50,6 +51,10 @@ class State(TypedDict):
     position: dict[str, int]
     logs: list[dict[str, str]]
     title: str
+    theme_dir: Path | None
+    """Active theme's asset directory, the second root an asset may live under.
+    ``None`` until a deck has loaded, which is exactly when nothing can reference
+    one yet."""
 
 
 _state: State = {
@@ -63,6 +68,7 @@ _state: State = {
     "position": {"slideIndex": 0, "step": 0},
     "logs": [],
     "title": "Inkflow",
+    "theme_dir": None,
 }
 
 
@@ -130,6 +136,7 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
         _state["scripts_js"] = scripts_js
         _state["mode"] = deck.effective_mode
         _state["title"] = resolve_deck_title(deck, project_dir)
+        _state["theme_dir"] = deck.theme.asset_dir()
         _state["error"] = None
         _state["logs"] = browser_logs
         if slides:
@@ -317,17 +324,20 @@ _MIME_TYPES = {
 _SERVED_SUFFIXES = set(_MIME_TYPES)
 
 
-def _resolve_asset(project_dir: Path, request_path: str) -> Path | None:
-    decoded = unquote(request_path)
-    candidate = project_dir / decoded.lstrip("/")
-    # Collapse .. without following symlinks — blocks traversal while allowing
-    # symlinks inside project_dir that point outside it.
-    normalized = Path(os.path.normpath(candidate))
-    if not normalized.is_relative_to(project_dir):
+def _resolve_asset(roots: AssetRoots, request_path: str) -> Path | None:
+    """Map a request path to a file, or ``None`` if it names nothing servable.
+
+    The request path is a canonical asset reference: the pipeline wrote it into
+    the slide SVG, so ``AssetRoots.locate`` is the same answer ``build`` copies
+    to, and containment against the allowed roots is enforced there.
+    """
+    decoded = unquote(request_path).lstrip("/")
+    located = roots.locate(decoded)
+    if located is None:
         return None
-    if normalized.suffix.lower() not in _SERVED_SUFFIXES:
+    if located.suffix.lower() not in _SERVED_SUFFIXES:
         return None
-    resolved = candidate.resolve()
+    resolved = located.resolve()
     if not resolved.is_file():
         return None
     return resolved
@@ -344,7 +354,8 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
             request_path = parts[1] if len(parts) >= 2 else "/"
 
             if project_dir is not None and request_path != "/":
-                asset_path = _resolve_asset(project_dir, request_path)
+                roots = AssetRoots(project_dir, _state["theme_dir"])
+                asset_path = _resolve_asset(roots, request_path)
                 if asset_path is not None:
                     mime = _MIME_TYPES[asset_path.suffix.lower()]
                     body = asset_path.read_bytes()
