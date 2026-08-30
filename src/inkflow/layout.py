@@ -566,7 +566,9 @@ def layout_zones(
     root = clean_inkscape_tree(layout_path)
     chain = resolve_chain(layout_path, project_dir, theme, kind)
     if chain:
-        root = compose_with_ancestors(root, chain)
+        root = compose_with_ancestors(
+            root, [clean_inkscape_tree(path) for path in chain]
+        )
 
     all_zone_ids: set[str] = set()
     for el in root.iter():
