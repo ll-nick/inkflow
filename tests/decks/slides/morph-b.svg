@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
-  <rect width="1920" height="1080" fill="#023e8a"/>
+  <rect id="bg" width="1920" height="1080" fill="#023e8a"/>
   <rect id="box" x="1300" y="240" width="400" height="400" rx="200" fill="#48cae4"/>
   <text x="960" y="980" font-family="sans-serif" font-size="120" fill="#ffffff" text-anchor="middle">morph</text>
 </svg>
