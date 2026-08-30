@@ -1006,6 +1006,174 @@
     ).join(" ");
   }
 
+  // src/ts/shared/svg-refs.ts
+  var REFERENCE_ATTRIBUTES = [
+    "fill",
+    "stroke",
+    "clip-path",
+    "mask",
+    "filter",
+    "marker",
+    "marker-start",
+    "marker-mid",
+    "marker-end",
+    "cursor",
+    "style"
+  ];
+  var HREF_ATTRIBUTES = ["href", "xlink:href"];
+  var URL_REFERENCE = /url\(\s*(['"]?)#([^'")\s]+)\1\s*\)/g;
+  function eachReference(root, visit) {
+    for (const element of [root, ...root.querySelectorAll("*")]) {
+      for (const attribute of REFERENCE_ATTRIBUTES) {
+        const value = element.getAttribute(attribute);
+        if (!value?.includes("#")) continue;
+        for (const match of [...value.matchAll(URL_REFERENCE)])
+          visit(element, attribute, match[2]);
+      }
+      for (const attribute of HREF_ATTRIBUTES) {
+        const value = element.getAttribute(attribute);
+        if (value?.startsWith("#"))
+          visit(element, attribute, value.slice(1));
+      }
+    }
+  }
+  function collectReferencedIds(root) {
+    const ids = /* @__PURE__ */ new Set();
+    eachReference(root, (_element, _attribute, id) => ids.add(id));
+    return ids;
+  }
+  function referencedDefinitions(root) {
+    const defined = /* @__PURE__ */ new Set();
+    for (const element of [root, ...root.querySelectorAll("[id]")])
+      if (element.id) defined.add(element.id);
+    return new Set(
+      [...collectReferencedIds(root)].filter((id) => defined.has(id))
+    );
+  }
+  function renameIds(root, prefix, ids) {
+    if (ids.size === 0) return;
+    eachReference(root, (element, attribute, id) => {
+      if (!ids.has(id)) return;
+      const value = element.getAttribute(attribute) ?? "";
+      element.setAttribute(
+        attribute,
+        attribute === "href" || attribute === "xlink:href" ? `#${prefix}${id}` : value.replace(
+          URL_REFERENCE,
+          (whole, quote, referenced) => referenced === id ? `url(${quote}#${prefix}${referenced}${quote})` : whole
+        )
+      );
+    });
+    for (const element of [root, ...root.querySelectorAll("[id]")])
+      if (ids.has(element.id)) element.id = `${prefix}${element.id}`;
+  }
+
+  // src/ts/presenter/ghost-layer.ts
+  var GHOST_ATTRIBUTE = "data-morph-ghost";
+  function markGhost(element) {
+    element.setAttribute(GHOST_ATTRIBUTE, "");
+  }
+  function removeGhosts(root) {
+    for (const ghost of root.querySelectorAll(`[${GHOST_ATTRIBUTE}]`))
+      ghost.remove();
+  }
+  var UNLIMITED_SCOPE = /@scope\s*\(([^)]*)\)\s*(?=\{)/g;
+  function limitScopesToLiveContent(root) {
+    const originals = /* @__PURE__ */ new Map();
+    for (const style of root.querySelectorAll("style")) {
+      const css = style.textContent ?? "";
+      if (!css.includes("@scope")) continue;
+      const limited = css.replace(
+        UNLIMITED_SCOPE,
+        `@scope($1) to ([${GHOST_ATTRIBUTE}]) `
+      );
+      if (limited === css) continue;
+      originals.set(style, css);
+      style.textContent = limited;
+    }
+    return () => {
+      for (const [style, css] of originals) style.textContent = css;
+    };
+  }
+  var CARRIED_TAGS = /* @__PURE__ */ new Set(["defs", "style"]);
+  function prune(original, clone, keep) {
+    if (keep.has(original)) return true;
+    if (CARRIED_TAGS.has(original.tagName)) return true;
+    let kept = false;
+    const originalChildren = Array.from(original.children);
+    for (let index = originalChildren.length - 1; index >= 0; index--) {
+      const childClone = clone.children[index];
+      if (!childClone) continue;
+      if (prune(originalChildren[index], childClone, keep)) kept = true;
+      else childClone.remove();
+    }
+    return kept;
+  }
+  function buildGhostLayer(outgoing, keep, {
+    carryDefinitions,
+    idPrefix,
+    rename
+  }) {
+    if (keep.size === 0) return null;
+    const layer = outgoing.cloneNode(true);
+    prune(outgoing, layer, keep);
+    if (!carryDefinitions)
+      for (const carried of layer.querySelectorAll("defs, style"))
+        carried.remove();
+    for (const cued of layer.querySelectorAll("[data-cues]"))
+      cued.removeAttribute("data-cues");
+    layer.setAttribute("x", "0");
+    layer.setAttribute("y", "0");
+    layer.setAttribute("width", "100%");
+    layer.setAttribute("height", "100%");
+    markGhost(layer);
+    renameIds(layer, idPrefix, rename);
+    return layer;
+  }
+
+  // src/ts/presenter/ghost-placement.ts
+  function documentOrder(root) {
+    const order = /* @__PURE__ */ new Map([[root, 0]]);
+    let rank = 1;
+    for (const element of root.querySelectorAll("*"))
+      order.set(element, rank++);
+    return order;
+  }
+  function topLevelAncestor(root, element) {
+    let current = element;
+    while (current && current.parentElement !== root)
+      current = current.parentElement;
+    return current;
+  }
+  function planGhostPlacement(outgoing, incoming, ghosts, matchedIds) {
+    const order = documentOrder(outgoing);
+    const anchors = [...order.entries()].filter(([element]) => element.id && matchedIds.has(element.id)).sort((a, b) => a[1] - b[1]);
+    const insertionPoint = /* @__PURE__ */ new Map();
+    for (const [element] of anchors) {
+      const counterpart = incoming.querySelector(
+        `[id="${CSS.escape(element.id)}"]`
+      );
+      insertionPoint.set(
+        element.id,
+        counterpart ? topLevelAncestor(incoming, counterpart) : null
+      );
+    }
+    const byAnchor = /* @__PURE__ */ new Map();
+    for (const ghost of [...ghosts].sort(
+      (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0)
+    )) {
+      const rank = order.get(ghost) ?? 0;
+      const anchor = anchors.find(([, anchorRank]) => anchorRank > rank);
+      const before = anchor ? insertionPoint.get(anchor[0].id) ?? null : null;
+      const group = byAnchor.get(before);
+      if (group) group.push(ghost);
+      else byAnchor.set(before, [ghost]);
+    }
+    return [...byAnchor.entries()].map(([before, groupGhosts]) => ({
+      before,
+      ghosts: groupGhosts
+    }));
+  }
+
   // src/ts/presenter/morph.ts
   var LEAF_SELECTOR = "rect, circle, ellipse, line, polyline, polygon, path, text, image, foreignObject";
   var DEFINITION_SUBTREE_SELECTOR = "defs, marker, symbol, clipPath, mask, pattern";
@@ -1030,14 +1198,7 @@
       (element) => !isDefinitionContent(element) && element.getScreenCTM() !== null
     );
   }
-  var GHOST_ATTRIBUTE = "data-morph-ghost";
-  function markGhost(element) {
-    element.setAttribute(GHOST_ATTRIBUTE, "");
-  }
-  function removeGhosts(root) {
-    for (const ghost of root.querySelectorAll(`[${GHOST_ATTRIBUTE}]`))
-      ghost.remove();
-  }
+  var GHOST_ID_PREFIX = "morph-ghost-";
   var MORPH_OWNED_STYLE_PROPERTIES = [
     ...INTERPOLATED_ATTRIBUTES,
     "stroke-width",
@@ -1148,8 +1309,7 @@
     const common = {
       ancestorIds: ancestorIdChain(element),
       fromAttributes: readInterpolatedAttributes(element),
-      clone: element.cloneNode(true),
-      screenCTM: element.getScreenCTM() ?? new DOMMatrix()
+      source: element
     };
     if (element instanceof SVGLineElement)
       return {
@@ -1181,11 +1341,10 @@
     };
   }
   function snapshotTopLevelChildren(svg) {
-    return Array.from(svg.children).map((child, index) => ({
-      element: child.cloneNode(true),
+    return Array.from(svg.children).map((child) => ({
+      source: child,
       html: child.outerHTML,
-      ids: collectPairableIds(child),
-      index
+      ids: collectPairableIds(child)
     }));
   }
   function nearestMatchedId(ancestorIds, matchedIds) {
@@ -1261,7 +1420,7 @@
       };
     }
     if (kind === "text" && element instanceof SVGTextElement && snapshot.textPose) {
-      if (snapshot.clone.textContent !== element.textContent) return null;
+      if (snapshot.source.textContent !== element.textContent) return null;
       const anchor = textAnchorLocal(element);
       return {
         kind: "text",
@@ -1281,8 +1440,8 @@
       const captured = captureFrame(element);
       if (captured.bbox.width === 0 || captured.bbox.height === 0)
         return null;
-      if (snapshot.clone.innerHTML !== element.innerHTML) return null;
-      if (!sameIntrinsicShape(snapshot.clone, element)) return null;
+      if (snapshot.source.innerHTML !== element.innerHTML) return null;
+      if (!sameIntrinsicShape(snapshot.source, element)) return null;
       const bTo = new DOMMatrix().translate(captured.bbox.x, captured.bbox.y).scale(captured.bbox.width, captured.bbox.height);
       element.style.setProperty("transform-box", "view-box");
       element.style.setProperty("transform-origin", "0 0");
@@ -1302,19 +1461,6 @@
     }
     return null;
   }
-  function buildLeafExit(snapshot, svgRoot) {
-    const ghost = snapshot.clone;
-    const placement = (svgRoot.getScreenCTM() ?? new DOMMatrix()).inverse().multiply(snapshot.screenCTM);
-    ghost.setAttribute("transform", matrixToSvgTransform(placement));
-    markGhost(ghost);
-    svgRoot.appendChild(ghost);
-    const startOpacity = parseFloat(snapshot.fromAttributes.opacity ?? "1");
-    return {
-      type: "exit",
-      element: ghost,
-      startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1
-    };
-  }
   function buildLeafEnter(element) {
     const target = parseFloat(element.getAttribute("opacity") ?? "1");
     element.style.opacity = "0";
@@ -1324,7 +1470,7 @@
       targetOpacity: Number.isFinite(target) ? target : 1
     };
   }
-  function buildLeafTasks(svgRoot, oldLeaves, matchedIds) {
+  function buildLeafTasks(svgRoot, oldLeaves, matchedIds, ghosts) {
     const oldByScope = /* @__PURE__ */ new Map();
     for (const leaf of oldLeaves.leaves) {
       const scope = nearestMatchedId(leaf.ancestorIds, matchedIds);
@@ -1355,12 +1501,12 @@
           tickMorph(morph, 0);
           tasks.push({ type: "morph", morph });
         } else {
-          tasks.push(buildLeafExit(snapshot, svgRoot));
+          ghosts.add(snapshot.source);
           tasks.push(buildLeafEnter(element));
         }
       }
       for (let i = paired; i < oldList.length; i++)
-        tasks.push(buildLeafExit(oldList[i], svgRoot));
+        ghosts.add(oldList[i].source);
       for (let i = paired; i < newList.length; i++)
         tasks.push(buildLeafEnter(newList[i]));
     }
@@ -1377,33 +1523,22 @@
     "title",
     "desc"
   ]);
-  function buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds) {
+  function buildCrossfadeTasks(oldChildren, newChildren, matchedIds, ghosts) {
     const oldHtml = new Set(oldChildren.map((child) => child.html));
     const newHtml = new Set(newChildren.map((child) => child.html));
-    const newChildElements = Array.from(svgRoot.children);
     const tasks = [];
     for (const child of oldChildren) {
-      if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
+      if (NON_RENDERING_TAGS.has(child.source.tagName)) continue;
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (newHtml.has(child.html)) continue;
-      const clone = child.element;
-      if (!(clone instanceof SVGGraphicsElement)) continue;
-      markGhost(clone);
-      svgRoot.insertBefore(clone, newChildElements[child.index] ?? null);
-      const startOpacity = parseFloat(
-        clone.style.opacity || clone.getAttribute("opacity") || "1"
-      );
-      tasks.push({
-        type: "exit",
-        element: clone,
-        startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1
-      });
+      if (child.source instanceof SVGGraphicsElement)
+        ghosts.add(child.source);
     }
     for (const child of newChildren) {
-      if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
+      if (NON_RENDERING_TAGS.has(child.source.tagName)) continue;
       if (containsMatchedId(child.ids, matchedIds)) continue;
       if (oldHtml.has(child.html)) continue;
-      const element = child.element;
+      const element = child.source;
       if (!(element instanceof SVGGraphicsElement)) continue;
       element.style.opacity = "0";
       tasks.push({
@@ -1421,32 +1556,29 @@
         for (const id of child.ids) ids.add(id);
     return ids;
   }
-  function buildOrphanTasks(svgRoot, oldLeaves, oldChildren, newChildren, matchedIds) {
+  function buildOrphanTasks(svgRoot, oldLeaves, oldChildren, newChildren, matchedIds, ghosts) {
     const oldScope = matchedContainingChildIds(oldChildren, matchedIds);
     const newScope = matchedContainingChildIds(newChildren, matchedIds);
     const isOrphan = (ancestorIds, scope) => !nearestMatchedId(ancestorIds, matchedIds) && ancestorIds.some((id) => scope.has(id));
     const newLeaves = pairableLeaves(svgRoot);
-    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
+    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.source.outerHTML));
     const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
     const tasks = [];
     for (const leaf of oldLeaves.leaves)
-      if (isOrphan(leaf.ancestorIds, oldScope) && !newHtml.has(leaf.clone.outerHTML))
-        tasks.push(buildLeafExit(leaf, svgRoot));
+      if (isOrphan(leaf.ancestorIds, oldScope) && !newHtml.has(leaf.source.outerHTML))
+        ghosts.add(leaf.source);
     for (const el of newLeaves)
       if (isOrphan(ancestorIdChain(el), newScope) && !oldHtml.has(el.outerHTML))
         tasks.push(buildLeafEnter(el));
     return tasks;
   }
-  function buildTasks(svgRoot, oldLeaves, oldChildren) {
-    const newIds = collectPairableIds(svgRoot);
-    const matchedIds = /* @__PURE__ */ new Set();
-    for (const id of oldLeaves.ids) if (newIds.has(id)) matchedIds.add(id);
+  function buildTasks(svgRoot, oldLeaves, oldChildren, matchedIds) {
+    const ghosts = /* @__PURE__ */ new Set();
     const newChildren = Array.from(svgRoot.children).map(
-      (child, index) => ({
-        element: child,
+      (child) => ({
+        source: child,
         html: child.outerHTML,
-        ids: collectPairableIds(child),
-        index
+        ids: collectPairableIds(child)
       })
     );
     const orphanTasks = buildOrphanTasks(
@@ -1454,13 +1586,22 @@
       oldLeaves,
       oldChildren,
       newChildren,
-      matchedIds
+      matchedIds,
+      ghosts
     );
-    return [
-      ...buildLeafTasks(svgRoot, oldLeaves, matchedIds),
-      ...orphanTasks,
-      ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds)
-    ];
+    return {
+      tasks: [
+        ...buildLeafTasks(svgRoot, oldLeaves, matchedIds, ghosts),
+        ...orphanTasks,
+        ...buildCrossfadeTasks(
+          oldChildren,
+          newChildren,
+          matchedIds,
+          ghosts
+        )
+      ],
+      ghosts
+    };
   }
   function matrixToSvgTransform(m) {
     return `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e} ${m.f})`;
@@ -1647,6 +1788,10 @@
     driver = new ProgressDriver();
     stage;
     oldHtml = "";
+    // The outgoing <svg> itself. Detached once the new slide is swapped in, but intact,
+    // and every ghost layer is a pruned clone of it.
+    oldSvg = null;
+    restoreScopes = null;
     // Snapshot the outgoing slide before swap() replaces the DOM, and keep its
     // markup so a full reversal can restore the real previous slide.
     prepare({ stage: stage4 }) {
@@ -1654,6 +1799,7 @@
       removeGhosts(stage4);
       this.oldHtml = stage4.innerHTML;
       const beforeSvg = stage4.querySelector("svg");
+      this.oldSvg = beforeSvg;
       this.oldLeaves = beforeSvg ? snapshotLeaves(beforeSvg) : { ids: /* @__PURE__ */ new Set(), leaves: [] };
       this.oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
     }
@@ -1665,7 +1811,17 @@
       if (params.duration <= 0) return;
       const svgRoot = stage4.querySelector("svg");
       if (!svgRoot) return;
-      this.tasks = buildTasks(svgRoot, this.oldLeaves, this.oldChildren);
+      const newIds = collectPairableIds(svgRoot);
+      const matchedIds = /* @__PURE__ */ new Set();
+      for (const id of this.oldLeaves.ids)
+        if (newIds.has(id)) matchedIds.add(id);
+      const { tasks, ghosts } = buildTasks(
+        svgRoot,
+        this.oldLeaves,
+        this.oldChildren,
+        matchedIds
+      );
+      this.tasks = [...tasks, ...this.layGhosts(svgRoot, ghosts, matchedIds)];
       await this.driver.animateTo(
         1,
         params.duration,
@@ -1692,7 +1848,40 @@
       if (!signal.aborted) this.settle();
     }
     cancel({ stage: stage4 }) {
+      this.releaseScopes();
       removeGhosts(stage4);
+    }
+    // Nest one container per insertion point into the incoming slide's own tree, so a
+    // ghost lands where it sat relative to the elements that survive rather than
+    // wholly above or below everything.
+    layGhosts(svgRoot, ghosts, matchedIds) {
+      const outgoing = this.oldSvg;
+      if (!outgoing || ghosts.size === 0) return [];
+      const rename = referencedDefinitions(outgoing);
+      this.restoreScopes = limitScopesToLiveContent(svgRoot);
+      const tasks = [];
+      let carryDefinitions = true;
+      for (const group of planGhostPlacement(
+        outgoing,
+        svgRoot,
+        ghosts,
+        matchedIds
+      )) {
+        const container = buildGhostLayer(outgoing, new Set(group.ghosts), {
+          carryDefinitions,
+          idPrefix: GHOST_ID_PREFIX,
+          rename
+        });
+        if (!container) continue;
+        carryDefinitions = false;
+        svgRoot.insertBefore(container, group.before);
+        tasks.push({ type: "exit", element: container, startOpacity: 1 });
+      }
+      return tasks;
+    }
+    releaseScopes() {
+      this.restoreScopes?.();
+      this.restoreScopes = null;
     }
     // progress 1 → the new slide is fully formed; snap it to its natural state.
     // progress 0 → reversed all the way back; the morphed elements only *look* like
@@ -1700,6 +1889,7 @@
     settle() {
       if (this.driver.value >= 1) finalizeTasks(this.tasks);
       else this.stage.innerHTML = this.oldHtml;
+      this.releaseScopes();
       removeGhosts(this.stage);
     }
   };
