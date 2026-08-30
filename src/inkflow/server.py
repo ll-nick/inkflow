@@ -26,7 +26,7 @@ from watchfiles import awatch  # pyright: ignore[reportUnknownVariableType]
 from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
-from inkflow.assets import AssetRoots
+from inkflow.assets import MIME_TYPES, AssetRoots
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
@@ -309,19 +309,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
     return html.encode("utf-8")
 
 
-_MIME_TYPES = {
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".ogg": "video/ogg",
-    ".mov": "video/quicktime",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".svg": "image/svg+xml",
-}
-_SERVED_SUFFIXES = set(_MIME_TYPES)
+_SERVED_SUFFIXES = set(MIME_TYPES)
 
 
 def _resolve_asset(roots: AssetRoots, request_path: str) -> Path | None:
@@ -357,7 +345,7 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
                 roots = AssetRoots(project_dir, _state["theme_dir"])
                 asset_path = _resolve_asset(roots, request_path)
                 if asset_path is not None:
-                    mime = _MIME_TYPES[asset_path.suffix.lower()]
+                    mime = MIME_TYPES[asset_path.suffix.lower()]
                     body = asset_path.read_bytes()
                     header = (
                         b"HTTP/1.1 200 OK\r\n"

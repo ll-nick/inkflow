@@ -44,6 +44,21 @@ REFERENCE_PATTERNS = (_HTML_SRC_RE, _HTML_POSTER_RE, _SVG_HREF_RE)
 _HTML_REF_TAGS = (f"{{{ns.XHTML}}}img", f"{{{ns.XHTML}}}video")
 _SVG_HREF_ATTRIBUTES = ("href", f"{{{ns.XLINK}}}href")
 
+MIME_TYPES = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".ogg": "video/ogg",
+    ".mov": "video/quicktime",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
+"""Media type per asset suffix: what ``serve`` sends on the wire and what an
+inlining ``build`` stamps into its data URIs, so the two describe a file alike."""
+
 
 def is_local_ref(ref: str) -> bool:
     """Whether a reference names a file to copy rather than a remote or inline URI."""
