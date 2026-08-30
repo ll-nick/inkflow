@@ -9,15 +9,21 @@ from html import escape as escape_html
 from pathlib import Path
 from typing import cast
 
+from inkflow.assets import REFERENCE_PATTERNS, AssetRoots, is_local_ref
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
-from inkflow.manifest import Deck, Media, Video
+from inkflow.logging import logger
+from inkflow.manifest import Deck
 from inkflow.pipeline import SlideData, process_deck, resolve_transitions
 from inkflow.server import State, build_html, load_deck
 from inkflow.titles import resolve_deck_title
 
 # ── build ─────────────────────────────────────────────────────────────────────
+
+
+def _asset_roots(deck: Deck, project_dir: Path) -> AssetRoots:
+    return AssetRoots(project_dir, deck.theme.asset_dir())
 
 
 def build_static_html(deck_path: Path, out_dir: Path) -> None:
@@ -32,7 +38,7 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
             styles_css = (font_css + "\n" + styles_css).strip()
     scripts_js = load_deck_scripts(deck, project_dir)
 
-    _copy_assets(_all_asset_paths(deck, slides), project_dir, out_dir)
+    _copy_assets(slides, _asset_roots(deck, project_dir), out_dir)
 
     state: State = {
         "slides": slides,
@@ -45,58 +51,72 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
         "position": {"slideIndex": 0, "step": 0},
         "logs": [],
         "title": resolve_deck_title(deck, project_dir),
+        "theme_dir": deck.theme.asset_dir(),
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
 
 
-def _is_local_ref(src: str) -> bool:
-    """True for a copyable local path (not a URL, protocol-relative, or data URI)."""
-    return bool(src) and not src.startswith(("http://", "https://", "//", "data:"))
+def _local_refs(text: str) -> list[str]:
+    """Copyable asset references in one produced SVG or notes fragment.
+
+    Each pattern scans the whole text on its own rather than being folded into one
+    alternation, because a `<video>` carries both a `src` and a `poster` and a
+    single scan would resume past the first of them.
+    """
+    refs: list[str] = []
+    for pattern in REFERENCE_PATTERNS:
+        for ref in cast(list[str], pattern.findall(text)):
+            if is_local_ref(ref):
+                refs.append(ref)
+    return refs
 
 
-def _collect_local_media_paths(deck: Deck) -> list[str]:
-    paths: list[str] = []
-    for slide in deck.slides:
-        for val in slide.zones.values():
-            if not isinstance(val, Media):
-                continue
-            srcs = [val.src, val.alt_src]
-            if isinstance(val, Video):
-                srcs.append(val.poster)
-            paths.extend(src for src in srcs if src and _is_local_ref(src))
-    return paths
+def _slide_refs(slide: SlideData) -> list[str]:
+    """Every copyable asset reference one produced slide carries."""
+    return _local_refs(slide["svg"]) + _local_refs(slide["notes"])
 
 
-# Matches HTML <img src> (markdown-injected) and SVG <image href>/<image xlink:href>
-# references in a produced slide SVG string, capturing the path.
-_IMG_SRC_RE = re.compile(r'<img\b[^>]*?\bsrc="([^"]*)"', re.IGNORECASE)
-_IMAGE_HREF_RE = re.compile(r'<image\b[^>]*?\b(?:xlink:)?href="([^"]*)"', re.IGNORECASE)
+def _referenced_assets(slides: list[SlideData]) -> dict[str, str]:
+    """``{ref: slide id}`` for every copyable asset the produced slides reference.
 
+    Reading the emitted SVG and notes rather than walking the deck keeps the copy
+    step honest: what a slide actually carries is what lands in the output, so a
+    zone that was pruned takes its asset with it. Every reference here has been
+    canonicalised by the pipeline, so it is already project-root relative.
 
-def _collect_slide_asset_paths(slides: list[SlideData]) -> list[str]:
-    """Local paths referenced from the produced slide SVGs (markdown + SVG images)."""
-    paths: list[str] = []
+    Deduped on the ref, since a layout's or an overlay's image is referenced once
+    per slide. The id is only there to name a slide in a warning, so the first one
+    to reach an asset keeps it: for a ref every slide shares, that is the earliest
+    slide in deck order rather than an arbitrary one.
+    """
+    by_ref: dict[str, str] = {}
     for slide in slides:
-        for pattern in (_IMG_SRC_RE, _IMAGE_HREF_RE):
-            refs = cast(list[str], pattern.findall(slide["svg"]))
-            paths.extend(ref for ref in refs if _is_local_ref(ref))
-    return paths
+        for ref in _slide_refs(slide):
+            by_ref.setdefault(ref, slide["id"])
+    return by_ref
 
 
-def _all_asset_paths(deck: Deck, slides: list[SlideData]) -> list[str]:
-    """Media-zone assets plus markdown- and SVG-referenced assets, deduped in order."""
-    paths = _collect_local_media_paths(deck) + _collect_slide_asset_paths(slides)
-    return list(dict.fromkeys(paths))
+def _copy_assets(slides: list[SlideData], roots: AssetRoots, out_dir: Path) -> None:
+    """Copy every asset the slides reference into `out_dir`, mirroring the source tree.
 
-
-def _copy_assets(paths: list[str], project_dir: Path, out_dir: Path) -> None:
-    for rel in paths:
-        src = project_dir / rel
-        dst = out_dir / rel
-        if src.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+    A canonical ref is relative and free of ``..`` by construction, so `out_dir /
+    ref` always lands inside the output and the reference keeps working there
+    unchanged. A ref that could not be canonicalised was already reported when it
+    was resolved, and `locate` refuses it here.
+    """
+    for ref, label in _referenced_assets(slides).items():
+        src = roots.locate(ref)
+        if src is None:
+            continue
+        if not src.is_file():
+            logger.warning(
+                f"{label}: asset not found, not copied into the build: {ref}"
+            )
+            continue
+        dst = out_dir / ref
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
 
 
 # ── export (PDF) ──────────────────────────────────────────────────────────────
@@ -145,19 +165,19 @@ def build_pdf(
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("pdf.html").read_text(encoding="utf-8")
     data_theme = "" if deck.effective_mode == ColorMode.DARK else "light"
-    slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
     title = resolve_deck_title(deck, project_dir)
-    html = (
-        template.replace("/* __STYLES__ */", styles_css)
-        .replace("__DATA_THEME__", data_theme)
-        .replace("__SLIDES__", slides_html)
-        .replace("__TITLE__", escape_html(title))
-    )
 
     with tempfile.TemporaryDirectory() as tmp:
+        _copy_assets(slides, _asset_roots(deck, project_dir), Path(tmp))
+        slides_html = "\n".join(f'<div class="slide">{s["svg"]}</div>' for s in slides)
+        html = (
+            template.replace("/* __STYLES__ */", styles_css)
+            .replace("__DATA_THEME__", data_theme)
+            .replace("__SLIDES__", slides_html)
+            .replace("__TITLE__", escape_html(title))
+        )
         html_path = Path(tmp) / "slides.html"
         html_path.write_text(html, encoding="utf-8")
-        _copy_assets(_all_asset_paths(deck, slides), project_dir, Path(tmp))
         cmd = [
             exe,
             "--headless",

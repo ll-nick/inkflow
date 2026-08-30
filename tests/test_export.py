@@ -1,6 +1,7 @@
 # pyright: reportPrivateUsage=none
 from __future__ import annotations
 
+import logging
 import textwrap
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from click.testing import CliRunner
 
 from inkflow.cli import main
 from inkflow.export import _find_chromium, build_pdf, build_static_html
+from inkflow.logging import collect_logs
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,42 @@ _ASSET_SLIDE_SVG = textwrap.dedent("""\
 
 _PLAIN_SLIDE_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
+
+# An <image> href as an SVG editor writes it: resolved relative to the slide
+# file, so a slide in slides/ points one level up at the shared assets dir.
+_ESCAPING_ASSET_SLIDE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
+      <image xlink:href="../assets/pic.png" x="0" y="0" width="100" height="100"/>
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
+
+# A reference that leaves the project entirely: no root can hold it.
+_OUTSIDE_ASSET_SLIDE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
+      <image xlink:href="../../outside/pic.png" x="0" y="0" width="1" height="1"/>
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
+
+# A theme layout referencing its own branding, relative to the layout file.
+_THEME_LAYOUT_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
+      <image xlink:href="../logo.png" x="0" y="0" width="100" height="100"/>
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
+
+_MISSING_ASSET_SLIDE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
+      <image xlink:href="assets/missing.png" x="0" y="0" width="100" height="100"/>
       <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
     </svg>
 """)
@@ -59,6 +97,32 @@ _ONE_SLIDE_DECK = """\
 return Deck(
     embed_fonts=False,
     slides=[Slide('slides/s.svg', zones={'content': 'hi'})],
+)"""
+
+_NOTES_IMAGE_DECK = """\
+return Deck(
+    embed_fonts=False,
+    slides=[
+        Slide('slides/s.svg', notes='notes/s.md', zones={'content': 'hi'}),
+    ],
+)"""
+
+_MD_FILE_DECK = """\
+return Deck(
+    embed_fonts=False,
+    slides=[Slide('slides/s.svg', md='slides/guide.md')],
+)"""
+
+_THEME_DECK = """\
+import sys
+
+sys.path.insert(0, {theme_dir!r})
+from mytheme import MyTheme
+
+return Deck(
+    embed_fonts=False,
+    theme=MyTheme(),
+    slides=[Slide('theme:branded', zones={{'content': 'hi'}})],
 )"""
 
 _POSTER_DECK = """\
@@ -100,10 +164,14 @@ def _write_deck(project_dir: Path, body: str) -> Path:
 
 class TestBuildCopiesAssets:
     def test_copies_media_markdown_and_svg_image_assets(self, tmp_path: Path) -> None:
+        # Each reference resolves against the file that wrote it: the two <image>
+        # hrefs live in slides/s.svg, the markdown and the Image() in deck.py. The
+        # build mirrors that tree, so the two land in different directories even
+        # though both were written as "assets/…".
         _write_slide(tmp_path, _ASSET_SLIDE_SVG)
         for rel in (
-            "assets/pic.png",
-            "assets/pic2.png",
+            "slides/assets/pic.png",
+            "slides/assets/pic2.png",
             "assets/cat.png",
             "media/photo.png",
         ):
@@ -114,13 +182,49 @@ class TestBuildCopiesAssets:
         build_static_html(deck_path, out_dir)
 
         assert (out_dir / "index.html").exists()
-        # SVG <image xlink:href> and <image href>
-        assert (out_dir / "assets" / "pic.png").exists()
-        assert (out_dir / "assets" / "pic2.png").exists()
-        # markdown ![](...)
+        # SVG <image xlink:href> and <image href>, relative to the slide file
+        assert (out_dir / "slides" / "assets" / "pic.png").exists()
+        assert (out_dir / "slides" / "assets" / "pic2.png").exists()
+        # markdown ![](...) written in deck.py, relative to the project root
         assert (out_dir / "assets" / "cat.png").exists()
         # Media zone (already worked, must not regress)
         assert (out_dir / "media" / "photo.png").exists()
+
+    def test_markdown_file_refs_resolve_against_the_markdown_file(
+        self, tmp_path: Path
+    ) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        (tmp_path / "slides" / "guide.md").write_text(
+            "::content::\n\n![cat](assets/cat.png)\n", encoding="utf-8"
+        )
+        _write_asset(tmp_path, "slides/assets/cat.png")
+        deck_path = _write_deck(tmp_path, _MD_FILE_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir)
+
+        assert (out_dir / "slides" / "assets" / "cat.png").exists()
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "slides/assets/cat.png" in index
+
+    def test_copies_an_image_referenced_from_notes(self, tmp_path: Path) -> None:
+        # Notes are Markdown too, so they can carry images, and they resolve
+        # against the notes file: "../assets" from notes/ is the project root.
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        (tmp_path / "notes").mkdir()
+        (tmp_path / "notes" / "s.md").write_text(
+            "![a diagram](../assets/diagram.png)\n", encoding="utf-8"
+        )
+        _write_asset(tmp_path, "assets/diagram.png")
+        deck_path = _write_deck(tmp_path, _NOTES_IMAGE_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir)
+
+        assert (out_dir / "assets" / "diagram.png").exists()
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "../assets/diagram.png" not in index
+        assert "assets/diagram.png" in index
 
     def test_copies_video_source_and_poster(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
@@ -148,6 +252,96 @@ class TestBuildCopiesAssets:
             p for p in out_dir.rglob("*") if p.is_file() and p.name != "index.html"
         ]
         assert copied == []
+
+
+class TestEditorRelativeAssetRefs:
+    def test_parent_ref_resolves_against_the_slide_and_stays_inside(
+        self, tmp_path: Path
+    ) -> None:
+        # ../assets/pic.png is what an SVG editor writes for a slide in slides/
+        # pointing at the project's shared assets dir. It must resolve there, and
+        # the ".." must not survive into the output, where it would climb out of
+        # the build and collide with the source.
+        _write_slide(tmp_path, _ESCAPING_ASSET_SLIDE_SVG)
+        _write_asset(tmp_path, "assets/pic.png")
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir)
+
+        assert (out_dir / "assets" / "pic.png").exists()
+        # Nothing written next to the build via a ".." that climbed out.
+        assert not (tmp_path / "out.png").exists()
+        assert list((tmp_path / "assets").iterdir()) == [
+            tmp_path / "assets" / "pic.png"
+        ]
+
+        # The slide SVG is JSON-embedded in index.html, so match on the bare ref:
+        # the escaping "../" form is gone, canonicalised to a project-root path.
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "../assets/pic.png" not in index
+        assert "assets/pic.png" in index
+
+    def test_ref_outside_every_root_warns_and_is_left_alone(
+        self, tmp_path: Path
+    ) -> None:
+        # Nothing can serve or export a file above the project, so the reference
+        # is reported and kept as written rather than re-anchored somewhere it
+        # never pointed at.
+        project = tmp_path / "project"
+        project.mkdir()
+        _write_slide(project, _OUTSIDE_ASSET_SLIDE_SVG)
+        _write_asset(tmp_path, "outside/pic.png")
+        deck_path = _write_deck(project, _ONE_SLIDE_DECK)
+
+        out_dir = project / "out"
+        with collect_logs(logging.WARNING) as warnings:
+            build_static_html(deck_path, out_dir)
+
+        assert any("outside the project" in w.message for w in warnings)
+        assert not (out_dir / "outside").exists()
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "../../outside/pic.png" in index
+
+    def test_missing_asset_warns_and_build_still_succeeds(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _MISSING_ASSET_SLIDE_SVG)
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+
+        out_dir = tmp_path / "out"
+        with collect_logs(logging.WARNING) as warnings:
+            build_static_html(deck_path, out_dir)
+
+        assert (out_dir / "index.html").exists()
+        assert any("missing.png" in w.message for w in warnings)
+
+
+class TestThemeAssets:
+    def test_theme_asset_is_copied_under_its_own_namespace(
+        self, tmp_path: Path
+    ) -> None:
+        # A theme installed outside the project is the second allowed root, so its
+        # branding travels with the build under a namespace of its own.
+        theme_dir = tmp_path / "external"
+        (theme_dir / "theme" / "layouts").mkdir(parents=True)
+        (theme_dir / "mytheme.py").write_text(
+            "from inkflow.themes import Theme\n\n\nclass MyTheme(Theme):\n    pass\n",
+            encoding="utf-8",
+        )
+        (theme_dir / "theme" / "layouts" / "branded.svg").write_text(
+            _THEME_LAYOUT_SVG, encoding="utf-8"
+        )
+        _write_asset(theme_dir, "theme/logo.png")
+
+        project = tmp_path / "project"
+        project.mkdir()
+        deck_path = _write_deck(project, _THEME_DECK.format(theme_dir=str(theme_dir)))
+
+        out_dir = project / "out"
+        build_static_html(deck_path, out_dir)
+
+        assert (out_dir / "_theme" / "logo.png").exists()
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "_theme/logo.png" in index
 
 
 class TestCustomTypeMarker:
