@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <!-- Only this slide defines it. The ghost must keep its arrowhead anyway. -->
+    <marker id="only-here" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#8ec07c"/>
+    </marker>
+    <!-- Both slides define this id, with different shapes. The incoming slide's arrow
+         must keep the incoming shape, so the copied one has to be renamed. -->
+    <marker id="shared" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#f38ba8"/>
+    </marker>
+    <style>.from-slide-style { fill: #f5c2e7 }</style>
+  </defs>
+  <rect width="1920" height="1080" fill="#222831"/>
+  <text x="960" y="110" font-family="sans-serif" font-size="60" fill="#ffffff" text-anchor="middle">ghost context</text>
+  <text x="960" y="170" font-family="sans-serif" font-size="32" fill="#9aa0a6" text-anchor="middle">everything below fades out, and must keep its own look the whole way</text>
+
+  <!-- Matched, so this is a real morph rather than a crossfade. -->
+  <rect id="anchor" x="820" y="880" width="280" height="120" rx="20" fill="#585b70"/>
+  <text id="morphs-text" x="960" y="955" font-family="sans-serif" font-size="40" fill="#cdd6f4" text-anchor="middle">morphs</text>
+
+  <g fill="#89b4fa" font-family="sans-serif" font-size="34">
+    <text x="150" y="320">inherits fill from its group</text>
+    <rect x="150" y="350" width="300" height="90" rx="12"/>
+  </g>
+
+  <text class="from-slide-style" x="640" y="320" font-family="sans-serif" font-size="34">from this slide's style block</text>
+  <rect class="from-slide-style" x="640" y="350" width="300" height="90" rx="12"/>
+
+  <text id="deck-styled-label" x="1130" y="320" font-family="sans-serif" font-size="34" fill="#9aa0a6">from the deck stylesheet</text>
+  <rect id="deck-styled" x="1130" y="350" width="300" height="90" rx="12"/>
+
+  <text x="150" y="600" font-family="sans-serif" font-size="34" fill="#9aa0a6">marker only this slide defines</text>
+  <path d="M 160 660 H 560" style="fill:none;stroke:#8ec07c;stroke-width:10;marker-end:url(#only-here)"/>
+
+  <text x="1130" y="600" font-family="sans-serif" font-size="34" fill="#9aa0a6">marker id both slides define</text>
+  <path d="M 1140 660 H 1540" style="fill:none;stroke:#f38ba8;stroke-width:10;marker-end:url(#shared)"/>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="1920" height="1080" fill="#222831"/>
+  <text x="960" y="110" font-family="sans-serif" font-size="60" fill="#ffffff" text-anchor="middle">z-order</text>
+  <text x="960" y="170" font-family="sans-serif" font-size="32" fill="#9aa0a6" text-anchor="middle">both panels fade out. Watch which side of the teal one they pass.</text>
+
+  <g id="under">
+    <rect x="300" y="380" width="640" height="300" fill="#6a040f"/>
+    <text x="360" y="440" font-family="sans-serif" font-size="34" fill="#f5c2e7">below the teal panel</text>
+  </g>
+
+  <rect id="anchor" x="560" y="300" width="800" height="460" rx="30" fill="#94e2d5"/>
+  <text x="960" y="560" font-family="sans-serif" font-size="44" fill="#1e1e2e" text-anchor="middle">morphs</text>
+
+  <g id="over">
+    <rect x="980" y="500" width="640" height="300" fill="#f9e2af"/>
+    <text x="1040" y="560" font-family="sans-serif" font-size="34" fill="#1e1e2e">above the teal panel</text>
+  </g>
+</svg>
