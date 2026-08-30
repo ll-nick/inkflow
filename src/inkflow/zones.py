@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import re
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from types import UnionType
 from typing import get_args, get_origin, get_type_hints
@@ -11,9 +11,10 @@ from typing import get_args, get_origin, get_type_hints
 from lxml import etree
 
 from inkflow.animations import Animation, FadeIn
+from inkflow.assets import AssetSource
 from inkflow.enums import Align, Trigger, VAlign
 from inkflow.logging import logger
-from inkflow.manifest import Media, TextBox, ZoneContent
+from inkflow.manifest import Media, TextBox, Video, ZoneContent
 from inkflow.markdown import (
     html_fragment_to_xml,
     markdown_to_html,
@@ -477,12 +478,35 @@ def _reroute_zones(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
+def _resolve_zone_assets(item: TextBox | Media, source: AssetSource) -> TextBox | Media:
+    """Canonicalise the asset references a deck.py zone value carries."""
+    if isinstance(item, TextBox):
+        if item.text is None:
+            return item
+        return replace(item, text=source.html(item.text))
+    resolved = replace(
+        item,
+        src=source.ref(item.src),
+        alt_src=None if item.alt_src is None else source.ref(item.alt_src),
+    )
+    if isinstance(resolved, Video) and resolved.poster is not None:
+        resolved = replace(resolved, poster=source.ref(resolved.poster))
+    return resolved
+
+
 def build_slide_content(
     parsed: ParsedMarkdown | None,
     extra: dict[str, ZoneContent],
+    md_source: AssetSource,
+    deck_source: AssetSource,
     available_zones: set[str] | None = None,
     default_zone: str = "",
 ) -> SlideContent:
+    """Assemble per-zone content from a parsed .md file and the deck's own zones.
+
+    The two carry references written in different files, so each gets its own
+    ``AssetSource``: this is the last point where which is which is still known.
+    """
     zones: _ZoneChunks = {}
     zone_params: _ZoneParams = {}
     auto_zones: frozenset[str] = frozenset()
@@ -498,6 +522,7 @@ def build_slide_content(
         # Notes render to static HTML in the presenter panel, never into the slide
         # SVG, so their reveal animations are discarded (own throwaway id space).
         notes_html, _, _ = chunks_to_html(notes_chunks, 0, itertools.count(1))
+        notes_html = md_source.html(notes_html)
 
     if available_zones is not None:
         zones = _reroute_zones(zones, auto_zones, available_zones, default_zone)
@@ -512,7 +537,7 @@ def build_slide_content(
         animations.extend(zone_anims)
         p = zone_params.get(zone_name, {})
         result[f"zone-{zone_name}"] = TextBox(
-            text=html,
+            text=md_source.html(html),
             align=Align(p["align"]) if "align" in p else None,
             valign=VAlign(p["valign"]) if "valign" in p else None,
             padding=float(p["padding"]) if "padding" in p else None,
@@ -520,9 +545,11 @@ def build_slide_content(
 
     for key, val in extra.items():
         if isinstance(val, str):
-            result[f"zone-{key}"] = TextBox(text=markdown_to_html(val))
+            result[f"zone-{key}"] = TextBox(
+                text=deck_source.html(markdown_to_html(val))
+            )
         else:
-            result[f"zone-{key}"] = val
+            result[f"zone-{key}"] = _resolve_zone_assets(val, deck_source)
 
     # base_step now holds the running max across all reveal zones (incl.
     # code-highlight stages); the deck animations=[...] list numbers on from here.
