@@ -716,18 +716,20 @@ class TestParseMarkdownOnce:
 
 class TestSlideSvg:
     def test_cleaned_round_trips(self, tmp_path: Path) -> None:
+        from inkflow.clean import clean_inkscape_tree
         from inkflow.pipeline import SlideSvg
 
         src = tmp_path / "s.svg"
         src.write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
-        assert "zone-content" in SlideSvg.cleaned(src).to_svg()
+        assert "zone-content" in SlideSvg(clean_inkscape_tree(src), src).to_svg()
 
     def test_methods_mutate_in_place_like_list_sort(self, tmp_path: Path) -> None:
+        from inkflow.clean import clean_inkscape_tree
         from inkflow.pipeline import SlideSvg
 
         src = tmp_path / "s.svg"
         src.write_text(_LAYOUT_SVG, encoding="utf-8")
-        doc = SlideSvg.cleaned(src)
+        doc = SlideSvg(clean_inkscape_tree(src), src)
         assert doc.zone_ids() == {"zone-title", "zone-content"}
         assert doc.number_slides(2, 5) is None  # returns None, mutates self
         doc.scope_styles(2)

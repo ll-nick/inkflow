@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from inkflow.animations import Animation, Bounce, FadeIn, SlideIn
+from inkflow.assets import AssetRoots, AssetSource
 from inkflow.enums import Align, Direction, Easing, MediaAlign, MediaFit, VAlign
 from inkflow.manifest import Image, Media, TextBox, ZoneContent
 from inkflow.markdown import markdown_to_html
@@ -40,8 +41,14 @@ def build_slide_content(
     default_zone: str = "",
 ) -> SlideContent:
     parsed = parse_markdown_zones(content) if isinstance(content, str) else None
+    source = AssetSource.for_deck(AssetRoots(Path.cwd()))
     return _build_slide_content_parsed(
-        parsed, extra, available_zones=available_zones, default_zone=default_zone
+        parsed,
+        extra,
+        source,
+        source,
+        available_zones=available_zones,
+        default_zone=default_zone,
     )
 
 

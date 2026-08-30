@@ -3,6 +3,7 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
+from inkflow.clean import clean_inkscape_tree
 from inkflow.svg import compose_overlays as _compose_overlays_el
 from inkflow.svg import compose_with_ancestors as _compose_with_ancestors_el
 from inkflow.svg import duplicate_zone_ids, is_full_canvas_fill
@@ -12,11 +13,13 @@ from inkflow.svgio import SvgElement, parse_svg, serialize_svg
 # String adapters: these take and return an element (parse once); the wrappers keep
 # the string call sites below readable.
 def compose_with_ancestors(svg: str, chain: list[Path]) -> str:
-    return serialize_svg(_compose_with_ancestors_el(parse_svg(svg), chain))
+    ancestors = [clean_inkscape_tree(path) for path in chain]
+    return serialize_svg(_compose_with_ancestors_el(parse_svg(svg), ancestors))
 
 
 def compose_overlays(svg: str, overlay_chains: list[list[Path]]) -> str:
-    return serialize_svg(_compose_overlays_el(parse_svg(svg), overlay_chains))
+    stacks = [[clean_inkscape_tree(path) for path in c] for c in overlay_chains]
+    return serialize_svg(_compose_overlays_el(parse_svg(svg), stacks))
 
 
 _ANCESTOR_SVG = textwrap.dedent("""\

@@ -545,7 +545,23 @@ Reference an image from Markdown with standard syntax:
 ![A diagram](assets/diagram.png)
 ```
 
-Image paths are resolved relative to the **project root** (the directory that holds `deck.py`), not relative to the `.md` file. So `![](assets/diagram.png)` always points at `<project>/assets/diagram.png` no matter where the Markdown file lives. The same rule applies to `<image href="...">` references inside the SVG.
+An image path is resolved relative to **the file it is written in**,
+which is what every editor assumes:
+a `![](assets/diagram.png)` in `<project-rood>/slides/intro.md` points at `<project-rood>/slides/assets/diagram.png`,
+an `<image href="../assets/diagram.png">` in `<project-rood>/slides/intro.svg` points at `<project-rood>/assets/diagram.png`,
+and an `Image("assets/diagram.png")` or an `Inline(...)` Markdown string in `<project-rood>/deck.py` points at `<project-rood>/assets/diagram.png`.
+So a slide SVG keeps rendering in Inkscape and a Markdown file keeps previewing in an editor,
+with no separate convention to remember.
+
+The asset itself must live inside the project directory,
+or inside the active theme's asset directory.
+Anything else cannot be served or exported,
+and is reported as a warning naming the file and the reference.
+To use a directory outside the project, symlink it in:
+
+```bash
+ln -s ../shared/assets assets
+```
 
 Local image paths are copied into the output of `inkflow build` and `inkflow export`. Remote (`https://`) and `data:` URIs are left as they are.
 

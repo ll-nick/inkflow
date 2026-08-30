@@ -1,11 +1,25 @@
 from __future__ import annotations
 
 import importlib.resources
+from dataclasses import dataclass
 from pathlib import Path
 
 from inkflow.manifest import Content, Deck, Inline
 from inkflow.markdown import markdown_to_html
 from inkflow.themes import Builtin, Theme
+
+
+@dataclass(frozen=True)
+class LoadedText:
+    """Text plus the file it was written in, or ``None`` when it came from a
+    literal ``Inline(...)`` in ``deck.py``.
+
+    The path is what lets a relative asset reference inside the text resolve
+    against its own file, so it must not be dropped on the way back.
+    """
+
+    text: str
+    path: Path | None
 
 
 def _contract_css() -> str:
@@ -77,25 +91,29 @@ def resolve_content_src(src: str, project_dir: Path) -> Path:
     return (project_dir / p).resolve()
 
 
-def load_md(md: Content, project_dir: Path) -> str | None:
-    """Resolve a Content md field to a raw markdown string."""
+def load_md(md: Content, project_dir: Path) -> LoadedText | None:
+    """Resolve a Content md field to raw markdown and the file it was written in."""
     if md is None:
         return None
     if isinstance(md, Inline):
-        return str(md)
-    return resolve_content_src(str(md), project_dir).read_text(encoding="utf-8")
+        return LoadedText(str(md), None)
+    path = resolve_content_src(str(md), project_dir)
+    return LoadedText(path.read_text(encoding="utf-8"), path)
 
 
-def load_notes(notes: Content, project_dir: Path) -> str:
-    """Resolve a Content notes field to rendered HTML. Notes are always Markdown."""
+def load_notes(notes: Content, project_dir: Path) -> LoadedText:
+    """Resolve a Content notes field to rendered HTML and the file it came from.
+
+    Notes are always Markdown.
+    """
     if not notes:
-        return ""
+        return LoadedText("", None)
     if isinstance(notes, Inline):
-        return markdown_to_html(str(notes))
+        return LoadedText(markdown_to_html(str(notes)), None)
     resolved = Path(str(notes))
     if not resolved.is_absolute():
         resolved = project_dir / resolved
-    return markdown_to_html(resolved.read_text(encoding="utf-8"))
+    return LoadedText(markdown_to_html(resolved.read_text(encoding="utf-8")), resolved)
 
 
 def load_style(style: Content, project_dir: Path) -> str:

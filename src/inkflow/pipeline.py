@@ -9,7 +9,7 @@ from typing import NamedTuple, TypedDict, cast
 
 from inkflow import ns
 from inkflow.animations import Animation, Cue, PlayVideo
-from inkflow.clean import clean_inkscape_tree
+from inkflow.assets import AssetRoots, AssetSource, read_resolved_svg
 from inkflow.content import (
     inject_style,
     remove_unreferenced_zones,
@@ -458,23 +458,34 @@ class SlideSvg:
     """
 
     root: SvgElement
+    src: Path
+    """The file the slide was read from. Kept because a relative reference inside
+    the tree resolves against it, and because the layout tagging needs it later."""
 
     @classmethod
-    def cleaned(cls, src: Path) -> SlideSvg:
-        return cls(clean_inkscape_tree(src))
+    def read(cls, src: Path, roots: AssetRoots) -> SlideSvg:
+        return cls(read_resolved_svg(src, roots), src)
 
-    def compose_ancestors(self, chain: list[Path]) -> None:
+    def compose_ancestors(self, chain: list[Path], roots: AssetRoots) -> None:
         if chain:
-            self.root = compose_with_ancestors(self.root, chain)
+            self.root = compose_with_ancestors(
+                self.root, [read_resolved_svg(path, roots) for path in chain]
+            )
 
-    def compose_overlays(self, overlay_chains: list[list[Path]]) -> None:
-        if overlay_chains:
-            self.root = compose_overlays(self.root, overlay_chains)
-
-    def tag_layout(
-        self, chain: list[Path], src: Path, overlay_chains: list[list[Path]]
+    def compose_overlays(
+        self, overlay_chains: list[list[Path]], roots: AssetRoots
     ) -> None:
-        self.root = _add_layout_classes(self.root, chain, src, overlay_chains)
+        if overlay_chains:
+            self.root = compose_overlays(
+                self.root,
+                [
+                    [read_resolved_svg(path, roots) for path in chain]
+                    for chain in overlay_chains
+                ],
+            )
+
+    def tag_layout(self, chain: list[Path], overlay_chains: list[list[Path]]) -> None:
+        self.root = _add_layout_classes(self.root, chain, self.src, overlay_chains)
 
     def number_slides(self, slide_number: int, total: int) -> None:
         self.root = substitute_zone_numbers(self.root, slide_number, total)
@@ -516,6 +527,7 @@ class DeckContext:
 
     project_dir: Path
     theme: Theme
+    assets: AssetRoots
     deck_style: str
     font_size: int  # deck default; a slide may override via Slide.font_size
     overlays: Sequence[Overlay]  # deck default, already resolved against the theme
@@ -551,6 +563,7 @@ def process_slide(
     ctx: DeckContext,
     slide_number: int,
     parsed: ParsedMarkdown | None,
+    md_source: AssetSource,
     slide_id: str,
 ) -> tuple[str, str]:
     """Return the processed SVG string and the slide's markdown-derived notes."""
@@ -559,15 +572,15 @@ def process_slide(
     overlays = slide.overlays if slide.overlays is not None else ctx.overlays
     overlay_chains = resolve_overlay_chains(overlays, ctx.project_dir, ctx.theme)
 
-    doc = SlideSvg.cleaned(src)
-    doc.compose_ancestors(chain)
-    doc.compose_overlays(overlay_chains)
+    doc = SlideSvg.read(src, ctx.assets)
+    doc.compose_ancestors(chain, ctx.assets)
+    doc.compose_overlays(overlay_chains, ctx.assets)
     for zone_id in doc.duplicate_zone_ids():
         logger.warning(
             f"{slide_id}: {zone_id} is declared more than once after composition — "
             + "zone ids must be unique across a slide and its overlays"
         )
-    doc.tag_layout(chain, src, overlay_chains)
+    doc.tag_layout(chain, overlay_chains)
     doc.number_slides(slide_number, ctx.total_slides)
 
     md_notes = ""
@@ -579,6 +592,8 @@ def process_slide(
         result = build_slide_content(
             parsed,
             slide.zones,
+            md_source,
+            AssetSource.for_deck(ctx.assets),
             available_zones=zone_ids,
             default_zone=default_zone,
         )
@@ -609,11 +624,20 @@ def process_slide(
     return doc.to_svg(), md_notes
 
 
+def _source_for(roots: AssetRoots, path: Path | None) -> AssetSource:
+    """Asset source for loaded text: its own file, or deck.py for ``Inline``."""
+    if path is None:
+        return AssetSource.for_deck(roots)
+    return AssetSource.for_file(roots, path)
+
+
 def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
+    assets = AssetRoots(project_dir, deck.theme.asset_dir())
     ctx = DeckContext(
         project_dir=project_dir,
         theme=deck.theme,
+        assets=assets,
         deck_style=load_style(deck.style, project_dir),
         font_size=deck.effective_font_size,
         overlays=deck.effective_overlays,
@@ -625,11 +649,13 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     results: list[SlideData] = []
     for i, (slide, slide_id) in enumerate(zip(visible_slides, slide_ids, strict=True)):
         logger.debug(f"processing slide {i + 1}/{len(visible_slides)}: {slide_id}")
-        md_text = load_md(slide.md, project_dir) if slide.md is not None else None
-        parsed = parse_markdown_zones(md_text) if md_text is not None else None
+        md = load_md(slide.md, project_dir)
+        parsed = parse_markdown_zones(md.text) if md is not None else None
         title = _infer_slide_title(slide, slide_id, parsed)
-        explicit_notes = load_notes(slide.notes, project_dir)
-        svg, md_notes = process_slide(slide, ctx, i + 1, parsed, slide_id)
+        loaded_notes = load_notes(slide.notes, project_dir)
+        explicit_notes = _source_for(assets, loaded_notes.path).html(loaded_notes.text)
+        md_source = _source_for(assets, md.path if md is not None else None)
+        svg, md_notes = process_slide(slide, ctx, i + 1, parsed, md_source, slide_id)
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
         results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
     logger.info(f"processed {len(results)} slide(s)")

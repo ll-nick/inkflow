@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from collections import Counter
-from pathlib import Path
 from typing import cast
 
 from lxml import etree
 
 from inkflow import ns
-from inkflow.clean import clean_inkscape_tree, strip_preview_layers
+from inkflow.clean import strip_preview_layers
 from inkflow.svgio import SvgElement
 
 
@@ -88,18 +87,22 @@ def is_full_canvas_fill(root: SvgElement) -> bool:
     return False
 
 
-def _read_groups(paths: list[Path]) -> tuple[list[SvgElement], list[SvgElement]]:
-    """Return (content groups, defs children) for a root-first list of SVG paths.
+def _split_groups(
+    roots: list[SvgElement],
+) -> tuple[list[SvgElement], list[SvgElement]]:
+    """Return (content groups, defs children) for a root-first list of SVG trees.
 
-    One ``<g>`` per file, in the order given, so the caller only has to decide where
+    One ``<g>`` per tree, in the order given, so the caller only has to decide where
     the groups land relative to the slide's own content.
+
+    Takes parsed trees rather than paths because the merge destroys provenance: a
+    tree's own directory is only meaningful before this point, so whoever reads the
+    file is also who resolves anything written relative to it.
     """
     groups: list[SvgElement] = []
     merged_defs: list[SvgElement] = []
 
-    for path in paths:
-        root = clean_inkscape_tree(path)
-
+    for root in roots:
         for defs_el in root.findall(f"{{{ns.SVG}}}defs"):
             merged_defs.extend(list(defs_el))
 
@@ -121,11 +124,16 @@ def _slide_defs(slide_root: SvgElement) -> SvgElement:
     return defs
 
 
-def compose_with_ancestors(slide_root: SvgElement, chain: list[Path]) -> SvgElement:
-    """Prepend ancestor SVG content below the slide's own, mutating slide_root."""
+def compose_with_ancestors(
+    slide_root: SvgElement, ancestors: list[SvgElement]
+) -> SvgElement:
+    """Prepend ancestor SVG content below the slide's own, mutating slide_root.
+
+    ``ancestors`` is the resolved chain, root-first, already parsed by the caller.
+    """
     strip_preview_layers(slide_root)
 
-    ancestor_groups, merged_defs = _read_groups(chain)
+    ancestor_groups, merged_defs = _split_groups(ancestors)
 
     if merged_defs:
         slide_defs = _slide_defs(slide_root)
@@ -143,21 +151,22 @@ def compose_with_ancestors(slide_root: SvgElement, chain: list[Path]) -> SvgElem
 
 
 def compose_overlays(
-    slide_root: SvgElement, overlay_chains: list[list[Path]]
+    slide_root: SvgElement, overlay_stacks: list[list[SvgElement]]
 ) -> SvgElement:
     """Append overlay content on top of the slide's own, mutating slide_root.
 
-    Each entry of ``overlay_chains`` is one overlay as a root-first path list,
-    ``[*ancestors, overlay]``. An overlay's own ancestors paint behind it inside the
-    overlay's own stack, while every overlay still lands above the whole slide.
+    Each entry of ``overlay_stacks`` is one overlay as a root-first list of parsed
+    trees, ``[*ancestors, overlay]``. An overlay's own ancestors paint behind it
+    inside the overlay's own stack, while every overlay still lands above the whole
+    slide.
 
     Overlay ``<defs>`` are appended after the slide's, so a slide's own definition
     wins an id collision. Overlays are decoration and must not shadow the slide.
     """
     all_groups: list[SvgElement] = []
     all_defs: list[SvgElement] = []
-    for chain in overlay_chains:
-        groups, defs = _read_groups(chain)
+    for stack in overlay_stacks:
+        groups, defs = _split_groups(stack)
         all_groups.extend(groups)
         all_defs.extend(defs)
 

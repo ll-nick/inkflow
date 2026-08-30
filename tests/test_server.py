@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from inkflow.assets import AssetRoots
 from inkflow.enums import ColorMode
 from inkflow.server import (
     State,
@@ -26,6 +27,7 @@ _EMPTY_STATE: State = {
     "position": {"slideIndex": 0, "step": 0},
     "logs": [],
     "title": "Inkflow",
+    "theme_dir": None,
 }
 
 
@@ -122,27 +124,49 @@ def test_build_html_logs_json_embedded() -> None:
 
 
 def test_resolve_asset_path_traversal(tmp_path: Path) -> None:
-    assert _resolve_asset(tmp_path, "/../etc/passwd.png") is None
+    assert _resolve_asset(AssetRoots(tmp_path), "/../etc/passwd.png") is None
 
 
 def test_resolve_asset_url_encoded_traversal(tmp_path: Path) -> None:
-    assert _resolve_asset(tmp_path, "/%2e%2e/etc/passwd.png") is None
+    assert _resolve_asset(AssetRoots(tmp_path), "/%2e%2e/etc/passwd.png") is None
 
 
 def test_resolve_asset_disallowed_suffix(tmp_path: Path) -> None:
     (tmp_path / "secret.txt").write_bytes(b"secret")
-    assert _resolve_asset(tmp_path, "/secret.txt") is None
+    assert _resolve_asset(AssetRoots(tmp_path), "/secret.txt") is None
 
 
 def test_resolve_asset_missing_file(tmp_path: Path) -> None:
-    assert _resolve_asset(tmp_path, "/nonexistent.png") is None
+    assert _resolve_asset(AssetRoots(tmp_path), "/nonexistent.png") is None
 
 
 def test_resolve_asset_valid(tmp_path: Path) -> None:
     img = tmp_path / "slide.png"
     img.write_bytes(b"\x89PNG")
-    result = _resolve_asset(tmp_path, "/slide.png")
+    result = _resolve_asset(AssetRoots(tmp_path), "/slide.png")
     assert result == img
+
+
+def test_resolve_asset_theme_namespace(tmp_path: Path) -> None:
+    # The canonical form the pipeline writes for a theme asset must resolve to the
+    # theme, not to a project directory that happens to share the name.
+    theme = tmp_path / "theme"
+    theme.mkdir()
+    logo = theme / "logo.png"
+    logo.write_bytes(b"\x89PNG")
+    project = tmp_path / "project"
+    project.mkdir()
+    roots = AssetRoots(project, theme)
+    assert _resolve_asset(roots, "/_theme/logo.png") == logo
+
+
+def test_resolve_asset_theme_traversal(tmp_path: Path) -> None:
+    theme = tmp_path / "theme"
+    theme.mkdir()
+    project = tmp_path / "project"
+    project.mkdir()
+    roots = AssetRoots(project, theme)
+    assert _resolve_asset(roots, "/_theme/../../etc/passwd.png") is None
 
 
 @pytest.mark.skipif(
@@ -158,7 +182,7 @@ def test_resolve_asset_symlink_outside_project(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
     (project / "photo.png").symlink_to(real_img)
-    result = _resolve_asset(project, "/photo.png")
+    result = _resolve_asset(AssetRoots(project), "/photo.png")
     assert result == real_img.resolve()
 
 
