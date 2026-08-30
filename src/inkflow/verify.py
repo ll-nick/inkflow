@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from inkflow.animations import Animation, PlayVideo
+from inkflow.assets import AssetRoots, AssetSource
 from inkflow.clean import clean_inkscape_tree
 from inkflow.layout import (
     are_preview_layers_current,
@@ -36,7 +37,9 @@ def composed_svg_ids(
     root = clean_inkscape_tree(src)
     chain = resolve_chain(src, project_dir, theme)
     if chain:
-        root = compose_with_ancestors(root, chain)
+        root = compose_with_ancestors(
+            root, [clean_inkscape_tree(path) for path in chain]
+        )
     ids: set[str] = set()
     for el in root.iter():
         eid = el.get("id")
@@ -88,11 +91,11 @@ def _check_zones(slide: Slide, project_dir: Path, zone_ids: set[str]) -> list[Is
             issues.append(("error", f"zone #{zone_full} not found in layout"))
     if slide.md is not None:
         try:
-            md_text = load_md(slide.md, project_dir)
+            md = load_md(slide.md, project_dir)
         except (FileNotFoundError, OSError):
-            md_text = None
-        if md_text is not None:
-            parsed = parse_markdown_zones(md_text)
+            md = None
+        if md is not None:
+            parsed = parse_markdown_zones(md.text)
             for zone_name in parsed.zones:
                 if zone_name == "notes":
                     continue
@@ -137,15 +140,20 @@ def _check_default_zone(
     if slide.md is None:
         return []
     try:
-        md_text = load_md(slide.md, project_dir)
+        md = load_md(slide.md, project_dir)
     except (FileNotFoundError, OSError):
         return []
-    if md_text is None:
+    if md is None:
         return []
+    # verify only reads the zone structure, so the asset sources are the plain
+    # project-rooted ones: nothing it returns depends on how a reference resolves.
+    source = AssetSource.for_deck(AssetRoots(project_dir))
     try:
         build_slide_content(
-            parse_markdown_zones(md_text),
+            parse_markdown_zones(md.text),
             slide.zones,
+            source,
+            source,
             available_zones=zone_ids,
             default_zone=default_zone,
         )
@@ -244,9 +252,14 @@ def verify_slide(
         root = clean_inkscape_tree(src)
         chain = resolve_chain(src, project_dir, theme)
         if chain:
-            root = compose_with_ancestors(root, chain)
+            root = compose_with_ancestors(
+                root, [clean_inkscape_tree(path) for path in chain]
+            )
         overlay_chains = resolve_overlay_chains(overlays, project_dir, theme)
-        root = compose_overlays(root, overlay_chains)
+        root = compose_overlays(
+            root,
+            [[clean_inkscape_tree(path) for path in chain] for chain in overlay_chains],
+        )
     except (ValueError, OSError) as exc:
         return [*issues, ("error", f"could not compose SVG: {exc}")]
     except Exception as exc:
