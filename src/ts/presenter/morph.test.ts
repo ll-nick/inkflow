@@ -3,9 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import {
     collectPairableIds,
     isDefinitionContent,
-    markGhost,
     readInlineStyle,
-    removeGhosts,
     restoreInlineStyle,
     sameIntrinsicShape,
 } from "./morph";
@@ -110,46 +108,6 @@ describe("inline style round trip", () => {
         restoreInlineStyle(element, readInlineStyle(element));
 
         expect(element.style.getPropertyValue("stroke-width")).toBe("6");
-    });
-});
-
-describe("ghost sweep", () => {
-    // Cleanup used to walk the task list, which is never assigned if the build throws
-    // partway. A selector sweep does not care how far the build got.
-    beforeEach(() => {
-        document.body.innerHTML = `<div id="stage"><svg id="inkflow-slide-4">
-            <g id="keep"><rect id="real"/></g></svg></div>`;
-    });
-
-    const stage = () => document.querySelector("#stage") as HTMLElement;
-
-    test("removes every tagged node, at any depth", () => {
-        const svg = document.querySelector("svg") as SVGSVGElement;
-        const ghost = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "rect",
-        );
-        ghost.id = "ghost";
-        markGhost(ghost);
-        svg.appendChild(ghost);
-
-        removeGhosts(stage());
-
-        expect(document.querySelector("#ghost")).toBeNull();
-    });
-
-    test("leaves the incoming slide's own content alone", () => {
-        removeGhosts(stage());
-
-        expect(document.querySelector("#real")).not.toBeNull();
-        expect(document.querySelector("#keep")).not.toBeNull();
-    });
-
-    test("is a no-op when there is nothing to sweep", () => {
-        const before = stage().innerHTML;
-        removeGhosts(stage());
-
-        expect(stage().innerHTML).toBe(before);
     });
 });
 

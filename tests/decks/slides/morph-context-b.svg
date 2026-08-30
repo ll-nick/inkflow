@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <!-- Same id, deliberately a different shape and colour: a square, not a triangle.
+         If the copied definition shadowed this one, this arrow would end triangular. -->
+    <marker id="shared" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <rect x="0" y="1" width="9" height="8" fill="#94e2d5"/>
+    </marker>
+  </defs>
+  <rect width="1920" height="1080" fill="#222831"/>
+  <text x="960" y="110" font-family="sans-serif" font-size="60" fill="#ffffff" text-anchor="middle">ghost context</text>
+  <text x="960" y="170" font-family="sans-serif" font-size="32" fill="#9aa0a6" text-anchor="middle">this arrow must stay square-headed and teal</text>
+
+  <rect id="anchor" x="300" y="300" width="500" height="200" rx="40" fill="#585b70"/>
+  <text id="morphs-text" x="550" y="420" font-family="sans-serif" font-size="40" fill="#cdd6f4" text-anchor="middle">morphs</text>
+
+  <path d="M 1140 660 H 1540" style="fill:none;stroke:#94e2d5;stroke-width:10;marker-end:url(#shared)"/>
+</svg>

@@ -17,7 +17,14 @@ import {
     serializePathData,
     transformSegments,
 } from "../shared/path-data";
+import { referencedDefinitions } from "../shared/svg-refs";
 import type { TransitionData } from "../shared/types";
+import {
+    buildGhostLayer,
+    limitScopesToLiveContent,
+    removeGhosts,
+} from "./ghost-layer";
+import { planGhostPlacement } from "./ghost-placement";
 import { ProgressDriver } from "./progress-driver";
 
 // Only leaf graphics are morphed; a <g> is never rendered as a thing, it just
@@ -70,21 +77,10 @@ function pairableLeaves(root: Element): SVGGraphicsElement[] {
     );
 }
 
-// Every node the morph splices into the incoming slide carries this, so cleanup can
-// find them by selector. The task list is not a safe owner of that cleanup: if
-// buildTasks throws partway through, `this.tasks` is never assigned, and the ghosts
-// already spliced in become unreachable — permanently, because cancel() then iterates
-// the same empty list. A selector sweep does not depend on the build having finished.
-const GHOST_ATTRIBUTE = "data-morph-ghost";
-
-export function markGhost(element: Element): void {
-    element.setAttribute(GHOST_ATTRIBUTE, "");
-}
-
-export function removeGhosts(root: ParentNode): void {
-    for (const ghost of root.querySelectorAll(`[${GHOST_ATTRIBUTE}]`))
-        ghost.remove();
-}
+// Namespaces a ghost container's copied definitions. Without it a copy of the outgoing
+// slide's `#ConcaveTriangle` would land first in the document and win for the incoming
+// slide's arrows too.
+const GHOST_ID_PREFIX = "morph-ghost-";
 
 // Inline style properties a morph writes over. finalize restores exactly what the
 // element had rather than removing them, because a blanket removal also drops
@@ -200,6 +196,8 @@ type Morph = BoxMorph | TextMorph | LineMorph | PathMorph;
 type AnimationTask =
     | { type: "morph"; morph: Morph }
     | { type: "fadeIn"; element: SVGGraphicsElement; targetOpacity: number }
+    // A ghost container, faded as a whole. Group opacity multiplies, so an element with
+    // an authored opacity still fades from its own value rather than from a hard 1.
     | { type: "exit"; element: SVGGraphicsElement; startOpacity: number };
 
 // How two leaves are paired. Not `Morph["kind"]`: a path morph is chosen within the box
@@ -212,8 +210,10 @@ interface LeafSnapshot {
     kind: LeafKind;
     ancestorIds: string[]; // nearest-first, includes the leaf's own id if any
     fromAttributes: Record<string, string>;
-    clone: SVGGraphicsElement; // detached deep clone, re-rooted as an exit ghost
-    screenCTM: DOMMatrix; // old screen CTM, to place the ghost under the new root
+    // The outgoing element itself. It is detached once the new slide is swapped in, but
+    // stays intact, and a ghost layer is pruned from a clone of the whole outgoing tree
+    // rather than assembled from per-element copies.
+    source: SVGGraphicsElement;
     frame?: AffineComponents; // box: decomposed unit-square→screen frame
     screenScale?: { x: number; y: number }; // box: local→screen per-axis scale
     lengths?: Lengths;
@@ -232,10 +232,9 @@ interface LeafSnapshotSet {
 // crossfade: content that changes between slides fades, content that is
 // byte-identical (static chrome) is left untouched so it never flickers.
 interface ChildSnapshot {
-    element: Element;
+    source: Element;
     html: string;
     ids: Set<string>;
-    index: number; // original sibling position, used to keep exit ghosts in z-order
 }
 
 // ── geometry capture ─────────────────────────────────────────────────────────
@@ -381,8 +380,7 @@ function snapshotLeaf(element: SVGGraphicsElement): LeafSnapshot {
     const common = {
         ancestorIds: ancestorIdChain(element),
         fromAttributes: readInterpolatedAttributes(element),
-        clone: element.cloneNode(true) as SVGGraphicsElement,
-        screenCTM: element.getScreenCTM() ?? new DOMMatrix(),
+        source: element,
     };
     if (element instanceof SVGLineElement)
         return {
@@ -416,11 +414,10 @@ function snapshotLeaves(svg: Element): LeafSnapshotSet {
 }
 
 function snapshotTopLevelChildren(svg: Element): ChildSnapshot[] {
-    return Array.from(svg.children).map((child, index) => ({
-        element: child.cloneNode(true) as Element,
+    return Array.from(svg.children).map((child) => ({
+        source: child,
         html: child.outerHTML,
         ids: collectPairableIds(child),
-        index,
     }));
 }
 
@@ -546,7 +543,7 @@ function createLeafMorph(
     ) {
         // A text morph animates the pose, never the glyphs, so two different strings
         // would swap on frame 0.
-        if (snapshot.clone.textContent !== element.textContent) return null;
+        if (snapshot.source.textContent !== element.textContent) return null;
         const anchor = textAnchorLocal(element);
         return {
             kind: "text",
@@ -577,10 +574,10 @@ function createLeafMorph(
         // instead, fading the old content out and the new in. Boxes with identical
         // content (a plain shape, or an image moving across slides in an injected
         // zone) keep the geometry morph.
-        if (snapshot.clone.innerHTML !== element.innerHTML) return null;
+        if (snapshot.source.innerHTML !== element.innerHTML) return null;
         // Same reasoning one level out: a box morph moves a shape, it does not turn
         // one shape into another.
-        if (!sameIntrinsicShape(snapshot.clone, element)) return null;
+        if (!sameIntrinsicShape(snapshot.source, element)) return null;
         const bTo = new DOMMatrix()
             .translate(captured.bbox.x, captured.bbox.y)
             .scale(captured.bbox.width, captured.bbox.height);
@@ -613,29 +610,6 @@ function createLeafMorph(
     return null;
 }
 
-// Re-root an old leaf's clone under the new svg and fade it out from where it was.
-// The captured screen CTM already folds in the leaf's own and ancestor transforms,
-// so (new root)⁻¹ · screenCTM, set as the ghost's transform, reproduces its old
-// screen position regardless of how deeply it was nested.
-function buildLeafExit(
-    snapshot: LeafSnapshot,
-    svgRoot: SVGSVGElement,
-): AnimationTask {
-    const ghost = snapshot.clone;
-    const placement = (svgRoot.getScreenCTM() ?? new DOMMatrix())
-        .inverse()
-        .multiply(snapshot.screenCTM);
-    ghost.setAttribute("transform", matrixToSvgTransform(placement));
-    markGhost(ghost);
-    svgRoot.appendChild(ghost);
-    const startOpacity = parseFloat(snapshot.fromAttributes.opacity ?? "1");
-    return {
-        type: "exit",
-        element: ghost,
-        startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1,
-    };
-}
-
 // Fade a new-only (or crossfaded) leaf in from transparent.
 function buildLeafEnter(element: SVGGraphicsElement): AnimationTask {
     const target = parseFloat(element.getAttribute("opacity") ?? "1");
@@ -656,6 +630,7 @@ function buildLeafTasks(
     svgRoot: SVGSVGElement,
     oldLeaves: LeafSnapshotSet,
     matchedIds: Set<string>,
+    ghosts: Set<Element>,
 ): AnimationTask[] {
     const oldByScope = new Map<string, LeafSnapshot[]>();
     for (const leaf of oldLeaves.leaves) {
@@ -695,12 +670,12 @@ function buildLeafTasks(
                 tasks.push({ type: "morph", morph });
             } else {
                 // Changed content with no geometric counterpart: crossfade.
-                tasks.push(buildLeafExit(snapshot, svgRoot));
+                ghosts.add(snapshot.source);
                 tasks.push(buildLeafEnter(element));
             }
         }
         for (let i = paired; i < oldList.length; i++)
-            tasks.push(buildLeafExit(oldList[i], svgRoot));
+            ghosts.add(oldList[i].source);
         for (let i = paired; i < newList.length; i++)
             tasks.push(buildLeafEnter(newList[i]));
     }
@@ -728,46 +703,27 @@ const NON_RENDERING_TAGS = new Set([
 // child is skipped if it carries a matched id (its leaves morph) or is
 // byte-identical across slides (static chrome — leaving it untouched avoids flicker).
 function buildCrossfadeTasks(
-    svgRoot: SVGSVGElement,
     oldChildren: ChildSnapshot[],
     newChildren: ChildSnapshot[],
     matchedIds: Set<string>,
+    ghosts: Set<Element>,
 ): AnimationTask[] {
     const oldHtml = new Set(oldChildren.map((child) => child.html));
     const newHtml = new Set(newChildren.map((child) => child.html));
-    // The new slide's own children, captured before any exit ghost is spliced in,
-    // so each ghost can be placed at its original sibling index and keep its depth.
-    const newChildElements = Array.from(svgRoot.children);
     const tasks: AnimationTask[] = [];
 
     for (const child of oldChildren) {
-        if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
+        if (NON_RENDERING_TAGS.has(child.source.tagName)) continue;
         if (containsMatchedId(child.ids, matchedIds)) continue;
         if (newHtml.has(child.html)) continue;
-        const clone = child.element;
-        if (!(clone instanceof SVGGraphicsElement)) continue;
-        // Insert at the element's original depth rather than on top, so an exiting
-        // background fades out behind the new content instead of covering it (which
-        // would make the persisting content flash away and back).
-        markGhost(clone);
-        svgRoot.insertBefore(clone, newChildElements[child.index] ?? null);
-        // Fade from the element's current opacity, not a hard 1: when a morph is
-        // reversed mid-flight the snapshotted element is already partly faded, and
-        // snapping it back to full opacity would flash.
-        const startOpacity = parseFloat(
-            clone.style.opacity || clone.getAttribute("opacity") || "1",
-        );
-        tasks.push({
-            type: "exit",
-            element: clone,
-            startOpacity: Number.isFinite(startOpacity) ? startOpacity : 1,
-        });
+        if (child.source instanceof SVGGraphicsElement)
+            ghosts.add(child.source);
     }
     for (const child of newChildren) {
-        if (NON_RENDERING_TAGS.has(child.element.tagName)) continue;
+        if (NON_RENDERING_TAGS.has(child.source.tagName)) continue;
         if (containsMatchedId(child.ids, matchedIds)) continue;
         if (oldHtml.has(child.html)) continue;
-        const element = child.element;
+        const element = child.source;
         if (!(element instanceof SVGGraphicsElement)) continue;
         element.style.opacity = "0";
         tasks.push({
@@ -806,6 +762,7 @@ function buildOrphanTasks(
     oldChildren: ChildSnapshot[],
     newChildren: ChildSnapshot[],
     matchedIds: Set<string>,
+    ghosts: Set<Element>,
 ): AnimationTask[] {
     const oldScope = matchedContainingChildIds(oldChildren, matchedIds);
     const newScope = matchedContainingChildIds(newChildren, matchedIds);
@@ -814,16 +771,16 @@ function buildOrphanTasks(
         ancestorIds.some((id) => scope.has(id));
 
     const newLeaves = pairableLeaves(svgRoot);
-    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.clone.outerHTML));
+    const oldHtml = new Set(oldLeaves.leaves.map((l) => l.source.outerHTML));
     const newHtml = new Set(newLeaves.map((el) => el.outerHTML));
 
     const tasks: AnimationTask[] = [];
     for (const leaf of oldLeaves.leaves)
         if (
             isOrphan(leaf.ancestorIds, oldScope) &&
-            !newHtml.has(leaf.clone.outerHTML)
+            !newHtml.has(leaf.source.outerHTML)
         )
-            tasks.push(buildLeafExit(leaf, svgRoot));
+            ghosts.add(leaf.source);
     for (const el of newLeaves)
         if (
             isOrphan(ancestorIdChain(el), newScope) &&
@@ -833,23 +790,25 @@ function buildOrphanTasks(
     return tasks;
 }
 
+// `ghosts` collects the *outgoing* elements that fade out. They are never re-rooted:
+// the caller prunes a clone of the whole outgoing tree down to them, so each keeps the
+// ancestors that carry its inherited paint, its custom properties and its coordinate
+// space.
 function buildTasks(
     svgRoot: SVGSVGElement,
     oldLeaves: LeafSnapshotSet,
     oldChildren: ChildSnapshot[],
-): AnimationTask[] {
-    const newIds = collectPairableIds(svgRoot);
-    const matchedIds = new Set<string>();
-    for (const id of oldLeaves.ids) if (newIds.has(id)) matchedIds.add(id);
+    matchedIds: Set<string>,
+): { tasks: AnimationTask[]; ghosts: Set<Element> } {
+    const ghosts = new Set<Element>();
 
     // Snapshot the new top-level children before the morph loop mutates any
     // transforms, so identical-content detection compares pristine markup.
     const newChildren: ChildSnapshot[] = Array.from(svgRoot.children).map(
-        (child, index) => ({
-            element: child,
+        (child) => ({
+            source: child,
             html: child.outerHTML,
             ids: collectPairableIds(child),
-            index,
         }),
     );
 
@@ -861,12 +820,21 @@ function buildTasks(
         oldChildren,
         newChildren,
         matchedIds,
+        ghosts,
     );
-    return [
-        ...buildLeafTasks(svgRoot, oldLeaves, matchedIds),
-        ...orphanTasks,
-        ...buildCrossfadeTasks(svgRoot, oldChildren, newChildren, matchedIds),
-    ];
+    return {
+        tasks: [
+            ...buildLeafTasks(svgRoot, oldLeaves, matchedIds, ghosts),
+            ...orphanTasks,
+            ...buildCrossfadeTasks(
+                oldChildren,
+                newChildren,
+                matchedIds,
+                ghosts,
+            ),
+        ],
+        ghosts,
+    };
 }
 
 // ── per-frame application ────────────────────────────────────────────────────
@@ -1121,18 +1089,23 @@ export class MorphTransition {
     private readonly driver = new ProgressDriver();
     private stage!: HTMLElement;
     private oldHtml = "";
+    // The outgoing <svg> itself. Detached once the new slide is swapped in, but intact,
+    // and every ghost layer is a pruned clone of it.
+    private oldSvg: SVGSVGElement | null = null;
+    private restoreScopes: (() => void) | null = null;
 
     // Snapshot the outgoing slide before swap() replaces the DOM, and keep its
     // markup so a full reversal can restore the real previous slide.
     prepare({ stage }: { stage: HTMLElement }): void {
         this.stage = stage;
-        // Drop any ghost a previous morph failed to clean up, before anything reads
-        // the outgoing DOM. prepare() runs before the framework swaps the new slide
-        // in, so a survivor would otherwise be captured into oldHtml, snapshotted as
-        // an outgoing leaf, and re-ghosted into the next slide.
+        // Drop anything a previous morph failed to clean up, before reading the
+        // outgoing DOM. prepare() runs before the framework swaps the new slide in, so
+        // a survivor would otherwise be captured into oldHtml and snapshotted as
+        // outgoing content.
         removeGhosts(stage);
         this.oldHtml = stage.innerHTML;
-        const beforeSvg = stage.querySelector("svg");
+        const beforeSvg = stage.querySelector("svg") as SVGSVGElement | null;
+        this.oldSvg = beforeSvg;
         this.oldLeaves = beforeSvg
             ? snapshotLeaves(beforeSvg)
             : { ids: new Set(), leaves: [] };
@@ -1153,7 +1126,18 @@ export class MorphTransition {
         const svgRoot = stage.querySelector("svg") as SVGSVGElement | null;
         if (!svgRoot) return;
 
-        this.tasks = buildTasks(svgRoot, this.oldLeaves, this.oldChildren);
+        const newIds = collectPairableIds(svgRoot);
+        const matchedIds = new Set<string>();
+        for (const id of this.oldLeaves.ids)
+            if (newIds.has(id)) matchedIds.add(id);
+
+        const { tasks, ghosts } = buildTasks(
+            svgRoot,
+            this.oldLeaves,
+            this.oldChildren,
+            matchedIds,
+        );
+        this.tasks = [...tasks, ...this.layGhosts(svgRoot, ghosts, matchedIds)];
         await this.driver.animateTo(1, params.duration, signal, (progress) =>
             tickTasks(this.tasks, progress),
         );
@@ -1184,9 +1168,49 @@ export class MorphTransition {
 
     cancel({ stage }: { stage: HTMLElement; params: TransitionData }): void {
         // Superseded by a non-reverse transition; the framework swaps the new slide
-        // in next, so just remove the reconstructed exit ghosts. Swept by selector
-        // rather than walked from this.tasks, which is empty when the build threw.
+        // in next, so just take the containers back out. Done by selector rather than
+        // walked from this.tasks, which is empty when the build threw.
+        this.releaseScopes();
         removeGhosts(stage);
+    }
+
+    // Nest one container per insertion point into the incoming slide's own tree, so a
+    // ghost lands where it sat relative to the elements that survive rather than
+    // wholly above or below everything.
+    private layGhosts(
+        svgRoot: SVGSVGElement,
+        ghosts: Set<Element>,
+        matchedIds: Set<string>,
+    ): AnimationTask[] {
+        const outgoing = this.oldSvg;
+        if (!outgoing || ghosts.size === 0) return [];
+        const rename = referencedDefinitions(outgoing);
+        this.restoreScopes = limitScopesToLiveContent(svgRoot);
+
+        const tasks: AnimationTask[] = [];
+        let carryDefinitions = true;
+        for (const group of planGhostPlacement(
+            outgoing,
+            svgRoot,
+            ghosts,
+            matchedIds,
+        )) {
+            const container = buildGhostLayer(outgoing, new Set(group.ghosts), {
+                carryDefinitions,
+                idPrefix: GHOST_ID_PREFIX,
+                rename,
+            });
+            if (!container) continue;
+            carryDefinitions = false;
+            svgRoot.insertBefore(container, group.before);
+            tasks.push({ type: "exit", element: container, startOpacity: 1 });
+        }
+        return tasks;
+    }
+
+    private releaseScopes(): void {
+        this.restoreScopes?.();
+        this.restoreScopes = null;
     }
 
     // progress 1 → the new slide is fully formed; snap it to its natural state.
@@ -1195,8 +1219,9 @@ export class MorphTransition {
     private settle(): void {
         if (this.driver.value >= 1) finalizeTasks(this.tasks);
         else this.stage.innerHTML = this.oldHtml;
-        // Backstop: finalizeTasks removes the ghosts it knows about, this catches any
-        // the task list never learned of.
+        // Backstop: finalizeTasks removes the containers it knows about, this catches
+        // any the task list never learned of.
+        this.releaseScopes();
         removeGhosts(this.stage);
     }
 }
