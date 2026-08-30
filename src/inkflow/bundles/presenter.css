@@ -740,6 +740,13 @@ body.pv-open #pv-resize-handle {
 #pv-notes li {
   margin-bottom: 0.2rem;
 }
+#pv-notes img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+}
 #pv-notes code {
   background: var(--overlay);
   color: var(--text);
