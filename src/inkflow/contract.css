@@ -300,6 +300,7 @@
 /* Comments */
 .highlight .c,
 .highlight .c1,
+.highlight .ch,
 .highlight .cm,
 .highlight .cp,
 .highlight .cpf {
@@ -355,7 +356,8 @@
 .highlight .bp {
     color: var(--inkflow-blue);
 }
-.highlight .nc {
+.highlight .nc,
+.highlight .nn {
     color: var(--inkflow-yellow);
 }
 .highlight .nd,
@@ -369,15 +371,34 @@
 .highlight .no {
     color: var(--inkflow-orange);
 }
+.highlight .nv,
+.highlight .vc,
+.highlight .vg,
+.highlight .vi,
+.highlight .vm {
+    color: var(--inkflow-pink);
+}
 
-/* Numbers */
+/* Tags and keys (HTML/XML elements, JSON & YAML keys) */
+.highlight .nt {
+    color: var(--inkflow-red);
+}
+.highlight .na {
+    color: var(--inkflow-orange);
+}
+.highlight .nl {
+    color: var(--inkflow-teal);
+}
+
+/* Numbers and dates */
 .highlight .m,
 .highlight .mb,
 .highlight .mf,
 .highlight .mh,
 .highlight .mi,
 .highlight .il,
-.highlight .mo {
+.highlight .mo,
+.highlight .ld {
     color: var(--inkflow-orange);
 }
 
@@ -389,6 +410,29 @@
     color: var(--inkflow-purple);
 }
 
+/* Punctuation */
+.highlight .p,
+.highlight .pm {
+    color: var(--inkflow-text-muted);
+}
+
+/* Generic / markup */
+.highlight .gh,
+.highlight .gu {
+    color: var(--inkflow-blue);
+    font-weight: bold;
+}
+.highlight .ge {
+    font-style: italic;
+}
+.highlight .gs {
+    font-weight: bold;
+}
+.highlight .ges {
+    font-style: italic;
+    font-weight: bold;
+}
+
 /* Diff */
 .highlight .gd {
     color: var(--inkflow-red);
@@ -396,11 +440,15 @@
 .highlight .gi {
     color: var(--inkflow-green);
 }
-.highlight .ge {
-    font-style: italic;
+
+/* REPL / console sessions */
+.highlight .gp,
+.highlight .go {
+    color: var(--inkflow-text-muted);
 }
-.highlight .gs {
-    font-weight: bold;
+.highlight .gr,
+.highlight .gt {
+    color: var(--inkflow-red);
 }
 
 /* ── Code block container and line highlight states ───────────────────────── */
