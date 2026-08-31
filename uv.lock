@@ -360,6 +360,7 @@ dev = [
     { name = "deptry" },
     { name = "lxml-stubs" },
     { name = "pytest" },
+    { name = "pyyaml" },
     { name = "ruff" },
 ]
 docs = [
@@ -391,6 +392,7 @@ dev = [
     { name = "deptry", specifier = ">=0.25.1" },
     { name = "lxml-stubs", specifier = ">=0.5" },
     { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.15.13" },
 ]
 docs = [
