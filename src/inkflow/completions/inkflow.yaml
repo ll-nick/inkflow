@@ -97,6 +97,7 @@ commands:
     flags:
       -d, --deck=: Path to deck.py
       -o, --output=: Output directory
+      --inline-assets: Embed assets as data URIs so the build is one file
     completion:
       flag:
         deck: ["$files([\".py\"])"]

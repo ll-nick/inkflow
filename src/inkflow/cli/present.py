@@ -50,20 +50,35 @@ def serve(levels: Levels, deck_path: Path, host: str, port: int, ws_port: int) -
     default=None,
     help="Output directory (default: build/ next to deck.py)",
 )
-def build_cmd(deck_path: Path, output: str | None) -> None:
+@click.option(
+    "--inline-assets",
+    "inline_assets",
+    is_flag=True,
+    help="Embed images and video as data URIs so the build is index.html alone.",
+)
+def build_cmd(deck_path: Path, output: str | None, inline_assets: bool) -> None:
     """Export a self-contained presentation directory for offline use.
 
     Produces an `index.html` with every slide inlined and copies any assets the
     deck references into the output directory. No server is required to view it.
     Defaults to a `build/` directory next to `deck.py`.
+
+    `--inline-assets` embeds those assets in the HTML instead of copying them, so
+    the whole deck is one file that cannot be separated from its images — worth it
+    when the deck travels through a file picker, a chat window, or a sandboxed
+    browser that only ever hands over the file you point at. The file grows by
+    roughly a third of every asset, counted once per reference rather than once
+    per file, and every byte of it loads before the first slide renders.
     """
     resolved = resolve_deck_path(deck_path)
     out_dir = Path(output).resolve() if output else resolved.parent / "build"
     try:
-        build_static_html(resolved, out_dir)
+        build_static_html(resolved, out_dir, inline_assets=inline_assets)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
-    report("Built", str(out_dir / "index.html"))
+    index = out_dir / "index.html"
+    size = f" ({index.stat().st_size / 1_000_000:.1f} MB)" if inline_assets else ""
+    report("Built", f"{index}{size}")
 
 
 @main.command("export")
