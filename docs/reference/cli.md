@@ -25,6 +25,12 @@ Diagnostics flow through three independent sinks, each with its own level
   `~/Library/Logs/inkflow/` on macOS, `%LOCALAPPDATA%\inkflow\Logs\` on Windows).
 - **browser** — the presenter's message banner during `serve`. Default `warning`.
 
+Warnings raised by the libraries inkflow builds on
+are folded into the same sinks under the emitting library's name,
+at the level that library chose.
+They obey the flags below like any other record,
+instead of printing past them unformatted.
+
 Set a baseline for every sink with `--log-level`, or target one sink; a per-sink setting
 overrides the baseline. Each flag has an environment-variable twin, and a per-sink
 setting (flag or env) beats the `--log-level` baseline:

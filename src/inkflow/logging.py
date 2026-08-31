@@ -10,6 +10,9 @@ There are three sinks — console, file, browser — each with an independent le
 log4j). Levels come from a flag/env cascade where a per-sink setting beats the shared
 baseline.
 
+Records from the libraries inkflow depends on are folded into the same sinks, so a
+dependency cannot print past them (see ``_adopt_foreign_records``).
+
 Diagnostics go to stderr; machine-readable command output stays on stdout and is not
 routed here.
 """
@@ -165,6 +168,33 @@ def collect_logs(level: int) -> Generator[list[LogEntry]]:
         logger.removeHandler(handler)
 
 
+class _ForeignHandler(logging.Handler):
+    """Re-emits another library's records on inkflow's logger, at their own level.
+
+    Installed on the root logger, so any dependency that logs without a handler of
+    its own reaches inkflow's sinks instead of stdlib's ``lastResort`` — unformatted
+    stderr that, during serve, prints straight over the Rich Live TUI.
+    """
+
+    @override
+    def emit(self, record: logging.LogRecord) -> None:
+        # format() rather than getMessage() so a foreign traceback survives.
+        logger.log(record.levelno, f"{record.name}: {self.format(record)}")
+
+
+def _adopt_foreign_records() -> None:
+    """Route other libraries' records into inkflow's sinks. Idempotent.
+
+    An application-level move, which is why it lives in ``configure`` (the CLI entry
+    point) rather than at import: a library has no business claiming the root logger.
+    Root keeps its default WARNING level, which is exactly the set that would
+    otherwise leak to stderr. No recursion: inkflow's logger does not propagate.
+    """
+    root = logging.getLogger()
+    if not any(isinstance(handler, _ForeignHandler) for handler in root.handlers):
+        root.addHandler(_ForeignHandler())
+
+
 class _ConsoleHandler(logging.Handler):
     """Renders records through the shared console's cargo-style status column."""
 
@@ -211,11 +241,14 @@ def resolve_levels(
 
 
 def configure(levels: Levels, *, attach_console: bool = True) -> None:
-    """Reinstall the console and file handlers from the levels, idempotently.
+    """Reinstall the console and file handlers from the levels, idempotently, and
+    claim the root logger so foreign records land in the same sinks.
 
     attach_console is off for serve, which owns the terminal and collects records per
     rebuild instead. The browser sink has no persistent handler for the same reason.
     """
+    _adopt_foreign_records()
+
     for handler in _managed:
         logger.removeHandler(handler)
         handler.close()

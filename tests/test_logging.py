@@ -214,6 +214,57 @@ def test_configure_no_console_when_console_off() -> None:
     assert not _has_console()
 
 
+# ── foreign records ───────────────────────────────────────────────────────────
+
+
+def _foreign_handlers() -> list[logging.Handler]:
+    return [
+        h
+        for h in logging.getLogger().handlers
+        if h.__class__.__name__ == "_ForeignHandler"
+    ]
+
+
+def test_foreign_record_reaches_inkflow_sinks_at_its_own_level() -> None:
+    configure(Levels(OFF, OFF, OFF, None), attach_console=False)
+
+    with collect_logs(logging.DEBUG) as entries:
+        logging.getLogger("fontTools.subset").warning("a font problem")
+
+    assert [(e.level, e.message) for e in entries] == [
+        ("warning", "fontTools.subset: a font problem")
+    ]
+
+
+def test_foreign_record_keeps_its_traceback() -> None:
+    configure(Levels(OFF, OFF, OFF, None), attach_console=False)
+
+    with collect_logs(logging.DEBUG) as entries:
+        try:
+            raise RuntimeError("boom")
+        except RuntimeError:
+            logging.getLogger("websockets.server").exception("handler failed")
+
+    assert "RuntimeError: boom" in entries[0].message
+
+
+def test_foreign_records_below_root_level_are_ignored() -> None:
+    """Root keeps its default WARNING level: a library's info chatter (fontTools logs
+    one line per subsetted table) never reaches our sinks."""
+    configure(Levels(OFF, OFF, OFF, None), attach_console=False)
+
+    with collect_logs(logging.DEBUG) as entries:
+        logging.getLogger("fontTools.subset").info("cmap subsetted")
+
+    assert entries == []
+
+
+def test_configure_adopts_root_once() -> None:
+    configure(Levels(OFF, OFF, OFF, None), attach_console=False)
+    configure(Levels(logging.WARNING, OFF, OFF, None), attach_console=False)
+    assert len(_foreign_handlers()) == 1
+
+
 # ── status column ─────────────────────────────────────────────────────────────
 
 

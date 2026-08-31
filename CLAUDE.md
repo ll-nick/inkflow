@@ -123,7 +123,10 @@ src/
                                (per-rebuild capture), and three independent sinks
                                (console/file/browser), each a level, resolved by
                                `resolve_levels` (`--log-level*` flags + INKFLOW_LOG_LEVEL*
-                               env, `off` disables) and installed by `configure`
+                               env, `off` disables) and installed by `configure`.
+                               `configure` also claims the root logger (`_ForeignHandler`)
+                               so a dependency's records land in these sinks at their own
+                               level instead of stdlib's lastResort stderr
     svg.py            SVG tree utilities (ensure_defs, with_namespaces,
                                compose_with_ancestors, compose_overlays,
                                duplicate_zone_ids, is_full_canvas_fill)
