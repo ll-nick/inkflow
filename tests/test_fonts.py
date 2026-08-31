@@ -401,6 +401,40 @@ def _write_minimal_ttf(path: Path) -> None:
     fb.save(str(path))
 
 
+def _add_private_table(font_path: Path) -> None:
+    """Stamp an FFTM table into the font, the way FontForge does with every font it
+    builds (DejaVu, and most libre families)."""
+    from fontTools.ttLib import TTFont, newTable
+
+    font = TTFont(font_path)
+    table = newTable("FFTM")
+    # A version field and three timestamps, straight from the wire format.
+    table.decompile(b"\x00" * 28, font)
+    font["FFTM"] = table
+    font.save(str(font_path))
+
+
+def test_subset_font_drops_private_tables_quietly(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """fontTools has no subsetter for a private table, so left to itself it drops it
+    with a warning — once per font variant of every deck, for nothing the user can act
+    on. Naming the table in the subsetter options takes the quiet path instead."""
+    import io
+
+    from fontTools.ttLib import TTFont
+
+    font_path = tmp_path / "Test.ttf"
+    _write_minimal_ttf(font_path)
+    _add_private_table(font_path)
+
+    with caplog.at_level(logging.WARNING, logger="fontTools"):
+        data, _, _ = _subset_font(font_path, frozenset({ord("A")}))
+
+    assert [record.getMessage() for record in caplog.records] == []
+    assert "FFTM" not in TTFont(io.BytesIO(data))
+
+
 def test_subset_font_emits_woff2(tmp_path: Path) -> None:
     font_path = tmp_path / "Test.ttf"
     _write_minimal_ttf(font_path)

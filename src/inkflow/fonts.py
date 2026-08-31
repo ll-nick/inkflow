@@ -313,13 +313,22 @@ def extract_font_specs_and_codepoints(
 
 # ── Font subsetting ───────────────────────────────────────────────────────────
 
+# Private tables to drop up front, added to fontTools' own defaults. FontForge stamps
+# a timestamp table into every font it builds (DejaVu, and most libre families);
+# fontTools has no subsetter for it, so left to itself it drops the table and warns.
+# Naming it here makes the drop our decision and keeps any other fontTools warning at
+# full severity.
+_DROP_TABLES: tuple[str, ...] = ("FFTM",)
+
 
 def _subset_font(font_path: Path, codepoints: frozenset[int]) -> tuple[bytes, str, str]:
     from fontTools import subset
     from fontTools.ttLib import TTFont
 
     font = TTFont(font_path)
-    subsetter = subset.Subsetter()
+    options = subset.Options()
+    options.drop_tables += list(_DROP_TABLES)
+    subsetter = subset.Subsetter(options=options)
     subsetter.populate(unicodes=list(codepoints))  # pyright: ignore[reportUnknownMemberType]
     subsetter.subset(font)  # pyright: ignore[reportUnknownMemberType]
     font.flavor = "woff2"
