@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import importlib.resources
 import re
 import shutil
@@ -9,7 +10,13 @@ from html import escape as escape_html
 from pathlib import Path
 from typing import cast
 
-from inkflow.assets import REFERENCE_PATTERNS, AssetRoots, is_local_ref
+from inkflow.assets import (
+    MIME_TYPES,
+    REFERENCE_PATTERNS,
+    AssetRoots,
+    is_local_ref,
+    rewrite_references,
+)
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
@@ -26,7 +33,9 @@ def _asset_roots(deck: Deck, project_dir: Path) -> AssetRoots:
     return AssetRoots(project_dir, deck.theme.asset_dir())
 
 
-def build_static_html(deck_path: Path, out_dir: Path) -> None:
+def build_static_html(
+    deck_path: Path, out_dir: Path, inline_assets: bool = False
+) -> None:
     deck = load_deck(deck_path)
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir)
@@ -38,7 +47,13 @@ def build_static_html(deck_path: Path, out_dir: Path) -> None:
             styles_css = (font_css + "\n" + styles_css).strip()
     scripts_js = load_deck_scripts(deck, project_dir)
 
-    _copy_assets(slides, _asset_roots(deck, project_dir), out_dir)
+    # After font subsetting: inlining stuffs base64 into the same slide strings the
+    # subsetter scans for used characters, and every one of them would be kept.
+    roots = _asset_roots(deck, project_dir)
+    if inline_assets:
+        _inline_assets(slides, roots, out_dir)
+    else:
+        _copy_assets(slides, roots, out_dir)
 
     state: State = {
         "slides": slides,
@@ -114,9 +129,61 @@ def _copy_assets(slides: list[SlideData], roots: AssetRoots, out_dir: Path) -> N
                 f"{label}: asset not found, not copied into the build: {ref}"
             )
             continue
-        dst = out_dir / ref
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        _copy_asset(src, out_dir / ref)
+
+
+def _copy_asset(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+
+
+def _data_uri(src: Path, mime: str) -> str:
+    return f"data:{mime};base64,{base64.b64encode(src.read_bytes()).decode('ascii')}"
+
+
+# Below this, inlining a video is unremarkable: the deck still parses quickly and
+# browsers hold the blob without fuss. Past it the base64 payload dominates
+# `index.html` and blanks the screen while the document loads, which is worth a word.
+_INLINE_VIDEO_WARN_BYTES = 20_000_000
+
+
+def _inline_assets(slides: list[SlideData], roots: AssetRoots, out_dir: Path) -> None:
+    """Replace every asset reference with a data URI, leaving `index.html` alone.
+
+    Each reference is inlined where it stands, so an asset several slides share is
+    carried once per use and the output grows accordingly.
+
+    An asset whose suffix names no media type is copied out as usual and reported.
+    """
+    uris: dict[str, str] = {}
+    for ref, label in _referenced_assets(slides).items():
+        src = roots.locate(ref)
+        if src is None:
+            continue
+        if not src.is_file():
+            logger.warning(
+                f"{label}: asset not found, not inlined into the build: {ref}"
+            )
+            continue
+        mime = MIME_TYPES.get(src.suffix.lower())
+        if mime is None:
+            logger.warning(
+                f"{label}: unknown media type, copied beside index.html "
+                + f"rather than inlined: {ref}"
+            )
+            _copy_asset(src, out_dir / ref)
+            continue
+        if mime.startswith("video/") and src.stat().st_size >= _INLINE_VIDEO_WARN_BYTES:
+            size = src.stat().st_size / 1_000_000
+            logger.warning(
+                f"{label}: inlining a {size:.1f} MB video, whose bytes then travel "
+                + f"in index.html and load before the deck renders: {ref}"
+            )
+        uris[ref] = _data_uri(src, mime)
+
+    for slide in slides:
+        slide["svg"] = rewrite_references(slide["svg"], uris.get)
+        slide["notes"] = rewrite_references(slide["notes"], uris.get)
 
 
 # ── export (PDF) ──────────────────────────────────────────────────────────────

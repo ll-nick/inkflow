@@ -1,7 +1,9 @@
 # pyright: reportPrivateUsage=none
 from __future__ import annotations
 
+import base64
 import logging
+import os
 import textwrap
 from pathlib import Path
 
@@ -9,7 +11,12 @@ import pytest
 from click.testing import CliRunner
 
 from inkflow.cli import main
-from inkflow.export import _find_chromium, build_pdf, build_static_html
+from inkflow.export import (
+    _INLINE_VIDEO_WARN_BYTES,
+    _find_chromium,
+    build_pdf,
+    build_static_html,
+)
 from inkflow.logging import collect_logs
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -53,6 +60,14 @@ _THEME_LAYOUT_SVG = textwrap.dedent("""\
     <svg xmlns="http://www.w3.org/2000/svg"
          xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
       <image xlink:href="../logo.png" x="0" y="0" width="100" height="100"/>
+      <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
+    </svg>
+""")
+
+_UNKNOWN_TYPE_SLIDE_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
+      <image xlink:href="assets/pic.avif" x="0" y="0" width="100" height="100"/>
       <rect id="zone-content" x="80" y="200" width="1760" height="780"/>
     </svg>
 """)
@@ -107,6 +122,12 @@ return Deck(
     ],
 )"""
 
+_MD_DECK = """\
+return Deck(
+    embed_fonts=False,
+    slides=[Slide('slides/s.svg', zones={'content': '![cat](assets/cat.png)'})],
+)"""
+
 _MD_FILE_DECK = """\
 return Deck(
     embed_fonts=False,
@@ -138,11 +159,15 @@ return Deck(
 # Placeholder asset bytes; the copy path only cares that the file exists.
 _ASSET_BYTES = b"\x89PNG\r\n\x1a\n placeholder"
 
+# Distinct bytes, so a test can count one asset's data URI without the others'
+# identical payloads joining the tally.
+_SHARED_ASSET_BYTES = b"\x89PNG\r\n\x1a\n shared"
 
-def _write_asset(project_dir: Path, rel: str) -> None:
+
+def _write_asset(project_dir: Path, rel: str, data: bytes = _ASSET_BYTES) -> None:
     p = project_dir / rel
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_bytes(_ASSET_BYTES)
+    p.write_bytes(data)
 
 
 def _write_slide(project_dir: Path, svg: str) -> None:
@@ -313,6 +338,162 @@ class TestEditorRelativeAssetRefs:
 
         assert (out_dir / "index.html").exists()
         assert any("missing.png" in w.message for w in warnings)
+
+
+class TestBuildInlinesAssets:
+    def test_inlines_every_asset_and_leaves_index_html_alone_in_the_output(
+        self, tmp_path: Path
+    ) -> None:
+        _write_slide(tmp_path, _ASSET_SLIDE_SVG)
+        for rel in (
+            "slides/assets/pic.png",
+            "slides/assets/pic2.png",
+            "assets/cat.png",
+            "media/photo.png",
+        ):
+            _write_asset(tmp_path, rel)
+        deck_path = _write_deck(tmp_path, _ASSET_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir, inline_assets=True)
+
+        assert [p.name for p in out_dir.iterdir()] == ["index.html"]
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        for ref in (
+            "slides/assets/pic.png",
+            "slides/assets/pic2.png",
+            "assets/cat.png",
+            "media/photo.png",
+        ):
+            assert ref not in index
+
+    def test_data_uri_carries_the_bytes_and_the_media_type(
+        self, tmp_path: Path
+    ) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        _write_asset(tmp_path, "assets/cat.png")
+        deck_path = _write_deck(tmp_path, _MD_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir, inline_assets=True)
+
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        payload = base64.b64encode(_ASSET_BYTES).decode("ascii")
+        assert f"data:image/png;base64,{payload}" in index
+
+    def test_a_shared_asset_is_carried_once_per_reference(self, tmp_path: Path) -> None:
+        # The size trade the flag makes: both slides use the same layout, so its
+        # image is inlined into each of them rather than shared through one file.
+        _write_slide(tmp_path, _ASSET_SLIDE_SVG)
+        _write_asset(tmp_path, "slides/assets/pic.png", _SHARED_ASSET_BYTES)
+        _write_asset(tmp_path, "slides/assets/pic2.png")
+        _write_asset(tmp_path, "assets/cat.png")
+        _write_asset(tmp_path, "media/photo.png")
+        deck_path = _write_deck(tmp_path, _ASSET_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir, inline_assets=True)
+
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        payload = base64.b64encode(_SHARED_ASSET_BYTES).decode("ascii")
+        assert index.count(f"data:image/png;base64,{payload}") == 2
+
+    def test_a_small_video_and_its_poster_inline_without_a_warning(
+        self, tmp_path: Path
+    ) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        _write_asset(tmp_path, "media/clip.mp4")
+        _write_asset(tmp_path, "assets/thumb.png")
+        deck_path = _write_deck(tmp_path, _POSTER_DECK)
+
+        out_dir = tmp_path / "out"
+        with collect_logs(logging.WARNING) as warnings:
+            build_static_html(deck_path, out_dir, inline_assets=True)
+
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "data:video/mp4;base64," in index
+        assert "data:image/png;base64," in index
+        assert not any("clip.mp4" in w.message for w in warnings)
+
+    def test_a_large_inlined_video_is_warned_about(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        _write_asset(tmp_path, "media/clip.mp4")
+        _write_asset(tmp_path, "assets/thumb.png")
+        os.truncate(tmp_path / "media" / "clip.mp4", _INLINE_VIDEO_WARN_BYTES)
+        deck_path = _write_deck(tmp_path, _POSTER_DECK)
+
+        out_dir = tmp_path / "out"
+        with collect_logs(logging.WARNING) as warnings:
+            build_static_html(deck_path, out_dir, inline_assets=True)
+
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "data:video/mp4;base64," in index
+        assert any("clip.mp4" in w.message for w in warnings)
+
+    def test_unknown_media_type_is_copied_out_and_reported(
+        self, tmp_path: Path
+    ) -> None:
+        # Falling short of one file beats dropping the image: the asset is copied
+        # the way an ordinary build would, and the author is told the build is not
+        # the single file they asked for.
+        _write_slide(tmp_path, _UNKNOWN_TYPE_SLIDE_SVG)
+        _write_asset(tmp_path, "slides/assets/pic.avif")
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+
+        out_dir = tmp_path / "out"
+        with collect_logs(logging.WARNING) as warnings:
+            build_static_html(deck_path, out_dir, inline_assets=True)
+
+        assert (out_dir / "slides" / "assets" / "pic.avif").exists()
+        assert any("unknown media type" in w.message for w in warnings)
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "slides/assets/pic.avif" in index
+
+    def test_missing_asset_warns_and_build_still_succeeds(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _MISSING_ASSET_SLIDE_SVG)
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+
+        out_dir = tmp_path / "out"
+        with collect_logs(logging.WARNING) as warnings:
+            build_static_html(deck_path, out_dir, inline_assets=True)
+
+        assert (out_dir / "index.html").exists()
+        assert any("missing.png" in w.message for w in warnings)
+
+    def test_remote_and_data_uri_refs_are_left_as_written(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        deck_path = _write_deck(tmp_path, _REMOTE_DECK)
+
+        out_dir = tmp_path / "out"
+        build_static_html(deck_path, out_dir, inline_assets=True)
+
+        index = (out_dir / "index.html").read_text(encoding="utf-8")
+        assert "https://example.com/x.png" in index
+        assert "data:image/png;base64,AAAA" in index
+
+    def test_cli_flag_produces_a_lone_index_html(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _ASSET_SLIDE_SVG)
+        for rel in ("slides/assets/pic.png", "slides/assets/pic2.png"):
+            _write_asset(tmp_path, rel)
+        _write_asset(tmp_path, "assets/cat.png")
+        _write_asset(tmp_path, "media/photo.png")
+        deck_path = _write_deck(tmp_path, _ASSET_DECK)
+
+        out_dir = tmp_path / "out"
+        result = CliRunner().invoke(
+            main,
+            [
+                "build",
+                "--deck",
+                str(deck_path),
+                "-o",
+                str(out_dir),
+                "--inline-assets",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert [p.name for p in out_dir.iterdir()] == ["index.html"]
 
 
 class TestThemeAssets:

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,10 +45,45 @@ REFERENCE_PATTERNS = (_HTML_SRC_RE, _HTML_POSTER_RE, _SVG_HREF_RE)
 _HTML_REF_TAGS = (f"{{{ns.XHTML}}}img", f"{{{ns.XHTML}}}video")
 _SVG_HREF_ATTRIBUTES = ("href", f"{{{ns.XLINK}}}href")
 
+MIME_TYPES = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".ogg": "video/ogg",
+    ".mov": "video/quicktime",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
+"""Media type per asset suffix: what ``serve`` sends on the wire and what an
+inlining ``build`` stamps into its data URIs, so the two describe a file alike."""
+
 
 def is_local_ref(ref: str) -> bool:
     """Whether a reference names a file to copy rather than a remote or inline URI."""
     return bool(ref) and not ref.startswith(("http://", "https://", "//", "data:"))
+
+
+def rewrite_references(text: str, resolve: Callable[[str], str | None]) -> str:
+    """Replace asset references in a produced SVG or notes fragment.
+
+    ``resolve`` maps one reference to what should stand in its place, or to
+    ``None`` to leave it as written. Goes through `REFERENCE_PATTERNS`, so a new
+    reference kind reaches this rewrite and the scan in export.py together.
+    """
+
+    def substitute(match: re.Match[str]) -> str:
+        ref = match.group(1)
+        replacement = resolve(ref)
+        if replacement is None:
+            return match.group(0)
+        return match.group(0).replace(f'"{ref}"', f'"{replacement}"')
+
+    for pattern in REFERENCE_PATTERNS:
+        text = pattern.sub(substitute, text)
+    return text
 
 
 def _absolute(path: Path) -> Path:

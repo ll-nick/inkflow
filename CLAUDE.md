@@ -230,6 +230,8 @@ An asset must live under an allowed root: the project dir (canonical prefix `""`
 
 `build`/`export` copy every referenced local file into the output dir, mirroring the source tree; a canonical ref is relative and `..`-free by construction, so `out_dir / ref` always lands inside and needs no rewriting. `_slide_refs` scans the *emitted* SVG and notes rather than walking the deck, so a pruned zone takes its asset with it. A reference that resolves to nothing is a `logger.warning`, not a silent skip. `serve` streams the same refs on demand instead of copying.
 
+`build --inline-assets` swaps the copy for `_inline_assets`, which rewrites each reference to a `data:` URI through `assets.rewrite_references` — the same `REFERENCE_PATTERNS` the scan uses, so both halves learn a new reference kind at once. It runs *after* `embed_fonts_css_subsetted`, because the subsetter scans these very slide strings for used characters and base64 would pin the whole font. `assets.MIME_TYPES` is the shared table naming what `serve` sends and what the data URI claims; a suffix missing from it is copied out and warned about rather than dropped, so the build can fall short of one file but never loses an asset. Each reference is inlined where it stands, so a shared asset is carried once per use — the reason this is a flag and not the default.
+
 **Markdown content injection (`md=`) uses `<foreignObject>`.**
 Markdown is rendered to HTML via `markdown-it-py`.
 Zone `<rect>` elements in the layout SVG are replaced with `<foreignObject>` of the same geometry containing the rendered HTML.
