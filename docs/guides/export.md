@@ -20,7 +20,11 @@ inkflow build --output ./dist
 ```
 
 The build output is the same presenter you see during `inkflow serve`, packaged for offline use.
-All local assets referenced by the deck are copied into the output directory: `Media` zones plus images referenced from Markdown (`![](...)`) or SVG (`<image href>`). Remote (`https://`) and `data:` URIs are left untouched. Fonts are embedded directly into the HTML, so they need no separate files.
+All local assets referenced by the deck are copied into the output directory:
+`Media` zones plus images referenced from Markdown (`![](...)`) or SVG (`<image href>`).
+Remote (`https://`) and `data:` URIs are left untouched.
+Fonts are embedded directly into the HTML, so they need no separate files.
+To embed the assets too and get a single file, see [`--inline-assets`](#one-file-instead-of-a-directory-inline-assets).
 
 Every reference is resolved relative to the file it was written in
 (see [Images](slides.md#images)),
@@ -29,6 +33,31 @@ so the build stays self-contained wherever it is copied.
 A theme's own assets are copied under `_theme/`.
 A reference that resolves to no file is reported as a warning and skipped rather than dropped silently,
 and one that points outside both the project and the theme is reported when it is resolved.
+
+### One file instead of a directory (`--inline-assets`)
+
+`inkflow build --inline-assets` embeds every referenced image and video in the HTML as a `data:` URI,
+so the whole deck is a single `index.html` with nothing beside it:
+
+```bash
+inkflow build --inline-assets
+# → build/index.html (4.1 MB)
+```
+
+The trade-offs, in exchange:
+
+- **Size.** The file grows by roughly a third of each asset (base64 overhead),
+  counted once per *reference* rather than once per file,
+  so an asset that appears on ten slides is carried ten times.
+- **Startup.** Every asset is part of the HTML, so all of it loads before the first slide renders,
+  rather than arriving per slide as the deck is presented.
+  Inkflow warns when it inlines a large video, with its size,
+  because a video that big is what blanks the screen while `index.html` loads.
+- **Caching.** A hosted deck re-downloads every asset on every load, since none of them are separate cacheable files.
+
+Assets are inlined into the slides only;
+`index.html` itself is untouched, and fonts are embedded either way.
+An asset whose file extension names no known media type is copied out beside `index.html` as usual and reported.
 
 !!! tip "Live demo in these docs"
     The interactive demo linked from this site was produced with `inkflow build` and
