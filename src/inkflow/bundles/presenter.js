@@ -273,6 +273,32 @@
     _laserMode: false
   };
 
+  // src/ts/presenter/deck-url.ts
+  var SLIDE = "slide";
+  var STEPS = "steps";
+  function hashParams(url) {
+    return new URLSearchParams(url.hash.slice(1));
+  }
+  function positionHref(url, slideIndex, step) {
+    const next = new URL(url.href);
+    const params = hashParams(next);
+    params.set(SLIDE, String(slideIndex + 1));
+    if (step > 0) params.set(STEPS, String(step));
+    else params.delete(STEPS);
+    next.hash = params.toString();
+    return next.href;
+  }
+  function readPosition(url, slideCount) {
+    const params = hashParams(url);
+    const slide = parseInt(params.get(SLIDE) ?? "", 10);
+    const inDeck = !Number.isNaN(slide) && slide >= 1 && slide <= slideCount;
+    const step = parseInt(params.get(STEPS) ?? "0", 10);
+    return {
+      slideIndex: inDeck ? slide - 1 : null,
+      step: !Number.isNaN(step) && step >= 0 ? step : 0
+    };
+  }
+
   // src/ts/presenter/progress-driver.ts
   var ProgressDriver = class {
     value = 0;
@@ -481,31 +507,24 @@
     updateStatus();
   }
   function syncURL() {
-    const params = new URLSearchParams(window.location.search);
-    if (state.step > 0) params.set("steps", String(state.step));
-    else params.delete("steps");
-    const search = params.size > 0 ? `?${params.toString()}` : "";
-    const base = window.location.pathname.replace(/\/[^/]*$/, "");
+    const href = positionHref(
+      new URL(window.location.href),
+      state.slideIndex,
+      state.step
+    );
     try {
-      history.replaceState(
-        null,
-        "",
-        `${base}/${state.slideIndex + 1}${search}`
-      );
+      history.replaceState(null, "", href);
     } catch (_) {
     }
   }
   function readURL() {
-    const seg = window.location.pathname.replace(/^.*\//, "");
-    const n = parseInt(seg, 10);
-    const deepLinked2 = !Number.isNaN(n) && n >= 1 && n <= state.slides.length;
-    if (deepLinked2) state.slideIndex = n - 1;
-    const steps = parseInt(
-      new URLSearchParams(window.location.search).get("steps") ?? "0",
-      10
+    const { slideIndex, step } = readPosition(
+      new URL(window.location.href),
+      state.slides.length
     );
-    if (!Number.isNaN(steps) && steps >= 0) state.step = steps;
-    return deepLinked2;
+    if (slideIndex !== null) state.slideIndex = slideIndex;
+    state.step = step;
+    return slideIndex !== null;
   }
   function updateStatus() {
     const infoHtml = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
