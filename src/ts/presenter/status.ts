@@ -8,6 +8,7 @@ import {
     type StepRun,
     seekStepRun,
 } from "../shared/step";
+import { positionHref, readPosition } from "./deck-url";
 import { ProgressDriver } from "./progress-driver";
 import { state } from "./state";
 import { syncVideos } from "./video";
@@ -169,35 +170,28 @@ export function applyCurrentStepInstant(): void {
 }
 
 export function syncURL(): void {
-    const params = new URLSearchParams(window.location.search);
-    if (state.step > 0) params.set("steps", String(state.step));
-    else params.delete("steps");
-    const search = params.size > 0 ? `?${params.toString()}` : "";
-    const base = window.location.pathname.replace(/\/[^/]*$/, "");
+    const href = positionHref(
+        new URL(window.location.href),
+        state.slideIndex,
+        state.step,
+    );
     try {
-        history.replaceState(
-            null,
-            "",
-            `${base}/${state.slideIndex + 1}${search}`,
-        );
+        history.replaceState(null, "", href);
     } catch (_) {}
 }
 
-// Returns whether the path carried an explicit, valid slide segment (a "deep
-// link"). The caller captures this at boot before loadSlide() rewrites the URL,
-// to decide sync-handshake authority: a deliberate URL must not be overridden by
-// the server's stored position.
+// Returns whether the URL carried an explicit, valid slide (a "deep link"). The
+// caller captures this at boot before loadSlide() rewrites the URL, to decide
+// sync-handshake authority: a deliberate URL must not be overridden by the
+// server's stored position.
 export function readURL(): boolean {
-    const seg = window.location.pathname.replace(/^.*\//, "");
-    const n = parseInt(seg, 10);
-    const deepLinked = !Number.isNaN(n) && n >= 1 && n <= state.slides.length;
-    if (deepLinked) state.slideIndex = n - 1;
-    const steps = parseInt(
-        new URLSearchParams(window.location.search).get("steps") ?? "0",
-        10,
+    const { slideIndex, step } = readPosition(
+        new URL(window.location.href),
+        state.slides.length,
     );
-    if (!Number.isNaN(steps) && steps >= 0) state.step = steps;
-    return deepLinked;
+    if (slideIndex !== null) state.slideIndex = slideIndex;
+    state.step = step;
+    return slideIndex !== null;
 }
 
 export function updateStatus(): void {
