@@ -656,6 +656,24 @@ body.pv-open #pv-resize-handle {
 #pv-elapsed {
   letter-spacing: 0.02em;
 }
+.pv-timer-btn {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+#pv-timer-toggle .icon-play {
+  display: none;
+}
+#pv-strip.timer-paused #pv-timer-toggle .icon-pause {
+  display: none;
+}
+#pv-strip.timer-paused #pv-timer-toggle .icon-play {
+  display: block;
+}
+#pv-strip.timer-paused #pv-elapsed,
+#pv-strip.timer-paused #pv-timer-toggle {
+  color: var(--yellow);
+}
 #pv-slide-info .slide-current {
   color: var(--text);
 }

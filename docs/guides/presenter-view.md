@@ -32,7 +32,9 @@ Press <kbd>p</kbd> again (or click the button again) to close it and return to t
 ```
 
 - **Info strip:** clock (current time), elapsed time since the page was opened,
+  with buttons to pause and reset it,
   current slide number, and a circular step indicator matching the one in the status bar.
+  The elapsed time turns yellow while paused.
 - **Next:** a preview of the next click — either the same slide with one more step
   revealed, or the first state of the following slide. Shows `END` after the last slide.
 - **Notes:** the rendered speaker notes for the current slide.

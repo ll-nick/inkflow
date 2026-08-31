@@ -67,6 +67,29 @@ body.pv-open #pv-resize-handle {
     letter-spacing: 0.02em;
 }
 
+.pv-timer-btn {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+/* Toggle shows the action it performs: pause bars while running, play triangle
+   while paused. The whole strip carries `timer-paused` so the frozen elapsed
+   value can also pick up the accent. */
+#pv-timer-toggle .icon-play {
+    display: none;
+}
+#pv-strip.timer-paused #pv-timer-toggle .icon-pause {
+    display: none;
+}
+#pv-strip.timer-paused #pv-timer-toggle .icon-play {
+    display: block;
+}
+#pv-strip.timer-paused #pv-elapsed,
+#pv-strip.timer-paused #pv-timer-toggle {
+    color: var(--yellow);
+}
+
 #pv-slide-info .slide-current {
     color: var(--text);
 }

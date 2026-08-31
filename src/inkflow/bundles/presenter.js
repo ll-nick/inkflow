@@ -539,20 +539,51 @@
   // src/ts/presenter/pv.ts
   var pvPanel = document.getElementById("pv");
   var pvResizeHandle = document.getElementById("pv-resize-handle");
+  var pvStrip = document.getElementById("pv-strip");
   var pvClock = document.getElementById("pv-clock");
   var pvElapsed = document.getElementById("pv-elapsed");
+  var pvTimerToggle = document.getElementById("pv-timer-toggle");
+  var pvTimerReset = document.getElementById("pv-timer-reset");
   var pvSlideInfo = document.getElementById("pv-slide-info");
   var pvStepRing = document.getElementById("pv-step-ring");
   var pvNextInner = document.getElementById("pv-next-inner");
   var pvNotes = document.getElementById("pv-notes");
-  var _startTime = Date.now();
+  var _elapsedAccumMs = 0;
+  var _runningSince = Date.now();
+  function _elapsedMs() {
+    const running = _runningSince === null ? 0 : Date.now() - _runningSince;
+    return _elapsedAccumMs + running;
+  }
+  function _setTimerPaused(paused) {
+    if (paused === (_runningSince === null)) return;
+    if (paused) {
+      _elapsedAccumMs = _elapsedMs();
+      _runningSince = null;
+    } else {
+      _runningSince = Date.now();
+    }
+    pvStrip.classList.toggle("timer-paused", paused);
+    const label = paused ? "Resume timer" : "Pause timer";
+    pvTimerToggle.title = label;
+    pvTimerToggle.setAttribute("aria-label", label);
+    updatePvClock();
+  }
+  function _resetTimer() {
+    _elapsedAccumMs = 0;
+    if (_runningSince !== null) _runningSince = Date.now();
+    updatePvClock();
+  }
+  pvTimerToggle.addEventListener("click", () => {
+    _setTimerPaused(_runningSince !== null);
+  });
+  pvTimerReset.addEventListener("click", _resetTimer);
   function _pad2(n) {
     return String(n).padStart(2, "0");
   }
   function updatePvClock() {
     const now = /* @__PURE__ */ new Date();
     pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
-    const secs = Math.floor((Date.now() - _startTime) / 1e3);
+    const secs = Math.floor(_elapsedMs() / 1e3);
     const h = Math.floor(secs / 3600);
     const m = Math.floor(secs % 3600 / 60);
     const s = secs % 60;

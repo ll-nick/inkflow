@@ -6,14 +6,53 @@ import { maxStep } from "./status";
 // ── DOM refs ──
 const pvPanel = document.getElementById("pv")!;
 const pvResizeHandle = document.getElementById("pv-resize-handle")!;
+const pvStrip = document.getElementById("pv-strip")!;
 const pvClock = document.getElementById("pv-clock")!;
 const pvElapsed = document.getElementById("pv-elapsed")!;
+const pvTimerToggle = document.getElementById("pv-timer-toggle")!;
+const pvTimerReset = document.getElementById("pv-timer-reset")!;
 const pvSlideInfo = document.getElementById("pv-slide-info")!;
 const pvStepRing = document.getElementById("pv-step-ring")!;
 const pvNextInner = document.getElementById("pv-next-inner")!;
 const pvNotes = document.getElementById("pv-notes")!;
 
-const _startTime = Date.now();
+// Elapsed-time model: whole paused-off segments accumulate into `_elapsedAccumMs`,
+// and `_runningSince` times the segment in progress (null while paused). The
+// display then just reads `_elapsedMs()`, so a pause freezes it without touching
+// the once-a-second interval.
+let _elapsedAccumMs = 0;
+let _runningSince: number | null = Date.now();
+
+function _elapsedMs(): number {
+    const running = _runningSince === null ? 0 : Date.now() - _runningSince;
+    return _elapsedAccumMs + running;
+}
+
+function _setTimerPaused(paused: boolean): void {
+    if (paused === (_runningSince === null)) return;
+    if (paused) {
+        _elapsedAccumMs = _elapsedMs();
+        _runningSince = null;
+    } else {
+        _runningSince = Date.now();
+    }
+    pvStrip.classList.toggle("timer-paused", paused);
+    const label = paused ? "Resume timer" : "Pause timer";
+    pvTimerToggle.title = label;
+    pvTimerToggle.setAttribute("aria-label", label);
+    updatePvClock();
+}
+
+function _resetTimer(): void {
+    _elapsedAccumMs = 0;
+    if (_runningSince !== null) _runningSince = Date.now();
+    updatePvClock();
+}
+
+pvTimerToggle.addEventListener("click", () => {
+    _setTimerPaused(_runningSince !== null);
+});
+pvTimerReset.addEventListener("click", _resetTimer);
 
 function _pad2(n: number): string {
     return String(n).padStart(2, "0");
@@ -22,7 +61,7 @@ function _pad2(n: number): string {
 export function updatePvClock(): void {
     const now = new Date();
     pvClock.textContent = `${_pad2(now.getHours())}:${_pad2(now.getMinutes())}:${_pad2(now.getSeconds())}`;
-    const secs = Math.floor((Date.now() - _startTime) / 1000);
+    const secs = Math.floor(_elapsedMs() / 1000);
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
