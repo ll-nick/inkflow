@@ -84,9 +84,11 @@ Any number of windows can be open at once:
 - A navigation in any window is broadcast to every other open window.
 - A window opened at the bare URL adopts the shared position on connect, so it
   lands where the presenter already is (second-screen follow).
-- A window opened at a deliberate deep link (a URL with a slide number, such as
-  `/5`) keeps that slide instead of being pulled to the shared position. A browser
-  refresh counts as a deep link, so reloading never yanks a window off its slide.
+- A window opened at a deliberate deep link (a URL naming a slide, such as
+  `#slide=5`) keeps that slide instead of being pulled to the shared position. A
+  browser refresh counts as a deep link, so reloading never yanks a window off its
+  slide. The slide lives in the URL fragment so the link works the same whether
+  the deck is served, hosted as a static build, or opened straight from disk.
 - After a deck rebuild, the position is preserved (clamped if the slide count drops).
 
 ### Sync modes

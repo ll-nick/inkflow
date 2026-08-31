@@ -149,8 +149,10 @@ src/
     presenter/        main presenter modules — navigation, transitions (progress-driven
                       via progress-driver.ts), overview, picker, websocket, status bar,
                       keyboard, syncmenu.ts (sync-mode status-bar control),
-                      pv.ts (presenter panel sidebar), and video.ts (step-driven
-                      <video> playback, wired in via status.ts)
+                      pv.ts (presenter panel sidebar), video.ts (step-driven
+                      <video> playback, wired in via status.ts), and deck-url.ts
+                      (pure position<->fragment codec behind syncURL/readURL; the
+                      only module reading location.pathname/search/hash)
   css/                CSS source
     shared/           theme variables, animation keyframes
     presenter/        presenter partials including pv.css (sidebar panel)
@@ -178,7 +180,10 @@ Non-fatal records collected during the rebuild (`inkflow.logging.collect_logs`, 
 The HTTP response includes `Cache-Control: no-store` so hard refreshes always get fresh content.
 
 **Position sync is a dumb relay with client-side authority + modes.**
-Clients send `{"type":"nav","slideIndex","step"}` (validated + clamped server-side by `_coerce_nav_position`); the server stores the last position and rebroadcasts it as `{"type":"position",...}` to the *other* clients, and pushes it once to each newly connected client. A window that booted from a deep link (URL slide segment, captured by `readURL()` before `syncURL()` rewrites the bar) or reconnected asserts its own position and ignores that first push; a bare window adopts it. Each client also has a per-tab **sync mode** (`two-way`/`present`/`follow`/`solo`, `shared/types.ts`) deciding locally whether it broadcasts nav (`sends()`) and applies incoming positions (`receives()`) — the server knows nothing about modes. `s` cycles the mode; `syncmenu.ts` owns the status-bar widget, `websocket.ts` the network/state. Switching into a receiving mode sends `{"type":"sync-request"}` to catch up. Persisted in `sessionStorage`.
+Clients send `{"type":"nav","slideIndex","step"}` (validated + clamped server-side by `_coerce_nav_position`); the server stores the last position and rebroadcasts it as `{"type":"position",...}` to the *other* clients, and pushes it once to each newly connected client. A window that booted from a deep link (a slide named in the URL, captured by `readURL()` before `syncURL()` rewrites the bar) or reconnected asserts its own position and ignores that first push; a bare window adopts it. Each client also has a per-tab **sync mode** (`two-way`/`present`/`follow`/`solo`, `shared/types.ts`) deciding locally whether it broadcasts nav (`sends()`) and applies incoming positions (`receives()`) — the server knows nothing about modes. `s` cycles the mode; `syncmenu.ts` owns the status-bar widget, `websocket.ts` the network/state. Switching into a receiving mode sends `{"type":"sync-request"}` to catch up. Persisted in `sessionStorage`.
+
+**The deck position lives in the URL fragment, `#slide=7&steps=2` (`deck-url.ts`).**
+The fragment never reaches a server, so nothing has to route it and rewriting it is a same-document change every browser permits. The path segment this used to write (`/7`) only ever worked under `serve`, whose catch-all answers any path with the presenter: a static host 404s it on reload (the docs demo included), and a `file://` deck cannot have it at all — the browser rejects the rewrite (`history.replaceState` throws `SecurityError`; Firefox logs "Content at …/index.html may not load data from …/7"). The fragment is the only form: nothing writes a path segment any more and nothing reads one, so the position has exactly one representation. `deck-url.ts` is the only module that touches `location.hash`, and its two functions are pure over a `URL` so every case is unit-tested; `status.ts` supplies `window.location` and keeps a `try/catch` around `replaceState`.
 
 **`loadSlide()` vs `applyStep()` in the presenter JS.**
 Step advances within a slide must NOT re-render `stage.innerHTML` — that would recreate the Web Animations API animations and lose their state.
