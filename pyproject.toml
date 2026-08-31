@@ -45,6 +45,7 @@ dev = [
   "deptry>=0.25.1",
   "lxml-stubs>=0.5",
   "pytest>=9.0.3",
+  "pyyaml>=6.0",
   "ruff>=0.15.13",
 ]
 docs = [

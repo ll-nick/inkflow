@@ -2,12 +2,32 @@ from __future__ import annotations
 
 import textwrap
 from collections.abc import Iterator
+from importlib.resources import files
 from pathlib import Path
+from typing import TypedDict, cast
 
+import click
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from inkflow.cli import main
+
+ROOT = "<root>"
+FlagsByCommand = dict[str, dict[str, bool]]
+"""Long option -> whether it takes a value, per command path."""
+
+
+class _NamedNode(TypedDict):
+    name: str
+
+
+class SpecNode(_NamedNode, total=False):
+    """One command in the carapace spec — the shape `yaml.safe_load` hands back."""
+
+    flags: dict[str, str]
+    commands: list[SpecNode]
+
 
 _DECK_PY = textwrap.dedent("""\
     from inkflow import Deck, Slide
@@ -541,3 +561,46 @@ class TestInitEmptyDirGuard:
             result = runner.invoke(main, ["init", ".", "--no-git"])
             assert result.exit_code == 0, result.output
             assert Path("deck.py").exists()
+
+
+class TestCarapaceSpec:
+    """The carapace spec is written by hand, so this test is here to prevent drift."""
+
+    @staticmethod
+    def _click_flags(cmd: click.Command, path: tuple[str, ...] = ()) -> FlagsByCommand:
+        # --help is carapace `persistentflags`, so it is not a per-command flag.
+        flags = {
+            opt: not param.is_flag
+            for param in cmd.params
+            if isinstance(param, click.Option)
+            for opt in param.opts + param.secondary_opts
+            if opt.startswith("--") and opt != "--help"
+        }
+        found = {" ".join(path) or ROOT: flags}
+        if isinstance(cmd, click.Group):
+            for name, sub in cmd.commands.items():
+                found.update(TestCarapaceSpec._click_flags(sub, (*path, name)))
+        return found
+
+    @staticmethod
+    def _spec_flags(node: SpecNode, path: tuple[str, ...] = ()) -> FlagsByCommand:
+        # A carapace flag key is "-d, --deck=": aliases comma-joined, "=" meaning
+        # it takes a value.
+        flags: dict[str, bool] = {}
+        for key in node.get("flags") or {}:
+            for alias in (part.strip() for part in key.split(",")):
+                if alias.startswith("--"):
+                    flags[alias.rstrip("=")] = alias.endswith("=")
+        found = {" ".join(path) or ROOT: flags}
+        for sub in node.get("commands") or []:
+            found.update(TestCarapaceSpec._spec_flags(sub, (*path, sub["name"])))
+        return found
+
+    def test_spec_matches_the_click_command_tree(self) -> None:
+        spec = cast(
+            SpecNode,
+            yaml.safe_load(
+                files("inkflow").joinpath("completions/inkflow.yaml").read_text()
+            ),
+        )
+        assert self._spec_flags(spec) == self._click_flags(main)

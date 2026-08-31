@@ -5,11 +5,22 @@ persistentflags:
   --help: Show help
 flags:
   --version: Show version and exit
+  --log-level=: Baseline level for every sink
+  --log-level-console=: Console/TUI level (overrides --log-level)
+  --log-level-file=: File level (overrides --log-level)
+  --log-level-browser=: Presenter banner level (overrides --log-level)
+  --log-file=: File-sink destination
+completion:
+  flag:
+    log-level: ["off", "debug", "info", "warning", "error"]
+    log-level-console: ["off", "debug", "info", "warning", "error"]
+    log-level-file: ["off", "debug", "info", "warning", "error"]
+    log-level-browser: ["off", "debug", "info", "warning", "error"]
+    log-file: ["$files"]
 commands:
   - name: init
     description: Scaffold a new presentation project.
     flags:
-      --theme=: Path to a custom theme directory
       --no-git: Skip git hook setup
       --force: Scaffold even into a non-empty directory
     completion:
