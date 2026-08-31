@@ -110,6 +110,21 @@
         <span id="pv-clock">--:--:--</span>
         <span class="hud-sep"></span>
         <span id="pv-elapsed">00:00</span>
+        <button type="button" class="hud-btn pv-timer-btn" id="pv-timer-toggle" title="Pause timer" aria-label="Pause timer">
+          <svg class="icon-pause" viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true" style="pointer-events:none">
+            <rect x="4" y="3" width="3" height="10" rx="0.5"/>
+            <rect x="9" y="3" width="3" height="10" rx="0.5"/>
+          </svg>
+          <svg class="icon-play" viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true" style="pointer-events:none">
+            <path d="M5 3.2 12.5 8 5 12.8Z"/>
+          </svg>
+        </button>
+        <button type="button" class="hud-btn pv-timer-btn" id="pv-timer-reset" title="Reset timer" aria-label="Reset timer">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+            <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/>
+            <path d="M13.5 2v3.5H10"/>
+          </svg>
+        </button>
         <span style="flex:1"></span>
         <span id="pv-slide-info">– / –</span>
         <span class="hud-sep"></span>
