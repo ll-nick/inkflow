@@ -17,6 +17,10 @@ At build time the pipeline replaces each zone element with a `<foreignObject>`
 sized to the shape's bounding box, containing the rendered HTML.
 Zone elements that aren't filled by the slide are silently removed.
 
+Inkscape's Layers & Objects panel edits an element's *label*, not its `id`.
+Label the rect `zone-content` there and run `inkflow label2id` to promote the
+label to the `id` (see [Transitions](transitions.md#naming-elements-from-inkscape)).
+
 ### Non-rectangular zones
 
 `<polygon>`, `<ellipse>`, `<circle>`, and `<path>` are also valid zone shapes.

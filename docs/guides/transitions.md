@@ -170,6 +170,29 @@ elements only in the incoming slide fade in. Unchanged chrome (backgrounds, foot
 
 When navigating backward (pressing `←`), Morph plays in reverse automatically.
 
+### Naming elements from Inkscape
+
+Morph matches elements by `id`,
+but Inkscape's Layers & Objects panel only ever edits an element's *label*
+(`inkscape:label`), not its `id`.
+
+`inkflow label2id` bridges the two:
+name a group "headline" in the panel on both slides,
+run `inkflow label2id slides/*.svg`,
+and each element's label becomes its `id`.
+A label that is already a valid id is used verbatim,
+anything else is slugified (spaces to `-`, accents and symbols dropped).
+Labels do not have to be unique but ids do,
+so a clash is reported and skipped rather than overwriting an existing id.
+
+```bash
+inkflow label2id slides/*.svg          # rewrite ids in place
+inkflow label2id -n slides/three.svg   # preview the changes, write nothing
+```
+
+Elements inside the locked preview layers that `inkflow sync` injects are left
+untouched. Run this before wiring up `deck.py` animations too, not just for Morph.
+
 ### Tips for Morph slides
 
 - Keep element IDs stable between slides — the morph links elements by matching `id`.

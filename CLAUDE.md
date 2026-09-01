@@ -93,9 +93,13 @@ src/
                                `main` group, shared options, and the Project/Target helpers;
                                commands are grouped by area: project.py (init, setup-git,
                                completion), present.py (serve, build, export), authoring.py
-                               (clean, add, parent group, sync, layouts), color.py (colorize,
+                               (clean, label2id, add, parent group, sync, layouts), color.py (colorize,
                                palette), verify.py. Submodules register on `main` by import.
     clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
+    label2id.py       `inkflow label2id`: promote each element's inkscape:label to its
+                               SVG id (Inkscape convenience for Morph/animation targets).
+                               Slugifies non-id labels, skips clashes and preview-layer
+                               elements, rewrites ids by text substitution to keep diffs small
     colors.py         CSS color token extraction, hex→class mapping, SVG colorization, GPL palette
     git_setup.py      git hook + SVG diff driver setup; `init_project_git`
                                bootstraps a fresh project (git init + .gitignore +
