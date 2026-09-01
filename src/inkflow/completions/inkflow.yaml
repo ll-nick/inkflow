@@ -50,6 +50,20 @@ commands:
       positionalany:
         - "$files([\".svg\"])"
 
+  - name: label2id
+    description: Promote each element's inkscape:label to its SVG id.
+    flags:
+      -d, --deck=: Path to deck.py (used only when FILES is omitted)
+      --all-tags: Also rename non-shape elements (tspan, stop, gradients, …)
+      --refs, --no-refs: Rewrite url(#id) / href='#id' references to renamed ids
+      -n, --dry-run: Show what would change without writing
+      --check: Exit non-zero if any file would change, without writing
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+      positionalany:
+        - "$files([\".svg\"])"
+
   - name: completion
     description: Print shell completion script for SHELL.
     completion:

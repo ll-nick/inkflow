@@ -14,7 +14,7 @@ _INKSCAPE_NAMESPACES: frozenset[str] = frozenset({ns.INKSCAPE, ns.SODIPODI})
 _PRESERVE_ATTRS: frozenset[str] = frozenset(
     {
         f"{{{ns.INKSCAPE}}}groupmode",
-        f"{{{ns.INKSCAPE}}}label",
+        ns.INKSCAPE_LABEL,
         f"{{{ns.SODIPODI}}}insensitive",
     }
 )

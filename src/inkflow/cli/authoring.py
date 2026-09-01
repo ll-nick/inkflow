@@ -22,6 +22,7 @@ from inkflow.cli._common import (
     resolve_targets,
     targets_or_deck_slides,
 )
+from inkflow.label2id import promote_labels_to_ids
 from inkflow.layout import (
     AssetKind,
     PreviewLayers,
@@ -89,6 +90,103 @@ def clean(
             logger.error(f"clean: {target.label}: {exc}")
             errors = True
     if dirty or errors:
+        sys.exit(1)
+
+
+@main.command("label2id")
+@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
+@deck_option
+@click.option(
+    "--all-tags",
+    "all_tags",
+    is_flag=True,
+    help="Also rename non-shape elements (tspan, stop, gradients, …).",
+)
+@click.option(
+    "--refs/--no-refs",
+    "rewrite_refs",
+    default=True,
+    help="Rewrite url(#id) / href='#id' references pointing at renamed ids.",
+)
+@click.option(
+    "-n",
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    help="Show what would change without writing.",
+)
+@click.option(
+    "--check",
+    is_flag=True,
+    help="Exit non-zero if any file would change, without writing (implies --dry-run).",
+)
+def label2id(
+    files: tuple[Path, ...],
+    deck_path: Path,
+    all_tags: bool,
+    rewrite_refs: bool,
+    dry_run: bool,
+    check: bool,
+) -> None:
+    """Promote each element's inkscape:label to its SVG id.
+
+    Name a group in Inkscape's Layers & Objects panel, run this, and deck.py can
+    animate it by id (and the Morph transition can match it across slides). A
+    label that is already a valid id is used verbatim; anything else is slugified.
+    Labels need not be unique but ids must, so a clash is warned about and
+    skipped, never clobbered. Elements inside injected inkflow preview layers are
+    left alone.
+
+    If FILES is omitted, processes every project-local SVG the deck uses (each
+    slide and its local layout/overlay ancestors). After renaming ids in a layout
+    or overlay, run `inkflow sync` so the slides that preview it pick up the
+    change.
+    """
+    dry_run = dry_run or check
+    if files:
+        targets = resolve_targets(files)
+    else:
+        targets = Project.load(deck_path).slide_targets()
+
+    dirty = False
+    errors = False
+    for target in targets:
+        try:
+            original = target.path.read_text(encoding="utf-8")
+            result = promote_labels_to_ids(
+                original, all_tags=all_tags, rewrite_refs=rewrite_refs
+            )
+        except Exception as exc:
+            logger.error(f"label2id: {target.label}: {exc}")
+            errors = True
+            continue
+
+        for skip in result.skips:
+            detail = f"{skip.tag} label={skip.label!r}: {skip.reason}"
+            logger.warning(f"label2id: {target.label}: {detail}")
+
+        if not result.changed:
+            report("No labels", target.label, style="dim")
+            continue
+
+        dirty = True
+        verb = "Would rename" if dry_run else "Renamed"
+        for rename in result.renames:
+            old = rename.old_id or "(none)"
+            report(
+                verb,
+                f"{target.label}: {old} → {rename.new_id} (label {rename.label!r})",
+            )
+        if result.reference_edits:
+            report(
+                "Rewrote",
+                f"{target.label}: {result.reference_edits} reference(s)",
+                style="dim",
+            )
+        if not dry_run:
+            target.path.write_text(result.text, encoding="utf-8")
+
+    if errors or (check and dirty):
         sys.exit(1)
 
 
