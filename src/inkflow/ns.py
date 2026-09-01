@@ -5,6 +5,8 @@ INKFLOW = "urn:inkflow"
 INKSCAPE = "http://www.inkscape.org/namespaces/inkscape"
 SODIPODI = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
 
+INKSCAPE_LABEL = f"{{{INKSCAPE}}}label"
+
 INKFLOW_PARENT = f"{{{INKFLOW}}}parent"
 INKFLOW_DEFAULT_ZONE = f"{{{INKFLOW}}}default-zone"
 INKFLOW_LAYOUT_SRC = f"{{{INKFLOW}}}layout-src"
