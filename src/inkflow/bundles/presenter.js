@@ -257,6 +257,19 @@
     rootStep.set(root, step);
   }
 
+  // src/ts/shared/viewbox.ts
+  var DEFAULT_VIEWBOX = "0 0 1920 1080";
+  function parseViewBox(attr, fallback = DEFAULT_VIEWBOX) {
+    const parts = (attr ?? "").trim().split(/[\s,]+/).map(Number);
+    const valid = parts.length === 4 && parts.every((n) => Number.isFinite(n)) && parts[2] > 0 && parts[3] > 0;
+    const [x, y, w, h] = valid ? parts : fallback.split(/[\s,]+/).map(Number);
+    return { x, y, w, h };
+  }
+  function formatViewBox(vb) {
+    const round2 = (n) => Math.round(n * 1e3) / 1e3;
+    return `${round2(vb.x)} ${round2(vb.y)} ${round2(vb.w)} ${round2(vb.h)}`;
+  }
+
   // src/ts/presenter/state.ts
   var state = {
     slides: [],
@@ -430,10 +443,10 @@
   function driveRun() {
     const ctrl = new AbortController();
     runController = ctrl;
-    const driver = runDriver;
+    const driver2 = runDriver;
     const run = runRun;
     const to = runTo;
-    void driver.animateTo(
+    void driver2.animateTo(
       runForward ? 1 : 0,
       run.totalMs / 1e3,
       ctrl.signal,
@@ -597,20 +610,17 @@
   function _scalePvNext() {
     const svg = pvNextInner.querySelector("svg");
     if (!svg) return;
-    const vb = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(parseFloat);
-    if (vb.length < 4) return;
-    const vbW = vb[2];
-    const vbH = vb[3];
-    svg.setAttribute("width", String(vbW));
-    svg.setAttribute("height", String(vbH));
-    svg.style.width = `${vbW}px`;
-    svg.style.height = `${vbH}px`;
+    const vb = parseViewBox(svg.getAttribute("viewBox"));
+    svg.setAttribute("width", String(vb.w));
+    svg.setAttribute("height", String(vb.h));
+    svg.style.width = `${vb.w}px`;
+    svg.style.height = `${vb.h}px`;
     const scale = Math.min(
-      pvNextInner.clientWidth / vbW,
-      pvNextInner.clientHeight / vbH
+      pvNextInner.clientWidth / vb.w,
+      pvNextInner.clientHeight / vb.h
     );
-    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
-    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
+    const tx = (pvNextInner.clientWidth - vb.w * scale) / 2;
+    const ty = (pvNextInner.clientHeight - vb.h * scale) / 2;
     svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
   }
   function renderPvNext() {
@@ -1844,22 +1854,22 @@
     restoreScopes = null;
     // Snapshot the outgoing slide before swap() replaces the DOM, and keep its
     // markup so a full reversal can restore the real previous slide.
-    prepare({ stage: stage4 }) {
-      this.stage = stage4;
-      removeGhosts(stage4);
-      this.oldHtml = stage4.innerHTML;
-      const beforeSvg = stage4.querySelector("svg");
+    prepare({ stage: stage5 }) {
+      this.stage = stage5;
+      removeGhosts(stage5);
+      this.oldHtml = stage5.innerHTML;
+      const beforeSvg = stage5.querySelector("svg");
       this.oldSvg = beforeSvg;
       this.oldLeaves = beforeSvg ? snapshotLeaves(beforeSvg) : { ids: /* @__PURE__ */ new Set(), leaves: [] };
       this.oldChildren = beforeSvg ? snapshotTopLevelChildren(beforeSvg) : [];
     }
     async start({
-      stage: stage4,
+      stage: stage5,
       params,
       signal
     }) {
       if (params.duration <= 0) return;
-      const svgRoot = stage4.querySelector("svg");
+      const svgRoot = stage5.querySelector("svg");
       if (!svgRoot) return;
       const newIds = collectPairableIds(svgRoot);
       const matchedIds = /* @__PURE__ */ new Set();
@@ -1897,9 +1907,9 @@
       );
       if (!signal.aborted) this.settle();
     }
-    cancel({ stage: stage4 }) {
+    cancel({ stage: stage5 }) {
       this.releaseScopes();
-      removeGhosts(stage4);
+      removeGhosts(stage5);
     }
     // Nest one container per insertion point into the incoming slide's own tree, so a
     // ghost lands where it sat relative to the elements that survive rather than
@@ -1944,8 +1954,256 @@
     }
   };
 
-  // src/ts/presenter/transitions.ts
+  // src/ts/shared/zoom-camera.ts
+  function clamp(n, lo, hi) {
+    return Math.min(Math.max(n, lo), hi);
+  }
+  function scaleOf(vb, base) {
+    return base.w / vb.w;
+  }
+  function isZoomedIn(vb, base, epsilon = 1e-3) {
+    return scaleOf(vb, base) > 1 + epsilon;
+  }
+  function clampToBounds(vb, base) {
+    const w = Math.min(vb.w, base.w);
+    const h = Math.min(vb.h, base.h);
+    const x = w >= base.w ? base.x + (base.w - w) / 2 : clamp(vb.x, base.x, base.x + base.w - w);
+    const y = h >= base.h ? base.y + (base.h - h) / 2 : clamp(vb.y, base.y, base.y + base.h - h);
+    return { x, y, w, h };
+  }
+  function zoomAt(current, base, factor, focus, limits) {
+    const targetScale = clamp(
+      scaleOf(current, base) * factor,
+      limits.minScale,
+      limits.maxScale
+    );
+    const w = base.w / targetScale;
+    const h = base.h / targetScale;
+    const fx = (focus.ux - current.x) / current.w;
+    const fy = (focus.uy - current.y) / current.h;
+    return clampToBounds(
+      { x: focus.ux - fx * w, y: focus.uy - fy * h, w, h },
+      base
+    );
+  }
+  function panBy(current, base, dxUser, dyUser) {
+    return clampToBounds(
+      { ...current, x: current.x + dxUser, y: current.y + dyUser },
+      base
+    );
+  }
+  function lerpViewBox(a, b, t) {
+    return {
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+      w: a.w + (b.w - a.w) * t,
+      h: a.h + (b.h - a.h) * t
+    };
+  }
+
+  // src/ts/presenter/zoom.ts
   var stage2 = document.getElementById("stage");
+  var stageWrap = document.getElementById("stage-wrap");
+  var indicator = document.getElementById("zoom-indicator");
+  var LIMITS = { minScale: 1, maxScale: 8 };
+  var WHEEL_STEP = 1.0015;
+  var KEY_ZOOM_STEP = 1.4;
+  var KEY_ANIM_MS = 140;
+  var RESET_ANIM_MS = 240;
+  var NAV_RESET_MS = 150;
+  var EASE = cubicBezierEasing("cubic-bezier(0.22, 1, 0.36, 1)");
+  var baseViewBox = null;
+  var camera = null;
+  var navReset = null;
+  var dragStartCamera = null;
+  var dragStartInverse = null;
+  var dragStartClientX = 0;
+  var dragStartClientY = 0;
+  function currentSvg() {
+    return stage2?.querySelector("svg") ?? null;
+  }
+  function clientToUser(clientX, clientY, inverse) {
+    const inv = inverse ?? currentSvg()?.getScreenCTM()?.inverse();
+    if (!inv) return null;
+    const p = new DOMPoint(clientX, clientY).matrixTransform(inv);
+    return { ux: p.x, uy: p.y };
+  }
+  function ensureBase() {
+    if (camera && baseViewBox) return true;
+    const svg = currentSvg();
+    if (!svg) return false;
+    baseViewBox = parseViewBox(svg.getAttribute("viewBox"));
+    camera = { ...baseViewBox };
+    return true;
+  }
+  function renderIndicator() {
+    if (!indicator) return;
+    const factor = camera && baseViewBox ? scaleOf(camera, baseViewBox) : 1;
+    indicator.textContent = `${factor.toFixed(1)}\xD7`;
+    indicator.toggleAttribute("data-active", factor > 1.01);
+  }
+  function applyCamera() {
+    const svg = currentSvg();
+    if (!svg || !camera) return;
+    svg.setAttribute("viewBox", formatViewBox(camera));
+    renderIndicator();
+  }
+  var driver = new ProgressDriver();
+  var animController = null;
+  function cancelAnim() {
+    animController?.abort();
+    animController = null;
+  }
+  function animateCameraTo(target, ms, onDone) {
+    cancelAnim();
+    if (!camera) {
+      camera = { ...target };
+      applyCamera();
+      onDone?.();
+      return;
+    }
+    const start = { ...camera };
+    const controller2 = new AbortController();
+    animController = controller2;
+    driver.value = 0;
+    driver.animateTo(1, ms / 1e3, controller2.signal, (p) => {
+      camera = p >= 1 ? { ...target } : lerpViewBox(start, target, EASE(p));
+      applyCamera();
+    }).then(() => {
+      if (animController === controller2) animController = null;
+      if (!controller2.signal.aborted) onDone?.();
+    });
+  }
+  function endDrag() {
+    dragStartCamera = null;
+    dragStartInverse = null;
+    document.body.classList.remove("zoom-grabbing");
+  }
+  function resetCamera() {
+    cancelAnim();
+    const svg = currentSvg();
+    if (svg && baseViewBox) {
+      svg.setAttribute("viewBox", formatViewBox(baseViewBox));
+    }
+    baseViewBox = null;
+    camera = null;
+    endDrag();
+    renderIndicator();
+  }
+  function cameraIsZoomed() {
+    return !!camera && !!baseViewBox && isZoomedIn(camera, baseViewBox);
+  }
+  function runNavReset() {
+    const fn = navReset;
+    navReset = null;
+    fn?.();
+  }
+  function resetCameraThen(after) {
+    if (!cameraIsZoomed() || !baseViewBox) {
+      navReset = null;
+      after();
+      return;
+    }
+    navReset = after;
+    animateCameraTo({ ...baseViewBox }, NAV_RESET_MS, runNavReset);
+  }
+  function cancelPendingNav() {
+    navReset = null;
+  }
+  function flushPendingNav() {
+    if (navReset) runNavReset();
+  }
+  function smoothResetCamera() {
+    flushPendingNav();
+    if (!ensureBase() || !camera || !baseViewBox) return;
+    if (!isZoomedIn(camera, baseViewBox)) return;
+    animateCameraTo({ ...baseViewBox }, RESET_ANIM_MS);
+  }
+  function keyZoom(direction) {
+    flushPendingNav();
+    if (!ensureBase() || !camera || !baseViewBox) return;
+    const factor = direction === "in" ? KEY_ZOOM_STEP : 1 / KEY_ZOOM_STEP;
+    const target = zoomAt(
+      camera,
+      baseViewBox,
+      factor,
+      { ux: camera.x + camera.w / 2, uy: camera.y + camera.h / 2 },
+      LIMITS
+    );
+    animateCameraTo(target, KEY_ANIM_MS);
+  }
+  function overGrid(target) {
+    return Boolean(target?.closest?.("#overview"));
+  }
+  function isCameraGesture(e) {
+    return e.ctrlKey;
+  }
+  function setArmed(on) {
+    document.body.classList.toggle("camera-armed", on);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Control") setArmed(true);
+  });
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "Control") setArmed(false);
+  });
+  window.addEventListener("blur", () => setArmed(false));
+  if (stageWrap) {
+    const wrap = stageWrap;
+    wrap.addEventListener(
+      "wheel",
+      (e) => {
+        if (!isCameraGesture(e) || overGrid(e.target)) return;
+        e.preventDefault();
+        flushPendingNav();
+        cancelAnim();
+        if (!ensureBase() || !camera || !baseViewBox) return;
+        const focus = clientToUser(e.clientX, e.clientY);
+        if (!focus) return;
+        const factor = Math.min(Math.max(WHEEL_STEP ** -e.deltaY, 0.2), 5);
+        camera = zoomAt(camera, baseViewBox, factor, focus, LIMITS);
+        applyCamera();
+      },
+      { passive: false }
+    );
+    wrap.addEventListener("pointerdown", (e) => {
+      if (!isCameraGesture(e) || overGrid(e.target)) return;
+      flushPendingNav();
+      cancelAnim();
+      if (!ensureBase() || !camera) return;
+      const inverse = currentSvg()?.getScreenCTM()?.inverse();
+      if (!inverse) return;
+      wrap.setPointerCapture(e.pointerId);
+      dragStartCamera = { ...camera };
+      dragStartInverse = inverse;
+      dragStartClientX = e.clientX;
+      dragStartClientY = e.clientY;
+      document.body.classList.add("zoom-grabbing");
+    });
+    wrap.addEventListener("pointermove", (e) => {
+      if (!dragStartCamera || !dragStartInverse || !baseViewBox) return;
+      const from = clientToUser(
+        dragStartClientX,
+        dragStartClientY,
+        dragStartInverse
+      );
+      const to = clientToUser(e.clientX, e.clientY, dragStartInverse);
+      if (!from || !to) return;
+      camera = panBy(
+        dragStartCamera,
+        baseViewBox,
+        from.ux - to.ux,
+        from.uy - to.uy
+      );
+      applyCamera();
+    });
+    wrap.addEventListener("pointerup", endDrag);
+    wrap.addEventListener("pointercancel", endDrag);
+    wrap.addEventListener("dblclick", smoothResetCamera);
+  }
+
+  // src/ts/presenter/transitions.ts
+  var stage3 = document.getElementById("stage");
   var CUT = { type: "cut", duration: 0 };
   var registry = /* @__PURE__ */ new Map();
   function registerTransition(name, factory) {
@@ -1969,7 +2227,7 @@
     liveParams = null;
     liveSettle = null;
     ctrl.abort();
-    inst?.cancel?.({ stage: stage2, params });
+    inst?.cancel?.({ stage: stage3, params });
     settle(callThen);
   }
   function inflightDirection() {
@@ -1978,14 +2236,14 @@
   }
   function snapInflight() {
     cancelInflight(true);
-    stage2.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
     applyCurrentStepInstant();
     updateStatus();
   }
   function makeLayer() {
     const layer = document.createElement("div");
     layer.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
-    layer.style.padding = getComputedStyle(stage2).padding;
+    layer.style.padding = getComputedStyle(stage3).padding;
     return layer;
   }
   function sizeLayerChild(layer) {
@@ -2022,8 +2280,8 @@
     // ignored for painting.
     startParams;
     prepare() {
-      this.outgoingHtml = stage2.innerHTML;
-      this.stageStyleText = stage2.style.cssText;
+      this.outgoingHtml = stage3.innerHTML;
+      this.stageStyleText = stage3.style.cssText;
     }
     async start({
       params,
@@ -2059,7 +2317,7 @@
     }
     paint(value) {
       this.render(
-        { stage: stage2, oldLayer: this.oldLayer, newLayer: this.newLayer },
+        { stage: stage3, oldLayer: this.oldLayer, newLayer: this.newLayer },
         this.ease(value),
         this.startParams
       );
@@ -2067,14 +2325,14 @@
     buildLayers() {
       this.settled = false;
       const newLayer = makeLayer();
-      while (stage2.firstChild) newLayer.appendChild(stage2.firstChild);
+      while (stage3.firstChild) newLayer.appendChild(stage3.firstChild);
       sizeLayerChild(newLayer);
-      stage2.appendChild(newLayer);
+      stage3.appendChild(newLayer);
       this.newLayer = newLayer;
       const oldLayer = makeLayer();
       oldLayer.innerHTML = this.outgoingHtml;
       sizeLayerChild(oldLayer);
-      stage2.appendChild(oldLayer);
+      stage3.appendChild(oldLayer);
       this.oldLayer = oldLayer;
     }
     settle() {
@@ -2087,8 +2345,8 @@
     teardown(shownLayer) {
       if (this.settled) return;
       this.settled = true;
-      if (shownLayer) stage2.replaceChildren(...shownLayer.children);
-      stage2.style.cssText = this.stageStyleText;
+      if (shownLayer) stage3.replaceChildren(...shownLayer.children);
+      stage3.style.cssText = this.stageStyleText;
     }
   };
   function registerProgressTransition(name, render) {
@@ -2133,17 +2391,16 @@
   function makeFadeBackdrop(slideSvg, color) {
     const layer = makeLayer();
     layer.dataset.fadeBackdrop = "1";
-    const viewBox = slideSvg?.getAttribute("viewBox") ?? "0 0 1920 1080";
+    const vb = parseViewBox(slideSvg?.getAttribute("viewBox") ?? null);
     const svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute("viewBox", formatViewBox(vb));
     svg.setAttribute(
       "preserveAspectRatio",
       slideSvg?.getAttribute("preserveAspectRatio") ?? "xMidYMid meet"
     );
-    const [, , width, height] = viewBox.split(/[\s,]+/).map(Number);
     const rect = document.createElementNS(SVG_NS, "rect");
-    rect.setAttribute("width", String(width || 0));
-    rect.setAttribute("height", String(height || 0));
+    rect.setAttribute("width", String(vb.w));
+    rect.setAttribute("height", String(vb.h));
     rect.setAttribute("fill", color);
     svg.appendChild(rect);
     layer.appendChild(svg);
@@ -2182,6 +2439,16 @@
   registerProgressTransition("wipe", wipeRender);
   registerTransition("morph", () => new MorphTransition());
   function loadSlide(then = null, transition = null, entryPlay = false) {
+    const body = () => loadSlideBody(then, transition, entryPlay);
+    if (cameraIsZoomed()) {
+      resetCameraThen(body);
+    } else {
+      cancelPendingNav();
+      body();
+    }
+  }
+  function loadSlideBody(then, transition, entryPlay) {
+    resetCamera();
     settleStepRun();
     const params = transition ?? state.transitions[state.slideIndex] ?? CUT;
     const entering = entryPlay && params.type !== "cut" && !params.reverse;
@@ -2190,11 +2457,11 @@
       updateStatus();
     };
     const initialLand = entering ? () => {
-      applyStepInstant(stage2, state.step - 1);
+      applyStepInstant(stage3, state.step - 1);
       updateStatus();
     } : settleContent;
     const swap = () => {
-      stage2.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+      stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
       initialLand();
     };
     const canReverse = liveInstance?.reverse != null && liveParams != null && liveParams.type === params.type && Boolean(liveParams.reverse) !== Boolean(params.reverse);
@@ -2225,7 +2492,7 @@
       liveInstance = inst2;
       liveParams = params;
       liveSettle = settle2;
-      inst2.reverse({ stage: stage2, params, signal: newCtrl.signal }).then(() => {
+      inst2.reverse({ stage: stage3, params, signal: newCtrl.signal }).then(() => {
         if (!newCtrl.signal.aborted) settleContent();
         settle2(true);
       }).catch((error) => {
@@ -2243,8 +2510,8 @@
       return;
     }
     const inst = makeTransition();
-    commitStepStyles(stage2);
-    inst.prepare?.({ stage: stage2, params });
+    commitStepStyles(stage3);
+    inst.prepare?.({ stage: stage3, params });
     const ctrl = new AbortController();
     let done = false;
     const settle = (callThen) => {
@@ -2263,7 +2530,7 @@
     liveParams = params;
     liveSettle = settle;
     swap();
-    inst.start({ stage: stage2, params, signal: ctrl.signal }).then(() => {
+    inst.start({ stage: stage3, params, signal: ctrl.signal }).then(() => {
       if (entering && !ctrl.signal.aborted) applyCurrentStep();
       settle(true);
     }).catch((error) => {
@@ -2652,7 +2919,7 @@
 
   // src/ts/presenter/laser.ts
   var SVG_NS2 = "http://www.w3.org/2000/svg";
-  var stageWrap = document.getElementById("stage-wrap");
+  var stageWrap2 = document.getElementById("stage-wrap");
   var overlay = document.getElementById(
     "laser-overlay"
   );
@@ -2664,10 +2931,10 @@
   var pendingClientX = 0;
   var pendingClientY = 0;
   var rafId = null;
-  var stageRect = stageWrap.getBoundingClientRect();
+  var stageRect = stageWrap2.getBoundingClientRect();
   new ResizeObserver(() => {
-    stageRect = stageWrap.getBoundingClientRect();
-  }).observe(stageWrap);
+    stageRect = stageWrap2.getBoundingClientRect();
+  }).observe(stageWrap2);
   function flushFrame() {
     rafId = null;
     const x = pendingClientX - stageRect.left;
@@ -2677,7 +2944,7 @@
       currentPath.setAttribute("d", currentPoints.join(" "));
     }
   }
-  stageWrap.addEventListener("pointermove", (e) => {
+  stageWrap2.addEventListener("pointermove", (e) => {
     if (!state._laserMode) return;
     pendingClientX = e.clientX;
     pendingClientY = e.clientY;
@@ -2688,10 +2955,11 @@
     }
     if (rafId === null) rafId = requestAnimationFrame(flushFrame);
   });
-  stageWrap.addEventListener("pointerdown", (e) => {
+  stageWrap2.addEventListener("pointerdown", (e) => {
     if (!state._laserMode) return;
+    if (isCameraGesture(e)) return;
     if (e.target.closest("#overview")) return;
-    stageWrap.setPointerCapture(e.pointerId);
+    stageWrap2.setPointerCapture(e.pointerId);
     const x = e.clientX - stageRect.left;
     const y = e.clientY - stageRect.top;
     currentPath = document.createElementNS(SVG_NS2, "path");
@@ -2700,8 +2968,8 @@
     overlay.appendChild(currentPath);
     isDrawing = true;
   });
-  stageWrap.addEventListener("pointerup", finalizeDraw);
-  stageWrap.addEventListener("pointercancel", finalizeDraw);
+  stageWrap2.addEventListener("pointerup", finalizeDraw);
+  stageWrap2.addEventListener("pointercancel", finalizeDraw);
   function finalizeDraw() {
     if (!isDrawing || !currentPath) return;
     isDrawing = false;
@@ -2852,26 +3120,25 @@
   // src/ts/presenter/overview.ts
   var overview = document.getElementById("overview");
   var overviewGrid = document.getElementById("overview-grid");
-  var stage3 = document.getElementById("stage");
+  var stage4 = document.getElementById("stage");
   function nextFrame() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
   function firstSlideViewBox() {
     const svg = state.slides[0]?.svg ?? "";
-    const m = svg.match(/viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"/);
-    return m ? [parseFloat(m[1]), parseFloat(m[2])] : [1920, 1080];
+    const attr = svg.match(/viewBox="([^"]*)"/)?.[1] ?? null;
+    const vb = parseViewBox(attr);
+    return [vb.w, vb.h];
   }
   function scaleThumb(thumb) {
     const svg = thumb.querySelector("svg");
     if (!svg) return;
-    const vb = (svg.getAttribute("viewBox") || "").split(/[\s,]+/).map(parseFloat);
-    if (vb.length < 4) return;
-    const vbW = vb[2], vbH = vb[3];
-    svg.setAttribute("width", String(vbW));
-    svg.setAttribute("height", String(vbH));
-    svg.style.width = `${vbW}px`;
-    svg.style.height = `${vbH}px`;
-    const scale = Math.min(thumb.clientWidth / vbW, thumb.clientHeight / vbH);
+    const vb = parseViewBox(svg.getAttribute("viewBox"));
+    svg.setAttribute("width", String(vb.w));
+    svg.setAttribute("height", String(vb.h));
+    svg.style.width = `${vb.w}px`;
+    svg.style.height = `${vb.h}px`;
+    const scale = Math.min(thumb.clientWidth / vb.w, thumb.clientHeight / vb.h);
     svg.style.transform = `scale(${scale})`;
   }
   function computeCols() {
@@ -2920,8 +3187,8 @@
     const el = thumb ?? activeCell;
     const gr = overviewGrid.getBoundingClientRect();
     const cr = el.getBoundingClientRect();
-    const sr = stage3.getBoundingClientRect();
-    const sp = parseFloat(getComputedStyle(stage3).paddingLeft) || 0;
+    const sr = stage4.getBoundingClientRect();
+    const sp = parseFloat(getComputedStyle(stage4).paddingLeft) || 0;
     const s = Math.min(
       (sr.width - 2 * sp) / cr.width,
       (sr.height - 2 * sp) / cr.height
@@ -3230,6 +3497,13 @@
     b: { action: () => toggleCurtain("black") },
     ".": { action: toggleLaser },
     w: { action: () => toggleCurtain("white") },
+    "+": { action: () => keyZoom("in") },
+    "=": { action: () => keyZoom("in") },
+    "-": { action: () => keyZoom("out") },
+    _: { action: () => keyZoom("out") },
+    "0": { action: smoothResetCamera },
+    // Only reached when no modal above claimed Escape; a no-op unless zoomed in.
+    Escape: { action: smoothResetCamera },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
