@@ -881,7 +881,7 @@ body.pv-open #pv-resize-handle {
   overflow: hidden;
   z-index: 2;
 }
-body.laser-mode #stage-wrap {
+body.laser-mode:not(.camera-armed) #stage-wrap {
   cursor: none;
 }
 #laser-dot {
@@ -898,7 +898,7 @@ body.laser-mode #stage-wrap {
   display: none;
   z-index: 3;
 }
-body.laser-mode #laser-dot {
+body.laser-mode:not(.camera-armed) #laser-dot {
   display: block;
 }
 .laser-trail {
@@ -919,6 +919,24 @@ body.laser-mode #laser-dot {
 }
 .trail {
   animation: trail-fade 1.5s ease-out forwards;
+}
+
+/* src/css/presenter/zoom.css */
+body.zoom-grabbing #stage-wrap {
+  cursor: grabbing;
+}
+body.camera-armed:not(.zoom-grabbing) #stage-wrap {
+  cursor: grab;
+}
+#zoom-indicator {
+  display: none;
+  align-items: center;
+  padding: 0 0.15rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+#zoom-indicator[data-active] {
+  display: inline-flex;
 }
 
 /* src/css/presenter/mobile.css */

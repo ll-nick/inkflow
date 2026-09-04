@@ -1,6 +1,7 @@
 import { cubicBezierEasing } from "../shared/easing";
 import { applyStepInstant, commitStepStyles } from "../shared/step";
 import type { TransitionData } from "../shared/types";
+import { formatViewBox, parseViewBox } from "../shared/viewbox";
 import { MorphTransition } from "./morph";
 import { ProgressDriver } from "./progress-driver";
 import { state } from "./state";
@@ -10,6 +11,12 @@ import {
     settleStepRun,
     updateStatus,
 } from "./status";
+import {
+    cameraIsZoomed,
+    cancelPendingNav,
+    resetCamera,
+    resetCameraThen,
+} from "./zoom";
 
 const stage = document.getElementById("stage")!;
 
@@ -363,17 +370,16 @@ function makeFadeBackdrop(
 ): HTMLDivElement {
     const layer = makeLayer();
     layer.dataset.fadeBackdrop = "1";
-    const viewBox = slideSvg?.getAttribute("viewBox") ?? "0 0 1920 1080";
+    const vb = parseViewBox(slideSvg?.getAttribute("viewBox") ?? null);
     const svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute("viewBox", formatViewBox(vb));
     svg.setAttribute(
         "preserveAspectRatio",
         slideSvg?.getAttribute("preserveAspectRatio") ?? "xMidYMid meet",
     );
-    const [, , width, height] = viewBox.split(/[\s,]+/).map(Number);
     const rect = document.createElementNS(SVG_NS, "rect");
-    rect.setAttribute("width", String(width || 0));
-    rect.setAttribute("height", String(height || 0));
+    rect.setAttribute("width", String(vb.w));
+    rect.setAttribute("height", String(vb.h));
     rect.setAttribute("fill", color);
     svg.appendChild(rect);
     layer.appendChild(svg);
@@ -447,11 +453,36 @@ registerTransition("morph", () => new MorphTransition());
 // opposite direction), and the in-flight handler implements reverse(), the
 // framework calls reverse() on the existing instance instead of cancel+restart,
 // giving smooth mid-flight direction change without a visible snap.
+//
+// If the zoom camera is engaged, the slide load waits for a short zoom-out ease
+// (resetCameraThen) and then runs; otherwise it runs straight away. A second
+// load arriving during that ease replaces the parked one (rapid navigation
+// collapses to the final slide), so a parked `then` may be dropped before its
+// body runs — fine, since the only `then` in play is idempotent sync cleanup
+// the replacing load repeats.
 export function loadSlide(
     then: (() => void) | null = null,
     transition: TransitionData | null = null,
     entryPlay = false,
 ): void {
+    const body = () => loadSlideBody(then, transition, entryPlay);
+    if (cameraIsZoomed()) {
+        resetCameraThen(body);
+    } else {
+        cancelPendingNav();
+        body();
+    }
+}
+
+function loadSlideBody(
+    then: (() => void) | null,
+    transition: TransitionData | null,
+    entryPlay: boolean,
+): void {
+    // The zoom-out ease (if any) has finished; settle the camera state and make
+    // sure the outgoing <svg> carries its authored viewBox before it is captured.
+    resetCamera();
+
     // A step run in flight (mid-chain when a slide change is triggered) is landed on its
     // destination before we capture and replace the outgoing slide.
     settleStepRun();

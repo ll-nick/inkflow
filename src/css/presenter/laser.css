@@ -10,7 +10,7 @@
     z-index: 2;
 }
 
-body.laser-mode #stage-wrap {
+body.laser-mode:not(.camera-armed) #stage-wrap {
     cursor: none;
 }
 
@@ -29,7 +29,7 @@ body.laser-mode #stage-wrap {
     z-index: 3;
 }
 
-body.laser-mode #laser-dot {
+body.laser-mode:not(.camera-armed) #laser-dot {
     display: block;
 }
 

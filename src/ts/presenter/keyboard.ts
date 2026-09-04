@@ -28,6 +28,7 @@ import {
     toggleMobileHud,
     toggleTheme,
 } from "./ui";
+import { keyZoom, smoothResetCamera } from "./zoom";
 
 // ── Stage click and status bar buttons ──
 const stageEl = document.getElementById("stage")!;
@@ -129,6 +130,13 @@ const KEYBINDINGS: Record<
     b: { action: () => toggleCurtain("black") },
     ".": { action: toggleLaser },
     w: { action: () => toggleCurtain("white") },
+    "+": { action: () => keyZoom("in") },
+    "=": { action: () => keyZoom("in") },
+    "-": { action: () => keyZoom("out") },
+    _: { action: () => keyZoom("out") },
+    "0": { action: smoothResetCamera },
+    // Only reached when no modal above claimed Escape; a no-op unless zoomed in.
+    Escape: { action: smoothResetCamera },
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },

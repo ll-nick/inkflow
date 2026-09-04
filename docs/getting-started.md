@@ -42,6 +42,7 @@ Here are a few shortcuts to get you started:
 | `↓` / `↑` | Jump to next / previous slide (skip steps) |
 | `f` | Toggle fullscreen |
 | `g` + number + `Enter` | Go to slide number |
+| `Ctrl` + scroll | Zoom (`Ctrl` + drag to pan, `0` to reset) |
 | `?` | Show all shortcuts |
 
 !!! warning "Decks are executable code"

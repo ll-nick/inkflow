@@ -1,5 +1,6 @@
 import { cubicBezierEasing } from "../shared/easing";
 import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
+import { parseViewBox } from "../shared/viewbox";
 import { ProgressDriver } from "./progress-driver";
 import { renderPv } from "./pv";
 import { state } from "./state";
@@ -17,24 +18,20 @@ function nextFrame(): Promise<void> {
 
 function firstSlideViewBox(): [number, number] {
     const svg = state.slides[0]?.svg ?? "";
-    const m = svg.match(/viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"/);
-    return m ? [parseFloat(m[1]), parseFloat(m[2])] : [1920, 1080];
+    const attr = svg.match(/viewBox="([^"]*)"/)?.[1] ?? null;
+    const vb = parseViewBox(attr);
+    return [vb.w, vb.h];
 }
 
 function scaleThumb(thumb: Element): void {
     const svg = thumb.querySelector("svg");
     if (!svg) return;
-    const vb = (svg.getAttribute("viewBox") || "")
-        .split(/[\s,]+/)
-        .map(parseFloat);
-    if (vb.length < 4) return;
-    const vbW = vb[2],
-        vbH = vb[3];
-    svg.setAttribute("width", String(vbW));
-    svg.setAttribute("height", String(vbH));
-    svg.style.width = `${vbW}px`;
-    svg.style.height = `${vbH}px`;
-    const scale = Math.min(thumb.clientWidth / vbW, thumb.clientHeight / vbH);
+    const vb = parseViewBox(svg.getAttribute("viewBox"));
+    svg.setAttribute("width", String(vb.w));
+    svg.setAttribute("height", String(vb.h));
+    svg.style.width = `${vb.w}px`;
+    svg.style.height = `${vb.h}px`;
+    const scale = Math.min(thumb.clientWidth / vb.w, thumb.clientHeight / vb.h);
     svg.style.transform = `scale(${scale})`;
 }
 
