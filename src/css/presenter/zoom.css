@@ -1,0 +1,12 @@
+
+#zoom-indicator {
+    display: none;
+    align-items: center;
+    padding: 0 0.15rem;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+#zoom-indicator[data-active] {
+    display: inline-flex;
+}
