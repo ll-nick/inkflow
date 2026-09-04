@@ -10,6 +10,12 @@ import {
     settleStepRun,
     updateStatus,
 } from "./status";
+import {
+    cameraIsZoomed,
+    cancelPendingNav,
+    resetCamera,
+    resetCameraThen,
+} from "./zoom";
 
 const stage = document.getElementById("stage")!;
 
@@ -447,11 +453,36 @@ registerTransition("morph", () => new MorphTransition());
 // opposite direction), and the in-flight handler implements reverse(), the
 // framework calls reverse() on the existing instance instead of cancel+restart,
 // giving smooth mid-flight direction change without a visible snap.
+//
+// If the zoom camera is engaged, the slide load waits for a short zoom-out ease
+// (resetCameraThen) and then runs; otherwise it runs straight away. A second
+// load arriving during that ease replaces the parked one (rapid navigation
+// collapses to the final slide), so a parked `then` may be dropped before its
+// body runs — fine, since the only `then` in play is idempotent sync cleanup
+// the replacing load repeats.
 export function loadSlide(
     then: (() => void) | null = null,
     transition: TransitionData | null = null,
     entryPlay = false,
 ): void {
+    const body = () => loadSlideBody(then, transition, entryPlay);
+    if (cameraIsZoomed()) {
+        resetCameraThen(body);
+    } else {
+        cancelPendingNav();
+        body();
+    }
+}
+
+function loadSlideBody(
+    then: (() => void) | null,
+    transition: TransitionData | null,
+    entryPlay: boolean,
+): void {
+    // The zoom-out ease (if any) has finished; settle the camera state and make
+    // sure the outgoing <svg> carries its authored viewBox before it is captured.
+    resetCamera();
+
     // A step run in flight (mid-chain when a slide change is triggered) is landed on its
     // destination before we capture and replace the outgoing slide.
     settleStepRun();
