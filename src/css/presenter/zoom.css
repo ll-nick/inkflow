@@ -1,3 +1,10 @@
+body.zoom-grabbing #stage-wrap {
+    cursor: grabbing;
+}
+
+body.camera-armed:not(.zoom-grabbing) #stage-wrap {
+    cursor: grab;
+}
 
 #zoom-indicator {
     display: none;
