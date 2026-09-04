@@ -1,4 +1,5 @@
 import { state } from "./state";
+import { isCameraGesture } from "./zoom";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const stageWrap = document.getElementById("stage-wrap") as HTMLElement;
@@ -48,8 +49,8 @@ stageWrap.addEventListener("pointermove", (e) => {
 
 stageWrap.addEventListener("pointerdown", (e) => {
     if (!state._laserMode) return;
-    // Ctrl+drag is the zoom camera's pan gesture; the dot still tracks on move.
-    if (e.ctrlKey) return;
+    // The zoom camera claims this gesture for panning; the dot still tracks on move.
+    if (isCameraGesture(e)) return;
     if ((e.target as Element).closest("#overview")) return;
     stageWrap.setPointerCapture(e.pointerId);
     const x = e.clientX - stageRect.left;

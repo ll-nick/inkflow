@@ -218,6 +218,10 @@ function overGrid(target: EventTarget | null): boolean {
     return Boolean((target as Element | null)?.closest?.("#overview"));
 }
 
+export function isCameraGesture(e: { ctrlKey: boolean }): boolean {
+    return e.ctrlKey;
+}
+
 // Cursor affordance: while Ctrl is held the stage shows a grab cursor.
 function setArmed(on: boolean): void {
     document.body.classList.toggle("camera-armed", on);
@@ -236,7 +240,7 @@ if (stageWrap) {
     wrap.addEventListener(
         "wheel",
         (e) => {
-            if (!e.ctrlKey || overGrid(e.target)) return;
+            if (!isCameraGesture(e) || overGrid(e.target)) return;
             e.preventDefault(); // otherwise the browser page-zooms
             flushPendingNav();
             cancelAnim();
@@ -251,7 +255,7 @@ if (stageWrap) {
     );
 
     wrap.addEventListener("pointerdown", (e) => {
-        if (!e.ctrlKey || overGrid(e.target)) return;
+        if (!isCameraGesture(e) || overGrid(e.target)) return;
         flushPendingNav();
         cancelAnim();
         if (!ensureBase() || !camera) return;
