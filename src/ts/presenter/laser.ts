@@ -48,6 +48,8 @@ stageWrap.addEventListener("pointermove", (e) => {
 
 stageWrap.addEventListener("pointerdown", (e) => {
     if (!state._laserMode) return;
+    // Ctrl+drag is the zoom camera's pan gesture; the dot still tracks on move.
+    if (e.ctrlKey) return;
     if ((e.target as Element).closest("#overview")) return;
     stageWrap.setPointerCapture(e.pointerId);
     const x = e.clientX - stageRect.left;
