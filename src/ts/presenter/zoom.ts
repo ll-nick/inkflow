@@ -12,15 +12,13 @@
 // Not the `transitions.Zoom` slide transition; the only shared word is "zoom".
 
 import { cubicBezierEasing } from "../shared/easing";
+import { formatViewBox, parseViewBox, type ViewBox } from "../shared/viewbox";
 import {
-    formatViewBox,
     isZoomedIn,
     lerpViewBox,
     panBy,
-    parseViewBox,
     type ScaleLimits,
     scaleOf,
-    type ViewBox,
     zoomAt,
 } from "../shared/zoom-camera";
 import { ProgressDriver } from "./progress-driver";

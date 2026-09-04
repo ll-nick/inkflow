@@ -1,49 +1,21 @@
 // Pure camera math for the presenter's zoom mode. All values are in SVG user
 // units; the DOM module maps client coordinates into this space with
 // `svg.getScreenCTM().inverse()`, so `preserveAspectRatio` letterboxing never
-// has to be handled here.
+// has to be handled here. `ViewBox` parsing/formatting itself lives in
+// `viewbox.ts`, shared with the other modules that read a slide's viewBox.
 //
 // Unrelated to the `transitions.Zoom` slide-to-slide transition — this is a live
 // pan/zoom camera driven by the `viewBox` attribute of the mounted slide.
 
-export interface ViewBox {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-}
+import type { ViewBox } from "./viewbox";
 
 export interface ScaleLimits {
     minScale: number;
     maxScale: number;
 }
 
-const DEFAULT_VIEWBOX = "0 0 1920 1080";
-
 function clamp(n: number, lo: number, hi: number): number {
     return Math.min(Math.max(n, lo), hi);
-}
-
-export function parseViewBox(
-    attr: string | null,
-    fallback = DEFAULT_VIEWBOX,
-): ViewBox {
-    const parts = (attr ?? "")
-        .trim()
-        .split(/[\s,]+/)
-        .map(Number);
-    const valid =
-        parts.length === 4 &&
-        parts.every((n) => Number.isFinite(n)) &&
-        parts[2] > 0 &&
-        parts[3] > 0;
-    const [x, y, w, h] = valid ? parts : fallback.split(/[\s,]+/).map(Number);
-    return { x, y, w, h };
-}
-
-export function formatViewBox(vb: ViewBox): string {
-    const round = (n: number) => Math.round(n * 1000) / 1000;
-    return `${round(vb.x)} ${round(vb.y)} ${round(vb.w)} ${round(vb.h)}`;
 }
 
 export function scaleOf(vb: ViewBox, base: ViewBox): number {

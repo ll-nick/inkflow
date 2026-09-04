@@ -1,42 +1,17 @@
 import { describe, expect, test } from "vitest";
+import type { ViewBox } from "./viewbox";
 import {
     clampToBounds,
-    formatViewBox,
     isZoomedIn,
     lerpViewBox,
     panBy,
-    parseViewBox,
     scaleOf,
-    type ViewBox,
     zoomAt,
 } from "./zoom-camera";
 
 const BASE: ViewBox = { x: 0, y: 0, w: 1920, h: 1080 };
 const LIMITS = { minScale: 1, maxScale: 8 };
 const CENTER = { ux: 960, uy: 540 };
-
-describe("parseViewBox / formatViewBox", () => {
-    test("round-trips a plain viewBox string", () => {
-        expect(formatViewBox(parseViewBox("0 0 1920 1080"))).toBe(
-            "0 0 1920 1080",
-        );
-    });
-
-    test("accepts comma and whitespace separators", () => {
-        expect(parseViewBox("10, 20, 300, 400")).toEqual({
-            x: 10,
-            y: 20,
-            w: 300,
-            h: 400,
-        });
-    });
-
-    test("falls back on a missing or malformed value", () => {
-        expect(parseViewBox(null)).toEqual(BASE);
-        expect(parseViewBox("nope")).toEqual(BASE);
-        expect(parseViewBox("0 0 -5 0")).toEqual(BASE);
-    });
-});
 
 describe("zoomAt", () => {
     test("zooming in at the centre halves the box and doubles the scale", () => {

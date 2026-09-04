@@ -1,6 +1,7 @@
 import { cubicBezierEasing } from "../shared/easing";
 import { applyStepInstant, commitStepStyles } from "../shared/step";
 import type { TransitionData } from "../shared/types";
+import { formatViewBox, parseViewBox } from "../shared/viewbox";
 import { MorphTransition } from "./morph";
 import { ProgressDriver } from "./progress-driver";
 import { state } from "./state";
@@ -369,17 +370,16 @@ function makeFadeBackdrop(
 ): HTMLDivElement {
     const layer = makeLayer();
     layer.dataset.fadeBackdrop = "1";
-    const viewBox = slideSvg?.getAttribute("viewBox") ?? "0 0 1920 1080";
+    const vb = parseViewBox(slideSvg?.getAttribute("viewBox") ?? null);
     const svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute("viewBox", formatViewBox(vb));
     svg.setAttribute(
         "preserveAspectRatio",
         slideSvg?.getAttribute("preserveAspectRatio") ?? "xMidYMid meet",
     );
-    const [, , width, height] = viewBox.split(/[\s,]+/).map(Number);
     const rect = document.createElementNS(SVG_NS, "rect");
-    rect.setAttribute("width", String(width || 0));
-    rect.setAttribute("height", String(height || 0));
+    rect.setAttribute("width", String(vb.w));
+    rect.setAttribute("height", String(vb.h));
     rect.setAttribute("fill", color);
     svg.appendChild(rect);
     layer.appendChild(svg);

@@ -1,5 +1,6 @@
 import { buildStepRing } from "../shared/ring";
 import { applyStepInstant } from "../shared/step";
+import { parseViewBox } from "../shared/viewbox";
 import { state } from "./state";
 import { maxStep } from "./status";
 
@@ -80,22 +81,17 @@ export function updatePvInfo(): void {
 function _scalePvNext(): void {
     const svg = pvNextInner.querySelector("svg");
     if (!svg) return;
-    const vb = (svg.getAttribute("viewBox") ?? "")
-        .split(/[\s,]+/)
-        .map(parseFloat);
-    if (vb.length < 4) return;
-    const vbW = vb[2];
-    const vbH = vb[3];
-    svg.setAttribute("width", String(vbW));
-    svg.setAttribute("height", String(vbH));
-    svg.style.width = `${vbW}px`;
-    svg.style.height = `${vbH}px`;
+    const vb = parseViewBox(svg.getAttribute("viewBox"));
+    svg.setAttribute("width", String(vb.w));
+    svg.setAttribute("height", String(vb.h));
+    svg.style.width = `${vb.w}px`;
+    svg.style.height = `${vb.h}px`;
     const scale = Math.min(
-        pvNextInner.clientWidth / vbW,
-        pvNextInner.clientHeight / vbH,
+        pvNextInner.clientWidth / vb.w,
+        pvNextInner.clientHeight / vb.h,
     );
-    const tx = (pvNextInner.clientWidth - vbW * scale) / 2;
-    const ty = (pvNextInner.clientHeight - vbH * scale) / 2;
+    const tx = (pvNextInner.clientWidth - vb.w * scale) / 2;
+    const ty = (pvNextInner.clientHeight - vb.h * scale) / 2;
     svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
 }
 
