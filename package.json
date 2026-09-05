@@ -3,7 +3,7 @@
     "devDependencies": {
         "@biomejs/biome": "^2",
         "esbuild": "^0.28",
-        "happy-dom": "^20.11.6",
+        "happy-dom": "^20.13.2",
         "typescript": "^7",
         "vitest": "^4.1.11"
     }
