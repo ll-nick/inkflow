@@ -71,8 +71,8 @@ See [Authoring slides](slides.md#speaker-notes) and
 ## Using a second screen
 
 To present on a projector while keeping the panel on your laptop screen,
-click the "Open presenter view" button in the status bar.
-It opens a second window at the same position
+click the "Open a synced window" button in the status bar.
+It opens another window at the same position
 (see [Multi-window sync](#multi-window-sync) for what makes this work in a static build).
 In the window on your laptop screen, press <kbd>p</kbd> to open the panel.
 Leave the other window full-screen on the projector.
@@ -90,7 +90,7 @@ How position sync reaches other windows depends on how the deck is running:
 - **`inkflow build` output** (including a bare `file://` double-click, with no server at all)
   has no WebSocket to relay over,
   so it syncs exactly **two** windows directly:
-  the one you launch "Open presenter view" from, and the window it opens.
+  the one you launch "Open a synced window" from, and the window it opens.
   They talk to each other over a direct browser-to-browser link
   that only exists between opener and opened window,
   so a second window opened independently
