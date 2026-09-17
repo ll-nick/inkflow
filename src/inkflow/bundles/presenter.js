@@ -282,6 +282,7 @@
     _overviewActive: 0,
     _overviewCols: 1,
     ws: null,
+    windowLink: null,
     _syncingFromServer: false,
     _laserMode: false
   };
@@ -2729,33 +2730,69 @@
     }
     if (receives()) requestSync();
   }
+  function postToPeer(msg) {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      state.ws.send(JSON.stringify(msg));
+    } else if (state.windowLink && !state.windowLink.closed) {
+      state.windowLink.postMessage(msg, "*");
+    }
+  }
   function requestSync() {
-    if (state.ws && state.ws.readyState === WebSocket.OPEN)
-      state.ws.send(JSON.stringify({ type: "sync-request" }));
+    postToPeer({ type: "sync-request" });
   }
   function sendNav(transition) {
-    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer || !sends())
-      return;
-    state.ws.send(
-      JSON.stringify({
-        type: "nav",
-        slideIndex: state.slideIndex,
-        step: state.step,
-        ...transition ? { transition } : {}
-      })
-    );
+    if (state._syncingFromServer || !sends()) return;
+    postToPeer({
+      type: "nav",
+      slideIndex: state.slideIndex,
+      step: state.step,
+      ...transition ? { transition } : {}
+    });
   }
   function sendSnap() {
-    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state._syncingFromServer || !sends())
+    if (state._syncingFromServer || !sends()) return;
+    postToPeer({
+      type: "nav",
+      slideIndex: state.slideIndex,
+      step: state.step,
+      snap: true
+    });
+  }
+  function currentNavMessage() {
+    return { type: "nav", slideIndex: state.slideIndex, step: state.step };
+  }
+  function applyIncomingPosition(msg) {
+    if (!receives()) return;
+    if (msg.snap) {
+      snapInflight();
+      snapStepRun();
       return;
-    state.ws.send(
-      JSON.stringify({
-        type: "nav",
-        slideIndex: state.slideIndex,
-        step: state.step,
-        snap: true
-      })
+    }
+    const newIndex = Math.min(
+      Math.max(0, msg.slideIndex | 0),
+      Math.max(0, state.slides.length - 1)
     );
+    const newStep = Math.max(0, msg.step | 0);
+    if (newIndex === state.slideIndex && newStep === state.step) return;
+    if (newIndex === state.slideIndex) {
+      const prevStep = state.step;
+      state._syncingFromServer = true;
+      state.step = newStep;
+      if (Math.abs(newStep - prevStep) === 1) applyCurrentStep();
+      else applyCurrentStepInstant();
+      state._syncingFromServer = false;
+      renderPvNext();
+      updatePvInfo();
+      return;
+    }
+    state._syncingFromServer = true;
+    state.slideIndex = newIndex;
+    state.step = newStep;
+    loadSlide(() => {
+      if (state.step > 0) applyCurrentStep();
+      state._syncingFromServer = false;
+    }, msg.transition ?? null);
+    renderPv();
   }
   function connectWS(wsPort, authoritative) {
     if (!wsPort) return;
@@ -2793,41 +2830,11 @@
       } else if (msg.type === "error") {
         showError(msg.message);
       } else if (msg.type === "position") {
-        if (!receives()) return;
-        if (msg.snap) {
-          snapInflight();
-          snapStepRun();
-          return;
-        }
-        if (firstPositionPending) {
+        if (receives() && !msg.snap && firstPositionPending) {
           firstPositionPending = false;
           return;
         }
-        const newIndex = Math.min(
-          Math.max(0, msg.slideIndex | 0),
-          Math.max(0, state.slides.length - 1)
-        );
-        const newStep = Math.max(0, msg.step | 0);
-        if (newIndex === state.slideIndex && newStep === state.step) return;
-        if (newIndex === state.slideIndex) {
-          const prevStep = state.step;
-          state._syncingFromServer = true;
-          state.step = newStep;
-          if (Math.abs(newStep - prevStep) === 1) applyCurrentStep();
-          else applyCurrentStepInstant();
-          state._syncingFromServer = false;
-          renderPvNext();
-          updatePvInfo();
-          return;
-        }
-        state._syncingFromServer = true;
-        state.slideIndex = newIndex;
-        state.step = newStep;
-        loadSlide(() => {
-          if (state.step > 0) applyCurrentStep();
-          state._syncingFromServer = false;
-        }, msg.transition ?? null);
-        renderPv();
+        applyIncomingPosition(msg);
       }
     };
     state.ws.onclose = () => {
@@ -2841,8 +2848,6 @@
   // src/ts/presenter/syncmenu.ts
   var btnSync = document.getElementById("btn-sync");
   var syncMenu = document.getElementById("sync-menu");
-  var syncWrap = btnSync.closest(".sync-wrap");
-  var enabled = false;
   var SYNC_ORDER = ["two-way", "present", "follow", "solo"];
   var SYNC_LABELS = {
     "two-way": "Two-way (send + receive)",
@@ -2867,7 +2872,6 @@
     closeMenu();
   }
   function cycleSyncMode() {
-    if (!enabled) return;
     const i = SYNC_ORDER.indexOf(state.syncMode);
     setSyncMode(SYNC_ORDER[(i + 1) % SYNC_ORDER.length]);
   }
@@ -2898,13 +2902,7 @@
     if (syncMenu.classList.contains("open")) closeMenu();
     else openMenu();
   }
-  function initSyncMenu(wsPort) {
-    if (!wsPort) {
-      syncWrap.style.display = "none";
-      document.getElementById("help-sync-row").style.display = "none";
-      return;
-    }
-    enabled = true;
+  function initSyncMenu() {
     btnSync.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleMenu();
@@ -2915,6 +2913,62 @@
         () => setSyncMode(row.dataset.mode)
       );
     renderSyncButton();
+  }
+
+  // src/ts/presenter/windowsync.ts
+  var statusDot = document.getElementById("ws-dot");
+  var btnPresenterView = document.getElementById("btn-presenter-view");
+  var POLL_INTERVAL_MS = 300;
+  var POPUP_BLOCKED_MESSAGE = "Pop-up blocked \u2014 allow pop-ups for this page to open the presenter view.";
+  function isSyncPayload(data) {
+    if (typeof data !== "object" || data === null) return false;
+    const msg = data;
+    return msg.type === "nav" && typeof msg.slideIndex === "number" && typeof msg.step === "number";
+  }
+  function isSyncRequest(data) {
+    return typeof data === "object" && data !== null && data.type === "sync-request";
+  }
+  var linkHandler;
+  var linkPoll;
+  function attachLink(win, requestCatchUp = false) {
+    state.windowLink = win;
+    statusDot.className = "connected";
+    btnPresenterView.style.display = "none";
+    linkHandler = (e) => {
+      if (e.source !== win || e.origin !== window.origin) return;
+      if (isSyncRequest(e.data)) {
+        win.postMessage(currentNavMessage(), "*");
+        return;
+      }
+      if (isSyncPayload(e.data)) applyIncomingPosition(e.data);
+    };
+    window.addEventListener("message", linkHandler);
+    linkPoll = setInterval(() => {
+      if (win.closed) detachLink();
+    }, POLL_INTERVAL_MS);
+    if (requestCatchUp) requestSync();
+  }
+  function detachLink() {
+    state.windowLink = null;
+    statusDot.className = "";
+    btnPresenterView.style.display = "";
+    if (linkHandler) window.removeEventListener("message", linkHandler);
+    linkHandler = void 0;
+    clearInterval(linkPoll);
+    linkPoll = void 0;
+  }
+  function initWindowSync(wsPort) {
+    btnPresenterView.addEventListener("click", () => {
+      if (wsPort === null && state.windowLink) return;
+      const child = window.open(location.href);
+      if (!child) {
+        showLogs([{ level: "warning", message: POPUP_BLOCKED_MESSAGE }]);
+        return;
+      }
+      if (wsPort === null) attachLink(child);
+    });
+    if (wsPort !== null) return;
+    if (window.opener) attachLink(window.opener, true);
   }
 
   // src/ts/presenter/laser.ts
@@ -3594,7 +3648,8 @@
     renderPv();
   });
   loadSyncMode();
-  initSyncMenu(WS_PORT);
+  initSyncMenu();
+  initWindowSync(WS_PORT);
   var deepLinked = readURL();
   loadSlide();
   renderPv();
