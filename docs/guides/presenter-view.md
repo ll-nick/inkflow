@@ -70,28 +70,47 @@ See [Authoring slides](slides.md#speaker-notes) and
 
 ## Using a second screen
 
-To present on a projector while keeping the panel on your laptop screen, open two
-browser windows at the same URL (`http://localhost:7777`).
+To present on a projector while keeping the panel on your laptop screen,
+click the "Open presenter view" button in the status bar.
+It opens a second window at the same position
+(see [Multi-window sync](#multi-window-sync) for what makes this work in a static build).
 In the window on your laptop screen, press <kbd>p</kbd> to open the panel.
 Leave the other window full-screen on the projector.
 
-Navigation in either window is broadcast to the other over WebSocket, so both
-stay in sync regardless of which one you use to advance.
+Navigation in either window is broadcast to the other,
+so both stay in sync regardless of which one you use to advance.
 
 ## Multi-window sync
 
-Position sync runs over the same WebSocket the main view uses for live reload.
-Any number of windows can be open at once:
+How position sync reaches other windows depends on how the deck is running:
 
-- A navigation in any window is broadcast to every other open window.
-- A window opened at the bare URL adopts the shared position on connect, so it
-  lands where the presenter already is (second-screen follow).
+- **`inkflow serve`** relays it over the same WebSocket the main view uses for live reload.
+  Any number of windows can be open at once,
+  connected however you like: a fresh tab, another browser, even another device on the network.
+- **`inkflow build` output** (including a bare `file://` double-click, with no server at all)
+  has no WebSocket to relay over,
+  so it syncs exactly **two** windows directly:
+  the one you launch "Open presenter view" from, and the window it opens.
+  They talk to each other over a direct browser-to-browser link
+  that only exists between opener and opened window,
+  so a second window opened independently
+  (a fresh tab typed in by hand, rather than via the button) will not join the sync.
+
+Within either mode:
+
+- A navigation in one window is broadcast to the other(s).
+- A window opened at the bare URL (via the button) adopts the shared position on
+  connect, so it lands where the presenter already is (second-screen follow).
 - A window opened at a deliberate deep link (a URL naming a slide, such as
   `#slide=5`) keeps that slide instead of being pulled to the shared position. A
   browser refresh counts as a deep link, so reloading never yanks a window off its
   slide. The slide lives in the URL fragment so the link works the same whether
   the deck is served, hosted as a static build, or opened straight from disk.
-- After a deck rebuild, the position is preserved (clamped if the slide count drops).
+- Under `serve`, the position is preserved across a deck rebuild (clamped if the
+  slide count drops).
+
+The [sync modes](#sync-modes) below (two-way/present/follow/solo) work identically
+in both cases — only the transport between windows differs.
 
 ### Sync modes
 
