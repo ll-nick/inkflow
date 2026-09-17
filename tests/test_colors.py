@@ -163,3 +163,18 @@ def test_colorize_svg_handles_uppercase_hex() -> None:
     result, changed = colorize_svg(svg, _HEX_MAP)
     assert changed
     assert "inkflow-fill-accent" in result
+
+
+def test_colorize_svg_style_fill_overrides_stale_attribute() -> None:
+    """A ``style`` fill wins the CSS cascade over a ``fill`` attribute, so a
+    stale attribute left over from a copy-paste must not get its own class."""
+    hex_map = hex_to_class_map({"accent": "#cba6f7", "teal": "#cdd6f4"})
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<rect fill="#cdd6f4" style="fill:#cba6f7"/></svg>'
+    )
+    result, changed = colorize_svg(svg, hex_map)
+    assert changed
+    assert "inkflow-fill-accent" in result
+    assert "inkflow-fill-teal" not in result
+    assert 'fill="#cdd6f4"' not in result
