@@ -37,7 +37,7 @@ window.addEventListener("popstate", () => {
     renderPv();
 });
 loadSyncMode();
-initSyncMenu(WS_PORT);
+initSyncMenu();
 // Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
 const deepLinked = readURL();
 loadSlide();
