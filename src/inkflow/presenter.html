@@ -140,7 +140,7 @@
     </aside>
   </div>
   <div id="statusbar">
-    <button type="button" class="hud-btn" id="btn-theme" title="Toggle dark/light">
+    <button type="button" class="hud-btn" id="btn-theme" data-tooltip="Toggle dark/light" aria-label="Toggle dark/light">
       <svg class="icon-sun" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="pointer-events:none">
         <circle cx="8" cy="8" r="3"/>
         <line x1="8" y1="1" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15"/>
@@ -153,23 +153,23 @@
       </svg>
     </button>
     <span class="hud-sep"></span>
-    <button type="button" class="hud-btn" id="btn-prev" title="Previous (← h Backspace)">
+    <button type="button" class="hud-btn" id="btn-prev" data-tooltip="Previous (← h Backspace)" aria-label="Previous">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M10 12L6 8l4-4"/>
       </svg>
     </button>
-    <button type="button" class="hud-btn" id="btn-fullscreen" title="Fullscreen (f)">
+    <button type="button" class="hud-btn" id="btn-fullscreen" data-tooltip="Fullscreen (f)" aria-label="Fullscreen">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M1 5V2h3M12 2h3v3M15 11v3h-3M4 14H1v-3"/>
       </svg>
     </button>
-    <button type="button" class="hud-btn" id="btn-next" title="Next (→ l Space)">
+    <button type="button" class="hud-btn" id="btn-next" data-tooltip="Next (→ l Space)" aria-label="Next">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M6 4l4 4-4 4"/>
       </svg>
     </button>
     <span class="hud-sep"></span>
-    <button type="button" class="hud-btn" id="btn-overview" title="Overview (o)">
+    <button type="button" class="hud-btn" id="btn-overview" data-tooltip="Overview (o)" aria-label="Overview">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="pointer-events:none">
         <rect x="1.5" y="1.5" width="5" height="5" rx="0.75"/>
         <rect x="9.5" y="1.5" width="5" height="5" rx="0.75"/>
@@ -177,7 +177,7 @@
         <rect x="9.5" y="9.5" width="5" height="5" rx="0.75"/>
       </svg>
     </button>
-    <button type="button" class="hud-btn" id="btn-presenter" title="Presenter view (p)">
+    <button type="button" class="hud-btn" id="btn-presenter" data-tooltip="Presenter view (p)" aria-label="Presenter view">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <rect x="1" y="2" width="14" height="10" rx="1.5"/>
         <path d="M5.5 15h5M8 12v3"/>
@@ -188,7 +188,7 @@
          that direction is off. The same glyph drives the collapsed button and every
          menu row (fade state keyed off data-mode in sync.css). Menu opens upward. -->
     <span class="sync-wrap">
-      <button type="button" class="hud-btn" id="btn-sync" aria-haspopup="true" aria-expanded="false" title="Sync mode (s)">
+      <button type="button" class="hud-btn" id="btn-sync" aria-haspopup="true" aria-expanded="false" data-tooltip="Sync mode (s)" aria-label="Sync mode">
         <svg class="sync-glyph" viewBox="0 0 16 16" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
           <g class="arrow-up"><path d="M4.5 14V3"/><path d="M1.5 6 4.5 3 7.5 6"/></g>
           <g class="arrow-down"><path d="M11.5 2v11"/><path d="M8.5 10 11.5 13 14.5 10"/></g>
@@ -225,7 +225,7 @@
         </button>
       </div>
     </span>
-    <button type="button" class="hud-btn" id="btn-presenter-view" title="Open presenter view" aria-label="Open presenter view">
+    <button type="button" class="hud-btn" id="btn-presenter-view" data-tooltip="Open a synced window" aria-label="Open a synced window">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M6.5 2H2.75A.75.75 0 0 0 2 2.75v10.5c0 .414.336.75.75.75h10.5a.75.75 0 0 0 .75-.75V9.5"/>
         <path d="M9.5 2h4v4"/>
@@ -239,7 +239,7 @@
     <span class="sep">|</span>
     <span id="step-info">step –</span>
     <span class="hud-sep"></span>
-    <button type="button" class="hud-btn" id="log-indicator" title="Show messages" aria-label="Show messages">
+    <button type="button" class="hud-btn" id="log-indicator" data-tooltip="Show messages" aria-label="Show messages">
       <svg class="log-ic log-ic-debug" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <circle cx="8" cy="8" r="4"/>
       </svg>
