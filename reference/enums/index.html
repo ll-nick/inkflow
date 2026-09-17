@@ -1,0 +1,2581 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Beautiful slides from SVG. Your editor, your style.">
+      
+      
+      
+        <link rel="canonical" href="https://ll-nick.github.io/inkflow/reference/enums/">
+      
+      
+        <link rel="prev" href="../theme/">
+      
+      
+        <link rel="next" href="../animations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo-light-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Enums - Inkflow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#enums-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Inkflow" class="md-header__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Inkflow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Enums
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Inkflow" class="md-nav__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    Inkflow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/slides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authoring slides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/layout-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout system
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/themes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/fonts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fonts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/presenter-view/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presenter view
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enums
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Easing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Easing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Easing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow.enums.Easing.cubic_bezier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cubic_bezier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow.enums.Easing.raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trigger
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trigger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow.enums.Trigger.at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        at
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.AnimationKind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AnimationKind
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Align" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Align
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.VAlign" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VAlign
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.MediaFit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaFit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.MediaAlign" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaAlign
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Muted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Muted
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.ColorMode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorMode
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../animations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../built-in-theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Easing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Easing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Easing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow.enums.Easing.cubic_bezier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cubic_bezier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow.enums.Easing.raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trigger
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trigger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow.enums.Trigger.at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        at
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.AnimationKind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AnimationKind
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Align" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Align
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.VAlign" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VAlign
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.MediaFit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaFit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.MediaAlign" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaAlign
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.Muted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Muted
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow.enums.ColorMode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorMode
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="enums-reference">Enums reference<a class="headerlink" href="#enums-reference" title="Permanent link">&para;</a></h1>
+<p>Shared value types used across Inkflow.
+All are imported from the top-level <code>inkflow</code> package:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">Align</span><span class="p">,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">AnimationKind</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">ColorMode</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">Direction</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">Easing</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">MediaAlign</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">MediaFit</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">Muted</span><span class="p">,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">Trigger</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">VAlign</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span>
+</code></pre></div>
+<p>Most are fixed sets of choices. <code>Easing</code> also accepts custom curves, so
+alongside its named presets (<code>Easing.EASE_IN_OUT</code>) it offers
+<code>Easing.cubic_bezier(...)</code> and <code>Easing.raw(...)</code>. <code>Trigger</code> follows the same
+value-object shape: presets (<code>Trigger.ON_CLICK</code>, <code>Trigger.WITH_PREVIOUS</code>,
+<code>Trigger.AFTER_PREVIOUS</code>) plus a <code>Trigger.at(n)</code> constructor to pin an absolute step.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.Direction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">Direction</span>
+
+
+<a href="#inkflow.enums.Direction" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="inkflow.enums._KebabStrEnum">_KebabStrEnum</span></code></p>
+
+
+
+        <p>Direction for animations and transitions that move along an axis.</p>
+<p>Used by <code>SlideIn</code>, <code>SlideOut</code>, <code>Push</code>, <code>Cover</code>, and <code>Wipe</code>. The
+member value (<code>"left"</code>, <code>"right"</code>, …) is the wire value sent to the
+presenter; for slide animations it resolves to the cue's <code>from-x</code>/<code>from-y</code>
+offset.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Direction.LEFT">LEFT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Leftward.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Direction.RIGHT">RIGHT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Rightward.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Direction.UP">UP</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Upward.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Direction.DOWN">DOWN</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Downward.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.Easing" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">Easing</span>
+
+
+<a href="#inkflow.enums.Easing" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="str">str</span></code></p>
+
+
+
+        <p>A CSS easing curve for animations and transitions.</p>
+<p>Use a named preset for the common curves, or build a custom one with
+<code>cubic_bezier</code> or <code>raw</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"#a"</span><span class="p">,</span> <span class="n">easing</span><span class="o">=</span><span class="n">Easing</span><span class="o">.</span><span class="n">EASE_IN_OUT</span><span class="p">)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">SlideIn</span><span class="p">(</span><span class="s2">"#a"</span><span class="p">,</span> <span class="n">easing</span><span class="o">=</span><span class="n">Easing</span><span class="o">.</span><span class="n">cubic_bezier</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">Highlight</span><span class="p">(</span><span class="s2">"#a"</span><span class="p">,</span> <span class="n">easing</span><span class="o">=</span><span class="n">Easing</span><span class="o">.</span><span class="n">raw</span><span class="p">(</span><span class="s2">"steps(4, end)"</span><span class="p">))</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.EASE">EASE</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>ease</code> curve (slow start, fast middle, slow end).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.EASE_IN">EASE_IN</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>ease-in</code> curve (slow start).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.EASE_OUT">EASE_OUT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>ease-out</code> curve (slow end).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.EASE_IN_OUT">EASE_IN_OUT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>ease-in-out</code> curve (slow start and end).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.LINEAR">LINEAR</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>linear</code> curve (constant rate).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.STEP_START">STEP_START</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>step-start</code> curve (jump to the end state immediately).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Easing.STEP_END">STEP_END</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The CSS <code>step-end</code> curve (hold, then jump at the end).</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Easing (inkflow.enums.Easing)" href="#inkflow.enums.Easing">Easing</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="inkflow.enums.Easing.cubic_bezier" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">cubic_bezier</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#inkflow.enums.Easing.cubic_bezier" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">cubic_bezier</span><span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">x1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y2</span><span class="p">:</span> <span class="nb">float</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Easing</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A custom cubic-bézier curve as an <code>Easing</code> (the CSS function string).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="inkflow.enums.Easing.raw" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">raw</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#inkflow.enums.Easing.raw" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">raw</span><span class="p">(</span><span class="n">css</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Easing</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Any CSS easing string verbatim, e.g. <code>Easing.raw("steps(4, end)")</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.Trigger" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">Trigger</span>
+
+
+<a href="#inkflow.enums.Trigger" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="str">str</span></code></p>
+
+
+
+        <p>When a cue fires. You set the intent; step numbers are inferred.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"headline"</span><span class="p">)</span>                          <span class="c1"># on the next keypress</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"subtitle"</span><span class="p">,</span> <span class="n">Trigger</span><span class="o">.</span><span class="n">WITH_PREVIOUS</span><span class="p">)</span>   <span class="c1"># with the previous cue</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"caption"</span><span class="p">,</span> <span class="n">Trigger</span><span class="o">.</span><span class="n">AFTER_PREVIOUS</span><span class="p">)</span>   <span class="c1"># automatically, once it finishes</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"arrow"</span><span class="p">,</span> <span class="n">Trigger</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>              <span class="c1"># pinned to step 3</span>
+</code></pre></div>
+<p>Markdown reveals accept the same values via <code>trigger=</code>
+(<code>::step trigger=with-previous::</code>, <code>::step trigger=after-previous::</code>,
+<code>::step trigger=3::</code>).</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Trigger.ON_CLICK">ON_CLICK</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The default: the cue fires on the next keypress.</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Trigger (inkflow.enums.Trigger)" href="#inkflow.enums.Trigger">Trigger</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Trigger.WITH_PREVIOUS">WITH_PREVIOUS</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Fire together with the previous cue. When it comes first, the element is</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Trigger (inkflow.enums.Trigger)" href="#inkflow.enums.Trigger">Trigger</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Trigger.AFTER_PREVIOUS">AFTER_PREVIOUS</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Fire automatically once the previous cue finishes.</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="Trigger (inkflow.enums.Trigger)" href="#inkflow.enums.Trigger">Trigger</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Trigger.explicit_step">explicit_step</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The step for a <code>Trigger.at(...)</code> value, or <code>None</code> for a preset.</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><span title="int">int</span> | None</code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="inkflow.enums.Trigger.at" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">at</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#inkflow.enums.Trigger.at" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">at</span><span class="p">(</span><span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Trigger</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Pin the cue to an absolute step number.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.AnimationKind" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">AnimationKind</span>
+
+
+<a href="#inkflow.enums.AnimationKind" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="inkflow.enums._KebabStrEnum">_KebabStrEnum</span></code></p>
+
+
+
+        <p>The role an animation plays in an element's lifecycle.</p>
+<p>Determines how the step engine composes several cues on one element: enters
+reveal, exits hide, and emphasis fires momentarily without changing whether the
+element is shown. The step engine keeps at most one enter/exit governing an
+element's visibility at a time, so an element can enter, be emphasized, and exit
+at different steps, and can even re-enter after an exit.</p>
+<p>Set on the semantic base classes (<code>animations.Enter</code>/<code>Exit</code>/<code>Emphasis</code>);
+concrete types inherit it, so authors pick a kind by which base they subclass.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.AnimationKind.ENTER">ENTER</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Reveals the element; it is hidden before this cue's step and shown after.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.AnimationKind.EXIT">EXIT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Hides the element; it is shown before this cue's step and hidden after.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.AnimationKind.EMPHASIS">EMPHASIS</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>A momentary accent (e.g. a pulse) that leaves visibility unchanged. Plays only</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.Align" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">Align</span>
+
+
+<a href="#inkflow.enums.Align" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="inkflow.enums._KebabStrEnum">_KebabStrEnum</span></code></p>
+
+
+
+        <p>Horizontal text alignment for a <code>TextBox</code> or Markdown zone.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Align.LEFT">LEFT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Left-aligned (the default when no override is set).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Align.CENTER">CENTER</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Centered.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Align.RIGHT">RIGHT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Right-aligned.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Align.JUSTIFY">JUSTIFY</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Justified.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.VAlign" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">VAlign</span>
+
+
+<a href="#inkflow.enums.VAlign" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="enum.StrEnum">StrEnum</span></code></p>
+
+
+
+        <p>Vertical alignment of the content block inside a zone.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.VAlign.TOP">TOP</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Anchored to the top of the zone (the default when no override is set).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.VAlign.CENTER">CENTER</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Centered vertically.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.VAlign.BOTTOM">BOTTOM</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Anchored to the bottom of the zone.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.MediaFit" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">MediaFit</span>
+
+
+<a href="#inkflow.enums.MediaFit" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="inkflow.enums._KebabStrEnum">_KebabStrEnum</span></code></p>
+
+
+
+        <p>CSS <code>object-fit</code> preset for a <code>Media</code> asset.</p>
+<p>The member value is the literal <code>object-fit</code> value emitted into the style.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaFit.CONTAIN">CONTAIN</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Scale to fit inside the zone, preserving aspect ratio (<code>contain</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaFit.COVER">COVER</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Fill the zone, cropping overflow, preserving aspect ratio (<code>cover</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaFit.FILL">FILL</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Stretch to fill the zone, ignoring aspect ratio (<code>fill</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaFit.NONE">NONE</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Keep intrinsic size, no scaling (<code>none</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaFit.SCALE_DOWN">SCALE_DOWN</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The smaller of <code>none</code> and <code>contain</code> (<code>scale-down</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.MediaAlign" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">MediaAlign</span>
+
+
+<a href="#inkflow.enums.MediaAlign" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="inkflow.enums._KebabStrEnum">_KebabStrEnum</span></code></p>
+
+
+
+        <p><code>object-position</code> preset for a <code>Media</code> asset.</p>
+<p>Each member maps to an <code>(x, y)</code> percentage pair via <code>position</code>, used to
+build the <code>object-position</code> declaration.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.CENTER">CENTER</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Centered (50% 50%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.TOP">TOP</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Top edge, horizontally centered (50% 0%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.BOTTOM">BOTTOM</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Bottom edge, horizontally centered (50% 100%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.LEFT">LEFT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Left edge, vertically centered (0% 50%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.RIGHT">RIGHT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Right edge, vertically centered (100% 50%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.TOP_LEFT">TOP_LEFT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Top-left corner (0% 0%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.TOP_RIGHT">TOP_RIGHT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Top-right corner (100% 0%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.BOTTOM_LEFT">BOTTOM_LEFT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Bottom-left corner (0% 100%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.BOTTOM_RIGHT">BOTTOM_RIGHT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Bottom-right corner (100% 100%).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.MediaAlign.position">position</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>The <code>object-position</code> percentage pair <code>(x, y)</code> for this alignment.</p>
+              </div>
+              <p>
+                  <span class="doc-attribute-annotation">
+                    <b>TYPE:</b>
+                      <code><span title="tuple">tuple</span>[<span title="int">int</span>, <span title="int">int</span>]</code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.Muted" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">Muted</span>
+
+
+<a href="#inkflow.enums.Muted" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="enum.Enum">Enum</span></code></p>
+
+
+
+        <p>Audio muting policy for a <code>Video</code>.</p>
+<p>Unlike the other enums here this never becomes a CSS/HTML value; it is
+resolved in Python to <em>whether</em> the <code>&lt;video&gt;</code> gets a <code>muted</code> attribute,
+so it is a plain <code>Enum</code>, not a <code>_KebabStrEnum</code>.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Muted.AUTO">AUTO</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Muted <strong>iff</strong> the video autoplays. Sidesteps the browser's autoplay block</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Muted.ON">ON</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Always muted.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.Muted.OFF">OFF</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Always unmuted. Explicit opt-in: an autoplaying clip may be blocked by the</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="inkflow.enums.ColorMode" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ColorMode</span>
+
+
+<a href="#inkflow.enums.ColorMode" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="enum.StrEnum">StrEnum</span></code></p>
+
+
+
+        <p>Color mode for the presentation. Sets the <code>data-theme</code> attribute on
+<code>&lt;html&gt;</code>, which selects the active theme CSS.</p>
+
+
+
+
+
+
+
+
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">ATTRIBUTE</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.ColorMode.DARK">DARK</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Dark theme (<code>data-theme=""</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="inkflow.enums.ColorMode.LIGHT">LIGHT</span></code></td>
+            <td class="doc-attribute-details">
+              <div class="doc-md-description">
+                <p>Light theme (<code>data-theme="light"</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{#-
+  Suppress the exploded per-attribute doc block whenever the parent class
+  opted into a `summary: {attributes: true}` table — the table already
+  covers name + description, so the detailed heading below it is redundant.
+-#}
+{% if not config.summary.attributes %}
+{% include "_base/attribute.html.jinja" %}
+{% endif %}

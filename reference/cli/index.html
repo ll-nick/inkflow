@@ -1,0 +1,1899 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Beautiful slides from SVG. Your editor, your style.">
+      
+      
+      
+        <link rel="canonical" href="https://ll-nick.github.io/inkflow/reference/cli/">
+      
+      
+        <link rel="prev" href="../transitions/">
+      
+      
+        <link rel="next" href="../../built-in-theme/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo-light-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>CLI - Inkflow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Inkflow" class="md-header__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Inkflow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CLI
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Inkflow" class="md-nav__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    Inkflow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/slides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authoring slides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/layout-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout system
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/themes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/fonts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fonts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/presenter-view/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presenter view
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../animations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inkflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="inkflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-add" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-clean" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clean
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-colorize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        colorize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        completion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        init
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-label2id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        label2id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-palette" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        palette
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="parent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent-get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent-strip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        strip
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-setup-git" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup-git
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-and-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output and diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../built-in-theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#inkflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inkflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="inkflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-add" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-clean" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clean
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-colorize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        colorize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        completion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        init
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-label2id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        label2id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-palette" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        palette
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="parent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent-get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-parent-strip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        strip
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-setup-git" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup-git
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inkflow-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-and-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output and diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="cli-reference">CLI reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h1>
+<p>All commands are available through the <code>inkflow</code> entry point. Run <code>inkflow --help</code>
+for the top-level list, or <code>inkflow COMMAND --help</code> for any single command.</p>
+<h2 id="inkflow">inkflow<a class="headerlink" href="#inkflow" title="Permanent link">&para;</a></h2>
+<p>Beautiful slides from SVG. Your editor, your style.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>inkflow [OPTIONS] COMMAND [ARGS]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  --version                       Show the version and exit.
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  --log-level [off|debug|info|warning|error]
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>                                  Baseline level for every sink (console,
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                                  file, browser).
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  --log-level-console [off|debug|info|warning|error]
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                                  Console/TUI level [default: warning].
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>                                  Overrides --log-level.
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  --log-level-file [off|debug|info|warning|error]
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                                  File level [default: off]. Overrides --log-
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                                  level.
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  --log-level-browser [off|debug|info|warning|error]
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>                                  Presenter banner level [default: warning].
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>                                  Overrides --log-level.
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>  --log-file PATH                 File-sink destination (default: per-user log
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                                  dir). Does not enable the sink.
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>  --help                          Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-add">inkflow add<a class="headerlink" href="#inkflow-add" title="Permanent link">&para;</a></h3>
+<p>Create a new slide SVG, optionally wired to a layout parent.</p>
+<p>OUTPUT is the path for the new SVG file. With <code>-p</code>/<code>--parent</code>, the slide is
+wired to that layout (bare name, 'local:foo', 'theme:foo', 'builtin:foo', or a
+relative path) and given preview layers. Without it, a blank slide is created.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>inkflow add [OPTIONS] OUTPUT
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  -p, --parent TEXT  Layout name or inkflow:parent string; omit for a blank
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>                     slide.
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  -d, --deck PATH    Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  --no-deck          Operate without a deck.py (for theme authoring). Only
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                     builtin: and relative-path parents are allowed.
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  --help             Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-build">inkflow build<a class="headerlink" href="#inkflow-build" title="Permanent link">&para;</a></h3>
+<p>Export a self-contained presentation directory for offline use.</p>
+<p>Produces an <code>index.html</code> with every slide inlined and copies any assets the
+deck references into the output directory. No server is required to view it.
+Defaults to a <code>build/</code> directory next to <code>deck.py</code>.</p>
+<p><code>--inline-assets</code> embeds those assets in the HTML instead of copying them, so
+the whole deck is one file that cannot be separated from its images — worth it
+when the deck travels through a file picker, a chat window, or a sandboxed
+browser that only ever hands over the file you point at. The file grows by
+roughly a third of every asset, counted once per reference rather than once
+per file, and every byte of it loads before the first slide renders.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>inkflow build [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  -d, --deck PATH    Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  -o, --output TEXT  Output directory (default: build/ next to deck.py)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  --inline-assets    Embed images and video as data URIs so the build is
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>                     index.html alone.
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  --help             Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-clean">inkflow clean<a class="headerlink" href="#inkflow-clean" title="Permanent link">&para;</a></h3>
+<p>Strip Inkscape editor metadata from SVG files.</p>
+<p>If FILES is omitted, cleans every project-local SVG the deck uses
+(each slide and its local layout ancestors).</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>inkflow clean [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  -d, --deck PATH  Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  --stdout         Write to stdout instead of modifying files in place
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  --check          Exit non-zero if any file would be modified, without
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>                   writing changes
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  --help           Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-colorize">inkflow colorize<a class="headerlink" href="#inkflow-colorize" title="Permanent link">&para;</a></h3>
+<p>Replace hardcoded theme hex colors in SVG files with semantic CSS classes.</p>
+<p>Reads the active theme's color tokens and replaces matching fill/stroke
+attributes and inline style declarations with inkflow-fill-<em> / inkflow-stroke-</em>
+classes. The hardcoded attributes are removed after replacement.</p>
+<p>If FILES is omitted, colorizes every project-local SVG the deck uses
+(each slide and its local layout ancestors).</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>inkflow colorize [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>  -d, --deck PATH      Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  --no-deck            Operate without a deck.py (for theme authoring). Only
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>                       builtin: and relative-path parents are allowed.
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  --mode [dark|light]  Color mode for preview style (default: deck mode; dark
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>                       with --no-deck).
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  --help               Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-completion">inkflow completion<a class="headerlink" href="#inkflow-completion" title="Permanent link">&para;</a></h3>
+<p>Print shell completion script for SHELL.</p>
+<p>Add to your shell config:</p>
+<ul>
+<li>bash: <code>eval "$(inkflow completion bash)"</code></li>
+<li>zsh: <code>eval "$(inkflow completion zsh)"</code></li>
+<li>fish: <code>inkflow completion fish | source</code></li>
+<li>carapace: <code>inkflow completion carapace &gt; ~/.config/carapace/specs/inkflow.yaml</code></li>
+</ul>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>inkflow completion [OPTIONS] {bash|zsh|fish|carapace}
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>  --help  Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-export">inkflow export<a class="headerlink" href="#inkflow-export" title="Permanent link">&para;</a></h3>
+<p>Export a PDF via headless Chromium — one page per slide, no animations.</p>
+<p>Requires a Chromium-based browser on the system; point <code>--chromium</code> at it if
+it is not auto-detected. Pass <code>--no-sandbox</code> when running as root or in
+Docker. Defaults to <code>&lt;deck-stem&gt;.pdf</code> next to <code>deck.py</code>.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>inkflow export [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>  -d, --deck PATH    Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>  -o, --output TEXT  Output PDF path (default: &lt;deck-stem&gt;.pdf next to
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>                     deck.py)
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>  --chromium TEXT    Path to chromium/chrome binary (auto-detected if not set)
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  --no-sandbox       Pass --no-sandbox to Chromium (needed when running as
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>                     root or in Docker).
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>  --size WxH         Override PDF page size, e.g. 1280x720. Auto-detected from
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>                     slides if not set.
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>  --help             Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-init">inkflow init<a class="headerlink" href="#inkflow-init" title="Permanent link">&para;</a></h3>
+<p>Scaffold a new presentation project in DIRECTORY (default: current).</p>
+<p>Writes a starter <code>deck.py</code>, slides, and a <code>pyproject.toml</code> declaring inkflow.
+For a new project (not already inside a git repository) it also runs <code>git init</code>,
+writes a <code>.gitignore</code>, and configures the SVG git hooks. Inside an existing
+repository it leaves git alone and points you at <code>setup-git</code>. Skip all git steps
+with <code>--no-git</code>.</p>
+<p>Refuses to scaffold into a non-empty directory (dotfiles like <code>.git</code> are ignored)
+unless <code>--force</code> is given.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>inkflow init [OPTIONS] [DIRECTORY]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>  --no-git  Skip git hook setup even when inside a git repository.
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>  --force   Scaffold even into a non-empty directory.
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>  --help    Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-label2id">inkflow label2id<a class="headerlink" href="#inkflow-label2id" title="Permanent link">&para;</a></h3>
+<p>Promote each element's inkscape:label to its SVG id.</p>
+<p>Name a group in Inkscape's Layers &amp; Objects panel, run this, and deck.py can
+animate it by id (and the Morph transition can match it across slides). A
+label that is already a valid id is used verbatim; anything else is slugified.
+Labels need not be unique but ids must, so a clash is warned about and
+skipped, never clobbered. Elements inside injected inkflow preview layers are
+left alone.</p>
+<p>If FILES is omitted, processes every project-local SVG the deck uses (each
+slide and its local layout/overlay ancestors). After renaming ids in a layout
+or overlay, run <code>inkflow sync</code> so the slides that preview it pick up the
+change.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>inkflow label2id [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>  -d, --deck PATH     Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>  --all-tags          Also rename non-shape elements (tspan, stop, gradients,
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>                      …).
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>  --refs / --no-refs  Rewrite url(#id) / href='#id' references pointing at
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>                      renamed ids.
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>  -n, --dry-run       Show what would change without writing.
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>  --check             Exit non-zero if any file would change, without writing
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>                      (implies --dry-run).
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>  --help              Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-layouts">inkflow layouts<a class="headerlink" href="#inkflow-layouts" title="Permanent link">&para;</a></h3>
+<p>List available layouts and overlays with their zones and parent chain.</p>
+<p>Discovers both from three sources — built-in, theme, then project-local — and
+prints a table per source with each entry's parent chain and zone names. The
+default zone is underlined; a checkmark marks entries that carry a slide number
+(a <code>zone-slide-number</code> or <code>zone-slide-total</code>). Layouts compose behind a slide,
+overlays on top of it, and the two are separate namespaces. The overlay section
+is omitted when no overlays exist. Pass <code>--no-deck</code> to list only the built-ins.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>inkflow layouts [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>  -d, --deck PATH  Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>  --no-deck        Operate without a deck.py (for theme authoring). Only
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>                   builtin: and relative-path parents are allowed.
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>  --help           Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-palette">inkflow palette<a class="headerlink" href="#inkflow-palette" title="Permanent link">&para;</a></h3>
+<p>Generate an Inkscape GPL color palette for the active theme.</p>
+<p>Writes a .gpl palette to stdout whose colors correspond to the inkflow-fill-<em> /
+inkflow-stroke-</em> CSS class tokens so you can pick theme colors by name in
+Inkscape's swatches panel and then run 'inkflow colorize' to convert the
+hardcoded hex values to semantic classes. Redirect it to save:</p>
+<div class="highlight"><pre><span></span><code>inkflow palette &gt; inkflow.gpl
+</code></pre></div>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>inkflow palette [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>  -d, --deck PATH      Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>  --no-deck            Operate without a deck.py (for theme authoring). Only
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>                       builtin: and relative-path parents are allowed.
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>  --mode [dark|light]  Color mode for preview style (default: deck mode; dark
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>                       with --no-deck).
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>  --help               Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-parent">inkflow parent<a class="headerlink" href="#inkflow-parent" title="Permanent link">&para;</a></h3>
+<p>Manage slide layout parents.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>inkflow parent [OPTIONS] COMMAND [ARGS]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>  --help  Show this message and exit.
+</code></pre></div>
+<h4 id="inkflow-parent-get">inkflow parent get<a class="headerlink" href="#inkflow-parent-get" title="Permanent link">&para;</a></h4>
+<p>Print the inkflow:parent value of slide SVGs.</p>
+<p>With FILES, prints each file's parent (a bare value for a single file, else
+one 'file: parent' line each). With FILES omitted, lists every slide in the
+deck alongside its parent.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>inkflow parent get [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>  -d, --deck PATH  Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>  --help           Show this message and exit.
+</code></pre></div>
+<h4 id="inkflow-parent-set">inkflow parent set<a class="headerlink" href="#inkflow-parent-set" title="Permanent link">&para;</a></h4>
+<p>Set the inkflow:parent of a slide SVG and refresh its layout layers.</p>
+<p>PARENT is a layout name or inkflow:parent string:
+bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
+or a relative path.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>inkflow parent set [OPTIONS] FILE PARENT
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>  -d, --deck PATH  Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>  --no-deck        Operate without a deck.py (for theme authoring). Only
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>                   builtin: and relative-path parents are allowed.
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>  --help           Show this message and exit.
+</code></pre></div>
+<h4 id="inkflow-parent-strip">inkflow parent strip<a class="headerlink" href="#inkflow-parent-strip" title="Permanent link">&para;</a></h4>
+<p>Remove inkflow:parent and injected layout layers from slide SVG(s).</p>
+<p>If FILES is omitted, strips every project-local SVG the deck uses
+(each slide and its local layout ancestors).</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>inkflow parent strip [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>  -y, --yes        Skip confirmation prompt.
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>  -d, --deck PATH  Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>  --help           Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-serve">inkflow serve<a class="headerlink" href="#inkflow-serve" title="Permanent link">&para;</a></h3>
+<p>Start the presentation server with live reload.</p>
+<p>Serves the deck at <code>http://{host}:{port}</code> and pushes slide updates over a
+WebSocket whenever a source file changes, swapping content in place without a
+full page reload. Use <code>--host 0.0.0.0</code> to expose the server on all interfaces.</p>
+<p>Keyboard shortcuts in the terminal:</p>
+<ul>
+<li><code>o</code>: open the presentation in a browser</li>
+<li><code>r</code>: force a rebuild</li>
+<li><code>t</code>: toggle the error trace</li>
+<li><code>q</code>: quit (Ctrl-D and Ctrl-C also work)</li>
+</ul>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>inkflow serve [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>  -d, --deck PATH    Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>  --host TEXT        Bind address  [default: localhost]
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>  --port INTEGER     HTTP port  [default: 7777]
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>  --ws-port INTEGER  WebSocket port  [default: 7778]
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>  --help             Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-setup-git">inkflow setup-git<a class="headerlink" href="#inkflow-setup-git" title="Permanent link">&para;</a></h3>
+<p>Configure git hooks and the SVG diff driver for the current repository.</p>
+<p>Run once per clone. Installs a pre-commit hook that strips Inkscape editor
+metadata from staged SVGs, and registers a diff driver so <code>git diff</code> and
+GitHub show only visual changes for SVGs. Both git-config entries are local to
+the clone (never committed).</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>inkflow setup-git [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>  --help  Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-sync">inkflow sync<a class="headerlink" href="#inkflow-sync" title="Permanent link">&para;</a></h3>
+<p>Refresh layout layers, overlay layers and preview styles in slide SVG(s).</p>
+<p>Injects ancestor layout layers below the slide and the overlays it gets at
+runtime above it, plus a style block so Inkscape renders semantic CSS classes
+(e.g. inkflow-fill-accent) with the correct theme colors.</p>
+<p>Which overlays a file previews is decided by, in order: an explicit
+<code>inkflow:preview-overlays</code> attribute on the file, agreement among the slides
+backed by it, or the deck default. The rule that fired is shown per file.
+Overlay files themselves get no chrome, only an <code>inkflow:preview</code> backdrop.</p>
+<p>If FILES is omitted, refreshes every project-local SVG the deck uses
+(each slide, its local layout ancestors, and the project's overlays).
+Use <code>--no-deck</code> when authoring a theme without a project deck.py.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>inkflow sync [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>  --check              Report stale files without rewriting. Exits 1 if any
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>                       are stale.
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>  -d, --deck PATH      Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>  --no-deck            Operate without a deck.py (for theme authoring). Only
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>                       builtin: and relative-path parents are allowed.
+<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>  --mode [dark|light]  Color mode for preview style (default: deck mode; dark
+<a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>                       with --no-deck).
+<a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>  --help               Show this message and exit.
+</code></pre></div>
+<h3 id="inkflow-verify">inkflow verify<a class="headerlink" href="#inkflow-verify" title="Permanent link">&para;</a></h3>
+<p>Check slides for authoring errors before presenting or building.</p>
+<p>Runs per-slide checks and prints an <code>ok</code> / <code>error</code> / <code>warn</code> line for each.
+Errors: the SVG source, <code>.md</code>, notes file, or <code>Media.src</code> is missing; a zone id
+(from <code>zones</code> keys or <code>::zone::</code> markers) or an animation element id is absent
+from the composed SVG; an overlay paints an opaque full-canvas rect, which would
+hide the slide. Warnings: animation steps are not contiguous from 1, a zone id is
+declared twice after composition, or layout layers are stale (run <code>inkflow sync</code>).</p>
+<p>Exits 1 on any error, or on any warning when <code>--strict</code> is set. Hidden slides
+(<code>visible=False</code>) are skipped unless <code>--all</code> is passed.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>inkflow verify [OPTIONS] [FILES]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>  -d, --deck PATH  Path to deck.py (default: deck.py in cwd)
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>  --all            Include hidden slides.
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>  --strict         Treat warnings as errors (exit 1 if any warn).
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>  --help           Show this message and exit.
+</code></pre></div>
+<h2 id="output-and-diagnostics">Output and diagnostics<a class="headerlink" href="#output-and-diagnostics" title="Permanent link">&para;</a></h2>
+<p>Status lines, warnings, and errors print to stderr; machine-readable output (the
+<code>palette</code> and <code>completion</code> scripts, <code>parent get</code> values, and <code>clean --stdout</code>)
+stays on stdout so it can be redirected cleanly.</p>
+<p>Diagnostics flow through three independent sinks, each with its own level
+(<code>off</code>, <code>debug</code>, <code>info</code>, <code>warning</code>, <code>error</code> — <code>off</code> disables the sink):</p>
+<ul>
+<li><strong>console</strong> — stderr for every command, or the live <code>serve</code> TUI in its place.
+  Default <code>warning</code>.</li>
+<li><strong>file</strong> — an optional on-disk log, off by default. When enabled without an explicit
+  path it writes to the per-user log directory (<code>~/.local/state/inkflow/log/</code> on Linux,
+  <code>~/Library/Logs/inkflow/</code> on macOS, <code>%LOCALAPPDATA%\inkflow\Logs\</code> on Windows).</li>
+<li><strong>browser</strong> — the presenter's message banner during <code>serve</code>. Default <code>warning</code>.</li>
+</ul>
+<p>Warnings raised by the libraries inkflow builds on
+are folded into the same sinks under the emitting library's name,
+at the level that library chose.
+They obey the flags below like any other record,
+instead of printing past them unformatted.</p>
+<p>Set a baseline for every sink with <code>--log-level</code>, or target one sink; a per-sink setting
+overrides the baseline. Each flag has an environment-variable twin, and a per-sink
+setting (flag or env) beats the <code>--log-level</code> baseline:</p>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Flag</th>
+<th>Environment variable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>all sinks</td>
+<td><code>--log-level LEVEL</code></td>
+<td><code>INKFLOW_LOG_LEVEL</code></td>
+</tr>
+<tr>
+<td>console / TUI</td>
+<td><code>--log-level-console LEVEL</code></td>
+<td><code>INKFLOW_LOG_LEVEL_CONSOLE</code></td>
+</tr>
+<tr>
+<td>file</td>
+<td><code>--log-level-file LEVEL</code></td>
+<td><code>INKFLOW_LOG_LEVEL_FILE</code></td>
+</tr>
+<tr>
+<td>browser</td>
+<td><code>--log-level-browser LEVEL</code></td>
+<td><code>INKFLOW_LOG_LEVEL_BROWSER</code></td>
+</tr>
+<tr>
+<td>file destination</td>
+<td><code>--log-file PATH</code></td>
+<td><code>INKFLOW_LOG_FILE</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>--log-file</code> only sets <em>where</em> the file sink writes; it does not enable it — raise the
+file level above <code>off</code> for that. These are global options, so they come <strong>before</strong> the
+subcommand (the environment twins are position-independent):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>inkflow<span class="w"> </span>--log-level-file<span class="w"> </span>debug<span class="w"> </span>build<span class="w">              </span><span class="c1"># archive a full trace to the default path</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>inkflow<span class="w"> </span>--log-level-console<span class="w"> </span>off<span class="w"> </span>serve<span class="w">             </span><span class="c1"># silence the TUI log list; banner unaffected</span>
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>inkflow<span class="w"> </span>--log-level<span class="w"> </span>debug<span class="w"> </span>--log-file<span class="w"> </span>run.log<span class="w"> </span>build<span class="w">  </span><span class="c1"># every sink at debug, file to ./run.log</span>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="nv">INKFLOW_LOG_LEVEL_FILE</span><span class="o">=</span>debug<span class="w"> </span>inkflow<span class="w"> </span>build<span class="w">        </span><span class="c1"># same as the first, via the environment</span>
+</code></pre></div>
+<p>A fatal build error is shown as a full-screen overlay (and the <code>serve</code> TUI error view),
+separate from these sinks; enabling the file sink also captures its traceback.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2530 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Beautiful slides from SVG. Your editor, your style.">
+      
+      
+      
+        <link rel="canonical" href="https://ll-nick.github.io/inkflow/guides/slides/">
+      
+      
+        <link rel="prev" href="../../concepts/">
+      
+      
+        <link rel="next" href="../layout-system/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo-light-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Authoring slides - Inkflow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#authoring-slides" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Inkflow" class="md-header__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Inkflow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Authoring slides
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Inkflow" class="md-nav__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    Inkflow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authoring slides
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authoring slides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authoring-in-your-svg-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authoring in your SVG editor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Animations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Animations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#animation-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Animation types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-animations-on-one-element" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple animations on one element
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom animations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triggers-the-step-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triggers — the step model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filling-zones-with-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filling zones with content
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filling zones with content">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-deckpy-with-the-zones-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From deck.py with the zones dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-a-markdown-file-with-md" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From a Markdown file with md=
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-markdown-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing Markdown content
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing Markdown content">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-content-is-placed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How content is placed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zone-alignment-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zone alignment parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-markers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step markers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step markers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#explicit-steps-with-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit steps with ::step::
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-stepping-with-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-stepping with ::steps::
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-the-animation-with-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing the animation with type=
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controlling-the-step-with-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controlling the step with trigger=
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code blocks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-based-line-highlighting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-based line highlighting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-counter-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step counter integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#speaker-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Speaker notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#media-zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Media zones
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Media zones">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#video-playback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video playback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in layouts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in layouts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#referencing-project-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Referencing project layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combining-markdown-reveals-with-animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combining Markdown reveals with animations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-slide-styling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-slide styling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#slide-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Slide dimensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout system
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../themes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fonts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fonts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../presenter-view/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presenter view
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/enums/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/animations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../built-in-theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authoring-in-your-svg-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authoring in your SVG editor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Animations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Animations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#animation-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Animation types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-animations-on-one-element" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple animations on one element
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom animations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triggers-the-step-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triggers — the step model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filling-zones-with-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filling zones with content
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filling zones with content">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-deckpy-with-the-zones-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From deck.py with the zones dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-a-markdown-file-with-md" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From a Markdown file with md=
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-markdown-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing Markdown content
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing Markdown content">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-content-is-placed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How content is placed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zone-alignment-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zone alignment parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-markers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step markers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step markers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#explicit-steps-with-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit steps with ::step::
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-stepping-with-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-stepping with ::steps::
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-the-animation-with-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing the animation with type=
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controlling-the-step-with-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controlling the step with trigger=
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code blocks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-based-line-highlighting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-based line highlighting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-counter-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step counter integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#speaker-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Speaker notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#media-zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Media zones
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Media zones">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#video-playback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video playback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in layouts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in layouts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#referencing-project-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Referencing project layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combining-markdown-reveals-with-animations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combining Markdown reveals with animations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-slide-styling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-slide styling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#slide-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Slide dimensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="authoring-slides">Authoring slides<a class="headerlink" href="#authoring-slides" title="Permanent link">&para;</a></h1>
+<p>Every slide is a single SVG file.
+<code>Slide</code> wraps that SVG, declares which elements to animate,
+and sets how the slide transitions in from the previous one.</p>
+<p>You draw a slide in your SVG editor and serve it as-is.
+When part of a slide should hold formatted text, images, or video,
+mark a rectangular area in the SVG as a <strong>zone</strong> and fill it at build time —
+from <code>deck.py</code> with <code>TextBox</code>, <code>Image</code>, or <code>Video</code>, or by pointing <code>md=</code> at a Markdown file.
+A single slide can freely combine hand-drawn artwork, animated elements, and
+zones filled with Markdown.</p>
+<h2 id="minimal-example">Minimal example<a class="headerlink" href="#minimal-example" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Deck</span><span class="p">,</span> <span class="n">Slide</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Deck</span><span class="p">:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">return</span> <span class="n">Deck</span><span class="p">(</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">slides</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="n">Slide</span><span class="p">(</span><span class="s2">"title"</span><span class="p">),</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="p">]</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="p">)</span>
+</code></pre></div>
+<p>A bare name like <code>"title"</code> is looked up in <code>slides/</code> first (as <code>slides/title.svg</code>),
+then searched across layouts if not found there — see the
+<a href="../../reference/manifest/#inkflow.manifest.Slide"><code>Slide.src</code></a> reference for the
+full order. You can also write the path out in full, or point elsewhere entirely.
+The SVG file is loaded as-is, stripped of editor metadata, and served.
+No animations, no transition. Just the slide.</p>
+<h2 id="authoring-in-your-svg-editor">Authoring in your SVG editor<a class="headerlink" href="#authoring-in-your-svg-editor" title="Permanent link">&para;</a></h2>
+<p>The only convention slides must follow:
+<strong>any element you want to animate needs an ID.</strong></p>
+<p>Set the ID via the XML editor (<kbd>Ctrl+Shift+X</kbd>)
+or the Object Properties dialog (<kbd>Ctrl+Shift+O</kbd>) in Inkscape,
+or the equivalent in any other editor.
+IDs can be anything: <code>headline</code>, <code>box-a</code>, <code>arrow-pipeline</code>.
+Avoid spaces. Hyphens and underscores are fine.</p>
+<p>No other markup is required.
+The SVG is a standard vector file.</p>
+<h2 id="animations">Animations<a class="headerlink" href="#animations" title="Permanent link">&para;</a></h2>
+<p>Animations reveal (or hide) elements on successive keypresses.
+Each animation targets a single element by its <code>id</code> (no leading <code>#</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Slide</span><span class="p">,</span> <span class="n">animations</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">"title"</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">animations</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"headline"</span><span class="p">),</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"subtitle"</span><span class="p">),</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"byline"</span><span class="p">),</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">],</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">)</span>
+</code></pre></div>
+<p>Each cue's <code>trigger</code> says <em>when</em> it fires, and inkflow works out the concrete
+steps from the triggers and the order of the list. The default trigger is
+<code>ON_CLICK</code>, so the three fades above take steps 1, 2, 3 — one per keypress.</p>
+<p>Elements with no animation declaration start <strong>visible</strong>.
+Elements targeted by an entrance animation (<code>FadeIn</code>, <code>Bounce</code>, <code>SlideIn</code>, <code>ZoomIn</code>) start
+<strong>invisible</strong> and appear when their step is reached.</p>
+<p>Every type has a <strong>kind</strong> — <code>enter</code>, <code>exit</code>, or <code>emphasis</code> — set by the semantic base
+it subclasses (<code>animations.Enter</code> / <code>Exit</code> / <code>Emphasis</code>). Enters reveal, exits hide, and
+emphasis (like <code>Highlight</code>) fires momentarily without changing visibility. Stepping
+backward plays each animation in reverse, mirroring the forward order.</p>
+<h3 id="animation-types">Animation types<a class="headerlink" href="#animation-types" title="Permanent link">&para;</a></h3>
+<p>Every type accepts <code>duration</code>, <code>easing</code>, <code>delay</code>, and <code>iterations</code> (keyword-only); some
+add their own parameters. <code>element</code> and <code>trigger</code> are the two shared positional slots. See
+the <a href="../../reference/animations/">animations reference</a> for the full table.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Effect</th>
+<th>Starting state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FadeIn</code></td>
+<td>Opacity 0 → 1, subtle upward drift</td>
+<td>Hidden</td>
+</tr>
+<tr>
+<td><code>FadeOut</code></td>
+<td>Opacity 1 → 0</td>
+<td>Visible</td>
+</tr>
+<tr>
+<td><code>Bounce</code></td>
+<td>Spring up into place from just below (<code>distance</code>)</td>
+<td>Hidden</td>
+</tr>
+<tr>
+<td><code>SlideIn</code> / <code>SlideOut</code></td>
+<td>Slide from/to an edge (<code>direction</code>, <code>distance</code>)</td>
+<td>Hidden / Visible</td>
+</tr>
+<tr>
+<td><code>ZoomIn</code> / <code>ZoomOut</code></td>
+<td>Scale into/out of place (<code>scale</code>)</td>
+<td>Hidden / Visible</td>
+</tr>
+<tr>
+<td><code>Highlight</code></td>
+<td>Pulse a glow (<code>color</code>, <code>iterations</code>), without hiding</td>
+<td>Visible</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">animations</span><span class="o">.</span><span class="n">SlideIn</span><span class="p">(</span><span class="s2">"box"</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">"left"</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">animations</span><span class="o">.</span><span class="n">ZoomIn</span><span class="p">(</span><span class="s2">"logo"</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">animations</span><span class="o">.</span><span class="n">Highlight</span><span class="p">(</span><span class="s2">"total"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"#cba6f7"</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="multiple-animations-on-one-element">Multiple animations on one element<a class="headerlink" href="#multiple-animations-on-one-element" title="Permanent link">&para;</a></h3>
+<p>Because each cue is driven independently, one element can carry several across the
+slide — it can enter, be emphasized, exit, and even re-enter, each on its own step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">animations</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"hero"</span><span class="p">),</span>  <span class="c1"># step 1: enters</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">Highlight</span><span class="p">(</span><span class="s2">"hero"</span><span class="p">),</span>  <span class="c1"># step 2: emphasized</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">SlideOut</span><span class="p">(</span><span class="s2">"hero"</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">"down"</span><span class="p">),</span>  <span class="c1"># step 3: exits</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">Bounce</span><span class="p">(</span><span class="s2">"hero"</span><span class="p">),</span>  <span class="c1"># step 4: returns</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">]</span>
+</code></pre></div>
+<p>The kinds decide how they compose: at any step the element is shown or hidden by its
+most recent enter/exit, while emphasis cues just pulse. Two enters (or two exits) on one
+element with no opposing cue between them is almost always a mistake, and inkflow warns
+about it at build time.</p>
+<h3 id="custom-animations">Custom animations<a class="headerlink" href="#custom-animations" title="Permanent link">&para;</a></h3>
+<p>Subclass a semantic base and write a matching <code>@keyframes anim-&lt;slug&gt;</code> (the kebab-cased
+type name) in a <code>styles.css</code> next to <code>deck.py</code>. No JavaScript: the step engine reads the
+keyframes and drives them, substituting each cue's own fields wherever they appear as
+<code>var(--anim-&lt;field&gt;)</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">animations</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">Glow</span><span class="p">(</span><span class="n">animations</span><span class="o">.</span><span class="n">Emphasis</span><span class="p">):</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">intensity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># → var(--anim-intensity)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c">/* styles.css */</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="p">@</span><span class="k">keyframes</span><span class="w"> </span><span class="nt">anim-glow</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">50</span><span class="o">%</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">filter</span><span class="p">:</span><span class="w"> </span><span class="nb">drop-shadow</span><span class="p">(</span><span class="mi">0</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="nb">calc</span><span class="p">(</span><span class="mi">8</span><span class="kt">px</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nf">var</span><span class="p">(</span><span class="nv">--anim-intensity</span><span class="p">))</span><span class="w"> </span><span class="nf">var</span><span class="p">(</span><span class="nv">--accent</span><span class="p">));</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="triggers-the-step-model">Triggers — the step model<a class="headerlink" href="#triggers-the-step-model" title="Permanent link">&para;</a></h3>
+<p>Each cue carries a <code>Trigger</code> that decides its step:</p>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trigger.ON_CLICK</code> (default)</td>
+<td>Takes the next step, needs a keypress</td>
+</tr>
+<tr>
+<td><code>Trigger.WITH_PREVIOUS</code></td>
+<td>Shares the previous cue's step, firing together</td>
+</tr>
+<tr>
+<td><code>Trigger.AFTER_PREVIOUS</code></td>
+<td>Shares the previous cue's step, then plays automatically once it finishes (no keypress)</td>
+</tr>
+<tr>
+<td><code>Trigger.at(n)</code></td>
+<td>Pins the cue to an absolute step <code>n</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>trigger</code> is the second positional argument (after <code>element</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trigger</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">animations</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"left-panel"</span><span class="p">),</span>  <span class="c1"># step 1</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"right-panel"</span><span class="p">,</span> <span class="n">Trigger</span><span class="o">.</span><span class="n">WITH_PREVIOUS</span><span class="p">),</span>  <span class="c1"># step 1, together</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"caption"</span><span class="p">,</span> <span class="n">Trigger</span><span class="o">.</span><span class="n">AFTER_PREVIOUS</span><span class="p">),</span>  <span class="c1"># step 1, after right-panel</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"footnote"</span><span class="p">),</span>  <span class="c1"># step 2</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="p">]</span>
+</code></pre></div>
+<p>A first-in-order <code>WITH_PREVIOUS</code> or <code>AFTER_PREVIOUS</code> falls to the slide-entry step.
+It is not shown pre-resting:
+it animates on entry, right after the slide transition settles,
+so a slide can build itself the moment you arrive with no keypress.</p>
+<p><code>AFTER_PREVIOUS</code> turns one keypress into a self-playing sequence.
+The cues share one step and play as a single atomic run,
+scrubbed along one 0-to-1 timeline:
+the first cue fires on the press (or on entry, if it is first in order),
+and each following <code>AFTER_PREVIOUS</code> cue starts as the one before it finishes.
+So one press forward plays the whole cascade,
+a forward press while it is still playing snaps it to the end,
+and one press back mirrors it (last stage out first).
+<code>Trigger.at(n)</code> is the escape hatch for aligning cues on
+the shared step axis (see <a href="#combining-markdown-reveals-with-animations">combining reveals and animations</a>).</p>
+<h2 id="transitions">Transitions<a class="headerlink" href="#transitions" title="Permanent link">&para;</a></h2>
+<p>A transition controls how the slide enters from the previous one.
+Set it per slide, or set a default on the <code>Deck</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Deck</span><span class="p">,</span> <span class="n">Slide</span><span class="p">,</span> <span class="n">transitions</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Deck</span><span class="p">:</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="k">return</span> <span class="n">Deck</span><span class="p">(</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        <span class="n">transition</span><span class="o">=</span><span class="n">transitions</span><span class="o">.</span><span class="n">Crossfade</span><span class="p">(),</span>  <span class="c1"># default for all slides</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        <span class="n">slides</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>            <span class="n">Slide</span><span class="p">(</span><span class="s2">"title"</span><span class="p">),</span>  <span class="c1"># uses Crossfade</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>            <span class="n">Slide</span><span class="p">(</span><span class="s2">"diagram"</span><span class="p">,</span> <span class="n">transition</span><span class="o">=</span><span class="n">transitions</span><span class="o">.</span><span class="n">Morph</span><span class="p">()),</span>  <span class="c1"># overrides to Morph</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        <span class="p">],</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="p">)</span>
+</code></pre></div>
+<p>See <a href="../transitions/">Transitions</a> for details on each type.</p>
+<h2 id="filling-zones-with-content">Filling zones with content<a class="headerlink" href="#filling-zones-with-content" title="Permanent link">&para;</a></h2>
+<p>A <strong>zone</strong> is any SVG shape whose <code>id</code> starts with <code>zone-</code> (see
+<a href="../layout-system/">Layout system</a> for the full rules).
+It marks an area the pipeline replaces with injected content at build time.
+This is how a slide carries what SVG editors handle poorly —
+reflowing text, bullet lists, tables, code blocks — and what an SVG can't hold at all, like video.</p>
+<p>Any SVG can define zones, whether it's a one-off slide file or a shared layout.
+Fill them the same way in either case.</p>
+<h3 id="from-deckpy-with-the-zones-dict">From <code>deck.py</code> with the <code>zones</code> dict<a class="headerlink" href="#from-deckpy-with-the-zones-dict" title="Permanent link">&para;</a></h3>
+<p>Pass content into named zones directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">Slide</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="s2">"title"</span><span class="p">,</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">zones</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"My talk title"</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        <span class="s2">"media"</span><span class="p">:</span> <span class="n">Image</span><span class="p">(</span><span class="s2">"assets/headshot.jpg"</span><span class="p">,</span> <span class="n">fit</span><span class="o">=</span><span class="s2">"cover"</span><span class="p">),</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="p">},</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="p">)</span>
+</code></pre></div>
+<p>Keys in <code>zones</code> are zone names without the <code>zone-</code> prefix.
+A <code>str</code> value is rendered as inline Markdown.
+A <code>TextBox</code> value gives explicit control over alignment and padding from Python.
+An <code>Image</code> or <code>Video</code> value injects media.
+The pipeline replaces the matching <code>zone-*</code> element with the injected content at build time.</p>
+<h3 id="from-a-markdown-file-with-md">From a Markdown file with <code>md=</code><a class="headerlink" href="#from-a-markdown-file-with-md" title="Permanent link">&para;</a></h3>
+<p>When most of a slide's content is text, it's easier to write it in a <code>.md</code> file
+than to fill each zone by hand.
+Point <code>md=</code> at a Markdown file and the pipeline routes its sections into the slide's zones:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Deck</span><span class="p">,</span> <span class="n">Slide</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Deck</span><span class="p">:</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="k">return</span> <span class="n">Deck</span><span class="p">(</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        <span class="n">slides</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>            <span class="n">Slide</span><span class="p">(</span><span class="s2">"content"</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="s2">"intro"</span><span class="p">),</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        <span class="p">]</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="p">)</span>
+</code></pre></div>
+<p><code>"content"</code> is the name of a built-in layout — an SVG that defines zones and little
+else (see <a href="#built-in-layouts">Built-in layouts</a> below).
+<code>md</code> takes the same kind of path as <code>Slide.src</code>: a bare name like <code>"intro"</code> resolves
+to <code>slides/intro.md</code>, or write the path out in full.
+Nothing about <code>md=</code> is special to layouts, though: it fills whatever zones the
+referenced SVG defines, one-off slide file or shared layout alike.</p>
+<h2 id="writing-markdown-content">Writing Markdown content<a class="headerlink" href="#writing-markdown-content" title="Permanent link">&para;</a></h2>
+<p>The rest of this section covers the Markdown routing grammar —
+how content in a <code>.md</code> file lands in the right zones, splits into steps, and more.</p>
+<h3 id="how-content-is-placed">How content is placed<a class="headerlink" href="#how-content-is-placed" title="Permanent link">&para;</a></h3>
+<p>The pipeline inspects the Markdown file for two things:</p>
+<p><strong>Auto-extraction</strong> (no markers needed):
+if the file starts with a <code># H1</code>, it is extracted into <code>zone-title</code>.
+An <code>## H2</code> immediately following goes to <code>zone-subtitle</code>.
+Everything else goes to <code>zone-content</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="gh"># My slide title</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="gu">## Optional subtitle</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>The body content goes here.
+</code></pre></div>
+<p><strong>Explicit zone markers</strong>: use <code>::zone-name::</code> to route content to a specific zone.
+Anything after the marker goes to that zone until the next marker.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>::left::
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="gu">## Left column</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>Content for the left side.
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>::right::
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="gu">## Right column</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>Content for the right side.
+</code></pre></div>
+<p>Explicit markers always override auto-extraction.</p>
+<h3 id="zone-alignment-parameters">Zone alignment parameters<a class="headerlink" href="#zone-alignment-parameters" title="Permanent link">&para;</a></h3>
+<p>Zone markers accept optional <code>key=value</code> parameters that control how content is
+positioned inside the zone.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>::content align=center valign=center padding=60::
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>This text is horizontally and vertically centered, with 60 SVG units of padding.
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>align</code></td>
+<td><code>left</code>, <code>center</code>, <code>right</code>, <code>justify</code></td>
+<td>Horizontal text alignment</td>
+</tr>
+<tr>
+<td><code>valign</code></td>
+<td><code>top</code>, <code>center</code>, <code>bottom</code></td>
+<td>Vertical alignment of the content block within the zone</td>
+</tr>
+<tr>
+<td><code>padding</code></td>
+<td>number (SVG user units)</td>
+<td>Inner spacing on all sides</td>
+</tr>
+</tbody>
+</table>
+<p>All three are optional and can be combined freely.
+Parameters on the marker override CSS variables set in the layout SVG,
+which in turn override the built-in defaults (<code>align: left</code>, <code>valign: top</code>, <code>padding: 0</code>).</p>
+<p>For persistent defaults that apply to every slide using a layout,
+set CSS variables directly in the layout SVG's <code>&lt;defs&gt;&lt;style&gt;</code> (see <a href="../layout-system/">Layout system</a>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">#</span><span class="nn">zone-title</span><span class="w">   </span><span class="p">{</span><span class="w"> </span><span class="nv">--inkflow-valign</span><span class="p">:</span><span class="w"> </span><span class="kc">center</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="p">#</span><span class="nn">zone-content</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">--inkflow-padding</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span><span class="kt">px</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>For programmatic control from <code>deck.py</code>, pass <code>align</code>, <code>valign</code>, and <code>padding</code> directly to <code>TextBox</code>.
+See the <a href="../../reference/manifest/#inkflow.manifest.TextBox">manifest reference</a>.</p>
+<h3 id="step-markers">Step markers<a class="headerlink" href="#step-markers" title="Permanent link">&para;</a></h3>
+<h4 id="explicit-steps-with-step">Explicit steps with <code>::step::</code><a class="headerlink" href="#explicit-steps-with-step" title="Permanent link">&para;</a></h4>
+<p><code>::step::</code> inserts an animation step boundary within a zone.
+Content before the first <code>::step::</code> is visible from the start.
+Each marker reveals the next chunk on keypress.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="gh"># Build up a concept</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>First point — visible immediately.
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>::step::
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>Second point — revealed on first keypress.
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>::step::
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>Third point — revealed on second keypress.
+</code></pre></div>
+<h4 id="auto-stepping-with-steps">Auto-stepping with <code>::steps::</code><a class="headerlink" href="#auto-stepping-with-steps" title="Permanent link">&para;</a></h4>
+<p><code>::steps::</code> opens a block where each list item and each paragraph reveals individually,
+without needing a <code>::step::</code> before every bullet.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="gh"># Why inkflow?</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>Intro text — always visible.
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>::steps::
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">-</span><span class="w"> </span>First bullet reveals on keypress 1.
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="k">-</span><span class="w"> </span>Second bullet reveals on keypress 2.
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>A paragraph inside the block also steps.
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>::steps end::
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>Footer text — always visible again.
+</code></pre></div>
+<p><code>::steps end::</code> is optional.
+If omitted, the block extends to the end of the zone — everything after <code>::steps::</code> steps.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="gh"># All bullets step</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>::steps::
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="k">-</span><span class="w"> </span>One
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="k">-</span><span class="w"> </span>Two
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="k">-</span><span class="w"> </span>Three
+</code></pre></div>
+<p><code>::step::</code> markers inside a <code>::steps::</code> block are ignored — every item already steps.</p>
+<h4 id="choosing-the-animation-with-type">Choosing the animation with <code>type=</code><a class="headerlink" href="#choosing-the-animation-with-type" title="Permanent link">&para;</a></h4>
+<p>By default a reveal fades in. Give a marker a <code>type=&lt;ClassName&gt;</code> plus any of that
+type's parameters to use a different animation — the same class names and
+parameter names you'd write in <code>deck.py</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>::step type=SlideIn direction=right distance=200::
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>Slides in from the right.
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>::step type=Bounce::
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>Bounces in.
+</code></pre></div>
+<p>The same grammar works on <code>::steps::</code>, where the type and parameters apply to
+every item in the block:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>::steps type=SlideIn direction=up::
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="k">-</span><span class="w"> </span>Each bullet slides up
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="k">-</span><span class="w"> </span>one after another
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>::steps end::
+</code></pre></div>
+<p><code>type=</code> resolves against the <a href="../../reference/animations/">built-in animation types</a>
+and any custom <code>Animation</code> subclass your <code>deck.py</code> defines (matched by class
+name). Parameters are coerced to each field's type, so <code>distance=200</code> becomes a
+number and <code>direction=right</code> becomes the <a href="../../reference/enums/"><code>Direction</code></a>
+value. Values cannot contain spaces, so an <code>easing=ease-in-out</code> preset works in a
+marker but a <code>cubic-bezier(...)</code> curve is a <code>deck.py</code>-only thing.</p>
+<h4 id="controlling-the-step-with-trigger">Controlling the step with <code>trigger=</code><a class="headerlink" href="#controlling-the-step-with-trigger" title="Permanent link">&para;</a></h4>
+<p>A reveal defaults to <code>ON_CLICK</code> (one keypress per reveal). Set <code>trigger=</code> to
+change that:
+<code>with-previous</code> fires a reveal together with the one before it,
+<code>after-previous</code> lets it reveal itself once the one before it finishes,
+and a number pins it to an absolute step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>::step::
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>First point.
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>::step trigger=with-previous::
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>Appears together with the first point.
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>::step trigger=after-previous::
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>Reveals on its own, right after the first point.
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>::step trigger=3::
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>Pinned to step 3.
+</code></pre></div>
+<h3 id="code-blocks">Code blocks<a class="headerlink" href="#code-blocks" title="Permanent link">&para;</a></h3>
+<p>All fenced code blocks are syntax-highlighted automatically using Pygments.
+No configuration is needed — just write standard Markdown fences with a language tag.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="sb">```python</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">"Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="sb">```</span>
+</code></pre></div>
+<h4 id="step-based-line-highlighting">Step-based line highlighting<a class="headerlink" href="#step-based-line-highlighting" title="Permanent link">&para;</a></h4>
+<p>Add a <code>{…}</code> spec after the language name to highlight specific lines on each keypress.
+Each <code>|</code>-separated stage is one step.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="sb">```python</span><span class="w"> </span>{1|2-3|all}
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="k">return</span> <span class="n">message</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">greet</span><span class="p">(</span><span class="s2">"world"</span><span class="p">))</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="sb">```</span>
+</code></pre></div>
+<p>On slide entry the first stage is active (line 1 highlighted, others dimmed).
+Each keypress advances to the next stage.
+When the spec ends, subsequent keypresses continue with whatever comes next in the slide.</p>
+<p><strong>Stage syntax:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td>Single line highlighted, others dimmed</td>
+</tr>
+<tr>
+<td><code>1,3,5</code></td>
+<td>Comma-separated lines highlighted</td>
+</tr>
+<tr>
+<td><code>2-4</code></td>
+<td>Inclusive range highlighted</td>
+</tr>
+<tr>
+<td><code>all</code> or <code>*</code></td>
+<td>No dimming — all lines at full opacity</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>All lines dimmed</td>
+</tr>
+</tbody>
+</table>
+<p>Stages can be combined: <code>1,3-5</code> highlights lines 1, 3, 4, and 5.</p>
+<h4 id="step-counter-integration">Step counter integration<a class="headerlink" href="#step-counter-integration" title="Permanent link">&para;</a></h4>
+<p>Code block stages consume steps from the shared slide counter.
+A block with three stages (<code>{1|2-3|all}</code>) uses two extra steps beyond its entry step.
+<code>::step::</code> markers and <code>::steps::</code> blocks that follow pick up after the code block's last stage.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="gh"># Walk through the code</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="sb">```python</span><span class="w"> </span>{1|2-3}
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    <span class="k">return</span> <span class="mi">42</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="sb">```</span>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>::step::
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>This paragraph appears after the code block's second highlight stage.
+</code></pre></div>
+<p>A code block without a <code>{…}</code> spec gets syntax colouring but adds no steps.</p>
+<h3 id="speaker-notes">Speaker notes<a class="headerlink" href="#speaker-notes" title="Permanent link">&para;</a></h3>
+<p>Add a <code>::notes::</code> marker to route content to speaker notes instead of the slide body.
+Notes are not rendered on the slide — they are available in the presenter view.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="gh"># My slide title</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>The visible slide body goes here.
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>::notes::
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>These are my private notes. They support <span class="gs">**markdown**</span> and are only shown
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>in the presenter view.
+</code></pre></div>
+<p>You can also set notes directly on <code>Slide</code> via the <code>notes=</code> parameter:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"title"</span><span class="p">,</span> <span class="n">notes</span><span class="o">=</span><span class="s2">"Remember to greet the audience."</span><span class="p">)</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"content"</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="s2">"bullets"</span><span class="p">,</span> <span class="n">notes</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">"notes/bullets.md"</span><span class="p">))</span>
+</code></pre></div>
+<p><code>str</code> is used as-is (inline HTML/text). <code>Path</code> pointing to a <code>.md</code> file is rendered as Markdown; any other extension is read as-is.
+When both <code>notes=</code> and <code>::notes::</code> are present, they are concatenated (<code>notes=</code> first, then <code>::notes::</code>).</p>
+<h3 id="images">Images<a class="headerlink" href="#images" title="Permanent link">&para;</a></h3>
+<p>Reference an image from Markdown with standard syntax:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>![<span class="nt">A diagram</span>](<span class="na">assets/diagram.png</span>)
+</code></pre></div>
+<p>An image path is resolved relative to <strong>the file it is written in</strong>,
+which is what every editor assumes:
+a <code>![](assets/diagram.png)</code> in <code>&lt;project-rood&gt;/slides/intro.md</code> points at <code>&lt;project-rood&gt;/slides/assets/diagram.png</code>,
+an <code>&lt;image href="../assets/diagram.png"&gt;</code> in <code>&lt;project-rood&gt;/slides/intro.svg</code> points at <code>&lt;project-rood&gt;/assets/diagram.png</code>,
+and an <code>Image("assets/diagram.png")</code> or an <code>Inline(...)</code> Markdown string in <code>&lt;project-rood&gt;/deck.py</code> points at <code>&lt;project-rood&gt;/assets/diagram.png</code>.
+So a slide SVG keeps rendering in Inkscape and a Markdown file keeps previewing in an editor,
+with no separate convention to remember.</p>
+<p>The asset itself must live inside the project directory,
+or inside the active theme's asset directory.
+Anything else cannot be served or exported,
+and is reported as a warning naming the file and the reference.
+To use a directory outside the project, symlink it in:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>ln<span class="w"> </span>-s<span class="w"> </span>../shared/assets<span class="w"> </span>assets
+</code></pre></div>
+<p>Local image paths are copied into the output of <code>inkflow build</code> and <code>inkflow export</code>. Remote (<code>https://</code>) and <code>data:</code> URIs are left as they are.</p>
+<h2 id="media-zones">Media zones<a class="headerlink" href="#media-zones" title="Permanent link">&para;</a></h2>
+<p>For images and video that should fill a zone (rather than sit inline in text),
+pass an <code>Image</code> or a <code>Video</code> through the <code>zones</code> dict:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">Slide</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    <span class="s2">"media-right"</span><span class="p">,</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>    <span class="n">md</span><span class="o">=</span><span class="s2">"feature"</span><span class="p">,</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>    <span class="n">zones</span><span class="o">=</span><span class="p">{</span><span class="s2">"media"</span><span class="p">:</span> <span class="n">Image</span><span class="p">(</span><span class="s2">"assets/screenshot.png"</span><span class="p">,</span> <span class="n">fit</span><span class="o">=</span><span class="s2">"cover"</span><span class="p">)},</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>Image</code> and <code>Video</code> share placement fields (<code>fit</code>, <code>align</code>, <code>x</code>, <code>y</code>, <code>alt_src</code>);
+see the <a href="../../reference/manifest/#inkflow.manifest.Image">manifest reference</a> for
+the full list.</p>
+<h3 id="video-playback">Video playback<a class="headerlink" href="#video-playback" title="Permanent link">&para;</a></h3>
+<p><code>Video</code> adds playback control on top of those fields:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Muted</span><span class="p">,</span> <span class="n">Slide</span><span class="p">,</span> <span class="n">Video</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>    <span class="s2">"media-right"</span><span class="p">,</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    <span class="n">md</span><span class="o">=</span><span class="s2">"demo"</span><span class="p">,</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    <span class="n">zones</span><span class="o">=</span><span class="p">{</span><span class="s2">"media"</span><span class="p">:</span> <span class="n">Video</span><span class="p">(</span><span class="s2">"assets/demo.mp4"</span><span class="p">,</span> <span class="n">autoplay</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a><span class="p">)</span>
+</code></pre></div>
+<p>See the <a href="../../reference/manifest/#inkflow.manifest.Video">manifest reference</a> for
+the full list of playback parameters (<code>controls</code>, <code>autoplay</code>, <code>muted</code>, <code>loop</code>,
+<code>poster</code>, <code>start</code>/<code>end</code>).</p>
+<p><strong>Play on a step.</strong> To start a clip on a step rather than on load, add an
+<code>animations.PlayVideo</code> cue targeting the video's zone key to the slide's
+<code>animations=[...]</code>. It joins the step timeline like any other cue:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Slide</span><span class="p">,</span> <span class="n">Trigger</span><span class="p">,</span> <span class="n">Video</span><span class="p">,</span> <span class="n">animations</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>    <span class="s2">"media-right"</span><span class="p">,</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>    <span class="n">zones</span><span class="o">=</span><span class="p">{</span><span class="s2">"media"</span><span class="p">:</span> <span class="n">Video</span><span class="p">(</span><span class="s2">"assets/demo.mp4"</span><span class="p">)},</span>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>    <span class="n">animations</span><span class="o">=</span><span class="p">[</span><span class="n">animations</span><span class="o">.</span><span class="n">PlayVideo</span><span class="p">(</span><span class="s2">"media"</span><span class="p">)],</span>  <span class="c1"># plays on the next click</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="p">)</span>
+</code></pre></div>
+<p>Leaving a slide pauses and rewinds its video, and stepping back below the cue's
+step resets it to the start. A video that both <code>autoplay</code>s and is targeted by a
+<code>PlayVideo</code> cue is contradictory — the cue wins (autoplay is dropped, with a
+warning), so the clip waits for its step and plays audibly on the gesture.</p>
+<p><strong>Muting and autoplay.</strong> Browsers block autoplaying video with sound unless the
+user has interacted with the page. <code>Muted.AUTO</code> (the default) sidesteps that by
+muting a clip <strong>only</strong> when it autoplays, so autoplay always works and everything
+else (controls, a <code>PlayVideo</code> cue) keeps its sound. <code>Muted.ON</code> always mutes;
+<code>Muted.OFF</code> never mutes — with <code>autoplay=True</code> that clip may be blocked on a cold
+load, which you accept by opting in explicitly.</p>
+<div class="admonition note">
+<p class="admonition-title">Zones only</p>
+<p>Playback control applies to <code>Video</code> passed through the <code>zones</code> dict. A video
+embedded from Markdown with <code>![](clip.mp4)</code> renders as a plain, uncontrolled
+element.</p>
+</div>
+<h2 id="built-in-layouts">Built-in layouts<a class="headerlink" href="#built-in-layouts" title="Permanent link">&para;</a></h2>
+<p>Layout names like <code>"content"</code> above resolve to reusable layout SVGs.
+The built-in theme ships these:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Zones</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cover</code></td>
+<td>title, subtitle, media</td>
+<td>Title / opening slide</td>
+</tr>
+<tr>
+<td><code>section</code></td>
+<td>title, subtitle</td>
+<td>Section divider</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>title</td>
+<td>Bare title, no content zone</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>title, content</td>
+<td>Standard text slide</td>
+</tr>
+<tr>
+<td><code>center</code></td>
+<td>content</td>
+<td>Centered content</td>
+</tr>
+<tr>
+<td><code>two-cols</code></td>
+<td>title, left, right</td>
+<td>Two-column comparison</td>
+</tr>
+<tr>
+<td><code>fact</code></td>
+<td>fact, caption</td>
+<td>Big number or key fact</td>
+</tr>
+<tr>
+<td><code>quote</code></td>
+<td>quote, attribution</td>
+<td>Pull quote</td>
+</tr>
+<tr>
+<td><code>media-left</code></td>
+<td>title, content, media</td>
+<td>Text + image/video (image left)</td>
+</tr>
+<tr>
+<td><code>media-right</code></td>
+<td>title, content, media</td>
+<td>Text + image/video (image right)</td>
+</tr>
+<tr>
+<td><code>end</code></td>
+<td>title, subtitle</td>
+<td>Thank-you / closing slide</td>
+</tr>
+</tbody>
+</table>
+<h3 id="referencing-project-layouts">Referencing project layouts<a class="headerlink" href="#referencing-project-layouts" title="Permanent link">&para;</a></h3>
+<p>Add layout SVGs to your project's own <code>layouts/</code> directory and reference them the
+same way as built-ins — by bare name, which shadows a built-in layout of the same
+name, or pin explicitly with <code>local:</code>/<code>theme:</code>/<code>builtin:</code>, or point at a path
+directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"local:my-layout"</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="s2">"custom"</span><span class="p">)</span>
+</code></pre></div>
+<p>See <a href="../layout-system/#path-resolution">Layout system</a> for the full resolution rules
+and how to build your own layouts.</p>
+<h2 id="combining-markdown-reveals-with-animations">Combining Markdown reveals with animations<a class="headerlink" href="#combining-markdown-reveals-with-animations" title="Permanent link">&para;</a></h2>
+<p>When a slide has both Markdown reveals and a deck <code>animations=[...]</code> list, they
+form <strong>one continuous timeline</strong>: the Markdown reveals number first (in reading
+order), then the <code>animations=[...]</code> list continues from there.</p>
+<p>So with two reveals and two animations, the reveals take steps 1–2 and the
+animations take steps 3–4:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inkflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">animations</span><span class="p">,</span> <span class="n">Slide</span><span class="p">,</span> <span class="n">Trigger</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    <span class="s2">"mixed"</span><span class="p">,</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    <span class="n">md</span><span class="o">=</span><span class="s2">"bullets"</span><span class="p">,</span>  <span class="c1"># two ::steps:: bullets → steps 1, 2</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>    <span class="n">animations</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>        <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"badge-a"</span><span class="p">),</span>  <span class="c1"># step 3</span>
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>        <span class="n">animations</span><span class="o">.</span><span class="n">FadeIn</span><span class="p">(</span><span class="s2">"badge-b"</span><span class="p">,</span> <span class="n">Trigger</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="mi">5</span><span class="p">)),</span>  <span class="c1"># pinned to step 5</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>    <span class="p">],</span>
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>Trigger.WITH_PREVIOUS</code> works across the boundary too — a first-in-list animation
+with it fires together with the last bullet. To place an animation at a specific
+reveal's step, pin it with <code>Trigger.at(n)</code>.</p>
+<h2 id="per-slide-styling">Per-slide styling<a class="headerlink" href="#per-slide-styling" title="Permanent link">&para;</a></h2>
+<p>The <code>style</code> parameter injects a CSS <code>&lt;style&gt;</code> block into the slide's SVG at render time.
+Use it as an escape hatch for one-off tweaks.
+For systematic visual changes, use a theme.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="n">Slide</span><span class="p">(</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    <span class="s2">"title"</span><span class="p">,</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>    <span class="n">style</span><span class="o">=</span><span class="s2">"""</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="s2">    #headline { font-size: 72px; fill: var(--inkflow-accent); }</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="s2">"""</span><span class="p">,</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="slide-dimensions">Slide dimensions<a class="headerlink" href="#slide-dimensions" title="Permanent link">&para;</a></h2>
+<p>Inkflow does not enforce a fixed canvas size.
+Design your slides at whatever dimensions suit your presentation:
+16:9, 4:3, square, portrait — the presenter scales to fill the available screen area automatically.</p>
+<p>The built-in theme layouts are authored at <strong>1920 × 1080</strong> (16:9).
+Slides that use them must share that coordinate space.
+If you need a different aspect ratio, create layout SVGs at matching dimensions in your SVG editor;
+the pipeline treats them identically.</p>
+<p>PDF export auto-detects the page size from the first slide's <code>viewBox</code>.
+You can override it if needed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>inkflow<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--size<span class="w"> </span>2560x1440
+</code></pre></div>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Keep element IDs short and semantic: <code>title</code>, <code>diagram-step-1</code>, <code>callout</code>.</li>
+<li>Elements that should never animate don't need IDs.</li>
+<li>The pipeline strips editor metadata on every load.
+  No need to clean manually if you have the git hook set up.</li>
+<li>SVGs from any editor (Figma export, Affinity Designer, hand-coded) work without pre-processing.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
