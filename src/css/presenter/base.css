@@ -96,6 +96,51 @@ body {
     background: rgba(0, 0, 0, 0.08);
 }
 
+/* ── Status-bar tooltips: driven by data-tooltip (not title) so the slow, unstyled
+   native browser tooltip never doubles up with this one. Anchored above the bar,
+   since #statusbar sits at the bottom of the viewport. ── */
+.hud-btn[data-tooltip] {
+    position: relative;
+}
+.hud-btn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--overlay);
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 40;
+}
+.hud-btn[data-tooltip]:hover::after,
+.hud-btn[data-tooltip]:focus-visible::after {
+    opacity: 1;
+    transition-delay: 0.35s;
+}
+/* Suppress while the sync dropdown is open — the tooltip would sit under the menu. */
+#btn-sync[aria-expanded="true"]:hover::after {
+    opacity: 0;
+    transition-delay: 0s;
+}
+/* Edge buttons: keep the bubble on-screen instead of centering off the bar. */
+#btn-theme[data-tooltip]::after {
+    left: 0;
+    transform: none;
+}
+#log-indicator[data-tooltip]::after {
+    left: auto;
+    right: 0;
+}
+
 .hud-sep {
     width: 1px;
     height: 16px;

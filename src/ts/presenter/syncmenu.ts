@@ -20,7 +20,7 @@ const SYNC_LABELS: Record<SyncMode, string> = {
 function renderSyncButton(): void {
     btnSync.dataset.mode = state.syncMode;
     const label = SYNC_LABELS[state.syncMode];
-    btnSync.title = `Sync: ${label} (s)`;
+    btnSync.dataset.tooltip = `Sync: ${label} (s)`;
     btnSync.setAttribute("aria-label", `Sync mode: ${label}`);
     for (const row of syncMenu.querySelectorAll<HTMLElement>(".sync-row")) {
         const active = row.dataset.mode === state.syncMode;
