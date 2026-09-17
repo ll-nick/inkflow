@@ -8,9 +8,6 @@ import { applySyncMode } from "./websocket";
 
 const btnSync = document.getElementById("btn-sync")!;
 const syncMenu = document.getElementById("sync-menu")!;
-const syncWrap = btnSync.closest<HTMLElement>(".sync-wrap")!;
-
-let enabled = false;
 
 const SYNC_ORDER: SyncMode[] = ["two-way", "present", "follow", "solo"];
 const SYNC_LABELS: Record<SyncMode, string> = {
@@ -39,7 +36,6 @@ export function setSyncMode(mode: SyncMode): void {
 }
 
 export function cycleSyncMode(): void {
-    if (!enabled) return;
     const i = SYNC_ORDER.indexOf(state.syncMode);
     setSyncMode(SYNC_ORDER[(i + 1) % SYNC_ORDER.length]);
 }
@@ -78,13 +74,7 @@ function toggleMenu(): void {
     else openMenu();
 }
 
-export function initSyncMenu(wsPort: number | null): void {
-    if (!wsPort) {
-        syncWrap.style.display = "none";
-        document.getElementById("help-sync-row")!.style.display = "none";
-        return;
-    }
-    enabled = true;
+export function initSyncMenu(): void {
     btnSync.addEventListener("click", (e) => {
         // Stop the opening click from reaching the just-added outside-click handler.
         e.stopPropagation();

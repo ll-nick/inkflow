@@ -10,6 +10,7 @@ import {
 } from "./transitions";
 import { showError, showLogs } from "./ui";
 import { connectWS, loadSyncMode } from "./websocket";
+import { initWindowSync } from "./windowsync";
 import "./keyboard";
 
 // ── Injected by server ──
@@ -37,7 +38,8 @@ window.addEventListener("popstate", () => {
     renderPv();
 });
 loadSyncMode();
-initSyncMenu(WS_PORT);
+initSyncMenu();
+initWindowSync(WS_PORT);
 // Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
 const deepLinked = readURL();
 loadSlide();
