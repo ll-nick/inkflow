@@ -1,4 +1,5 @@
 import type {
+    NavMessage,
     SyncMode,
     SyncPosition,
     TransitionData,
@@ -61,57 +62,64 @@ export function applySyncMode(mode: SyncMode): void {
     if (receives()) requestSync();
 }
 
-// Ask the server to reply (to this client only) with the current position.
-function requestSync(): void {
-    if (state.ws && state.ws.readyState === WebSocket.OPEN)
-        state.ws.send(JSON.stringify({ type: "sync-request" }));
-}
-
 // ── Outbound ─────────────────────────────────────────────────────────────────
 
+// Send over whichever transport is live: the WS relay (serve) or the window-link
+// (build; windowsync.ts). Exactly one is ever active — see initWindowSync.
+// targetOrigin is "*": a window-link peer can be a file:// window carrying an
+// opaque origin, which a stricter target could never reliably match.
+function postToPeer(msg: NavMessage | { type: "sync-request" }): void {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify(msg));
+    } else if (state.windowLink && !state.windowLink.closed) {
+        state.windowLink.postMessage(msg, "*");
+    }
+}
+
+// Ask the peer to reply with its current position: the server relays this to the
+// client that pushed it last (serve), or the window-link peer answers directly
+// (build — see windowsync.ts's sync-request handling and currentNavMessage below).
+// Exported so windowsync.ts can also use it to close the window.open()-to-
+// listener-ready race on a freshly opened presenter view.
+export function requestSync(): void {
+    postToPeer({ type: "sync-request" });
+}
+
 export function sendNav(transition?: TransitionData | null): void {
-    if (
-        !state.ws ||
-        state.ws.readyState !== WebSocket.OPEN ||
-        state._syncingFromServer ||
-        !sends()
-    )
-        return;
-    state.ws.send(
-        JSON.stringify({
-            type: "nav",
-            slideIndex: state.slideIndex,
-            step: state.step,
-            ...(transition ? { transition } : {}),
-        }),
-    );
+    if (state._syncingFromServer || !sends()) return;
+    postToPeer({
+        type: "nav",
+        slideIndex: state.slideIndex,
+        step: state.step,
+        ...(transition ? { transition } : {}),
+    });
 }
 
 // Tell other connected screens to snap their in-flight transition to its end,
 // matching a local same-direction-press snap. Position is unchanged, so this is a
 // separate signal rather than a normal nav.
 export function sendSnap(): void {
-    if (
-        !state.ws ||
-        state.ws.readyState !== WebSocket.OPEN ||
-        state._syncingFromServer ||
-        !sends()
-    )
-        return;
-    state.ws.send(
-        JSON.stringify({
-            type: "nav",
-            slideIndex: state.slideIndex,
-            step: state.step,
-            snap: true,
-        }),
-    );
+    if (state._syncingFromServer || !sends()) return;
+    postToPeer({
+        type: "nav",
+        slideIndex: state.slideIndex,
+        step: state.step,
+        snap: true,
+    });
 }
 
-// Apply a position pushed by a peer — pulled out on its own so an upcoming
-// window-link transport (for `inkflow build` output, which has no WS server to
-// relay over) can reuse it verbatim, keeping "receiving a position" identical
-// across both transports instead of maintaining two copies of this logic.
+// This window's current position, handed directly to a window-link peer that just
+// asked for it (a sync-request reply). Unlike sendNav this is a direct answer to an
+// explicit request rather than a broadcast, so it isn't gated by
+// sends()/_syncingFromServer — the peer gets the truth regardless of this window's
+// own sync mode, same as the WS server always answers from its last-known position.
+export function currentNavMessage(): NavMessage {
+    return { type: "nav", slideIndex: state.slideIndex, step: state.step };
+}
+
+// Apply a position pushed by a peer — shared by the WS relay (serve) and the
+// window-link transport (build; windowsync.ts), so the two transports can never
+// drift in what "receiving a position" actually does to the slide/step state.
 export function applyIncomingPosition(msg: SyncPosition): void {
     if (!receives()) return;
     if (msg.snap) {
