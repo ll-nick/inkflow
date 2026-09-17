@@ -41,6 +41,13 @@ export interface NavMessage {
     snap?: boolean;
 }
 
+// The position-carrying fields common to an outbound NavMessage and an inbound
+// WsMessage "position" — what applyIncomingPosition (websocket.ts) needs, shared by
+// the WebSocket relay (serve) and the window-link transport (build; windowsync.ts).
+// Derived from NavMessage rather than restated so a new field can't drift between
+// the two (or WsMessage's "position" variant below).
+export type SyncPosition = Omit<NavMessage, "type">;
+
 export type WsMessage =
     | {
           type: "update";
@@ -49,10 +56,4 @@ export type WsMessage =
           logs: LogEntry[];
       }
     | { type: "error"; message: string }
-    | {
-          type: "position";
-          slideIndex: number;
-          step: number;
-          transition?: TransitionData;
-          snap?: boolean;
-      };
+    | ({ type: "position" } & SyncPosition);

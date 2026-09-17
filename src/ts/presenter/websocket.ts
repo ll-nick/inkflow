@@ -1,4 +1,9 @@
-import type { SyncMode, TransitionData, WsMessage } from "../shared/types";
+import type {
+    SyncMode,
+    SyncPosition,
+    TransitionData,
+    WsMessage,
+} from "../shared/types";
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
 import {
@@ -103,6 +108,51 @@ export function sendSnap(): void {
     );
 }
 
+// Apply a position pushed by a peer — pulled out on its own so an upcoming
+// window-link transport (for `inkflow build` output, which has no WS server to
+// relay over) can reuse it verbatim, keeping "receiving a position" identical
+// across both transports instead of maintaining two copies of this logic.
+export function applyIncomingPosition(msg: SyncPosition): void {
+    if (!receives()) return;
+    if (msg.snap) {
+        // Another screen snapped its in-flight animation; match it. Position is
+        // already in sync, so just collapse ours — whichever is live (a slide
+        // transition or a step run).
+        snapInflight();
+        snapStepRun();
+        return;
+    }
+    const newIndex = Math.min(
+        Math.max(0, msg.slideIndex | 0),
+        Math.max(0, state.slides.length - 1),
+    );
+    const newStep = Math.max(0, msg.step | 0);
+    if (newIndex === state.slideIndex && newStep === state.step) return;
+    if (newIndex === state.slideIndex) {
+        // Same slide, step-only change from a peer: reveal it in place
+        // rather than rebuilding the slide DOM (which would interrupt the
+        // step animation and replay the entry transition). A single-step
+        // delta animates; a multi-step jump lands instantly.
+        const prevStep = state.step;
+        state._syncingFromServer = true;
+        state.step = newStep;
+        if (Math.abs(newStep - prevStep) === 1) applyCurrentStep();
+        else applyCurrentStepInstant();
+        state._syncingFromServer = false;
+        renderPvNext();
+        updatePvInfo();
+        return;
+    }
+    state._syncingFromServer = true;
+    state.slideIndex = newIndex;
+    state.step = newStep;
+    loadSlide(() => {
+        if (state.step > 0) applyCurrentStep();
+        state._syncingFromServer = false;
+    }, msg.transition ?? null);
+    renderPv();
+}
+
 // ── Connection ───────────────────────────────────────────────────────────────
 
 // `authoritative` marks a client whose own position should win over the server's
@@ -152,50 +202,15 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
         } else if (msg.type === "error") {
             showError(msg.message);
         } else if (msg.type === "position") {
-            if (!receives()) return;
-            if (msg.snap) {
-                // Another screen snapped its in-flight animation; match it. Position is
-                // already in sync, so just collapse ours — whichever is live (a slide
-                // transition or a step run).
-                snapInflight();
-                snapStepRun();
-                return;
-            }
-            if (firstPositionPending) {
-                // Discard exactly the stale connect-time push so an authoritative
-                // window keeps its own position. Later updates apply normally.
+            // Discard exactly the stale connect-time push so an authoritative window
+            // keeps its own position; later updates apply normally. Mirrors the
+            // receives()/snap short-circuits inside applyIncomingPosition so a
+            // non-receiving or snap message never consumes this one-shot flag.
+            if (receives() && !msg.snap && firstPositionPending) {
                 firstPositionPending = false;
                 return;
             }
-            const newIndex = Math.min(
-                Math.max(0, msg.slideIndex | 0),
-                Math.max(0, state.slides.length - 1),
-            );
-            const newStep = Math.max(0, msg.step | 0);
-            if (newIndex === state.slideIndex && newStep === state.step) return;
-            if (newIndex === state.slideIndex) {
-                // Same slide, step-only change from a peer: reveal it in place
-                // rather than rebuilding the slide DOM (which would interrupt the
-                // step animation and replay the entry transition). A single-step
-                // delta animates; a multi-step jump lands instantly.
-                const prevStep = state.step;
-                state._syncingFromServer = true;
-                state.step = newStep;
-                if (Math.abs(newStep - prevStep) === 1) applyCurrentStep();
-                else applyCurrentStepInstant();
-                state._syncingFromServer = false;
-                renderPvNext();
-                updatePvInfo();
-                return;
-            }
-            state._syncingFromServer = true;
-            state.slideIndex = newIndex;
-            state.step = newStep;
-            loadSlide(() => {
-                if (state.step > 0) applyCurrentStep();
-                state._syncingFromServer = false;
-            }, msg.transition ?? null);
-            renderPv();
+            applyIncomingPosition(msg);
         }
     };
 
