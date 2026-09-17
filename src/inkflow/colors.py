@@ -264,7 +264,20 @@ def colorize_element(
     changed = False
     existing_classes: list[str] = str(el.get("class") or "").split()
 
+    style_attr = str(el.get("style") or "")
+    decls = parse_style(style_attr) if style_attr else []
+    # An inline style declaration overrides a same-named presentation attribute
+    # per the CSS cascade, so a fill/stroke attribute shadowed by one is dead and
+    # must not be classified — otherwise both the stale attribute color and the
+    # actual style color get classes, and cascade order picks the wrong one.
+    styled_props = {prop for prop, _ in decls if prop in ("fill", "stroke")}
+
     for prop in ("fill", "stroke"):
+        if prop in styled_props:
+            if prop in el.attrib:
+                del el.attrib[prop]
+                changed = True
+            continue
         val = str(el.get(prop) or "").lower().strip()
         if not val or val in ("none", "inherit", "currentcolor"):
             continue
@@ -276,9 +289,7 @@ def colorize_element(
         del el.attrib[prop]
         changed = True
 
-    style_attr = str(el.get("style") or "")
     if style_attr:
-        decls = parse_style(style_attr)
         remaining: list[tuple[str, str]] = []
         for prop, val in decls:
             if prop in ("fill", "stroke"):
