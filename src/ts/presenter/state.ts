@@ -11,6 +11,7 @@ export const state = {
     _overviewActive: 0,
     _overviewCols: 1,
     ws: null as WebSocket | null,
+    windowLink: null as Window | null,
     _syncingFromServer: false,
     _laserMode: false,
 };
