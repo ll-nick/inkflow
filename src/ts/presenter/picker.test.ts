@@ -39,6 +39,10 @@ beforeAll(async () => {
         <div id="pv-step-ring"></div>
         <div id="pv-next-inner"></div>
         <div id="pv-notes"></div>
+        <span class="edit-wrap">
+            <button id="btn-edit"></button>
+            <div id="edit-menu"></div>
+        </span>
     `;
     vi.resetModules();
     ({ filterPicker } = await import("./picker"));
@@ -53,7 +57,15 @@ beforeEach(() => {
 describe("picker title escaping (F-018)", () => {
     test("a malicious title renders inert instead of injecting a node", () => {
         const evil = `<img src=x onerror="window.__pwned=1">`;
-        state.slides = [{ id: "a", svg: "<svg/>", title: evil, notes: "" }];
+        state.slides = [
+            {
+                id: "a",
+                svg: "<svg/>",
+                title: evil,
+                notes: "",
+                editableFiles: [],
+            },
+        ];
 
         filterPicker("");
 

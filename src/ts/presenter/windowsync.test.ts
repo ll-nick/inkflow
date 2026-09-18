@@ -37,6 +37,10 @@ beforeAll(async () => {
         <div id="pv-step-ring"></div>
         <div id="pv-next-inner"></div>
         <div id="pv-notes"></div>
+        <span class="edit-wrap">
+            <button id="btn-edit"></button>
+            <div id="edit-menu"></div>
+        </span>
     `;
     ({ isSyncPayload } = await import("./windowsync"));
 });

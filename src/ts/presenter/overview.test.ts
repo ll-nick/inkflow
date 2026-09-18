@@ -45,6 +45,10 @@ beforeAll(async () => {
             <div id="pv-next-inner"></div>
             <div id="pv-notes"></div>
         </aside>
+        <span class="edit-wrap">
+            <button id="btn-edit"></button>
+            <div id="edit-menu"></div>
+        </span>
     `;
 
     // computeStageFlip() divides stage/thumbnail rect sizes; happy-dom has no
@@ -87,12 +91,14 @@ beforeEach(() => {
             svg: '<svg viewBox="0 0 1920 1080"><rect/></svg>',
             title: "A",
             notes: "",
+            editableFiles: [],
         },
         {
             id: "b",
             svg: '<svg viewBox="0 0 1920 1080"><rect/></svg>',
             title: "B",
             notes: "",
+            editableFiles: [],
         },
     ];
     state.slideIndex = 0;
