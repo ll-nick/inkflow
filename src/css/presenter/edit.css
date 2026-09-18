@@ -1,0 +1,55 @@
+/* ── Edit-source control ────────────────────────────────────────────────────── */
+
+.edit-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Dropdown: anchored above the button (status bar sits at the bottom). */
+#edit-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    min-width: 9rem;
+    padding: 0.25rem;
+    background: var(--surface);
+    border: 1px solid var(--overlay);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+#edit-menu.open {
+    display: block;
+}
+
+.edit-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--subtext);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    transition:
+        background 0.12s,
+        color 0.12s;
+}
+.edit-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+[data-theme="light"] .edit-row:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* Brief confirmation flash after a clipboard copy (button or menu row). */
+#btn-edit.copied,
+.edit-row.copied {
+    color: var(--accent);
+}

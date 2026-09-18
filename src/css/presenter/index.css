@@ -4,6 +4,7 @@
 @import "./overlays.css";
 @import "./picker.css";
 @import "./sync.css";
+@import "./edit.css";
 @import "./overview.css";
 @import "./pv.css";
 @import "../shared/animations.css";
