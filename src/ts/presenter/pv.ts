@@ -1,6 +1,7 @@
 import { buildStepRing } from "../shared/ring";
 import { applyStepInstant } from "../shared/step";
 import { parseViewBox } from "../shared/viewbox";
+import { renderEditButton } from "./edit";
 import { state } from "./state";
 import { maxStep } from "./status";
 
@@ -124,6 +125,7 @@ export function renderPv(): void {
     updatePvInfo();
     renderPvNext();
     renderPvNotes();
+    renderEditButton();
 }
 
 export function togglePv(): void {

@@ -1,3 +1,4 @@
+import { initEditMenu } from "./edit";
 import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { readURL } from "./status";
@@ -41,6 +42,7 @@ window.addEventListener("popstate", () => {
 loadSyncMode();
 initSyncMenu();
 initWindowSync(WS_PORT);
+initEditMenu(EDIT_COMMANDS, WS_PORT);
 // Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
 const deepLinked = readURL();
 loadSlide();
