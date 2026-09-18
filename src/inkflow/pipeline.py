@@ -45,11 +45,17 @@ from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zo
 # ── Slide wire format ────────────────────────────────────────────────────────
 
 
+class EditableFile(TypedDict):
+    label: str
+    path: str
+
+
 class SlideData(TypedDict):
     id: str
     svg: str
     title: str
     notes: str
+    editableFiles: list[EditableFile]
 
 
 # ── Path conventions ─────────────────────────────────────────────────────────
@@ -657,6 +663,24 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         md_source = _source_for(assets, md.path if md is not None else None)
         svg, md_notes = process_slide(slide, ctx, i + 1, parsed, md_source, slide_id)
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
-        results.append({"id": slide_id, "svg": svg, "title": title, "notes": notes})
+
+        svg_path = resolve_slide_src(slide.src, ctx.project_dir, ctx.theme)
+        editable_files: list[EditableFile] = [
+            {"label": "Layout", "path": str(svg_path)}
+        ]
+        if md is not None and md.path is not None:
+            editable_files.append({"label": "Content", "path": str(md.path)})
+        if loaded_notes.path is not None:
+            editable_files.append({"label": "Notes", "path": str(loaded_notes.path)})
+
+        results.append(
+            {
+                "id": slide_id,
+                "svg": svg,
+                "title": title,
+                "notes": notes,
+                "editableFiles": editable_files,
+            }
+        )
     logger.info(f"processed {len(results)} slide(s)")
     return results

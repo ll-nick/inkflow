@@ -686,6 +686,74 @@ class TestSlideId:
         assert results[1]["id"] == "plain-2"
 
 
+class TestEditableFiles:
+    def test_svg_only_slide_has_single_layout_entry(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide_path = tmp_path / "slides" / "plain.svg"
+        slide_path.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck = Deck(slides=[Slide("slides/plain.svg")])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [
+            {"label": "Layout", "path": str(slide_path)}
+        ]
+
+    def test_file_backed_md_adds_content_entry(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layouts" / "layout.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        slides_dir = tmp_path / "slides"
+        slides_dir.mkdir()
+        md_path = slides_dir / "content.md"
+        md_path.write_text("# Hello\n", encoding="utf-8")
+        deck = Deck(slides=[Slide("layout", md="content")])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [
+            {"label": "Layout", "path": str(layout)},
+            {"label": "Content", "path": str(md_path)},
+        ]
+
+    def test_inline_md_has_no_content_entry(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layouts" / "layout.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        deck = Deck(slides=[Slide("layout", md=Inline("# Hello"))])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [{"label": "Layout", "path": str(layout)}]
+
+    def test_file_backed_notes_adds_notes_entry(self, tmp_path: Path) -> None:
+        (tmp_path / "slides").mkdir()
+        slide_path = tmp_path / "slides" / "plain.svg"
+        slide_path.write_text(_PLAIN_SVG, encoding="utf-8")
+        notes_path = tmp_path / "slides" / "plain-notes.md"
+        notes_path.write_text("Speak slowly.", encoding="utf-8")
+        deck = Deck(slides=[Slide("slides/plain.svg", notes="slides/plain-notes.md")])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [
+            {"label": "Layout", "path": str(slide_path)},
+            {"label": "Notes", "path": str(notes_path)},
+        ]
+
+    def test_all_three_editable_files_in_order(self, tmp_path: Path) -> None:
+        layout = tmp_path / "layouts" / "layout.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        slides_dir = tmp_path / "slides"
+        slides_dir.mkdir()
+        md_path = slides_dir / "content.md"
+        md_path.write_text("# Hello\n", encoding="utf-8")
+        notes_path = slides_dir / "content-notes.md"
+        notes_path.write_text("Notes.", encoding="utf-8")
+        deck = Deck(
+            slides=[Slide("layout", md="content", notes="slides/content-notes.md")]
+        )
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [
+            {"label": "Layout", "path": str(layout)},
+            {"label": "Content", "path": str(md_path)},
+            {"label": "Notes", "path": str(notes_path)},
+        ]
+
+
 class TestParseMarkdownOnce:
     def test_markdown_parsed_once_per_md_slide(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
