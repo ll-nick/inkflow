@@ -57,3 +57,27 @@ INKFLOW_LOG_LEVEL_FILE=debug inkflow build        # same as the first, via the e
 A fatal build error is shown as a full-screen overlay (and the `serve` TUI error view),
 separate from these sinks; enabling the file sink also captures its traceback.
 
+## Editing from the presenter
+
+The presenter's Edit button (see [Presenter panel](../guides/presenter-view.md))
+copies the current slide's source path to the clipboard by default.
+Set one or both of these environment variables to launch an editor instead,
+with `{path}` substituted (appended as a final argument if the template has no
+`{path}` placeholder):
+
+| File kind | Environment variable |
+| --- | --- |
+| SVG layout | `INKFLOW_EDIT_CMD_SVG` |
+| Markdown (content or notes) | `INKFLOW_EDIT_CMD_MD` |
+
+```bash
+INKFLOW_EDIT_CMD_SVG="code -r --goto {path}" inkflow serve deck.py
+```
+
+There is no built-in command for either kind:
+"jump an already-open editor to this file" is inherently editor- and machine-specific,
+so inkflow only supplies the hook, not a default.
+VS Code's `-r`/`--goto` flags and Neovim's `--server`/`--remote`
+(started with a fixed `--listen` address) both support this natively.
+There is no equivalent for Inkscape today.
+

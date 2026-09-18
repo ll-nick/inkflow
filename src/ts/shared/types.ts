@@ -3,6 +3,7 @@
 // defensive, not handling a real absent case.
 export interface EditableFile {
     label: string;
+    name: string;
     path: string;
 }
 

@@ -1,5 +1,142 @@
 "use strict";
 (() => {
+  // src/ts/presenter/menus.ts
+  var activeClose = null;
+  function menuOpened(close) {
+    if (activeClose && activeClose !== close) activeClose();
+    activeClose = close;
+  }
+  function menuClosed(close) {
+    if (activeClose === close) activeClose = null;
+  }
+
+  // src/ts/presenter/state.ts
+  var state = {
+    slides: [],
+    transitions: [],
+    slideIndex: 0,
+    step: 0,
+    syncMode: "two-way",
+    _pickerMatches: [],
+    _pickerActive: 0,
+    _overviewActive: 0,
+    _overviewCols: 1,
+    ws: null,
+    windowLink: null,
+    _syncingFromServer: false,
+    _laserMode: false
+  };
+
+  // src/ts/presenter/edit.ts
+  var btnEdit = document.getElementById("btn-edit");
+  var editMenu = document.getElementById("edit-menu");
+  var editWrap = btnEdit.closest(".edit-wrap");
+  var editToast = document.getElementById("edit-toast");
+  var editToastText = document.getElementById("edit-toast-text");
+  var config = { svg: false, md: false };
+  var toastTimeout = null;
+  var ROW_ICONS = {
+    Layout: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>`,
+    Parent: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5.5 8 9 2 5.5 8 2Z"/><path d="M2 9 8 12.5 14 9"/></svg>`,
+    Content: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z"/><path d="M9.5 1.5v3.5H13"/><path d="M4.7 9h6.2M4.7 11.3h4.3"/></svg>`,
+    Notes: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-3.2 3v-3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>`
+  };
+  function isConfigured(file) {
+    return file.path.toLowerCase().endsWith(".svg") ? config.svg : config.md;
+  }
+  function flashToast(message) {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    editToastText.textContent = message;
+    editToast.classList.add("visible");
+    toastTimeout = setTimeout(() => {
+      editToast.classList.remove("visible");
+      toastTimeout = null;
+    }, 1600);
+  }
+  function actOn(file) {
+    if (isConfigured(file) && state.ws && state.ws.readyState === WebSocket.OPEN) {
+      state.ws.send(JSON.stringify({ type: "edit", path: file.path }));
+      flashToast(`Opened ${file.name}`);
+      return;
+    }
+    try {
+      void navigator.clipboard.writeText(file.path);
+      flashToast(`Copied ${file.name}`);
+    } catch (_) {
+    }
+  }
+  function renderEditButton() {
+    const files = state.slides[state.slideIndex]?.editableFiles ?? [];
+    editMenu.innerHTML = "";
+    for (const file of files) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "edit-row";
+      row.insertAdjacentHTML("beforeend", ROW_ICONS[file.label] ?? "");
+      const text = document.createElement("span");
+      text.className = "edit-row-text";
+      const label = document.createElement("span");
+      label.className = "edit-row-label";
+      label.textContent = file.label;
+      const name = document.createElement("span");
+      name.className = "edit-row-name";
+      name.textContent = file.name;
+      text.append(label, name);
+      row.appendChild(text);
+      row.addEventListener("click", () => {
+        actOn(file);
+        closeMenu();
+      });
+      editMenu.appendChild(row);
+    }
+  }
+  function onDocClick(e) {
+    const t = e.target;
+    if (!btnEdit.contains(t) && !editMenu.contains(t)) closeMenu();
+  }
+  function onKeydown(e) {
+    if (e.key === "Escape") {
+      closeMenu();
+      btnEdit.focus();
+    }
+  }
+  function openMenu() {
+    editMenu.classList.add("open");
+    btnEdit.setAttribute("aria-expanded", "true");
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKeydown);
+    menuOpened(closeMenu);
+  }
+  function closeMenu() {
+    if (!editMenu.classList.contains("open")) return;
+    editMenu.classList.remove("open");
+    btnEdit.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", onDocClick);
+    document.removeEventListener("keydown", onKeydown);
+    menuClosed(closeMenu);
+  }
+  function toggleMenu() {
+    if (editMenu.classList.contains("open")) closeMenu();
+    else openMenu();
+  }
+  function initEditMenu(cfg, wsPort) {
+    if (!wsPort) {
+      editWrap.style.display = "none";
+      return;
+    }
+    config = cfg;
+    btnEdit.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const files = state.slides[state.slideIndex]?.editableFiles ?? [];
+      if (files.length <= 1) {
+        if (files.length === 1) actOn(files[0]);
+        return;
+      }
+      toggleMenu();
+    });
+    renderEditButton();
+  }
+
   // src/ts/shared/ring.ts
   function buildStepRing(current, total) {
     const size = 20, cx = 10, cy = 10, ro = 9, ri = 5;
@@ -269,23 +406,6 @@
     const round2 = (n) => Math.round(n * 1e3) / 1e3;
     return `${round2(vb.x)} ${round2(vb.y)} ${round2(vb.w)} ${round2(vb.h)}`;
   }
-
-  // src/ts/presenter/state.ts
-  var state = {
-    slides: [],
-    transitions: [],
-    slideIndex: 0,
-    step: 0,
-    syncMode: "two-way",
-    _pickerMatches: [],
-    _pickerActive: 0,
-    _overviewActive: 0,
-    _overviewCols: 1,
-    ws: null,
-    windowLink: null,
-    _syncingFromServer: false,
-    _laserMode: false
-  };
 
   // src/ts/presenter/deck-url.ts
   var SLIDE = "slide";
@@ -651,6 +771,7 @@
     updatePvInfo();
     renderPvNext();
     renderPvNotes();
+    renderEditButton();
   }
   function togglePv() {
     document.body.classList.toggle("pv-open");
@@ -2869,43 +2990,45 @@
   function setSyncMode(mode) {
     applySyncMode(mode);
     renderSyncButton();
-    closeMenu();
+    closeMenu2();
   }
   function cycleSyncMode() {
     const i = SYNC_ORDER.indexOf(state.syncMode);
     setSyncMode(SYNC_ORDER[(i + 1) % SYNC_ORDER.length]);
   }
-  function onDocClick(e) {
+  function onDocClick2(e) {
     const t = e.target;
-    if (!btnSync.contains(t) && !syncMenu.contains(t)) closeMenu();
+    if (!btnSync.contains(t) && !syncMenu.contains(t)) closeMenu2();
   }
-  function onKeydown(e) {
+  function onKeydown2(e) {
     if (e.key === "Escape") {
-      closeMenu();
+      closeMenu2();
       btnSync.focus();
     }
   }
-  function openMenu() {
+  function openMenu2() {
     syncMenu.classList.add("open");
     btnSync.setAttribute("aria-expanded", "true");
-    document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onKeydown);
+    document.addEventListener("click", onDocClick2);
+    document.addEventListener("keydown", onKeydown2);
+    menuOpened(closeMenu2);
   }
-  function closeMenu() {
+  function closeMenu2() {
     if (!syncMenu.classList.contains("open")) return;
     syncMenu.classList.remove("open");
     btnSync.setAttribute("aria-expanded", "false");
-    document.removeEventListener("click", onDocClick);
-    document.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("click", onDocClick2);
+    document.removeEventListener("keydown", onKeydown2);
+    menuClosed(closeMenu2);
   }
-  function toggleMenu() {
-    if (syncMenu.classList.contains("open")) closeMenu();
-    else openMenu();
+  function toggleMenu2() {
+    if (syncMenu.classList.contains("open")) closeMenu2();
+    else openMenu2();
   }
   function initSyncMenu() {
     btnSync.addEventListener("click", (e) => {
       e.stopPropagation();
-      toggleMenu();
+      toggleMenu2();
     });
     for (const row of syncMenu.querySelectorAll(".sync-row"))
       row.addEventListener(
@@ -3633,6 +3756,7 @@
   var INITIAL_SLIDES = __SLIDES_JSON__;
   var INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
   var WS_PORT = __WS_PORT__;
+  var EDIT_COMMANDS = __EDIT_COMMANDS_JSON__;
   var INITIAL_ERROR = __ERROR_JSON__;
   var INITIAL_LOGS = __LOGS_JSON__;
   state.slides = INITIAL_SLIDES;
@@ -3650,6 +3774,7 @@
   loadSyncMode();
   initSyncMenu();
   initWindowSync(WS_PORT);
+  initEditMenu(EDIT_COMMANDS, WS_PORT);
   var deepLinked = readURL();
   loadSlide();
   renderPv();

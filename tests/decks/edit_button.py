@@ -12,6 +12,15 @@ bar on each slide:
    two-item dropdown: Layout, Content.
 3. **Content and notes files** — both ``md=`` and ``notes=`` are file-backed.
    Edit should offer a three-item dropdown: Layout, Content, Notes.
+4. **Layout with a parent chain** — ``layouts/edit-parent-child.svg`` has
+   ``inkflow:parent="edit-parent-base"``, which itself has
+   ``inkflow:parent="edit-parent-grandparent"``: two project-local ancestors.
+   Edit should offer a three-item dropdown, root ancestor first so the
+   immediate parent sits next to the layout it belongs to: Parent
+   (edit-parent-grandparent.svg), Parent (edit-parent-base.svg), Layout
+   (edit-parent-child.svg) — the two Parent rows told apart by filename since
+   the label repeats. A built-in/theme ancestor is never offered this way (see
+   ``TestEditableFiles.test_theme_ancestor_excluded`` in test_pipeline.py).
 
 Also built (not served) by ``tests/test_decks.py`` as a compilation smoke test.
 """
@@ -33,6 +42,11 @@ def main() -> Deck:
                 id="content-and-notes",
                 md="edit-content-and-notes",
                 notes="slides/edit-notes.md",
+            ),
+            Slide(
+                "layouts/edit-parent-child",
+                id="layout-with-parent",
+                zones={"title": "This layout has a parent: Layout + Parent"},
             ),
         ],
     )

@@ -1,4 +1,5 @@
 import type { EditableFile, EditCommandsConfig } from "../shared/types";
+import { menuClosed, menuOpened } from "./menus";
 import { state } from "./state";
 
 // Status-bar control for editing the current slide's source file(s). Owns the
@@ -20,30 +21,52 @@ import { state } from "./state";
 const btnEdit = document.getElementById("btn-edit")!;
 const editMenu = document.getElementById("edit-menu")!;
 const editWrap = btnEdit.closest<HTMLElement>(".edit-wrap")!;
+const editToast = document.getElementById("edit-toast")!;
+const editToastText = document.getElementById("edit-toast-text")!;
 
 let config: EditCommandsConfig = { svg: false, md: false };
+let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// One small icon per editableFiles label — a plain signifier, not decoration, so
+// entries with the same generic label (several "Parent" rows) still read apart at
+// a glance alongside their filename. Trusted, fixed markup (never file/user data).
+const ROW_ICONS: Record<string, string> = {
+    Layout: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>`,
+    Parent: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5.5 8 9 2 5.5 8 2Z"/><path d="M2 9 8 12.5 14 9"/></svg>`,
+    Content: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z"/><path d="M9.5 1.5v3.5H13"/><path d="M4.7 9h6.2M4.7 11.3h4.3"/></svg>`,
+    Notes: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-3.2 3v-3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>`,
+};
 
 function isConfigured(file: EditableFile): boolean {
     return file.path.toLowerCase().endsWith(".svg") ? config.svg : config.md;
 }
 
-function flashCopied(el: HTMLElement): void {
-    el.classList.add("copied");
-    setTimeout(() => el.classList.remove("copied"), 1200);
+// Flashes a confirmation styled like the #log-banner message boxes (same
+// surface/border/shadow treatment, an accent colour instead of its warning
+// yellow), but with no dismiss button — it always times itself out.
+function flashToast(message: string): void {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    editToastText.textContent = message;
+    editToast.classList.add("visible");
+    toastTimeout = setTimeout(() => {
+        editToast.classList.remove("visible");
+        toastTimeout = null;
+    }, 1600);
 }
 
-function actOn(file: EditableFile, flashTarget: HTMLElement): void {
+function actOn(file: EditableFile): void {
     if (
         isConfigured(file) &&
         state.ws &&
         state.ws.readyState === WebSocket.OPEN
     ) {
         state.ws.send(JSON.stringify({ type: "edit", path: file.path }));
+        flashToast(`Opened ${file.name}`);
         return;
     }
     try {
         void navigator.clipboard.writeText(file.path);
-        flashCopied(flashTarget);
+        flashToast(`Copied ${file.name}`);
     } catch (_) {}
 }
 
@@ -56,9 +79,19 @@ export function renderEditButton(): void {
         const row = document.createElement("button");
         row.type = "button";
         row.className = "edit-row";
-        row.textContent = file.label;
+        row.insertAdjacentHTML("beforeend", ROW_ICONS[file.label] ?? "");
+        const text = document.createElement("span");
+        text.className = "edit-row-text";
+        const label = document.createElement("span");
+        label.className = "edit-row-label";
+        label.textContent = file.label;
+        const name = document.createElement("span");
+        name.className = "edit-row-name";
+        name.textContent = file.name;
+        text.append(label, name);
+        row.appendChild(text);
         row.addEventListener("click", () => {
-            actOn(file, row);
+            actOn(file);
             closeMenu();
         });
         editMenu.appendChild(row);
@@ -84,6 +117,7 @@ function openMenu(): void {
     btnEdit.setAttribute("aria-expanded", "true");
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKeydown);
+    menuOpened(closeMenu);
 }
 
 function closeMenu(): void {
@@ -92,6 +126,7 @@ function closeMenu(): void {
     btnEdit.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", onDocClick);
     document.removeEventListener("keydown", onKeydown);
+    menuClosed(closeMenu);
 }
 
 function toggleMenu(): void {
@@ -112,7 +147,7 @@ export function initEditMenu(
         e.stopPropagation();
         const files = state.slides[state.slideIndex]?.editableFiles ?? [];
         if (files.length <= 1) {
-            if (files.length === 1) actOn(files[0], btnEdit);
+            if (files.length === 1) actOn(files[0]);
             return;
         }
         toggleMenu();

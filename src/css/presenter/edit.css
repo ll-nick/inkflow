@@ -5,14 +5,17 @@
     display: inline-flex;
 }
 
-/* Dropdown: anchored above the button (status bar sits at the bottom). */
+/* Dropdown: anchored above the button (status bar sits at the bottom). Sized to
+   its content (short generic labels) rather than a fixed width like sync-menu's,
+   whose rows are full sentences; a max-width plus ellipsis on the filename keeps
+   a long one from stretching the menu. */
 #edit-menu {
     display: none;
     position: absolute;
     bottom: calc(100% + 6px);
     left: 0;
     z-index: 30;
-    min-width: 9rem;
+    max-width: 14rem;
     padding: 0.25rem;
     background: var(--surface);
     border: 1px solid var(--overlay);
@@ -26,6 +29,7 @@
 .edit-row {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
     width: 100%;
     background: transparent;
     border: none;
@@ -33,7 +37,6 @@
     color: var(--subtext);
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.78rem;
     padding: 0.35rem 0.5rem;
     text-align: left;
     transition:
@@ -47,9 +50,23 @@
 [data-theme="light"] .edit-row:hover {
     background: rgba(0, 0, 0, 0.08);
 }
+.edit-row svg {
+    flex-shrink: 0;
+}
 
-/* Brief confirmation flash after a clipboard copy (button or menu row). */
-#btn-edit.copied,
-.edit-row.copied {
-    color: var(--accent);
+.edit-row-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+.edit-row-label {
+    font-size: 0.78rem;
+}
+.edit-row-name {
+    font-size: 0.68rem;
+    opacity: 0.65;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

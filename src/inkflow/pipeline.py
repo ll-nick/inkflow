@@ -23,7 +23,7 @@ from inkflow.layout import (
     resolve_default_zone,
     resolve_parent_path,
 )
-from inkflow.loaders import load_md, load_notes, load_style
+from inkflow.loaders import LoadedText, load_md, load_notes, load_style
 from inkflow.logging import logger
 from inkflow.manifest import (
     Deck,
@@ -47,6 +47,7 @@ from inkflow.zones import ParsedMarkdown, build_slide_content, parse_markdown_zo
 
 class EditableFile(TypedDict):
     label: str
+    name: str
     path: str
 
 
@@ -637,6 +638,39 @@ def _source_for(roots: AssetRoots, path: Path | None) -> AssetSource:
     return AssetSource.for_file(roots, path)
 
 
+def _editable_files(
+    ctx: DeckContext,
+    svg_path: Path,
+    md: LoadedText | None,
+    loaded_notes: LoadedText,
+) -> list[EditableFile]:
+    """The slide's in-project ancestor layouts (root first, so the immediate
+    parent sits next to the slide's own SVG), that SVG itself, and any
+    file-backed content/notes: what the presenter's Edit button offers.
+
+    A theme/built-in ancestor is skipped: it lives outside the project (often
+    inside an installed package), so editing it is unlikely to be wanted and may
+    not even be writable.
+    """
+    files: list[EditableFile] = []
+    chain = resolve_chain(svg_path, ctx.project_dir, ctx.theme)
+    for parent in chain:
+        if parent.is_relative_to(ctx.project_dir):
+            files.append({"label": "Parent", "name": parent.name, "path": str(parent)})
+    files.append({"label": "Layout", "name": svg_path.name, "path": str(svg_path)})
+    if md is not None and md.path is not None:
+        files.append({"label": "Content", "name": md.path.name, "path": str(md.path)})
+    if loaded_notes.path is not None:
+        files.append(
+            {
+                "label": "Notes",
+                "name": loaded_notes.path.name,
+                "path": str(loaded_notes.path),
+            }
+        )
+    return files
+
+
 def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
     assets = AssetRoots(project_dir, deck.theme.asset_dir())
@@ -665,13 +699,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
 
         svg_path = resolve_slide_src(slide.src, ctx.project_dir, ctx.theme)
-        editable_files: list[EditableFile] = [
-            {"label": "Layout", "path": str(svg_path)}
-        ]
-        if md is not None and md.path is not None:
-            editable_files.append({"label": "Content", "path": str(md.path)})
-        if loaded_notes.path is not None:
-            editable_files.append({"label": "Notes", "path": str(loaded_notes.path)})
+        editable_files = _editable_files(ctx, svg_path, md, loaded_notes)
 
         results.append(
             {

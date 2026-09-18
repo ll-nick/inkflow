@@ -205,3 +205,38 @@ kbd {
 #log-list li.log-error {
     color: var(--red);
 }
+
+/* ── Edit-action toast (non-modal, self-dismissing) ──
+   Same corner and box treatment as #log-banner (surface/border/shadow), an
+   accent colour instead of its warning yellow, and no close button — it always
+   times itself out (edit.ts) rather than needing a dismiss. */
+#edit-toast {
+    display: none;
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 40;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 20rem;
+    background: var(--surface);
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    color: var(--text);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    pointer-events: none;
+}
+#edit-toast.visible {
+    display: flex;
+}
+#edit-toast svg {
+    color: var(--green);
+    flex-shrink: 0;
+}
+#edit-toast-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

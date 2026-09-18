@@ -686,6 +686,16 @@ class TestSlideId:
         assert results[1]["id"] == "plain-2"
 
 
+def _svg_with_parent(parent: str) -> str:
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg"\n'
+        '     xmlns:inkflow="urn:inkflow"\n'
+        f'     inkflow:parent="{parent}"\n'
+        '     viewBox="0 0 1920 1080">\n'
+        "</svg>\n"
+    )
+
+
 class TestEditableFiles:
     def test_svg_only_slide_has_single_layout_entry(self, tmp_path: Path) -> None:
         (tmp_path / "slides").mkdir()
@@ -694,7 +704,7 @@ class TestEditableFiles:
         deck = Deck(slides=[Slide("slides/plain.svg")])
         results = process_deck(deck, tmp_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "path": str(slide_path)}
+            {"label": "Layout", "name": "plain.svg", "path": str(slide_path)}
         ]
 
     def test_file_backed_md_adds_content_entry(self, tmp_path: Path) -> None:
@@ -708,8 +718,8 @@ class TestEditableFiles:
         deck = Deck(slides=[Slide("layout", md="content")])
         results = process_deck(deck, tmp_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "path": str(layout)},
-            {"label": "Content", "path": str(md_path)},
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)},
+            {"label": "Content", "name": "content.md", "path": str(md_path)},
         ]
 
     def test_inline_md_has_no_content_entry(self, tmp_path: Path) -> None:
@@ -718,7 +728,9 @@ class TestEditableFiles:
         layout.write_text(_LAYOUT_SVG, encoding="utf-8")
         deck = Deck(slides=[Slide("layout", md=Inline("# Hello"))])
         results = process_deck(deck, tmp_path)
-        assert results[0]["editableFiles"] == [{"label": "Layout", "path": str(layout)}]
+        assert results[0]["editableFiles"] == [
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)}
+        ]
 
     def test_file_backed_notes_adds_notes_entry(self, tmp_path: Path) -> None:
         (tmp_path / "slides").mkdir()
@@ -729,14 +741,16 @@ class TestEditableFiles:
         deck = Deck(slides=[Slide("slides/plain.svg", notes="slides/plain-notes.md")])
         results = process_deck(deck, tmp_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "path": str(slide_path)},
-            {"label": "Notes", "path": str(notes_path)},
+            {"label": "Layout", "name": "plain.svg", "path": str(slide_path)},
+            {"label": "Notes", "name": "plain-notes.md", "path": str(notes_path)},
         ]
 
-    def test_all_three_editable_files_in_order(self, tmp_path: Path) -> None:
+    def test_all_four_editable_files_in_order(self, tmp_path: Path) -> None:
+        parent = tmp_path / "layouts" / "parent.svg"
+        parent.parent.mkdir(parents=True, exist_ok=True)
+        parent.write_text(_LAYOUT_SVG, encoding="utf-8")
         layout = tmp_path / "layouts" / "layout.svg"
-        layout.parent.mkdir(parents=True, exist_ok=True)
-        layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        layout.write_text(_svg_with_parent("parent"), encoding="utf-8")
         slides_dir = tmp_path / "slides"
         slides_dir.mkdir()
         md_path = slides_dir / "content.md"
@@ -748,9 +762,42 @@ class TestEditableFiles:
         )
         results = process_deck(deck, tmp_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "path": str(layout)},
-            {"label": "Content", "path": str(md_path)},
-            {"label": "Notes", "path": str(notes_path)},
+            {"label": "Parent", "name": "parent.svg", "path": str(parent)},
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)},
+            {"label": "Content", "name": "content.md", "path": str(md_path)},
+            {"label": "Notes", "name": "content-notes.md", "path": str(notes_path)},
+        ]
+
+    def test_ancestor_chain_listed_root_first_next_to_layout(
+        self, tmp_path: Path
+    ) -> None:
+        # Root-first, so the immediate parent sits right next to Layout: reading
+        # top to bottom is root -> ... -> immediate parent -> layout -> content.
+        grandparent = tmp_path / "layouts" / "grandparent.svg"
+        grandparent.parent.mkdir(parents=True, exist_ok=True)
+        grandparent.write_text(_LAYOUT_SVG, encoding="utf-8")
+        parent = tmp_path / "layouts" / "parent.svg"
+        parent.write_text(_svg_with_parent("grandparent"), encoding="utf-8")
+        layout = tmp_path / "layouts" / "layout.svg"
+        layout.write_text(_svg_with_parent("parent"), encoding="utf-8")
+        deck = Deck(slides=[Slide("layout")])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [
+            {"label": "Parent", "name": "grandparent.svg", "path": str(grandparent)},
+            {"label": "Parent", "name": "parent.svg", "path": str(parent)},
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)},
+        ]
+
+    def test_theme_ancestor_excluded(self, tmp_path: Path) -> None:
+        # A layout built on a built-in/theme ancestor: that ancestor lives outside
+        # the project (often inside an installed package), so it's not offered.
+        layout = tmp_path / "layouts" / "layout.svg"
+        layout.parent.mkdir(parents=True, exist_ok=True)
+        layout.write_text(_svg_with_parent("builtin:base"), encoding="utf-8")
+        deck = Deck(slides=[Slide("layout")])
+        results = process_deck(deck, tmp_path)
+        assert results[0]["editableFiles"] == [
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)}
         ]
 
 
