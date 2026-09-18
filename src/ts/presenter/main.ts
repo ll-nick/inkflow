@@ -17,6 +17,7 @@ import "./keyboard";
 const INITIAL_SLIDES = __SLIDES_JSON__;
 const INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
 const WS_PORT = __WS_PORT__;
+const EDIT_COMMANDS = __EDIT_COMMANDS_JSON__;
 const INITIAL_ERROR = __ERROR_JSON__;
 const INITIAL_LOGS = __LOGS_JSON__;
 

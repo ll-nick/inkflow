@@ -32,7 +32,7 @@ from inkflow.pipeline import SlideData
 
 
 def _slide(svg: str) -> SlideData:
-    return {"svg": svg, "title": "", "id": "", "notes": ""}
+    return {"svg": svg, "title": "", "id": "", "notes": "", "editableFiles": []}
 
 
 def _svg(body: str) -> str:
