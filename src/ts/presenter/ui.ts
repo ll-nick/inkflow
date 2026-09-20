@@ -1,4 +1,4 @@
-import type { LogEntry } from "../shared/types";
+import type { LogEntry, NotifyStyle } from "../shared/types";
 
 const curtain = document.getElementById("curtain")!;
 const help = document.getElementById("help")!;
@@ -9,6 +9,9 @@ const logList = document.getElementById("log-list")!;
 const logClose = document.getElementById("log-close")!;
 const logIndicator = document.getElementById("log-indicator")!;
 const statusBarEl = document.getElementById("statusbar")!;
+const notify = document.getElementById("notify")!;
+const notifyText = document.getElementById("notify-text")!;
+const notifyClose = document.getElementById("notify-close")!;
 
 // biome-ignore lint/suspicious/noExplicitAny: webkit prefix not in TS DOM lib
 const _doc = document as any;
@@ -119,6 +122,39 @@ export function toggleLogs(): void {
     }
 }
 
+// ── Notification toast ──
+// A transient, self-dismissing confirmation/warning/error, styled by the same
+// green/yellow/red vocabulary as inkflow.logging's report(). Pushed by the server
+// (websocket.ts's "notify" message) or called directly by a client-only action
+// (edit.ts's clipboard-copy confirmation, which never touches the server).
+
+// Must match the CSS animation duration on #notify-progress (overlays.css).
+const NOTIFY_DURATION_MS = 3000;
+
+let notifyTimeout: ReturnType<typeof setTimeout> | null = null;
+
+export function hideNotify(): void {
+    if (notifyTimeout) clearTimeout(notifyTimeout);
+    notify.classList.remove("visible");
+    notifyTimeout = null;
+}
+
+export function showNotify(
+    message: string,
+    style: NotifyStyle = "green",
+): void {
+    notifyText.textContent = message;
+    notify.dataset.style = style;
+    // Drop .visible and force a reflow before re-adding it, even if a notification
+    // is already showing (two in quick succession) — otherwise the browser never
+    // sees the class go away and won't restart the progress-bar animation.
+    notify.classList.remove("visible");
+    void notify.offsetWidth;
+    notify.classList.add("visible");
+    if (notifyTimeout) clearTimeout(notifyTimeout);
+    notifyTimeout = setTimeout(hideNotify, NOTIFY_DURATION_MS);
+}
+
 // ── Theme ──
 export function toggleTheme(): void {
     const html = document.documentElement;
@@ -207,6 +243,7 @@ logClose.addEventListener("click", hideLogs);
 logIndicator.addEventListener("click", () => {
     logBanner.classList.add("visible");
 });
+notifyClose.addEventListener("click", hideNotify);
 curtain.addEventListener("click", hideCurtain);
 help.addEventListener("click", (e) => {
     if (e.target === help) toggleHelp();
