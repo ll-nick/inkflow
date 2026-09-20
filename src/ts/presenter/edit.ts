@@ -84,6 +84,7 @@ function openMenu(): void {
     btnEdit.setAttribute("aria-expanded", "true");
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKeydown);
+    menuOpened(closeMenu);
 }
 
 function closeMenu(): void {
@@ -92,6 +93,7 @@ function closeMenu(): void {
     btnEdit.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", onDocClick);
     document.removeEventListener("keydown", onKeydown);
+    menuClosed(closeMenu);
 }
 
 function toggleMenu(): void {
