@@ -27,17 +27,191 @@
     _laserMode: false
   };
 
+  // src/ts/presenter/ui.ts
+  var curtain = document.getElementById("curtain");
+  var help = document.getElementById("help");
+  var errorOverlay = document.getElementById("error-overlay");
+  var errorMsg = document.getElementById("error-msg");
+  var logBanner = document.getElementById("log-banner");
+  var logList = document.getElementById("log-list");
+  var logClose = document.getElementById("log-close");
+  var logIndicator = document.getElementById("log-indicator");
+  var statusBarEl = document.getElementById("statusbar");
+  var notify = document.getElementById("notify");
+  var notifyText = document.getElementById("notify-text");
+  var notifyClose = document.getElementById("notify-close");
+  var _doc = document;
+  var _fsHideTimer;
+  function showCurtain(color) {
+    curtain.style.background = color;
+    curtain.classList.add("visible");
+  }
+  function hideCurtain() {
+    curtain.classList.remove("visible");
+  }
+  function toggleCurtain(color) {
+    curtain.classList.contains("visible") ? hideCurtain() : showCurtain(color);
+  }
+  function toggleHelp() {
+    help.classList.toggle("visible");
+  }
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorOverlay.classList.add("visible");
+  }
+  function hideError() {
+    errorOverlay.classList.remove("visible");
+  }
+  var LOG_LEVEL_ORDER = {
+    debug: 0,
+    info: 1,
+    warning: 2,
+    error: 3
+  };
+  var LOG_ICON = {
+    debug: "\u25E6",
+    info: "\u2139\uFE0E",
+    warning: "\u26A0\uFE0E",
+    error: "\u2716\uFE0E"
+  };
+  function highestLevel(logs) {
+    return logs.reduce(
+      (top, e) => (LOG_LEVEL_ORDER[e.level] ?? 0) > (LOG_LEVEL_ORDER[top] ?? 0) ? e.level : top,
+      logs[0].level
+    );
+  }
+  var logSignature = "";
+  function showLogs(logs) {
+    if (logs.length === 0) {
+      hideLogs();
+      logSignature = "";
+      logIndicator.removeAttribute("data-level");
+      return;
+    }
+    const signature = JSON.stringify(logs);
+    const changed = signature !== logSignature;
+    logSignature = signature;
+    logList.replaceChildren(
+      ...logs.map((entry) => {
+        const li = document.createElement("li");
+        li.className = `log-${entry.level}`;
+        const ico = document.createElement("span");
+        ico.className = "log-ico";
+        ico.textContent = LOG_ICON[entry.level] ?? LOG_ICON.warning;
+        const msg = document.createElement("span");
+        msg.textContent = entry.message;
+        li.append(ico, msg);
+        return li;
+      })
+    );
+    logIndicator.dataset.level = highestLevel(logs);
+    if (changed) logBanner.classList.add("visible");
+  }
+  function hideLogs() {
+    logBanner.classList.remove("visible");
+  }
+  function toggleLogs() {
+    if (logBanner.classList.contains("visible")) {
+      hideLogs();
+    } else if (logIndicator.hasAttribute("data-level")) {
+      logBanner.classList.add("visible");
+    }
+  }
+  var NOTIFY_DURATION_MS = 3e3;
+  var notifyTimeout = null;
+  function hideNotify() {
+    if (notifyTimeout) clearTimeout(notifyTimeout);
+    notify.classList.remove("visible");
+    notifyTimeout = null;
+  }
+  function showNotify(message, style = "green") {
+    notifyText.textContent = message;
+    notify.dataset.style = style;
+    notify.classList.remove("visible");
+    void notify.offsetWidth;
+    notify.classList.add("visible");
+    if (notifyTimeout) clearTimeout(notifyTimeout);
+    notifyTimeout = setTimeout(hideNotify, NOTIFY_DURATION_MS);
+  }
+  function toggleTheme() {
+    const html = document.documentElement;
+    html.dataset.theme = html.dataset.theme === "light" ? "" : "light";
+  }
+  function toggleFullscreen() {
+    if (!document.fullscreenElement)
+      document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+  function showFsBar() {
+    statusBarEl.classList.add("fs-visible");
+    clearTimeout(_fsHideTimer);
+    _fsHideTimer = void 0;
+  }
+  function scheduleFsHide() {
+    if (_fsHideTimer) return;
+    _fsHideTimer = setTimeout(() => {
+      statusBarEl.classList.remove("fs-visible");
+      _fsHideTimer = void 0;
+    }, 600);
+  }
+  function handleFullscreenChange() {
+    const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
+    document.body.classList.toggle("is-fullscreen", isFS);
+    if (!isFS) {
+      statusBarEl.classList.remove("fs-visible");
+      clearTimeout(_fsHideTimer);
+      _fsHideTimer = void 0;
+    }
+  }
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+  document.addEventListener("mousemove", (e) => {
+    if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
+    const inZone = e.clientX < window.innerWidth * 0.2 && e.clientY > window.innerHeight * 0.9;
+    if (inZone) showFsBar();
+    else scheduleFsHide();
+  });
+  statusBarEl.addEventListener("mouseenter", () => {
+    if (document.fullscreenElement || _doc.webkitFullscreenElement) showFsBar();
+  });
+  statusBarEl.addEventListener("mouseleave", () => {
+    if (document.fullscreenElement || _doc.webkitFullscreenElement)
+      scheduleFsHide();
+  });
+  var _mhudTimer;
+  function showMobileHud() {
+    document.body.classList.add("mobile-hud-visible");
+    clearTimeout(_mhudTimer);
+    _mhudTimer = setTimeout(() => {
+      document.body.classList.remove("mobile-hud-visible");
+      _mhudTimer = void 0;
+    }, 3e3);
+  }
+  function toggleMobileHud() {
+    if (document.body.classList.contains("mobile-hud-visible")) {
+      document.body.classList.remove("mobile-hud-visible");
+      clearTimeout(_mhudTimer);
+      _mhudTimer = void 0;
+    } else {
+      showMobileHud();
+    }
+  }
+  document.getElementById("mobile-hud").addEventListener("pointerdown", showMobileHud, { passive: true });
+  logClose.addEventListener("click", hideLogs);
+  logIndicator.addEventListener("click", () => {
+    logBanner.classList.add("visible");
+  });
+  notifyClose.addEventListener("click", hideNotify);
+  curtain.addEventListener("click", hideCurtain);
+  help.addEventListener("click", (e) => {
+    if (e.target === help) toggleHelp();
+  });
+
   // src/ts/presenter/edit.ts
   var btnEdit = document.getElementById("btn-edit");
   var editMenu = document.getElementById("edit-menu");
   var editWrap = btnEdit.closest(".edit-wrap");
-  var editToast = document.getElementById("edit-toast");
-  var editToastText = document.getElementById("edit-toast-text");
-  var editToastClose = document.getElementById("edit-toast-close");
-  var TOAST_DURATION_MS = 3e3;
   var config = { default: false, svg: false };
-  var toastTimeout = null;
-  editToastClose.addEventListener("click", () => hideToast());
   var ROW_ICONS = {
     Layout: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>`,
     Parent: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5.5 8 9 2 5.5 8 2Z"/><path d="M2 9 8 12.5 14 9"/></svg>`,
@@ -51,32 +225,15 @@
     }
     return config.default;
   }
-  function hideToast() {
-    if (toastTimeout) clearTimeout(toastTimeout);
-    editToast.classList.remove("visible");
-    toastTimeout = null;
-  }
-  function flashToast(message, kind = "success") {
-    editToastText.textContent = message;
-    editToast.classList.toggle("error", kind === "error");
-    editToast.classList.remove("visible");
-    void editToast.offsetWidth;
-    editToast.classList.add("visible");
-    if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = kind === "error" ? null : setTimeout(hideToast, TOAST_DURATION_MS);
-  }
-  function showEditError(message) {
-    flashToast(message, "error");
-  }
   function actOn(file) {
     if (isConfigured(file) && state.ws && state.ws.readyState === WebSocket.OPEN) {
       state.ws.send(JSON.stringify({ type: "edit", path: file.path }));
-      flashToast(`Opened ${file.name}`);
+      showNotify(`Opened ${file.name}`);
       return;
     }
     try {
       void navigator.clipboard.writeText(file.path);
-      flashToast(`Copied ${file.path}`);
+      showNotify(`Copied ${file.path}`);
     } catch (_) {
     }
   }
@@ -2671,166 +2828,6 @@
     });
   }
 
-  // src/ts/presenter/ui.ts
-  var curtain = document.getElementById("curtain");
-  var help = document.getElementById("help");
-  var errorOverlay = document.getElementById("error-overlay");
-  var errorMsg = document.getElementById("error-msg");
-  var logBanner = document.getElementById("log-banner");
-  var logList = document.getElementById("log-list");
-  var logClose = document.getElementById("log-close");
-  var logIndicator = document.getElementById("log-indicator");
-  var statusBarEl = document.getElementById("statusbar");
-  var _doc = document;
-  var _fsHideTimer;
-  function showCurtain(color) {
-    curtain.style.background = color;
-    curtain.classList.add("visible");
-  }
-  function hideCurtain() {
-    curtain.classList.remove("visible");
-  }
-  function toggleCurtain(color) {
-    curtain.classList.contains("visible") ? hideCurtain() : showCurtain(color);
-  }
-  function toggleHelp() {
-    help.classList.toggle("visible");
-  }
-  function showError(msg) {
-    errorMsg.textContent = msg;
-    errorOverlay.classList.add("visible");
-  }
-  function hideError() {
-    errorOverlay.classList.remove("visible");
-  }
-  var LOG_LEVEL_ORDER = {
-    debug: 0,
-    info: 1,
-    warning: 2,
-    error: 3
-  };
-  var LOG_ICON = {
-    debug: "\u25E6",
-    info: "\u2139\uFE0E",
-    warning: "\u26A0\uFE0E",
-    error: "\u2716\uFE0E"
-  };
-  function highestLevel(logs) {
-    return logs.reduce(
-      (top, e) => (LOG_LEVEL_ORDER[e.level] ?? 0) > (LOG_LEVEL_ORDER[top] ?? 0) ? e.level : top,
-      logs[0].level
-    );
-  }
-  var logSignature = "";
-  function showLogs(logs) {
-    if (logs.length === 0) {
-      hideLogs();
-      logSignature = "";
-      logIndicator.removeAttribute("data-level");
-      return;
-    }
-    const signature = JSON.stringify(logs);
-    const changed = signature !== logSignature;
-    logSignature = signature;
-    logList.replaceChildren(
-      ...logs.map((entry) => {
-        const li = document.createElement("li");
-        li.className = `log-${entry.level}`;
-        const ico = document.createElement("span");
-        ico.className = "log-ico";
-        ico.textContent = LOG_ICON[entry.level] ?? LOG_ICON.warning;
-        const msg = document.createElement("span");
-        msg.textContent = entry.message;
-        li.append(ico, msg);
-        return li;
-      })
-    );
-    logIndicator.dataset.level = highestLevel(logs);
-    if (changed) logBanner.classList.add("visible");
-  }
-  function hideLogs() {
-    logBanner.classList.remove("visible");
-  }
-  function toggleLogs() {
-    if (logBanner.classList.contains("visible")) {
-      hideLogs();
-    } else if (logIndicator.hasAttribute("data-level")) {
-      logBanner.classList.add("visible");
-    }
-  }
-  function toggleTheme() {
-    const html = document.documentElement;
-    html.dataset.theme = html.dataset.theme === "light" ? "" : "light";
-  }
-  function toggleFullscreen() {
-    if (!document.fullscreenElement)
-      document.documentElement.requestFullscreen();
-    else document.exitFullscreen();
-  }
-  function showFsBar() {
-    statusBarEl.classList.add("fs-visible");
-    clearTimeout(_fsHideTimer);
-    _fsHideTimer = void 0;
-  }
-  function scheduleFsHide() {
-    if (_fsHideTimer) return;
-    _fsHideTimer = setTimeout(() => {
-      statusBarEl.classList.remove("fs-visible");
-      _fsHideTimer = void 0;
-    }, 600);
-  }
-  function handleFullscreenChange() {
-    const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
-    document.body.classList.toggle("is-fullscreen", isFS);
-    if (!isFS) {
-      statusBarEl.classList.remove("fs-visible");
-      clearTimeout(_fsHideTimer);
-      _fsHideTimer = void 0;
-    }
-  }
-  document.addEventListener("fullscreenchange", handleFullscreenChange);
-  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-  document.addEventListener("mousemove", (e) => {
-    if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
-    const inZone = e.clientX < window.innerWidth * 0.2 && e.clientY > window.innerHeight * 0.9;
-    if (inZone) showFsBar();
-    else scheduleFsHide();
-  });
-  statusBarEl.addEventListener("mouseenter", () => {
-    if (document.fullscreenElement || _doc.webkitFullscreenElement) showFsBar();
-  });
-  statusBarEl.addEventListener("mouseleave", () => {
-    if (document.fullscreenElement || _doc.webkitFullscreenElement)
-      scheduleFsHide();
-  });
-  var _mhudTimer;
-  function showMobileHud() {
-    document.body.classList.add("mobile-hud-visible");
-    clearTimeout(_mhudTimer);
-    _mhudTimer = setTimeout(() => {
-      document.body.classList.remove("mobile-hud-visible");
-      _mhudTimer = void 0;
-    }, 3e3);
-  }
-  function toggleMobileHud() {
-    if (document.body.classList.contains("mobile-hud-visible")) {
-      document.body.classList.remove("mobile-hud-visible");
-      clearTimeout(_mhudTimer);
-      _mhudTimer = void 0;
-    } else {
-      showMobileHud();
-    }
-  }
-  document.getElementById("mobile-hud").addEventListener("pointerdown", showMobileHud, { passive: true });
-  logClose.addEventListener("click", hideLogs);
-  logIndicator.addEventListener("click", () => {
-    logBanner.classList.add("visible");
-  });
-  curtain.addEventListener("click", hideCurtain);
-  help.addEventListener("click", (e) => {
-    if (e.target === help) toggleHelp();
-  });
-
   // src/ts/presenter/websocket.ts
   var wsDot = document.getElementById("ws-dot");
   var overviewEl = document.getElementById("overview");
@@ -2960,8 +2957,8 @@
         renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
-      } else if (msg.type === "edit-error") {
-        showEditError(msg.message);
+      } else if (msg.type === "notify") {
+        showNotify(msg.message, msg.style);
       } else if (msg.type === "position") {
         if (receives() && !msg.snap && firstPositionPending) {
           firstPositionPending = false;

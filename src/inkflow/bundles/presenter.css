@@ -435,7 +435,7 @@ kbd {
 #log-list li.log-error {
   color: var(--red);
 }
-#edit-toast {
+#notify {
   display: none;
   position: fixed;
   right: 1rem;
@@ -453,24 +453,24 @@ kbd {
   overflow: hidden;
   pointer-events: none;
 }
-#edit-toast.visible {
+#notify.visible {
   display: flex;
 }
-#edit-toast-body {
+#notify-body {
   display: flex;
   align-items: flex-start;
   gap: 0.4rem;
   padding: 0.5rem 0.5rem 0.5rem 0.75rem;
 }
-#edit-toast svg {
+#notify svg {
   color: var(--green);
   flex-shrink: 0;
   margin-top: 0.15rem;
 }
-#edit-toast-text {
+#notify-text {
   word-break: break-word;
 }
-#edit-toast-close {
+#notify-close {
   background: none;
   border: none;
   color: var(--subtext);
@@ -481,16 +481,16 @@ kbd {
   flex-shrink: 0;
   pointer-events: auto;
 }
-#edit-toast-close:hover {
+#notify-close:hover {
   color: var(--text);
 }
-#edit-toast-progress {
+#notify-progress {
   height: 2px;
   background: var(--green);
   transform-origin: left;
-  animation: edit-toast-grow 3s linear forwards;
+  animation: notify-grow 3s linear forwards;
 }
-@keyframes edit-toast-grow {
+@keyframes notify-grow {
   from {
     transform: scaleX(0);
   }
@@ -498,21 +498,33 @@ kbd {
     transform: scaleX(1);
   }
 }
-.edit-toast-icon-error {
+.notify-icon-warning,
+.notify-icon-error {
   display: none;
 }
-#edit-toast.error {
+#notify[data-style=yellow] .notify-icon-ok,
+#notify[data-style=red] .notify-icon-ok {
+  display: none;
+}
+#notify[data-style=yellow] {
+  border-color: var(--yellow);
+}
+#notify[data-style=yellow] #notify-progress {
+  background: var(--yellow);
+}
+#notify[data-style=yellow] .notify-icon-warning {
+  display: block;
+  color: var(--yellow);
+}
+#notify[data-style=red] {
   border-color: var(--red);
 }
-#edit-toast.error .edit-toast-icon-ok {
-  display: none;
+#notify[data-style=red] #notify-progress {
+  background: var(--red);
 }
-#edit-toast.error .edit-toast-icon-error {
+#notify[data-style=red] .notify-icon-error {
   display: block;
   color: var(--red);
-}
-#edit-toast.error #edit-toast-progress {
-  display: none;
 }
 
 /* src/css/presenter/picker.css */
