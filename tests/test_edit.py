@@ -78,9 +78,10 @@ def test_open_in_editor_substitutes_placeholder(
 ) -> None:
     popen = MagicMock()
     monkeypatch.setattr(subprocess, "Popen", popen)
-    result = open_in_editor(Path("/tmp/slide.svg"), "code -r --goto {path}")
+    path = Path("/tmp/slide.svg")
+    result = open_in_editor(path, "code -r --goto {path}")
     args = popen.call_args[0][0]  # pyright: ignore[reportAny]
-    assert args == ["code", "-r", "--goto", "/tmp/slide.svg"]
+    assert args == ["code", "-r", "--goto", str(path)]
     assert result is None
 
 
@@ -89,9 +90,10 @@ def test_open_in_editor_appends_path_when_no_placeholder(
 ) -> None:
     popen = MagicMock()
     monkeypatch.setattr(subprocess, "Popen", popen)
-    open_in_editor(Path("/tmp/notes.md"), "nvim")
+    path = Path("/tmp/notes.md")
+    open_in_editor(path, "nvim")
     args = popen.call_args[0][0]  # pyright: ignore[reportAny]
-    assert args == ["nvim", "/tmp/notes.md"]
+    assert args == ["nvim", str(path)]
 
 
 def test_open_in_editor_launch_failure_warns_and_returns_message(
