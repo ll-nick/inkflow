@@ -43,7 +43,7 @@ beforeAll(async () => {
             <button id="btn-edit"></button>
             <div id="edit-menu"></div>
         </span>
-        <button id="edit-toast-close"></button>
+        <button id="notify-close"></button>
     `;
     vi.resetModules();
     ({ filterPicker } = await import("./picker"));

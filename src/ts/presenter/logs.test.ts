@@ -27,6 +27,7 @@ beforeAll(async () => {
         <button id="log-indicator"></button>
         <div id="statusbar"></div>
         <div id="mobile-hud"></div>
+        <button id="notify-close"></button>
     `;
     vi.resetModules();
     ({ showLogs, hideLogs, toggleLogs } = await import("./ui"));
