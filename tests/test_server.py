@@ -256,7 +256,11 @@ def _slide_with_files(*files: EditableFile) -> SlideData:
 
 
 def test_resolve_edit_request_valid_path_and_configured_command() -> None:
-    slides = [_slide_with_files({"label": "Layout", "path": "/deck/slide.svg"})]
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
     commands = EditCommands(svg="code -r {path}", md=None)
     assert _resolve_edit_request({"path": "/deck/slide.svg"}, slides, commands) == (
         Path("/deck/slide.svg"),
@@ -265,18 +269,30 @@ def test_resolve_edit_request_valid_path_and_configured_command() -> None:
 
 
 def test_resolve_edit_request_unknown_path_dropped() -> None:
-    slides = [_slide_with_files({"label": "Layout", "path": "/deck/slide.svg"})]
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
     commands = EditCommands(svg="code -r {path}", md=None)
     assert _resolve_edit_request({"path": "/etc/passwd"}, slides, commands) is None
 
 
 def test_resolve_edit_request_missing_path_field_dropped() -> None:
-    slides = [_slide_with_files({"label": "Layout", "path": "/deck/slide.svg"})]
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
     commands = EditCommands(svg="code -r {path}", md=None)
     assert _resolve_edit_request({}, slides, commands) is None
 
 
 def test_resolve_edit_request_no_command_configured_dropped() -> None:
-    slides = [_slide_with_files({"label": "Layout", "path": "/deck/slide.svg"})]
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
     commands = EditCommands(svg=None, md=None)
     assert _resolve_edit_request({"path": "/deck/slide.svg"}, slides, commands) is None
