@@ -119,7 +119,7 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
         with collect_logs(min(levels.console, levels.browser)) as entries:
             deck = await asyncio.to_thread(load_deck, deck_path)
             project_dir = deck_path.parent
-            slides = await asyncio.to_thread(process_deck, deck, project_dir)
+            slides = await asyncio.to_thread(process_deck, deck, project_dir, deck_path)
             transitions = resolve_transitions(deck)
             styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
             if deck.embed_fonts:

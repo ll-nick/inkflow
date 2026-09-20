@@ -455,7 +455,7 @@ class TestProcessSlideWithContent:
     def test_foreignobject_replaces_zone_rect(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
         deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "hello"})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert len(results) == 1
         assert "foreignObject" in results[0]["svg"]
         assert "hello" in results[0]["svg"]
@@ -463,14 +463,14 @@ class TestProcessSlideWithContent:
     def test_zone_rect_id_inherited_by_foreignobject(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
         deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "hi"})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert 'id="zone-content"' in results[0]["svg"]
 
     def test_unreferenced_zone_rects_removed(self, tmp_path: Path) -> None:
         self._write_slide(tmp_path, "slide.svg", _LAYOUT_SVG)
         # Only supply content for zone-content, leave zone-title unconsumed
         deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "body"})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert 'id="zone-title"' not in results[0]["svg"]
 
     def test_foreignobject_content_has_inkflow_content_class(
@@ -478,7 +478,7 @@ class TestProcessSlideWithContent:
     ) -> None:
         self._write_slide(tmp_path, "slide.svg", _ZONE_SLIDE_SVG)
         deck = Deck(slides=[Slide("slides/slide.svg", zones={"content": "x"})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert "inkflow-content" in results[0]["svg"]
 
 
@@ -496,7 +496,7 @@ class TestLayoutBackedSlideExpansion:
         md = slides_dir / "content.md"
         md.write_text("# Hello\n\nBody text here.\n", encoding="utf-8")
         deck = Deck(slides=[Slide("layout", md="content")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert len(results) == 1
         assert "foreignObject" in results[0]["svg"]
         assert "Body text" in results[0]["svg"]
@@ -506,7 +506,7 @@ class TestLayoutBackedSlideExpansion:
         md = slides_dir / "content.md"
         md.write_text("# My Title\n\nSome content.\n", encoding="utf-8")
         deck = Deck(slides=[Slide("layout", md="content")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert results[0]["title"] == "My Title"
 
     def test_markdown_slide_animations_applied(self, tmp_path: Path) -> None:
@@ -515,7 +515,7 @@ class TestLayoutBackedSlideExpansion:
         deck = Deck(
             slides=[Slide("layout", md="content", animations=[FadeIn("zone-title")])]
         )
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         cues = self._title_cues(results[0]["svg"])
         assert [c["name"] for c in cues] == ["fade-in"]
 
@@ -526,7 +526,7 @@ class TestLayoutBackedSlideExpansion:
     def test_zones_media_injected(self, tmp_path: Path) -> None:
         self._setup(tmp_path)
         deck = Deck(slides=[Slide("layout", zones={"content": Image("photo.jpg")})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert "photo.jpg" in results[0]["svg"]
 
     def test_deck_animations_concatenate_after_reveals(self, tmp_path: Path) -> None:
@@ -538,7 +538,7 @@ class TestLayoutBackedSlideExpansion:
         deck = Deck(
             slides=[Slide("layout", md="content", animations=[FadeIn("zone-title")])]
         )
-        svg = process_deck(deck, tmp_path)[0]["svg"]
+        svg = process_deck(deck, tmp_path, tmp_path / "deck.py")[0]["svg"]
         root = parse_svg(svg)
         reveal = next(
             el for el in root.iter() if (el.get("id") or "").startswith("inkflow-step-")
@@ -561,7 +561,7 @@ class TestLayoutBackedSlideExpansion:
             ]
         )
         with collect_logs(logging.WARNING) as warnings:
-            svg = process_deck(deck, tmp_path)[0]["svg"]
+            svg = process_deck(deck, tmp_path, tmp_path / "deck.py")[0]["svg"]
         assert any("autoplay overridden" in w.message for w in warnings)
         assert "data-autoplay" not in svg  # the cue wins, autoplay stripped
         assert not re.search(r"<video[^>]*\bmuted\b", svg)  # Muted.AUTO -> audible
@@ -570,7 +570,7 @@ class TestLayoutBackedSlideExpansion:
     def test_zones_inline_markdown_injected(self, tmp_path: Path) -> None:
         self._setup(tmp_path)
         deck = Deck(slides=[Slide("layout", zones={"content": "**bold text**"})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert "bold" in results[0]["svg"]
 
 
@@ -610,7 +610,7 @@ class TestLayoutClasses:
         (layouts_dir / "mylayout.svg").write_text(_ZONE_SLIDE_SVG, encoding="utf-8")
         (tmp_path / "slides").mkdir()
         deck = Deck(slides=[Slide("mylayout", zones={"content": "hi"})])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert "layout-mylayout" in results[0]["svg"]
 
     def test_scope_wraps_injected_deck_style(self, tmp_path: Path) -> None:
@@ -620,7 +620,7 @@ class TestLayoutClasses:
         deck = Deck(
             style=Inline("#box { fill: red; }"), slides=[Slide("slides/plain.svg")]
         )
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert "@scope" in results[0]["svg"]
 
     def test_no_scope_without_inline_styles(self, tmp_path: Path) -> None:
@@ -628,7 +628,7 @@ class TestLayoutClasses:
         slide = tmp_path / "slides" / "plain.svg"
         slide.write_text(_PLAIN_SVG, encoding="utf-8")
         deck = Deck(slides=[Slide("slides/plain.svg")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert "@scope" not in results[0]["svg"]
 
 
@@ -668,7 +668,7 @@ class TestSlideId:
         slide = tmp_path / "slides" / "plain.svg"
         slide.write_text(_PLAIN_SVG, encoding="utf-8")
         deck = Deck(slides=[Slide("slides/plain.svg")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert results[0]["id"] == "plain"
 
     def test_process_deck_id_collision_resolved(self, tmp_path: Path) -> None:
@@ -681,7 +681,7 @@ class TestSlideId:
                 Slide("slides/plain2.svg", id="plain"),
             ]
         )
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, tmp_path / "deck.py")
         assert results[0]["id"] == "plain"
         assert results[1]["id"] == "plain-2"
 
@@ -697,14 +697,18 @@ def _svg_with_parent(parent: str) -> str:
 
 
 class TestEditableFiles:
-    def test_svg_only_slide_has_single_layout_entry(self, tmp_path: Path) -> None:
+    def test_svg_only_slide_has_layout_and_deck_entries(self, tmp_path: Path) -> None:
+        # deck_path is always appended, so even the plainest slide never has just
+        # one editable file — Layout + Deck is the floor.
         (tmp_path / "slides").mkdir()
         slide_path = tmp_path / "slides" / "plain.svg"
         slide_path.write_text(_PLAIN_SVG, encoding="utf-8")
+        deck_path = tmp_path / "my_deck.py"
         deck = Deck(slides=[Slide("slides/plain.svg")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "name": "plain.svg", "path": str(slide_path)}
+            {"label": "Layout", "name": "plain.svg", "path": str(slide_path)},
+            {"label": "Deck", "name": "my_deck.py", "path": str(deck_path)},
         ]
 
     def test_file_backed_md_adds_content_entry(self, tmp_path: Path) -> None:
@@ -715,21 +719,25 @@ class TestEditableFiles:
         slides_dir.mkdir()
         md_path = slides_dir / "content.md"
         md_path.write_text("# Hello\n", encoding="utf-8")
+        deck_path = tmp_path / "deck.py"
         deck = Deck(slides=[Slide("layout", md="content")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
             {"label": "Layout", "name": "layout.svg", "path": str(layout)},
             {"label": "Content", "name": "content.md", "path": str(md_path)},
+            {"label": "Deck", "name": "deck.py", "path": str(deck_path)},
         ]
 
     def test_inline_md_has_no_content_entry(self, tmp_path: Path) -> None:
         layout = tmp_path / "layouts" / "layout.svg"
         layout.parent.mkdir(parents=True, exist_ok=True)
         layout.write_text(_LAYOUT_SVG, encoding="utf-8")
+        deck_path = tmp_path / "deck.py"
         deck = Deck(slides=[Slide("layout", md=Inline("# Hello"))])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "name": "layout.svg", "path": str(layout)}
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)},
+            {"label": "Deck", "name": "deck.py", "path": str(deck_path)},
         ]
 
     def test_file_backed_notes_adds_notes_entry(self, tmp_path: Path) -> None:
@@ -738,14 +746,16 @@ class TestEditableFiles:
         slide_path.write_text(_PLAIN_SVG, encoding="utf-8")
         notes_path = tmp_path / "slides" / "plain-notes.md"
         notes_path.write_text("Speak slowly.", encoding="utf-8")
+        deck_path = tmp_path / "deck.py"
         deck = Deck(slides=[Slide("slides/plain.svg", notes="slides/plain-notes.md")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
             {"label": "Layout", "name": "plain.svg", "path": str(slide_path)},
             {"label": "Notes", "name": "plain-notes.md", "path": str(notes_path)},
+            {"label": "Deck", "name": "deck.py", "path": str(deck_path)},
         ]
 
-    def test_all_four_editable_files_in_order(self, tmp_path: Path) -> None:
+    def test_all_editable_files_in_order(self, tmp_path: Path) -> None:
         parent = tmp_path / "layouts" / "parent.svg"
         parent.parent.mkdir(parents=True, exist_ok=True)
         parent.write_text(_LAYOUT_SVG, encoding="utf-8")
@@ -757,15 +767,17 @@ class TestEditableFiles:
         md_path.write_text("# Hello\n", encoding="utf-8")
         notes_path = slides_dir / "content-notes.md"
         notes_path.write_text("Notes.", encoding="utf-8")
+        deck_path = tmp_path / "deck.py"
         deck = Deck(
             slides=[Slide("layout", md="content", notes="slides/content-notes.md")]
         )
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
             {"label": "Parent", "name": "parent.svg", "path": str(parent)},
             {"label": "Layout", "name": "layout.svg", "path": str(layout)},
             {"label": "Content", "name": "content.md", "path": str(md_path)},
             {"label": "Notes", "name": "content-notes.md", "path": str(notes_path)},
+            {"label": "Deck", "name": "deck.py", "path": str(deck_path)},
         ]
 
     def test_ancestor_chain_listed_root_first_next_to_layout(
@@ -780,12 +792,14 @@ class TestEditableFiles:
         parent.write_text(_svg_with_parent("grandparent"), encoding="utf-8")
         layout = tmp_path / "layouts" / "layout.svg"
         layout.write_text(_svg_with_parent("parent"), encoding="utf-8")
+        deck_path = tmp_path / "deck.py"
         deck = Deck(slides=[Slide("layout")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
             {"label": "Parent", "name": "grandparent.svg", "path": str(grandparent)},
             {"label": "Parent", "name": "parent.svg", "path": str(parent)},
             {"label": "Layout", "name": "layout.svg", "path": str(layout)},
+            {"label": "Deck", "name": "deck.py", "path": str(deck_path)},
         ]
 
     def test_theme_ancestor_excluded(self, tmp_path: Path) -> None:
@@ -794,10 +808,12 @@ class TestEditableFiles:
         layout = tmp_path / "layouts" / "layout.svg"
         layout.parent.mkdir(parents=True, exist_ok=True)
         layout.write_text(_svg_with_parent("builtin:base"), encoding="utf-8")
+        deck_path = tmp_path / "deck.py"
         deck = Deck(slides=[Slide("layout")])
-        results = process_deck(deck, tmp_path)
+        results = process_deck(deck, tmp_path, deck_path)
         assert results[0]["editableFiles"] == [
-            {"label": "Layout", "name": "layout.svg", "path": str(layout)}
+            {"label": "Layout", "name": "layout.svg", "path": str(layout)},
+            {"label": "Deck", "name": "deck.py", "path": str(deck_path)},
         ]
 
 
@@ -824,7 +840,7 @@ class TestParseMarkdownOnce:
                 Slide("slides/b.svg", md=Inline("# B\n\nbody")),
             ]
         )
-        process_deck(deck, tmp_path)
+        process_deck(deck, tmp_path, tmp_path / "deck.py")
         # once per md slide
         assert len(calls) == 2
 
@@ -888,7 +904,7 @@ class TestOverlayPrecedence:
         return tmp_path
 
     def _svg_for(self, tmp_path: Path, deck: Deck) -> str:
-        return process_deck(deck, tmp_path)[0]["svg"]
+        return process_deck(deck, tmp_path, tmp_path / "deck.py")[0]["svg"]
 
     def test_deck_overlays_apply(self, tmp_path: Path) -> None:
         self._project(tmp_path)

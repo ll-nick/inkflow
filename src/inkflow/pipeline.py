@@ -643,10 +643,13 @@ def _editable_files(
     svg_path: Path,
     md: LoadedText | None,
     loaded_notes: LoadedText,
+    deck_path: Path,
 ) -> list[EditableFile]:
     """The slide's in-project ancestor layouts (root first, so the immediate
-    parent sits next to the slide's own SVG), that SVG itself, and any
-    file-backed content/notes: what the presenter's Edit button offers.
+    parent sits next to the slide's own SVG), that SVG itself, any file-backed
+    content/notes, and the deck script itself: what the presenter's Edit button
+    offers. ``deck_path`` is always present, so this list is never a single entry
+    — every slide's own SVG plus its deck script is the floor.
 
     A theme/built-in ancestor is skipped: it lives outside the project (often
     inside an installed package), so editing it is unlikely to be wanted and may
@@ -668,10 +671,11 @@ def _editable_files(
                 "path": str(loaded_notes.path),
             }
         )
+    files.append({"label": "Deck", "name": deck_path.name, "path": str(deck_path)})
     return files
 
 
-def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
+def process_deck(deck: Deck, project_dir: Path, deck_path: Path) -> list[SlideData]:
     visible_slides = [s for s in deck.slides if s.visible]
     assets = AssetRoots(project_dir, deck.theme.asset_dir())
     ctx = DeckContext(
@@ -699,7 +703,7 @@ def process_deck(deck: Deck, project_dir: Path) -> list[SlideData]:
         notes = "\n".join(filter(None, [explicit_notes, md_notes]))
 
         svg_path = resolve_slide_src(slide.src, ctx.project_dir, ctx.theme)
-        editable_files = _editable_files(ctx, svg_path, md, loaded_notes)
+        editable_files = _editable_files(ctx, svg_path, md, loaded_notes, deck_path)
 
         results.append(
             {
