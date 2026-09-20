@@ -5,6 +5,7 @@ import type {
     TransitionData,
     WsMessage,
 } from "../shared/types";
+import { showEditError } from "./edit";
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
 import {
@@ -209,6 +210,8 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
             renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);
+        } else if (msg.type === "edit-error") {
+            showEditError(msg.message);
         } else if (msg.type === "position") {
             // Discard exactly the stale connect-time push so an authoritative window
             // keeps its own position; later updates apply normally. Mirrors the

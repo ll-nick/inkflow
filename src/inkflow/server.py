@@ -27,6 +27,13 @@ from websockets.asyncio.server import ServerConnection
 from websockets.asyncio.server import serve as ws_serve
 
 from inkflow.assets import MIME_TYPES, AssetRoots
+from inkflow.edit import (
+    NO_EDIT_COMMANDS,
+    EditCommands,
+    command_for,
+    open_in_editor,
+    resolve_edit_commands,
+)
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
@@ -112,7 +119,7 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
         with collect_logs(min(levels.console, levels.browser)) as entries:
             deck = await asyncio.to_thread(load_deck, deck_path)
             project_dir = deck_path.parent
-            slides = await asyncio.to_thread(process_deck, deck, project_dir)
+            slides = await asyncio.to_thread(process_deck, deck, project_dir, deck_path)
             transitions = resolve_transitions(deck)
             styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
             if deck.embed_fonts:
@@ -209,7 +216,32 @@ def _coerce_nav_position(
     return {"slideIndex": slide_index, "step": step}
 
 
-def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]:
+def _resolve_edit_request(
+    msg: dict[str, object], slides: list[SlideData], edit_commands: EditCommands
+) -> tuple[Path, str] | None:
+    """Validate an `edit` payload and resolve its launch command, if any.
+
+    The path must belong to the *current* build's own `editableFiles` (not just be
+    a well-formed path) — this guards against a stale client message surviving a
+    deck rebuild, the same spirit as `_coerce_nav_position`'s clamping. Returns
+    None when the path is missing/unknown or no command is configured for its kind
+    (the client already handled that case as a clipboard copy; nothing to launch).
+    """
+    path_str = msg.get("path")
+    if not isinstance(path_str, str):
+        return None
+    valid_paths = {f["path"] for slide in slides for f in slide["editableFiles"]}
+    if path_str not in valid_paths:
+        return None
+    template = command_for(Path(path_str), edit_commands)
+    if template is None:
+        return None
+    return Path(path_str), template
+
+
+def make_ws_handler(
+    ui: LiveUI, edit_commands: EditCommands
+) -> Callable[[ServerConnection], Awaitable[None]]:
     async def handler(websocket: ServerConnection) -> None:
         _state["ws_clients"].add(websocket)
         logger.debug(f"client connected ({len(_state['ws_clients'])} total)")
@@ -263,6 +295,16 @@ def make_ws_handler(ui: LiveUI) -> Callable[[ServerConnection], Awaitable[None]]
                     if msg.get("snap"):
                         position_msg["snap"] = True
                     await broadcast(json.dumps(position_msg), sender=websocket)
+                elif msg_type == "edit":
+                    request = _resolve_edit_request(
+                        msg, _state["slides"], edit_commands
+                    )
+                    if request is not None:
+                        error = open_in_editor(*request)
+                        if error is not None:
+                            await websocket.send(
+                                json.dumps({"type": "edit-error", "message": error})
+                            )
         finally:
             _state["ws_clients"].discard(websocket)
             logger.debug(f"client disconnected ({len(_state['ws_clients'])} total)")
@@ -285,13 +327,23 @@ def favicon_data_uri() -> str:
     return f"data:image/svg+xml;base64,{b64}"
 
 
-def build_html(state: State, ws_port: int | None) -> bytes:
+def build_html(
+    state: State,
+    ws_port: int | None,
+    edit_commands: EditCommands = NO_EDIT_COMMANDS,
+) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
     css = pkg.joinpath("bundles", "presenter.css").read_text(encoding="utf-8")
     js = pkg.joinpath("bundles", "presenter.js").read_text(encoding="utf-8")
     data_theme = "" if state["mode"] == ColorMode.DARK else "light"
     ws_port_js = "null" if ws_port is None else str(ws_port)
+    edit_commands_json = json.dumps(
+        {
+            "default": edit_commands.default is not None,
+            "svg": edit_commands.svg is not None,
+        }
+    )
     html = (
         template.replace("/* __CSS__ */", css)
         .replace("/* __JS__ */", js)
@@ -301,6 +353,7 @@ def build_html(state: State, ws_port: int | None) -> bytes:
         .replace("__TRANSITIONS_JSON__", json.dumps(state["transitions"]))
         .replace("/* __SCRIPTS__ */", state["scripts_js"])
         .replace("__WS_PORT__", ws_port_js)
+        .replace("__EDIT_COMMANDS_JSON__", edit_commands_json)
         .replace("__ERROR_JSON__", json.dumps(state["error"]))
         .replace("__LOGS_JSON__", json.dumps(state["logs"]))
         .replace("__FAVICON__", favicon_data_uri())
@@ -331,7 +384,11 @@ def _resolve_asset(roots: AssetRoots, request_path: str) -> Path | None:
     return resolved
 
 
-def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamHandler:
+def make_http_handler(
+    ws_port: int,
+    project_dir: Path | None = None,
+    edit_commands: EditCommands = NO_EDIT_COMMANDS,
+) -> _StreamHandler:
     async def handler(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -360,7 +417,7 @@ def make_http_handler(ws_port: int, project_dir: Path | None = None) -> _StreamH
                     await writer.drain()
                     return
 
-            body = build_html(_state, ws_port)
+            body = build_html(_state, ws_port, edit_commands)
             header = (
                 b"HTTP/1.1 200 OK\r\n"
                 + b"Content-Type: text/html; charset=utf-8\r\n"
@@ -474,7 +531,8 @@ async def serve(
     uninstall_shutdown_handler = install_shutdown_handler(loop, shutdown)
 
     try:
-        http_handler = make_http_handler(ws_port, deck_path.parent)
+        edit_commands = resolve_edit_commands()
+        http_handler = make_http_handler(ws_port, deck_path.parent, edit_commands)
         # Bind before the Live UI so port conflicts fail fast with a clean message
         try:
             http_server = await asyncio.start_server(http_handler, host, http_port)
@@ -499,7 +557,7 @@ async def serve(
             try:
                 async with (
                     http_server,
-                    ws_serve(make_ws_handler(ui), host, ws_port),
+                    ws_serve(make_ws_handler(ui, edit_commands), host, ws_port),
                 ):
                     await rebuild(deck_path, ui, levels)
                     tasks = [

@@ -1,3 +1,4 @@
+import { initEditMenu } from "./edit";
 import { renderPv, updatePvClock } from "./pv";
 import { state } from "./state";
 import { readURL } from "./status";
@@ -17,6 +18,7 @@ import "./keyboard";
 const INITIAL_SLIDES = __SLIDES_JSON__;
 const INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
 const WS_PORT = __WS_PORT__;
+const EDIT_COMMANDS = __EDIT_COMMANDS_JSON__;
 const INITIAL_ERROR = __ERROR_JSON__;
 const INITIAL_LOGS = __LOGS_JSON__;
 
@@ -40,6 +42,7 @@ window.addEventListener("popstate", () => {
 loadSyncMode();
 initSyncMenu();
 initWindowSync(WS_PORT);
+initEditMenu(EDIT_COMMANDS, WS_PORT);
 // Capture deep-link authority before loadSlide()/syncURL() rewrites the URL.
 const deepLinked = readURL();
 loadSlide();

@@ -8,11 +8,14 @@ from typing import cast
 import pytest
 
 from inkflow.assets import AssetRoots
+from inkflow.edit import EditCommands
 from inkflow.enums import ColorMode
+from inkflow.pipeline import EditableFile, SlideData
 from inkflow.server import (
     State,
     _coerce_nav_position,  # pyright: ignore[reportPrivateUsage]
     _resolve_asset,  # pyright: ignore[reportPrivateUsage]
+    _resolve_edit_request,  # pyright: ignore[reportPrivateUsage]
     build_html,
 )
 
@@ -44,6 +47,7 @@ _TOKENS = [
     "__DATA_THEME__",
     "__SLIDES_JSON__",
     "__WS_PORT__",
+    "__EDIT_COMMANDS_JSON__",
     "__ERROR_JSON__",
     "__TRANSITIONS_JSON__",
     "__LOGS_JSON__",
@@ -110,6 +114,20 @@ def test_build_html_null_error_when_no_error() -> None:
 def test_build_html_transitions_json_embedded() -> None:
     html = build_html(_state(transitions=[{"type": "fade"}]), ws_port=7778).decode()
     assert json.dumps([{"type": "fade"}]) in html
+
+
+def test_build_html_edit_commands_default_both_false() -> None:
+    html = build_html(_state(), ws_port=7778).decode()
+    assert json.dumps({"default": False, "svg": False}) in html
+
+
+def test_build_html_edit_commands_reflects_configured() -> None:
+    html = build_html(
+        _state(),
+        ws_port=7778,
+        edit_commands=EditCommands(svg="code {path}", default=None),
+    ).decode()
+    assert json.dumps({"default": False, "svg": True}) in html
 
 
 def test_build_html_logs_json_embedded() -> None:
@@ -224,3 +242,59 @@ def test_coerce_nav_empty_deck_pins_index_to_zero() -> None:
 
 def test_coerce_nav_defaults_when_fields_absent() -> None:
     assert _coerce_nav_position({}, 5) == {"slideIndex": 0, "step": 0}
+
+
+# ── _resolve_edit_request ──────────────────────────────────────────────────────
+
+
+def _slide_with_files(*files: EditableFile) -> SlideData:
+    return {
+        "id": "s",
+        "svg": "",
+        "title": "",
+        "notes": "",
+        "editableFiles": list(files),
+    }
+
+
+def test_resolve_edit_request_valid_path_and_configured_command() -> None:
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
+    commands = EditCommands(svg="code -r {path}", default=None)
+    assert _resolve_edit_request({"path": "/deck/slide.svg"}, slides, commands) == (
+        Path("/deck/slide.svg"),
+        "code -r {path}",
+    )
+
+
+def test_resolve_edit_request_unknown_path_dropped() -> None:
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
+    commands = EditCommands(svg="code -r {path}", default=None)
+    assert _resolve_edit_request({"path": "/etc/passwd"}, slides, commands) is None
+
+
+def test_resolve_edit_request_missing_path_field_dropped() -> None:
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
+    commands = EditCommands(svg="code -r {path}", default=None)
+    assert _resolve_edit_request({}, slides, commands) is None
+
+
+def test_resolve_edit_request_no_command_configured_dropped() -> None:
+    slides = [
+        _slide_with_files(
+            {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
+        )
+    ]
+    commands = EditCommands(svg=None, default=None)
+    assert _resolve_edit_request({"path": "/deck/slide.svg"}, slides, commands) is None

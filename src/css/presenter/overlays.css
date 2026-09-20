@@ -205,3 +205,95 @@ kbd {
 #log-list li.log-error {
     color: var(--red);
 }
+
+/* ── Edit-action toast (non-modal) ──
+   Same corner and box treatment as #log-banner (surface/border/shadow), an
+   accent colour instead of its warning yellow. Times itself out (edit.ts) but
+   also offers a close button, like #log-banner, plus a bar along the bottom
+   edge filling left-to-right as it approaches that — purely CSS (an animation
+   timed to match edit.ts's setTimeout), restarted by re-toggling .visible so a
+   second edit in quick succession doesn't inherit the first one's progress. */
+#edit-toast {
+    display: none;
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 40;
+    flex-direction: column;
+    max-width: 24rem;
+    background: var(--surface);
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    color: var(--text);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    overflow: hidden;
+    pointer-events: none;
+}
+#edit-toast.visible {
+    display: flex;
+}
+#edit-toast-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+}
+#edit-toast svg {
+    color: var(--green);
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+}
+#edit-toast-text {
+    word-break: break-word;
+}
+#edit-toast-close {
+    background: none;
+    border: none;
+    color: var(--subtext);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    flex-shrink: 0;
+    pointer-events: auto;
+}
+#edit-toast-close:hover {
+    color: var(--text);
+}
+#edit-toast-progress {
+    height: 2px;
+    background: var(--green);
+    transform-origin: left;
+    animation: edit-toast-grow 3s linear forwards;
+}
+@keyframes edit-toast-grow {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+/* Error state: launching the configured command failed (e.g. the binary isn't
+   on PATH) — red instead of green, the error glyph instead of the checkmark,
+   and no progress bar, since an error toast has no auto-dismiss timer to show
+   the progress of. Declared last so it reliably overrides the base rules above
+   regardless of its own (lower) specificity. */
+.edit-toast-icon-error {
+    display: none;
+}
+#edit-toast.error {
+    border-color: var(--red);
+}
+#edit-toast.error .edit-toast-icon-ok {
+    display: none;
+}
+#edit-toast.error .edit-toast-icon-error {
+    display: block;
+    color: var(--red);
+}
+#edit-toast.error #edit-toast-progress {
+    display: none;
+}
