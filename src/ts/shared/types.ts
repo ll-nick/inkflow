@@ -18,8 +18,8 @@ export interface SlideData {
 // Whether the server has a configured edit command for each file kind (env vars
 // INKFLOW_EDIT_CMD_SVG / INKFLOW_EDIT_CMD_MD), baked in at page load — see edit.ts.
 export interface EditCommandsConfig {
+    default: boolean;
     svg: boolean;
-    md: boolean;
 }
 
 // Per-client position-sync mode. Never sent to the server: it only decides,

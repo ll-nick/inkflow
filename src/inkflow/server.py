@@ -335,7 +335,10 @@ def build_html(
     data_theme = "" if state["mode"] == ColorMode.DARK else "light"
     ws_port_js = "null" if ws_port is None else str(ws_port)
     edit_commands_json = json.dumps(
-        {"svg": edit_commands.svg is not None, "md": edit_commands.md is not None}
+        {
+            "default": edit_commands.default is not None,
+            "svg": edit_commands.svg is not None,
+        }
     )
     html = (
         template.replace("/* __CSS__ */", css)

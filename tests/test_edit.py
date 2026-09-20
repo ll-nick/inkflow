@@ -15,7 +15,7 @@ from inkflow.edit import (
 )
 from inkflow.logging import collect_logs
 
-_ENV_VARS = ("INKFLOW_EDIT_CMD_SVG", "INKFLOW_EDIT_CMD_MD")
+_ENV_VARS = ("INKFLOW_EDIT_CMD", "INKFLOW_EDIT_CMD_SVG")
 
 
 @pytest.fixture(autouse=True)
@@ -29,37 +29,44 @@ def _isolated_env(monkeypatch: pytest.MonkeyPatch):  # pyright: ignore[reportUnu
 
 
 def test_resolve_edit_commands_unset() -> None:
-    assert resolve_edit_commands() == EditCommands(svg=None, md=None)
+    assert resolve_edit_commands() == EditCommands(default=None, svg=None)
 
 
 def test_resolve_edit_commands_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INKFLOW_EDIT_CMD", "nvim {path}")
     monkeypatch.setenv("INKFLOW_EDIT_CMD_SVG", "code -r {path}")
-    monkeypatch.setenv("INKFLOW_EDIT_CMD_MD", "nvim {path}")
     assert resolve_edit_commands() == EditCommands(
-        svg="code -r {path}", md="nvim {path}"
+        default="nvim {path}", svg="code -r {path}"
     )
 
 
 # ── command_for ───────────────────────────────────────────────────────────────
 
 
-def test_command_for_svg_suffix() -> None:
-    commands = EditCommands(svg="edit-svg", md="edit-md")
+def test_command_for_svg_suffix_uses_svg_override() -> None:
+    commands = EditCommands(default="edit-default", svg="edit-svg")
     assert command_for(Path("slide.svg"), commands) == "edit-svg"
 
 
 def test_command_for_svg_suffix_case_insensitive() -> None:
-    commands = EditCommands(svg="edit-svg", md="edit-md")
+    commands = EditCommands(default="edit-default", svg="edit-svg")
     assert command_for(Path("slide.SVG"), commands) == "edit-svg"
 
 
-def test_command_for_other_suffix_uses_md() -> None:
-    commands = EditCommands(svg="edit-svg", md="edit-md")
-    assert command_for(Path("notes.md"), commands) == "edit-md"
+def test_command_for_other_suffix_uses_default() -> None:
+    commands = EditCommands(default="edit-default", svg="edit-svg")
+    assert command_for(Path("notes.md"), commands) == "edit-default"
+
+
+def test_command_for_svg_falls_back_to_default_without_override() -> None:
+    # The general command also applies to SVG files when no SVG-specific
+    # override is set — setting only INKFLOW_EDIT_CMD covers everything.
+    commands = EditCommands(default="edit-default", svg=None)
+    assert command_for(Path("slide.svg"), commands) == "edit-default"
 
 
 def test_command_for_none_configured() -> None:
-    commands = EditCommands(svg=None, md=None)
+    commands = EditCommands(default=None, svg=None)
     assert command_for(Path("slide.svg"), commands) is None
 
 

@@ -64,7 +64,7 @@ function slideWith(
 }
 
 test("hides the wrap entirely when there is no WS port (static export)", () => {
-    initEditMenu({ svg: false, md: false }, null);
+    initEditMenu({ svg: false, default: false }, null);
     expect(editWrap.style.display).toBe("none");
 });
 
@@ -123,7 +123,7 @@ test("a single editable file still opens a (one-row) dropdown", () => {
             path: "/deck/slide.svg",
         }),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     expect(editMenu.classList.contains("open")).toBe(true);
     expect(editMenu.querySelectorAll(".edit-row").length).toBe(1);
@@ -137,7 +137,7 @@ test("clicking the lone row copies the full path and flashes a confirmation", ()
             path: "/deck/slide.svg",
         }),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -159,7 +159,7 @@ test("clicking the toast's close button dismisses it early", () => {
             path: "/deck/slide.svg",
         }),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
     expect(editToast.classList.contains("visible")).toBe(true);
@@ -181,7 +181,7 @@ test("a second copy in quick succession restarts the auto-hide timer", () => {
             { label: "Content", name: "b.md", path: "/deck/b.md" },
         ),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelectorAll<HTMLButtonElement>(".edit-row")[0].click();
     vi.advanceTimersByTime(2000); // most of the way to the first toast's timeout
@@ -204,7 +204,7 @@ test("the copy confirmation times itself out", () => {
             path: "/deck/slide.svg",
         }),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
     expect(editToast.classList.contains("visible")).toBe(true);
@@ -220,7 +220,7 @@ test("multiple editable files open a dropdown instead of acting directly", () =>
             { label: "Content", name: "slide.md", path: "/deck/slide.md" },
         ),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     expect(editMenu.classList.contains("open")).toBe(true);
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
@@ -235,7 +235,7 @@ test("opening the edit dropdown closes another open menu (e.g. sync)", () => {
     ];
     const closeOther = vi.fn();
     menuOpened(closeOther);
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     expect(closeOther).toHaveBeenCalledOnce();
     expect(editMenu.classList.contains("open")).toBe(true);
@@ -248,7 +248,7 @@ test("clicking a dropdown row acts on that file and closes the menu", () => {
             { label: "Content", name: "slide.md", path: "/deck/slide.md" },
         ),
     ];
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     const contentRow = Array.from(
         editMenu.querySelectorAll<HTMLButtonElement>(".edit-row"),
@@ -272,7 +272,7 @@ test("a configured command with a live WS connection sends an edit message inste
     ];
     const send = vi.fn();
     state.ws = { send, readyState: WebSocket.OPEN } as unknown as WebSocket;
-    initEditMenu({ svg: true, md: false }, 7778);
+    initEditMenu({ svg: true, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
     expect(send).toHaveBeenCalledWith(
@@ -293,7 +293,7 @@ test("a configured command falls back to clipboard when the WS is not open", () 
     ];
     const send = vi.fn();
     state.ws = { send, readyState: WebSocket.CLOSED } as unknown as WebSocket;
-    initEditMenu({ svg: true, md: false }, 7778);
+    initEditMenu({ svg: true, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
     expect(send).not.toHaveBeenCalled();
@@ -312,11 +312,30 @@ test("an unconfigured file kind falls back to clipboard even with a live WS", ()
     ];
     const send = vi.fn();
     state.ws = { send, readyState: WebSocket.OPEN } as unknown as WebSocket;
-    initEditMenu({ svg: false, md: false }, 7778);
+    initEditMenu({ svg: false, default: false }, 7778);
     btnEdit.click();
     editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
     expect(send).not.toHaveBeenCalled();
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
         "/deck/slide.svg",
     );
+});
+
+test("the general command also applies to SVG files when no SVG-specific override is set", () => {
+    state.slides = [
+        slideWith({
+            label: "Layout",
+            name: "slide.svg",
+            path: "/deck/slide.svg",
+        }),
+    ];
+    const send = vi.fn();
+    state.ws = { send, readyState: WebSocket.OPEN } as unknown as WebSocket;
+    initEditMenu({ svg: false, default: true }, 7778);
+    btnEdit.click();
+    editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
+    expect(send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "edit", path: "/deck/slide.svg" }),
+    );
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
 });

@@ -6,11 +6,12 @@ import { state } from "./state";
 // button + dropdown DOM (structurally mirrors syncmenu.ts).
 //
 // Default action is copying the resolved path to the clipboard — universal,
-// works with any editor via paste-navigate. INKFLOW_EDIT_CMD_SVG /
-// INKFLOW_EDIT_CMD_MD (server env vars, baked into EditCommandsConfig at page
-// load) override that per file kind: when configured *and* there's a live server
-// connection, the path is sent to the server to launch instead. The live-connection
-// check (not just the boot-time config flag) mirrors websocket.ts's postToPeer
+// works with any editor via paste-navigate. INKFLOW_EDIT_CMD / INKFLOW_EDIT_CMD_SVG
+// (server env vars, baked into EditCommandsConfig at page load) override that:
+// INKFLOW_EDIT_CMD_SVG overrides INKFLOW_EDIT_CMD for SVG files, which otherwise
+// covers every file kind. When configured *and* there's a live server connection,
+// the path is sent to the server to launch instead. The live-connection check
+// (not just the boot-time config flag) mirrors websocket.ts's postToPeer
 // reasoning — check the real transport, not a static flag — so a disconnected
 // server degrades to clipboard-copy instead of silently dropping the click.
 //
@@ -28,7 +29,7 @@ const editToastClose = document.getElementById("edit-toast-close")!;
 // Must match the CSS animation duration on #edit-toast-progress (overlays.css).
 const TOAST_DURATION_MS = 3000;
 
-let config: EditCommandsConfig = { svg: false, md: false };
+let config: EditCommandsConfig = { default: false, svg: false };
 let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
 editToastClose.addEventListener("click", () => hideToast());
@@ -45,7 +46,12 @@ const ROW_ICONS: Record<string, string> = {
 };
 
 function isConfigured(file: EditableFile): boolean {
-    return file.path.toLowerCase().endsWith(".svg") ? config.svg : config.md;
+    // config.svg overrides config.default for SVG files; every other kind
+    // always uses the general command — mirrors edit.py's command_for.
+    if (file.path.toLowerCase().endsWith(".svg")) {
+        return config.svg || config.default;
+    }
+    return config.default;
 }
 
 function hideToast(): void {

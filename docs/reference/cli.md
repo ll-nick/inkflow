@@ -61,16 +61,67 @@ separate from these sinks; enabling the file sink also captures its traceback.
 
 The presenter's Edit button (see [Presenter panel](../guides/presenter-view.md))
 copies the current slide's source path to the clipboard by default.
-Set one or both of these environment variables to launch an editor instead,
+Set `INKFLOW_EDIT_CMD` to launch an editor instead, for every file kind,
 with `{path}` substituted (appended as a final argument if the template has no
-`{path}` placeholder):
-
-| File kind | Environment variable |
-| --- | --- |
-| SVG layout | `INKFLOW_EDIT_CMD_SVG` |
-| Markdown (content or notes) | `INKFLOW_EDIT_CMD_MD` |
+`{path}` placeholder).
+`INKFLOW_EDIT_CMD_SVG` overrides it specifically for SVG files,
+if you want a different command there
+(Inkscape instead of a text editor, say) without losing the general one
+for content, notes, and the deck script itself.
 
 ```bash
-INKFLOW_EDIT_CMD_SVG="code -r --goto {path}" inkflow serve deck.py
+INKFLOW_EDIT_CMD="code -r --goto {path}" inkflow serve deck.py
 ```
+
+### Suggested editor commands
+
+These are starting points to copy and adjust, not built-in behavior.
+
+**VS Code** reuses an already-open window natively:
+
+```bash
+export INKFLOW_EDIT_CMD="code -r --goto {path}"
+```
+
+**Neovim** needs a fixed socket to connect to,
+since its own address is otherwise random per instance.
+Launch nvim with that socket, for example via a shell alias:
+
+```bash
+alias vim='nvim --listen /tmp/nvim.sock'
+```
+
+```bash
+export INKFLOW_EDIT_CMD="nvim --server /tmp/nvim.sock --remote {path}"
+```
+
+If no nvim with that listen address is running,
+the command fails silently (logged as a warning server-side).
+
+**Inkscape** has no comparable built-in remote-control flag,
+so this uses its D-Bus interface directly.
+Set it as `INKFLOW_EDIT_CMD_SVG`, not the general `INKFLOW_EDIT_CMD`.
+Save this as an executable script on your `PATH`:
+
+```bash
+#!/bin/sh
+# Reuses a running Inkscape's window (a new tab on 1.5+, a new window on
+# older versions) instead of spawning a second process; falls back to a
+# plain `inkscape` launch if no instance is running yet.
+if gdbus call --session --dest org.inkscape.Inkscape \
+    --object-path /org/inkscape/Inkscape \
+    --method org.freedesktop.Application.ActivateAction \
+    "file-open-window" "[<'$1'>]" "{}" >/dev/null 2>&1; then
+    exit 0
+fi
+exec inkscape "$1"
+```
+
+```bash
+export INKFLOW_EDIT_CMD_SVG="inkflow-edit-svg {path}"
+```
+
+This is Linux-specific (D-Bus) and depends on Inkscape's own D-Bus interface,
+which isn't part of inkflow and could change between Inkscape releases.
+It degrades safely on any version, though.
 

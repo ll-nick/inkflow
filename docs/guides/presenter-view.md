@@ -71,19 +71,19 @@ See [Authoring slides](slides.md#speaker-notes) and
 ## Editing a slide
 
 Click the pencil-icon button in the status bar to edit the current slide's source.
-A slide with only one editable file acts immediately.
-One with more (a file-backed `md=` and/or `notes=`,
-or a layout built on a project-local `inkflow:parent`)
-opens a small dropdown listing, top to bottom:
-any parent layouts, the layout itself, then Content and Notes.
+It opens a small dropdown listing, top to bottom: any parent layouts
+(a layout built on a project-local `inkflow:parent`), the layout itself,
+a file-backed `md=` and/or `notes=` as Content and Notes,
+and finally the deck script.
 Each entry shows its kind and filename.
 A parent layout that lives in the active theme or an installed package
 is never listed, since it isn't yours to edit.
 
 By default this copies the file's absolute path to the clipboard.
-With `INKFLOW_EDIT_CMD_SVG` and/or `INKFLOW_EDIT_CMD_MD` set,
-it launches that command instead.
-See [CLI reference](../reference/cli.md#editing-from-the-presenter) for details.
+With `INKFLOW_EDIT_CMD` set, it launches that command instead
+(`INKFLOW_EDIT_CMD_SVG` overrides it just for SVG files).
+See [CLI reference](../reference/cli.md#editing-from-the-presenter) for details,
+including suggested commands for VS Code, Neovim, and Inkscape.
 
 This button only appears under `inkflow serve`, not in a static build.
 

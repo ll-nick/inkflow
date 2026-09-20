@@ -118,14 +118,16 @@ def test_build_html_transitions_json_embedded() -> None:
 
 def test_build_html_edit_commands_default_both_false() -> None:
     html = build_html(_state(), ws_port=7778).decode()
-    assert json.dumps({"svg": False, "md": False}) in html
+    assert json.dumps({"default": False, "svg": False}) in html
 
 
 def test_build_html_edit_commands_reflects_configured() -> None:
     html = build_html(
-        _state(), ws_port=7778, edit_commands=EditCommands(svg="code {path}", md=None)
+        _state(),
+        ws_port=7778,
+        edit_commands=EditCommands(svg="code {path}", default=None),
     ).decode()
-    assert json.dumps({"svg": True, "md": False}) in html
+    assert json.dumps({"default": False, "svg": True}) in html
 
 
 def test_build_html_logs_json_embedded() -> None:
@@ -261,7 +263,7 @@ def test_resolve_edit_request_valid_path_and_configured_command() -> None:
             {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
         )
     ]
-    commands = EditCommands(svg="code -r {path}", md=None)
+    commands = EditCommands(svg="code -r {path}", default=None)
     assert _resolve_edit_request({"path": "/deck/slide.svg"}, slides, commands) == (
         Path("/deck/slide.svg"),
         "code -r {path}",
@@ -274,7 +276,7 @@ def test_resolve_edit_request_unknown_path_dropped() -> None:
             {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
         )
     ]
-    commands = EditCommands(svg="code -r {path}", md=None)
+    commands = EditCommands(svg="code -r {path}", default=None)
     assert _resolve_edit_request({"path": "/etc/passwd"}, slides, commands) is None
 
 
@@ -284,7 +286,7 @@ def test_resolve_edit_request_missing_path_field_dropped() -> None:
             {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
         )
     ]
-    commands = EditCommands(svg="code -r {path}", md=None)
+    commands = EditCommands(svg="code -r {path}", default=None)
     assert _resolve_edit_request({}, slides, commands) is None
 
 
@@ -294,5 +296,5 @@ def test_resolve_edit_request_no_command_configured_dropped() -> None:
             {"label": "Layout", "name": "slide.svg", "path": "/deck/slide.svg"}
         )
     ]
-    commands = EditCommands(svg=None, md=None)
+    commands = EditCommands(svg=None, default=None)
     assert _resolve_edit_request({"path": "/deck/slide.svg"}, slides, commands) is None
