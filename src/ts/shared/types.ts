@@ -62,6 +62,11 @@ export interface NavMessage {
 // the two (or WsMessage's "position" variant below).
 export type SyncPosition = Omit<NavMessage, "type">;
 
+// The colour a notification carries — the same vocabulary as inkflow.logging's
+// report()/`_level_render` (green for a completed action, yellow for attention,
+// red for an error), so client and server never invent two severity dialects.
+export type NotifyStyle = "green" | "yellow" | "red";
+
 export type WsMessage =
     | {
           type: "update";
@@ -70,5 +75,5 @@ export type WsMessage =
           logs: LogEntry[];
       }
     | { type: "error"; message: string }
-    | { type: "edit-error"; message: string }
+    | { type: "notify"; message: string; style: NotifyStyle }
     | ({ type: "position" } & SyncPosition);
