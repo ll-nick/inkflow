@@ -10,6 +10,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 let initEditMenu: typeof import("./edit").initEditMenu;
 let renderEditButton: typeof import("./edit").renderEditButton;
+let showEditError: typeof import("./edit").showEditError;
 let menuOpened: typeof import("./menus").menuOpened;
 let state: typeof import("./state").state;
 let btnEdit: HTMLButtonElement;
@@ -34,7 +35,9 @@ beforeEach(async () => {
         </div>
     `;
     vi.resetModules();
-    ({ initEditMenu, renderEditButton } = await import("./edit"));
+    ({ initEditMenu, renderEditButton, showEditError } = await import(
+        "./edit"
+    ));
     ({ menuOpened } = await import("./menus"));
     ({ state } = await import("./state"));
     btnEdit = document.getElementById("btn-edit") as HTMLButtonElement;
@@ -338,4 +341,42 @@ test("the general command also applies to SVG files when no SVG-specific overrid
         JSON.stringify({ type: "edit", path: "/deck/slide.svg" }),
     );
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+});
+
+test("showEditError shows a red, non-auto-dismissing toast", () => {
+    vi.useFakeTimers();
+    showEditError("failed to launch edit command 'nope': not found");
+    expect(editToast.classList.contains("visible")).toBe(true);
+    expect(editToast.classList.contains("error")).toBe(true);
+    expect(editToastText.textContent).toBe(
+        "failed to launch edit command 'nope': not found",
+    );
+    // Unlike a success toast, an error stays until dismissed — it's diagnostic
+    // text worth reading, not a transient confirmation.
+    vi.advanceTimersByTime(10_000);
+    expect(editToast.classList.contains("visible")).toBe(true);
+    vi.useRealTimers();
+});
+
+test("the close button dismisses an error toast too", () => {
+    showEditError("something went wrong");
+    editToastClose.click();
+    expect(editToast.classList.contains("visible")).toBe(false);
+});
+
+test("a success toast after an error clears the error styling", () => {
+    state.slides = [
+        slideWith({
+            label: "Layout",
+            name: "slide.svg",
+            path: "/deck/slide.svg",
+        }),
+    ];
+    showEditError("something went wrong");
+    expect(editToast.classList.contains("error")).toBe(true);
+    initEditMenu({ svg: false, default: false }, 7778);
+    btnEdit.click();
+    editMenu.querySelector<HTMLButtonElement>(".edit-row")!.click();
+    expect(editToast.classList.contains("error")).toBe(false);
+    expect(editToast.classList.contains("visible")).toBe(true);
 });

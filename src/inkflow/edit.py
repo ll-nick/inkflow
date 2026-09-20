@@ -45,12 +45,15 @@ def command_for(path: Path, commands: EditCommands) -> str | None:
     return commands.default
 
 
-def open_in_editor(path: Path, template: str) -> None:
+def open_in_editor(path: Path, template: str) -> str | None:
     """Launch ``template`` with ``path`` substituted, detached from this process.
 
     ``{path}`` is substituted into every token that contains it; if no token does,
     the path is appended as a final argument (the ``$EDITOR file`` convention).
-    Never raises: a bad template or missing binary is a warning, not a crash.
+    Never raises: a bad template or missing binary is logged and returned as a
+    message (e.g. so the caller can also report it back to the requesting
+    browser tab, which is otherwise the only place nothing visibly happens),
+    not raised as a crash.
     """
     args = shlex.split(template)
     substituted = [a.replace("{path}", str(path)) for a in args]
@@ -66,6 +69,9 @@ def open_in_editor(path: Path, template: str) -> None:
             stdin=subprocess.DEVNULL,
         )
     except OSError as e:
-        logger.warning(f"failed to launch edit command {template!r}: {e}")
+        message = f"failed to launch edit command {template!r}: {e}"
+        logger.warning(message)
+        return message
     finally:
         os.close(devnull)
+    return None

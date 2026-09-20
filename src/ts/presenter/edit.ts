@@ -62,10 +62,16 @@ function hideToast(): void {
 
 // Flashes a confirmation styled like the #log-banner message boxes (same
 // surface/border/shadow treatment, an accent colour instead of its warning
-// yellow), with its own close button and a shrinking progress bar (pure CSS,
-// see overlays.css) showing time left before it dismisses itself.
-function flashToast(message: string): void {
+// yellow), with its own close button and (for a success message) a shrinking
+// progress bar (pure CSS, see overlays.css) showing time left before it
+// dismisses itself. An error stays until manually dismissed — it's diagnostic
+// text the click that triggered it didn't expect, worth more than a glance.
+function flashToast(
+    message: string,
+    kind: "success" | "error" = "success",
+): void {
     editToastText.textContent = message;
+    editToast.classList.toggle("error", kind === "error");
     // Drop .visible and force a reflow before re-adding it, even if the toast is
     // already showing (two edits in quick succession) — otherwise the browser
     // never sees the class go away and won't restart the progress-bar animation.
@@ -73,7 +79,16 @@ function flashToast(message: string): void {
     void editToast.offsetWidth;
     editToast.classList.add("visible");
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(hideToast, TOAST_DURATION_MS);
+    toastTimeout =
+        kind === "error" ? null : setTimeout(hideToast, TOAST_DURATION_MS);
+}
+
+// Called from websocket.ts when the server replies with an "edit-error"
+// message: the configured command failed to launch (e.g. the binary isn't on
+// PATH). Without this, a failed launch was only ever logged server-side —
+// invisible from the browser tab where the click actually happened.
+export function showEditError(message: string): void {
+    flashToast(message, "error");
 }
 
 function actOn(file: EditableFile): void {

@@ -300,7 +300,11 @@ def make_ws_handler(
                         msg, _state["slides"], edit_commands
                     )
                     if request is not None:
-                        open_in_editor(*request)
+                        error = open_in_editor(*request)
+                        if error is not None:
+                            await websocket.send(
+                                json.dumps({"type": "edit-error", "message": error})
+                            )
         finally:
             _state["ws_clients"].discard(websocket)
             logger.debug(f"client disconnected ({len(_state['ws_clients'])} total)")

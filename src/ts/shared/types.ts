@@ -70,4 +70,5 @@ export type WsMessage =
           logs: LogEntry[];
       }
     | { type: "error"; message: string }
+    | { type: "edit-error"; message: string }
     | ({ type: "position" } & SyncPosition);

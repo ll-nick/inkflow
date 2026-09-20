@@ -498,6 +498,22 @@ kbd {
     transform: scaleX(1);
   }
 }
+.edit-toast-icon-error {
+  display: none;
+}
+#edit-toast.error {
+  border-color: var(--red);
+}
+#edit-toast.error .edit-toast-icon-ok {
+  display: none;
+}
+#edit-toast.error .edit-toast-icon-error {
+  display: block;
+  color: var(--red);
+}
+#edit-toast.error #edit-toast-progress {
+  display: none;
+}
 
 /* src/css/presenter/picker.css */
 #picker {

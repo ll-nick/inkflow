@@ -78,9 +78,10 @@ def test_open_in_editor_substitutes_placeholder(
 ) -> None:
     popen = MagicMock()
     monkeypatch.setattr(subprocess, "Popen", popen)
-    open_in_editor(Path("/tmp/slide.svg"), "code -r --goto {path}")
+    result = open_in_editor(Path("/tmp/slide.svg"), "code -r --goto {path}")
     args = popen.call_args[0][0]  # pyright: ignore[reportAny]
     assert args == ["code", "-r", "--goto", "/tmp/slide.svg"]
+    assert result is None
 
 
 def test_open_in_editor_appends_path_when_no_placeholder(
@@ -93,11 +94,15 @@ def test_open_in_editor_appends_path_when_no_placeholder(
     assert args == ["nvim", "/tmp/notes.md"]
 
 
-def test_open_in_editor_launch_failure_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_open_in_editor_launch_failure_warns_and_returns_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def _raise(*_args: object, **_kwargs: object) -> None:
         raise OSError("no such file or directory")
 
     monkeypatch.setattr(subprocess, "Popen", _raise)
     with collect_logs(logging.WARNING) as warnings:
-        open_in_editor(Path("/tmp/slide.svg"), "not-a-real-editor {path}")
+        result = open_in_editor(Path("/tmp/slide.svg"), "not-a-real-editor {path}")
     assert any("failed to launch edit command" in w.message for w in warnings)
+    assert result is not None
+    assert "failed to launch edit command" in result

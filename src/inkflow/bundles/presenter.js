@@ -56,13 +56,17 @@
     editToast.classList.remove("visible");
     toastTimeout = null;
   }
-  function flashToast(message) {
+  function flashToast(message, kind = "success") {
     editToastText.textContent = message;
+    editToast.classList.toggle("error", kind === "error");
     editToast.classList.remove("visible");
     void editToast.offsetWidth;
     editToast.classList.add("visible");
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(hideToast, TOAST_DURATION_MS);
+    toastTimeout = kind === "error" ? null : setTimeout(hideToast, TOAST_DURATION_MS);
+  }
+  function showEditError(message) {
+    flashToast(message, "error");
   }
   function actOn(file) {
     if (isConfigured(file) && state.ws && state.ws.readyState === WebSocket.OPEN) {
@@ -2956,6 +2960,8 @@
         renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
+      } else if (msg.type === "edit-error") {
+        showEditError(msg.message);
       } else if (msg.type === "position") {
         if (receives() && !msg.snap && firstPositionPending) {
           firstPositionPending = false;
