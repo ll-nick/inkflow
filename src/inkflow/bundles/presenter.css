@@ -441,29 +441,62 @@ kbd {
   right: 1rem;
   bottom: 1rem;
   z-index: 40;
-  align-items: center;
-  gap: 0.4rem;
-  max-width: 20rem;
+  flex-direction: column;
+  max-width: 24rem;
   background: var(--surface);
   border: 1px solid var(--green);
   border-radius: 8px;
-  padding: 0.5rem 0.75rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   color: var(--text);
   font-size: 0.8rem;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow: hidden;
   pointer-events: none;
 }
 #edit-toast.visible {
   display: flex;
 }
+#edit-toast-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+}
 #edit-toast svg {
   color: var(--green);
   flex-shrink: 0;
+  margin-top: 0.15rem;
 }
 #edit-toast-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+}
+#edit-toast-close {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+#edit-toast-close:hover {
+  color: var(--text);
+}
+#edit-toast-progress {
+  height: 2px;
+  background: var(--green);
+  transform-origin: left;
+  animation: edit-toast-grow 3s linear forwards;
+}
+@keyframes edit-toast-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* src/css/presenter/picker.css */

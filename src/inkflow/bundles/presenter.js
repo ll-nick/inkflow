@@ -33,25 +33,36 @@
   var editWrap = btnEdit.closest(".edit-wrap");
   var editToast = document.getElementById("edit-toast");
   var editToastText = document.getElementById("edit-toast-text");
-  var config = { svg: false, md: false };
+  var editToastClose = document.getElementById("edit-toast-close");
+  var TOAST_DURATION_MS = 3e3;
+  var config = { default: false, svg: false };
   var toastTimeout = null;
+  editToastClose.addEventListener("click", () => hideToast());
   var ROW_ICONS = {
     Layout: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>`,
     Parent: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5.5 8 9 2 5.5 8 2Z"/><path d="M2 9 8 12.5 14 9"/></svg>`,
     Content: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z"/><path d="M9.5 1.5v3.5H13"/><path d="M4.7 9h6.2M4.7 11.3h4.3"/></svg>`,
-    Notes: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-3.2 3v-3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>`
+    Notes: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-3.2 3v-3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>`,
+    Deck: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4 2 8l3.5 4"/><path d="M10.5 4 14 8l-3.5 4"/></svg>`
   };
   function isConfigured(file) {
-    return file.path.toLowerCase().endsWith(".svg") ? config.svg : config.md;
+    if (file.path.toLowerCase().endsWith(".svg")) {
+      return config.svg || config.default;
+    }
+    return config.default;
+  }
+  function hideToast() {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    editToast.classList.remove("visible");
+    toastTimeout = null;
   }
   function flashToast(message) {
-    if (toastTimeout) clearTimeout(toastTimeout);
     editToastText.textContent = message;
+    editToast.classList.remove("visible");
+    void editToast.offsetWidth;
     editToast.classList.add("visible");
-    toastTimeout = setTimeout(() => {
-      editToast.classList.remove("visible");
-      toastTimeout = null;
-    }, 1600);
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(hideToast, TOAST_DURATION_MS);
   }
   function actOn(file) {
     if (isConfigured(file) && state.ws && state.ws.readyState === WebSocket.OPEN) {
@@ -61,7 +72,7 @@
     }
     try {
       void navigator.clipboard.writeText(file.path);
-      flashToast(`Copied ${file.name}`);
+      flashToast(`Copied ${file.path}`);
     } catch (_) {
     }
   }
@@ -127,11 +138,6 @@
     config = cfg;
     btnEdit.addEventListener("click", (e) => {
       e.stopPropagation();
-      const files = state.slides[state.slideIndex]?.editableFiles ?? [];
-      if (files.length <= 1) {
-        if (files.length === 1) actOn(files[0]);
-        return;
-      }
       toggleMenu();
     });
     renderEditButton();
