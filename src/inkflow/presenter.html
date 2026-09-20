@@ -24,10 +24,14 @@
     <ul id="log-list"></ul>
   </div>
   <div id="edit-toast" role="status">
-    <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M3 8.5 6.5 12 13 4.5"/>
-    </svg>
-    <span id="edit-toast-text"></span>
+    <div id="edit-toast-body">
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 8.5 6.5 12 13 4.5"/>
+      </svg>
+      <span id="edit-toast-text"></span>
+      <button type="button" id="edit-toast-close" title="Dismiss" aria-label="Dismiss">×</button>
+    </div>
+    <div id="edit-toast-progress"></div>
   </div>
   <div id="curtain"></div>
   <div id="help" role="dialog" aria-modal="true">

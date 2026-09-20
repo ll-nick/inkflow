@@ -23,9 +23,15 @@ const editMenu = document.getElementById("edit-menu")!;
 const editWrap = btnEdit.closest<HTMLElement>(".edit-wrap")!;
 const editToast = document.getElementById("edit-toast")!;
 const editToastText = document.getElementById("edit-toast-text")!;
+const editToastClose = document.getElementById("edit-toast-close")!;
+
+// Must match the CSS animation duration on #edit-toast-progress (overlays.css).
+const TOAST_DURATION_MS = 3000;
 
 let config: EditCommandsConfig = { svg: false, md: false };
 let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+
+editToastClose.addEventListener("click", () => hideToast());
 
 // One small icon per editableFiles label — a plain signifier, not decoration, so
 // entries with the same generic label (several "Parent" rows) still read apart at
@@ -42,17 +48,26 @@ function isConfigured(file: EditableFile): boolean {
     return file.path.toLowerCase().endsWith(".svg") ? config.svg : config.md;
 }
 
+function hideToast(): void {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    editToast.classList.remove("visible");
+    toastTimeout = null;
+}
+
 // Flashes a confirmation styled like the #log-banner message boxes (same
 // surface/border/shadow treatment, an accent colour instead of its warning
-// yellow), but with no dismiss button — it always times itself out.
+// yellow), with its own close button and a shrinking progress bar (pure CSS,
+// see overlays.css) showing time left before it dismisses itself.
 function flashToast(message: string): void {
-    if (toastTimeout) clearTimeout(toastTimeout);
     editToastText.textContent = message;
+    // Drop .visible and force a reflow before re-adding it, even if the toast is
+    // already showing (two edits in quick succession) — otherwise the browser
+    // never sees the class go away and won't restart the progress-bar animation.
+    editToast.classList.remove("visible");
+    void editToast.offsetWidth;
     editToast.classList.add("visible");
-    toastTimeout = setTimeout(() => {
-        editToast.classList.remove("visible");
-        toastTimeout = null;
-    }, 1600);
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(hideToast, TOAST_DURATION_MS);
 }
 
 function actOn(file: EditableFile): void {
@@ -67,7 +82,9 @@ function actOn(file: EditableFile): void {
     }
     try {
         void navigator.clipboard.writeText(file.path);
-        flashToast(`Copied ${file.name}`);
+        // The full path, not just file.name: a bare filename here would read as
+        // though only the name (not the whole path) had been copied.
+        flashToast(`Copied ${file.path}`);
     } catch (_) {}
 }
 
