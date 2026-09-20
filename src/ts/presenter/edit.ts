@@ -20,30 +20,42 @@ import { state } from "./state";
 const btnEdit = document.getElementById("btn-edit")!;
 const editMenu = document.getElementById("edit-menu")!;
 const editWrap = btnEdit.closest<HTMLElement>(".edit-wrap")!;
+const editToast = document.getElementById("edit-toast")!;
+const editToastText = document.getElementById("edit-toast-text")!;
 
 let config: EditCommandsConfig = { svg: false, md: false };
+let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function isConfigured(file: EditableFile): boolean {
     return file.path.toLowerCase().endsWith(".svg") ? config.svg : config.md;
 }
 
-function flashCopied(el: HTMLElement): void {
-    el.classList.add("copied");
-    setTimeout(() => el.classList.remove("copied"), 1200);
+// Flashes a confirmation styled like the #log-banner message boxes (same
+// surface/border/shadow treatment, an accent colour instead of its warning
+// yellow), but with no dismiss button — it always times itself out.
+function flashToast(message: string): void {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    editToastText.textContent = message;
+    editToast.classList.add("visible");
+    toastTimeout = setTimeout(() => {
+        editToast.classList.remove("visible");
+        toastTimeout = null;
+    }, 1600);
 }
 
-function actOn(file: EditableFile, flashTarget: HTMLElement): void {
+function actOn(file: EditableFile): void {
     if (
         isConfigured(file) &&
         state.ws &&
         state.ws.readyState === WebSocket.OPEN
     ) {
         state.ws.send(JSON.stringify({ type: "edit", path: file.path }));
+        flashToast(`Opened ${file.name}`);
         return;
     }
     try {
         void navigator.clipboard.writeText(file.path);
-        flashCopied(flashTarget);
+        flashToast(`Copied ${file.name}`);
     } catch (_) {}
 }
 
