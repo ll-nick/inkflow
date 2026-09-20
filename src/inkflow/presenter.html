@@ -23,20 +23,25 @@
     </div>
     <ul id="log-list"></ul>
   </div>
-  <div id="edit-toast" role="status">
-    <div id="edit-toast-body">
-      <svg class="edit-toast-icon-ok" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <div id="notify" role="status">
+    <div id="notify-body">
+      <svg class="notify-icon-ok" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 8.5 6.5 12 13 4.5"/>
       </svg>
-      <svg class="edit-toast-icon-error" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg class="notify-icon-warning" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 2.2 15.2 14H0.8z"/>
+        <line x1="8" y1="6.5" x2="8" y2="10"/>
+        <circle cx="8" cy="11.8" r="0.5" fill="currentColor" stroke="none"/>
+      </svg>
+      <svg class="notify-icon-error" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="8" cy="8" r="6.5"/>
         <line x1="5.8" y1="5.8" x2="10.2" y2="10.2"/>
         <line x1="10.2" y1="5.8" x2="5.8" y2="10.2"/>
       </svg>
-      <span id="edit-toast-text"></span>
-      <button type="button" id="edit-toast-close" title="Dismiss" aria-label="Dismiss">×</button>
+      <span id="notify-text"></span>
+      <button type="button" id="notify-close" title="Dismiss" aria-label="Dismiss">×</button>
     </div>
-    <div id="edit-toast-progress"></div>
+    <div id="notify-progress"></div>
   </div>
   <div id="curtain"></div>
   <div id="help" role="dialog" aria-modal="true">
