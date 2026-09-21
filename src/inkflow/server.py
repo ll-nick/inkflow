@@ -16,7 +16,7 @@ import webbrowser
 from collections.abc import Awaitable, Callable
 from html import escape as escape_html
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Literal, TypedDict, cast
 from urllib.parse import unquote
 
 from rich.console import Console
@@ -193,6 +193,26 @@ async def broadcast(msg: str, sender: ServerConnection | None = None) -> None:
     _state["ws_clients"] -= dead
 
 
+NotifyStyle = Literal["green", "yellow", "red"]
+
+
+async def notify(
+    target: ServerConnection | None, message: str, *, style: NotifyStyle = "green"
+) -> None:
+    """Push a transient, colour-coded notification: to one client (a reply) when
+    `target` is given, otherwise to every connected client.
+
+    A pure transport primitive, independent of the rebuild-cycle log banner
+    (`collect_logs`) above. Whether the event is also worth a `logger` call is the
+    caller's decision, not this function's — the two are separate concerns.
+    """
+    payload = json.dumps({"type": "notify", "message": message, "style": style})
+    if target is None:
+        await broadcast(payload)
+    else:
+        await target.send(payload)
+
+
 # ── WebSocket handler ─────────────────────────────────────────────────────────
 
 
@@ -302,9 +322,7 @@ def make_ws_handler(
                     if request is not None:
                         error = open_in_editor(*request)
                         if error is not None:
-                            await websocket.send(
-                                json.dumps({"type": "edit-error", "message": error})
-                            )
+                            await notify(websocket, error, style="red")
         finally:
             _state["ws_clients"].discard(websocket)
             logger.debug(f"client disconnected ({len(_state['ws_clients'])} total)")

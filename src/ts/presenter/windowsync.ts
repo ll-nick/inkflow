@@ -1,6 +1,6 @@
 import type { NavMessage } from "../shared/types";
 import { state } from "./state";
-import { showLogs } from "./ui";
+import { showNotify } from "./ui";
 import {
     applyIncomingPosition,
     currentNavMessage,
@@ -105,7 +105,7 @@ export function initWindowSync(wsPort: number | null): void {
         // whichever window happens to hold that name.
         const child = window.open(location.href);
         if (!child) {
-            showLogs([{ level: "warning", message: POPUP_BLOCKED_MESSAGE }]);
+            showNotify(POPUP_BLOCKED_MESSAGE, "yellow");
             return;
         }
         if (wsPort === null) attachLink(child);

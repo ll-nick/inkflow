@@ -1,6 +1,7 @@
 import type { EditableFile, EditCommandsConfig } from "../shared/types";
 import { menuClosed, menuOpened } from "./menus";
 import { state } from "./state";
+import { showNotify } from "./ui";
 
 // Status-bar control for editing the current slide's source file(s). Owns the
 // button + dropdown DOM (structurally mirrors syncmenu.ts).
@@ -22,17 +23,8 @@ import { state } from "./state";
 const btnEdit = document.getElementById("btn-edit")!;
 const editMenu = document.getElementById("edit-menu")!;
 const editWrap = btnEdit.closest<HTMLElement>(".edit-wrap")!;
-const editToast = document.getElementById("edit-toast")!;
-const editToastText = document.getElementById("edit-toast-text")!;
-const editToastClose = document.getElementById("edit-toast-close")!;
-
-// Must match the CSS animation duration on #edit-toast-progress (overlays.css).
-const TOAST_DURATION_MS = 3000;
 
 let config: EditCommandsConfig = { default: false, svg: false };
-let toastTimeout: ReturnType<typeof setTimeout> | null = null;
-
-editToastClose.addEventListener("click", () => hideToast());
 
 // One small icon per editableFiles label — a plain signifier, not decoration, so
 // entries with the same generic label (several "Parent" rows) still read apart at
@@ -54,43 +46,6 @@ function isConfigured(file: EditableFile): boolean {
     return config.default;
 }
 
-function hideToast(): void {
-    if (toastTimeout) clearTimeout(toastTimeout);
-    editToast.classList.remove("visible");
-    toastTimeout = null;
-}
-
-// Flashes a confirmation styled like the #log-banner message boxes (same
-// surface/border/shadow treatment, an accent colour instead of its warning
-// yellow), with its own close button and (for a success message) a shrinking
-// progress bar (pure CSS, see overlays.css) showing time left before it
-// dismisses itself. An error stays until manually dismissed — it's diagnostic
-// text the click that triggered it didn't expect, worth more than a glance.
-function flashToast(
-    message: string,
-    kind: "success" | "error" = "success",
-): void {
-    editToastText.textContent = message;
-    editToast.classList.toggle("error", kind === "error");
-    // Drop .visible and force a reflow before re-adding it, even if the toast is
-    // already showing (two edits in quick succession) — otherwise the browser
-    // never sees the class go away and won't restart the progress-bar animation.
-    editToast.classList.remove("visible");
-    void editToast.offsetWidth;
-    editToast.classList.add("visible");
-    if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout =
-        kind === "error" ? null : setTimeout(hideToast, TOAST_DURATION_MS);
-}
-
-// Called from websocket.ts when the server replies with an "edit-error"
-// message: the configured command failed to launch (e.g. the binary isn't on
-// PATH). Without this, a failed launch was only ever logged server-side —
-// invisible from the browser tab where the click actually happened.
-export function showEditError(message: string): void {
-    flashToast(message, "error");
-}
-
 function actOn(file: EditableFile): void {
     if (
         isConfigured(file) &&
@@ -98,14 +53,14 @@ function actOn(file: EditableFile): void {
         state.ws.readyState === WebSocket.OPEN
     ) {
         state.ws.send(JSON.stringify({ type: "edit", path: file.path }));
-        flashToast(`Opened ${file.name}`);
+        showNotify(`Opened ${file.name}`);
         return;
     }
     try {
         void navigator.clipboard.writeText(file.path);
         // The full path, not just file.name: a bare filename here would read as
         // though only the name (not the whole path) had been copied.
-        flashToast(`Copied ${file.path}`);
+        showNotify(`Copied ${file.path}`);
     } catch (_) {}
 }
 

@@ -59,7 +59,7 @@ separate from these sinks; enabling the file sink also captures its traceback.
 
 ## Editing from the presenter
 
-The presenter's Edit button (see [Presenter panel](../guides/presenter-view.md))
+The presenter's Edit button (see [Presenter panel](../presenting/presenter-panel.md))
 copies the current slide's source path to the clipboard by default.
 Set `INKFLOW_EDIT_CMD` to launch an editor instead, for every file kind,
 with `{path}` substituted (appended as a final argument if the template has no

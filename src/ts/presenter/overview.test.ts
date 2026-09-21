@@ -49,7 +49,9 @@ beforeAll(async () => {
             <button id="btn-edit"></button>
             <div id="edit-menu"></div>
         </span>
-        <button id="edit-toast-close"></button>
+        <button id="notify-close"></button>
+        <button id="notify-history-btn"></button>
+        <div id="notify-history"><button id="notify-history-close"></button></div>
     `;
 
     // computeStageFlip() divides stage/thumbnail rect sizes; happy-dom has no

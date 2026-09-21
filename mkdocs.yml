@@ -71,14 +71,25 @@ nav:
   - Demo: demo/index.html
   - Getting started: getting-started.md
   - Concepts: concepts.md
-  - Guides:
-    - Authoring slides: guides/slides.md
-    - Layout system: guides/layout-system.md
-    - Transitions: guides/transitions.md
-    - Themes: guides/themes.md
-    - Fonts: guides/fonts.md
-    - Export: guides/export.md
-    - Presenter view: guides/presenter-view.md
+  - Authoring:
+    - Slides: authoring/slides.md
+    - Markdown content: authoring/markdown.md
+    - Steps: authoring/steps.md
+    - Animations: authoring/animations.md
+    - Transitions: authoring/transitions.md
+    - Morph in depth: authoring/morph.md
+    - Working in Inkscape: authoring/inkscape.md
+  - Layouts and themes:
+    - Layouts: design/layouts.md
+    - Overlays: design/overlays.md
+    - Themes: design/themes.md
+    - Fonts: design/fonts.md
+    - Built-in theme: built-in-theme/index.md
+  - Presenting:
+    - Presenting a deck: presenting/index.md
+    - Presenter panel: presenting/presenter-panel.md
+    - Multi-window sync: presenting/sync.md
+    - Export: presenting/export.md
   - Reference:
     - Manifest: reference/manifest.md
     - Themes: reference/theme.md
@@ -86,4 +97,3 @@ nav:
     - Animations: reference/animations.md
     - Transitions: reference/transitions.md
     - CLI: reference/cli.md
-    - Built-in theme: built-in-theme/index.md

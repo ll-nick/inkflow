@@ -146,5 +146,7 @@ teammates run `inkflow setup-git` once in their own clone to activate it.
 ## Next steps
 
 - [Concepts](concepts.md): understand the mental model before writing more slides
-- [Authoring slides](guides/slides.md): animations, element IDs, zones, and Markdown content
-- [Layout system](guides/layout-system.md): reusable slide templates
+- [Slides](authoring/slides.md): element IDs, zones, and media
+- [Markdown content](authoring/markdown.md): filling a slide from a `.md` file
+- [Steps](authoring/steps.md): building a slide up one keypress at a time
+- [Layouts](design/layouts.md): reusable slide templates

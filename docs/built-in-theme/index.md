@@ -11,27 +11,11 @@ light/dark mode in the presenter to see both palette variants.
 
 [Launch showcase](./presentation/index.html){ .md-button .md-button--primary target="_blank" }
 
-## Built-in layouts
+## The layouts
 
-Each layout is a bare name you can pass to `Slide(...)`. They resolve through the
-active theme first, then fall back to these built-ins.
-
-| Layout | Purpose |
-|---|---|
-| `cover` | Title slide — large title, subtitle, and an optional full-bleed `media` zone |
-| `section` | Section divider — title and subtitle |
-| `title` | Bare title, no content zone — shared ancestor of `content` and `two-cols` |
-| `content` | Standard content slide — title and a content zone for bullets/prose |
-| `center` | Single centered block — ideal for one statement or image |
-| `two-cols` | Two independent content columns beneath a shared title |
-| `fact` | A single large fact with a supporting caption |
-| `quote` | A blockquote with an attribution line |
-| `media-left` | Image on the left, text on the right |
-| `media-right` | Image on the right, text on the left |
-| `end` | Closing slide — thank-you / wrap-up |
-
-In addition, `base` is the no-parent base layout (background + frame) that the others
-extend, and `numbered` is a variant that adds slide-number zones.
+The theme ships eleven layouts plus two building blocks,
+listed with their zones in [Layouts](../design/layouts.md#built-in-layouts).
+The showcase above walks through each one.
 
 ## Using a built-in layout
 
@@ -51,9 +35,8 @@ def main() -> Deck:
     )
 ```
 
-Markdown zone markers (e.g. `::left::`, `::right::`, `::quote::`) target the named
-zones in each layout. See the showcase deck's slide files for the exact markers each
-layout expects.
+[Markdown zone markers](../authoring/markdown.md#explicit-markers)
+such as `::left::` and `::quote::` target the named zones in each layout.
 
-For styling the theme — palette variables, semantic SVG classes, and authoring colors
-in Inkscape — see the [Themes guide](../guides/themes.md).
+For restyling the theme, its palette variables and its semantic SVG classes,
+see [Themes](../design/themes.md).
