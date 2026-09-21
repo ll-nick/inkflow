@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import textwrap
-from collections.abc import Iterator
 from importlib.resources import files
 from pathlib import Path
 from typing import TypedDict, cast
@@ -71,16 +70,14 @@ _DIRTY_SVG = textwrap.dedent("""\
 
 
 @pytest.fixture
-def project() -> Iterator[Path]:
+def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A minimal deck.py + one slide, inside an isolated cwd."""
-    runner = CliRunner()
-    with runner.isolated_filesystem() as tmp:
-        root = Path(tmp)
-        (root / "deck.py").write_text(_DECK_PY, encoding="utf-8")
-        slides = root / "slides"
-        slides.mkdir()
-        (slides / "01.svg").write_text(_SLIDE_SVG, encoding="utf-8")
-        yield root
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "deck.py").write_text(_DECK_PY, encoding="utf-8")
+    slides = tmp_path / "slides"
+    slides.mkdir()
+    (slides / "01.svg").write_text(_SLIDE_SVG, encoding="utf-8")
+    return tmp_path
 
 
 @pytest.fixture
@@ -182,7 +179,9 @@ class TestDeckFallback:
         assert result.exit_code == 2
         assert "FILES required" in result.output
 
-    def test_sweep_includes_local_layout_once(self, runner: CliRunner) -> None:
+    def test_sweep_includes_local_layout_once(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # An md slide has no content SVG of its own; its base is a local layout.
         # The sweep must reach that layout (once, even when referenced by several
         # slides) but leave its built-in ancestor alone.
@@ -194,21 +193,21 @@ class TestDeckFallback:
                     Slide("card", md="b.md"),
                 ])
         """)
-        with runner.isolated_filesystem():
-            Path("deck.py").write_text(deck_py, encoding="utf-8")
-            Path("slides").mkdir()
-            for name in ("a.md", "b.md"):
-                (Path("slides") / name).write_text("# hi", encoding="utf-8")
-            layouts = Path("layouts")
-            layouts.mkdir()
-            (layouts / "card.svg").write_text(_PARENTED_SVG, encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        Path("deck.py").write_text(deck_py, encoding="utf-8")
+        Path("slides").mkdir()
+        for name in ("a.md", "b.md"):
+            (Path("slides") / name).write_text("# hi", encoding="utf-8")
+        layouts = Path("layouts")
+        layouts.mkdir()
+        (layouts / "card.svg").write_text(_PARENTED_SVG, encoding="utf-8")
 
-            result = runner.invoke(main, ["clean"])
-            assert result.exit_code == 0
-            # The reused local layout appears exactly once in the sweep.
-            assert result.output.count("layouts/card.svg") == 1
-            # The built-in ancestor (builtin:base) is never touched.
-            assert "base.svg" not in result.output
+        result = runner.invoke(main, ["clean"])
+        assert result.exit_code == 0
+        # The reused local layout appears exactly once in the sweep.
+        assert result.output.count("layouts/card.svg") == 1
+        # The built-in ancestor (builtin:base) is never touched.
+        assert "base.svg" not in result.output
 
 
 class TestAdd:
@@ -233,14 +232,16 @@ class TestAdd:
         assert result.exit_code == 1
         assert "already exists" in result.output
 
-    def test_no_deck_parented_without_deck_py(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            result = runner.invoke(
-                main, ["add", "wired.svg", "-p", "builtin:base", "--no-deck"]
-            )
-            assert result.exit_code == 0
-            svg = Path("wired.svg").read_text(encoding="utf-8")
-            assert 'inkflow:parent="builtin:base"' in svg
+    def test_no_deck_parented_without_deck_py(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(
+            main, ["add", "wired.svg", "-p", "builtin:base", "--no-deck"]
+        )
+        assert result.exit_code == 0
+        svg = Path("wired.svg").read_text(encoding="utf-8")
+        assert 'inkflow:parent="builtin:base"' in svg
 
 
 class TestParentGet:
@@ -332,15 +333,17 @@ class TestCleanModes:
 
 
 class TestSyncCheck:
-    def test_check_stale_then_write(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
-            stale = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
-            assert stale.exit_code == 1
-            written = runner.invoke(main, ["sync", "--no-deck", "s.svg"])
-            assert written.exit_code == 0
-            fresh = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
-            assert fresh.exit_code == 0
+    def test_check_stale_then_write(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
+        stale = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
+        assert stale.exit_code == 1
+        written = runner.invoke(main, ["sync", "--no-deck", "s.svg"])
+        assert written.exit_code == 0
+        fresh = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
+        assert fresh.exit_code == 0
 
 
 class TestSyncOverlays:
@@ -394,11 +397,13 @@ class TestSyncOverlays:
 
 
 class TestVerify:
-    def test_missing_src_exits_1(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path("deck.py").write_text(_MISSING_SRC_DECK, encoding="utf-8")
-            result = runner.invoke(main, ["verify"])
-            assert result.exit_code == 1
+    def test_missing_src_exits_1(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("deck.py").write_text(_MISSING_SRC_DECK, encoding="utf-8")
+        result = runner.invoke(main, ["verify"])
+        assert result.exit_code == 1
 
     @pytest.mark.usefixtures("project")
     def test_warning_fails_only_with_strict(self, runner: CliRunner) -> None:
@@ -414,23 +419,27 @@ class TestVerify:
 
 
 class TestParentMutation:
-    def test_set_writes_parent(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path("s.svg").write_text(_SLIDE_SVG, encoding="utf-8")
-            result = runner.invoke(
-                main, ["parent", "set", "s.svg", "builtin:base", "--no-deck"]
-            )
-            assert result.exit_code == 0
-            assert 'inkflow:parent="builtin:base"' in Path("s.svg").read_text(
-                encoding="utf-8"
-            )
+    def test_set_writes_parent(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("s.svg").write_text(_SLIDE_SVG, encoding="utf-8")
+        result = runner.invoke(
+            main, ["parent", "set", "s.svg", "builtin:base", "--no-deck"]
+        )
+        assert result.exit_code == 0
+        assert 'inkflow:parent="builtin:base"' in Path("s.svg").read_text(
+            encoding="utf-8"
+        )
 
-    def test_strip_removes_parent(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
-            result = runner.invoke(main, ["parent", "strip", "-y", "s.svg"])
-            assert result.exit_code == 0
-            assert "inkflow:parent" not in Path("s.svg").read_text(encoding="utf-8")
+    def test_strip_removes_parent(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["parent", "strip", "-y", "s.svg"])
+        assert result.exit_code == 0
+        assert "inkflow:parent" not in Path("s.svg").read_text(encoding="utf-8")
 
 
 class TestPalette:
@@ -456,111 +465,131 @@ class TestInitGit:
     """Git bootstrap on `inkflow init`. Asserts only on git artifacts + deck.py,
     never on scaffold file names, so it stays decoupled from the scaffold layout."""
 
-    def test_fresh_project_inits_repo(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            result = runner.invoke(main, ["init", "my-talk"])
-            assert result.exit_code == 0, result.output
-            root = Path("my-talk")
-            assert (root / "deck.py").exists()
-            assert (root / ".git").is_dir()
-            gitignore = (root / ".gitignore").read_text(encoding="utf-8")
-            assert ".venv/" in gitignore
-            assert "*.pdf" in gitignore
-            assert (root / ".githooks" / "pre-commit").exists()
+    def test_fresh_project_inits_repo(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "my-talk"])
+        assert result.exit_code == 0, result.output
+        root = Path("my-talk")
+        assert (root / "deck.py").exists()
+        assert (root / ".git").is_dir()
+        gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+        assert ".venv/" in gitignore
+        assert "*.pdf" in gitignore
+        assert (root / ".githooks" / "pre-commit").exists()
 
-    def test_no_git_skips_bootstrap(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
-            assert result.exit_code == 0, result.output
-            root = Path("my-talk")
-            assert (root / "deck.py").exists()
-            assert not (root / ".git").exists()
-            assert not (root / ".gitignore").exists()
+    def test_no_git_skips_bootstrap(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+        assert result.exit_code == 0, result.output
+        root = Path("my-talk")
+        assert (root / "deck.py").exists()
+        assert not (root / ".git").exists()
+        assert not (root / ".gitignore").exists()
 
-    def test_existing_repo_left_untouched(self, runner: CliRunner) -> None:
+    def test_existing_repo_left_untouched(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import subprocess
 
-        with runner.isolated_filesystem() as tmp:
-            subprocess.run(["git", "init", "-q", tmp], check=True)
-            result = runner.invoke(main, ["init", "."])
-            assert result.exit_code == 0, result.output
-            assert Path("deck.py").exists()
-            # Inside an existing repo, init must not drop a .gitignore or take over
-            # the repo's hook config.
-            assert not Path(".gitignore").exists()
-            assert "setup-git" in result.output
+        monkeypatch.chdir(tmp_path)
+        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+        result = runner.invoke(main, ["init", "."])
+        assert result.exit_code == 0, result.output
+        assert Path("deck.py").exists()
+        # Inside an existing repo, init must not drop a .gitignore or take over
+        # the repo's hook config.
+        assert not Path(".gitignore").exists()
+        assert "setup-git" in result.output
 
 
 class TestInitScaffold:
-    def test_creates_starter_files(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
-            assert result.exit_code == 0, result.output
-            root = Path("my-talk")
-            for rel in (
-                "deck.py",
-                "slides/title.svg",
-                "slides/diagram.svg",
-                "slides/guide.md",
-                "slides/diagram.md",
-                "notes/title.md",
-                "notes/guide.md",
-                "notes/diagram.md",
-            ):
-                assert (root / rel).exists(), rel
+    def test_creates_starter_files(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+        assert result.exit_code == 0, result.output
+        root = Path("my-talk")
+        for rel in (
+            "deck.py",
+            "slides/title.svg",
+            "slides/diagram.svg",
+            "slides/guide.md",
+            "slides/diagram.md",
+            "notes/title.md",
+            "notes/guide.md",
+            "notes/diagram.md",
+        ):
+            assert (root / rel).exists(), rel
 
-    def test_sync_injects_layout_live(self, runner: CliRunner) -> None:
+    def test_sync_injects_layout_live(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The parented diagram SVG gets its base layer + preview style injected
         into the project copy, while the packaged template stays lean."""
-        with runner.isolated_filesystem():
-            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
-            assert result.exit_code == 0, result.output
-            diagram = Path("my-talk/slides/diagram.svg").read_text(encoding="utf-8")
-            assert "inkflow:layout-src" in diagram
-            assert "inkflow-preview" in diagram
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+        assert result.exit_code == 0, result.output
+        diagram = Path("my-talk/slides/diagram.svg").read_text(encoding="utf-8")
+        assert "inkflow:layout-src" in diagram
+        assert "inkflow-preview" in diagram
 
-    def test_scaffolded_deck_builds(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_scaffolded_deck_builds(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from inkflow.export import build_static_html
 
-        with runner.isolated_filesystem():
-            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
-            assert result.exit_code == 0, result.output
-            out = tmp_path / "build"
-            build_static_html(Path("my-talk/deck.py").resolve(), out)
-            assert (out / "index.html").exists()
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+        assert result.exit_code == 0, result.output
+        out = tmp_path / "build"
+        build_static_html(Path("my-talk/deck.py").resolve(), out)
+        assert (out / "index.html").exists()
 
-    def test_writes_pyproject_with_inkflow_dependency(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            result = runner.invoke(main, ["init", "my-talk", "--no-git"])
-            assert result.exit_code == 0, result.output
-            pyproject = Path("my-talk/pyproject.toml").read_text(encoding="utf-8")
-            assert 'name = "my-talk"' in pyproject
-            assert "inkflow~=" in pyproject
+    def test_writes_pyproject_with_inkflow_dependency(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "my-talk", "--no-git"])
+        assert result.exit_code == 0, result.output
+        pyproject = Path("my-talk/pyproject.toml").read_text(encoding="utf-8")
+        assert 'name = "my-talk"' in pyproject
+        assert "inkflow~=" in pyproject
 
 
 class TestInitEmptyDirGuard:
-    def test_refuses_non_empty_directory(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path("keep.txt").write_text("mine", encoding="utf-8")
-            result = runner.invoke(main, ["init", ".", "--no-git"])
-            assert result.exit_code != 0
-            assert "not empty" in result.output
-            assert not Path("deck.py").exists()
+    def test_refuses_non_empty_directory(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("keep.txt").write_text("mine", encoding="utf-8")
+        result = runner.invoke(main, ["init", ".", "--no-git"])
+        assert result.exit_code != 0
+        assert "not empty" in result.output
+        assert not Path("deck.py").exists()
 
-    def test_force_scaffolds_into_non_empty_directory(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path("keep.txt").write_text("mine", encoding="utf-8")
-            result = runner.invoke(main, ["init", ".", "--no-git", "--force"])
-            assert result.exit_code == 0, result.output
-            assert Path("deck.py").exists()
-            assert Path("keep.txt").exists()
+    def test_force_scaffolds_into_non_empty_directory(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("keep.txt").write_text("mine", encoding="utf-8")
+        result = runner.invoke(main, ["init", ".", "--no-git", "--force"])
+        assert result.exit_code == 0, result.output
+        assert Path("deck.py").exists()
+        assert Path("keep.txt").exists()
 
-    def test_dotfiles_do_not_count_as_non_empty(self, runner: CliRunner) -> None:
-        with runner.isolated_filesystem():
-            Path(".hidden").write_text("x", encoding="utf-8")
-            result = runner.invoke(main, ["init", ".", "--no-git"])
-            assert result.exit_code == 0, result.output
-            assert Path("deck.py").exists()
+    def test_dotfiles_do_not_count_as_non_empty(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path(".hidden").write_text("x", encoding="utf-8")
+        result = runner.invoke(main, ["init", ".", "--no-git"])
+        assert result.exit_code == 0, result.output
+        assert Path("deck.py").exists()
 
 
 class TestCarapaceSpec:

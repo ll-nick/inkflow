@@ -136,9 +136,52 @@ export function snapInflight(): void {
     stage.innerHTML = state.slides.length
         ? state.slides[state.slideIndex].svg
         : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    fitSlideToStage(stage.firstElementChild);
     applyCurrentStepInstant();
     updateStatus();
 }
+
+// ── Slide fitting ────────────────────────────────────────────────────────────
+
+// Sizes a mounted slide's box in pixels from its own viewBox, so
+// `overflow: hidden` clips exactly at its "meet" content instead of a bigger
+// box that lets off-viewBox elements show past the letterboxing. Refitted
+// whenever the container size changes (resize, fullscreen, sidebar toggle).
+const fittedSlides = new Set<SVGSVGElement>();
+
+function fitSlideToStage(el: Element | null): void {
+    for (const tracked of fittedSlides) {
+        if (!tracked.isConnected) fittedSlides.delete(tracked);
+    }
+    if (!(el instanceof SVGSVGElement)) return;
+    fittedSlides.add(el);
+    refit(el);
+}
+
+function refit(el: SVGSVGElement): void {
+    const parent = el.parentElement;
+    if (!parent) return;
+    const vb = parseViewBox(el.getAttribute("viewBox"));
+    const parentStyle = getComputedStyle(parent);
+    const availWidth =
+        parent.clientWidth -
+        Number.parseFloat(parentStyle.paddingLeft) -
+        Number.parseFloat(parentStyle.paddingRight);
+    const availHeight =
+        parent.clientHeight -
+        Number.parseFloat(parentStyle.paddingTop) -
+        Number.parseFloat(parentStyle.paddingBottom);
+    const scale = Math.min(availWidth / vb.w, availHeight / vb.h);
+    el.style.width = `${vb.w * scale}px`;
+    el.style.height = `${vb.h * scale}px`;
+}
+
+new ResizeObserver(() => {
+    for (const el of fittedSlides) {
+        if (el.isConnected) refit(el);
+        else fittedSlides.delete(el);
+    }
+}).observe(stage);
 
 // ── Layer helpers ─────────────────────────────────────────────────────────────
 
@@ -151,14 +194,6 @@ function makeLayer(): HTMLDivElement {
         "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
     layer.style.padding = getComputedStyle(stage).padding;
     return layer;
-}
-
-function sizeLayerChild(layer: HTMLDivElement): void {
-    const child = layer.firstElementChild as HTMLElement | null;
-    if (child) {
-        child.style.width = "100%";
-        child.style.height = "100%";
-    }
 }
 
 // ── Direction helpers ─────────────────────────────────────────────────────────
@@ -271,13 +306,13 @@ class ProgressTransition implements Transition {
         this.settled = false;
         const newLayer = makeLayer();
         while (stage.firstChild) newLayer.appendChild(stage.firstChild);
-        sizeLayerChild(newLayer);
+        fitSlideToStage(newLayer.firstElementChild);
         stage.appendChild(newLayer);
         this.newLayer = newLayer;
 
         const oldLayer = makeLayer();
         oldLayer.innerHTML = this.outgoingHtml;
-        sizeLayerChild(oldLayer);
+        fitSlideToStage(oldLayer.firstElementChild);
         stage.appendChild(oldLayer);
         this.oldLayer = oldLayer;
     }
@@ -383,7 +418,7 @@ function makeFadeBackdrop(
     rect.setAttribute("fill", color);
     svg.appendChild(rect);
     layer.appendChild(svg);
-    sizeLayerChild(layer);
+    fitSlideToStage(layer.firstElementChild);
     return layer;
 }
 
@@ -517,6 +552,7 @@ function loadSlideBody(
         stage.innerHTML = state.slides.length
             ? state.slides[state.slideIndex].svg
             : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+        fitSlideToStage(stage.firstElementChild);
         initialLand();
     };
 
