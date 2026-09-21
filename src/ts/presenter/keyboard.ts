@@ -26,6 +26,7 @@ import {
     toggleHelp,
     toggleLogs,
     toggleMobileHud,
+    toggleNotifyHistory,
     toggleTheme,
 } from "./ui";
 import { keyZoom, smoothResetCamera } from "./zoom";
@@ -140,7 +141,8 @@ const KEYBINDINGS: Record<
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
-    m: { action: toggleLogs },
+    d: { action: toggleLogs },
+    n: { action: toggleNotifyHistory },
     s: { action: cycleSyncMode },
 };
 
@@ -150,6 +152,7 @@ const overviewEl = document.getElementById("overview")!;
 const pickerEl = document.getElementById("picker")!;
 const curtainEl = document.getElementById("curtain")!;
 const logBannerEl = document.getElementById("log-banner")!;
+const notifyHistoryEl = document.getElementById("notify-history")!;
 
 document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
@@ -158,6 +161,12 @@ document.addEventListener("keydown", (e) => {
             return;
         }
         if (e.key !== "t") return;
+    }
+    if (notifyHistoryEl.classList.contains("visible")) {
+        if (e.key === "Escape" || e.key === "q" || e.key === "n") {
+            toggleNotifyHistory();
+        }
+        return;
     }
     if (overviewEl.classList.contains("visible")) {
         if (e.key === "Escape" || e.key === "q") {
