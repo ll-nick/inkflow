@@ -12,14 +12,14 @@
 .sync-glyph .arrow-down {
     transition: opacity 0.12s;
 }
-#btn-sync[data-mode="present"] .arrow-down,
-#btn-sync[data-mode="follow"] .arrow-up,
-#btn-sync[data-mode="solo"] .arrow-up,
-#btn-sync[data-mode="solo"] .arrow-down,
 .sync-row[data-mode="present"] .arrow-down,
 .sync-row[data-mode="follow"] .arrow-up,
 .sync-row[data-mode="solo"] .arrow-up,
-.sync-row[data-mode="solo"] .arrow-down {
+.sync-row[data-mode="solo"] .arrow-down,
+#btn-sync[data-mode="present"] .arrow-down,
+#btn-sync[data-mode="follow"] .arrow-up,
+#btn-sync[data-mode="solo"] .arrow-up,
+#btn-sync[data-mode="solo"] .arrow-down {
     opacity: 0.28;
 }
 
