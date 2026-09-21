@@ -40,6 +40,10 @@
   var notify = document.getElementById("notify");
   var notifyText = document.getElementById("notify-text");
   var notifyClose = document.getElementById("notify-close");
+  var notifyHistoryBtn = document.getElementById("notify-history-btn");
+  var notifyHistoryEl = document.getElementById("notify-history");
+  var notifyHistoryList = document.getElementById("notify-history-list");
+  var notifyHistoryClose = document.getElementById("notify-history-close");
   var _doc = document;
   var _fsHideTimer;
   function showCurtain(color) {
@@ -117,6 +121,7 @@
       logBanner.classList.add("visible");
     }
   }
+  var notifyHistory = [];
   var NOTIFY_DURATION_MS = 3e3;
   var notifyTimeout = null;
   function hideNotify() {
@@ -125,6 +130,7 @@
     notifyTimeout = null;
   }
   function showNotify(message, style = "green") {
+    notifyHistory.push({ message, style, time: Date.now() });
     notifyText.textContent = message;
     notify.dataset.style = style;
     notify.classList.remove("visible");
@@ -132,6 +138,56 @@
     notify.classList.add("visible");
     if (notifyTimeout) clearTimeout(notifyTimeout);
     notifyTimeout = setTimeout(hideNotify, NOTIFY_DURATION_MS);
+  }
+  var NOTIFY_HISTORY_ICON = {
+    green: "\u2713",
+    yellow: "\u26A0\uFE0E",
+    red: "\u2716\uFE0E"
+  };
+  function pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+  function formatHistoryTime(time) {
+    const d = new Date(time);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  }
+  function renderNotifyHistory() {
+    if (notifyHistory.length === 0) {
+      const empty = document.createElement("li");
+      empty.id = "notify-history-empty";
+      empty.className = "nh-row";
+      empty.textContent = "No notifications yet.";
+      notifyHistoryList.replaceChildren(empty);
+      return;
+    }
+    notifyHistoryList.replaceChildren(
+      ...notifyHistory.slice().reverse().map((entry) => {
+        const li = document.createElement("li");
+        li.className = "nh-row";
+        const time = document.createElement("span");
+        time.className = "nh-time";
+        time.textContent = formatHistoryTime(entry.time);
+        const ico = document.createElement("span");
+        ico.className = `nh-ico nh-${entry.style}`;
+        ico.textContent = NOTIFY_HISTORY_ICON[entry.style];
+        const msg = document.createElement("span");
+        msg.className = "nh-message";
+        msg.textContent = entry.message;
+        li.append(time, ico, msg);
+        return li;
+      })
+    );
+  }
+  function openNotifyHistory() {
+    renderNotifyHistory();
+    notifyHistoryEl.classList.add("visible");
+  }
+  function closeNotifyHistory() {
+    notifyHistoryEl.classList.remove("visible");
+  }
+  function toggleNotifyHistory() {
+    if (notifyHistoryEl.classList.contains("visible")) closeNotifyHistory();
+    else openNotifyHistory();
   }
   function toggleTheme() {
     const html = document.documentElement;
@@ -202,6 +258,11 @@
     logBanner.classList.add("visible");
   });
   notifyClose.addEventListener("click", hideNotify);
+  notifyHistoryBtn.addEventListener("click", toggleNotifyHistory);
+  notifyHistoryClose.addEventListener("click", closeNotifyHistory);
+  notifyHistoryEl.addEventListener("click", (e) => {
+    if (e.target === notifyHistoryEl) closeNotifyHistory();
+  });
   curtain.addEventListener("click", hideCurtain);
   help.addEventListener("click", (e) => {
     if (e.target === help) toggleHelp();
@@ -3693,7 +3754,8 @@
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
-    m: { action: toggleLogs },
+    d: { action: toggleLogs },
+    n: { action: toggleNotifyHistory },
     s: { action: cycleSyncMode }
   };
   var helpEl = document.getElementById("help");
@@ -3701,6 +3763,7 @@
   var pickerEl = document.getElementById("picker");
   var curtainEl = document.getElementById("curtain");
   var logBannerEl = document.getElementById("log-banner");
+  var notifyHistoryEl2 = document.getElementById("notify-history");
   document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
       if (e.key === "?" || e.key === "Escape" || e.key === "q") {
@@ -3708,6 +3771,12 @@
         return;
       }
       if (e.key !== "t") return;
+    }
+    if (notifyHistoryEl2.classList.contains("visible")) {
+      if (e.key === "Escape" || e.key === "q" || e.key === "n") {
+        toggleNotifyHistory();
+      }
+      return;
     }
     if (overviewEl2.classList.contains("visible")) {
       if (e.key === "Escape" || e.key === "q") {
