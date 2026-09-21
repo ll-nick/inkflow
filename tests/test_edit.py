@@ -19,7 +19,7 @@ _ENV_VARS = ("INKFLOW_EDIT_CMD", "INKFLOW_EDIT_CMD_SVG")
 
 
 @pytest.fixture(autouse=True)
-def _isolated_env(monkeypatch: pytest.MonkeyPatch):  # pyright: ignore[reportUnusedFunction]
+def _isolated_env(monkeypatch: pytest.MonkeyPatch):
     for name in _ENV_VARS:
         monkeypatch.delenv(name, raising=False)
     yield
