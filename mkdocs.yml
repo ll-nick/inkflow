@@ -7,7 +7,7 @@ repo_name: ll-nick/inkflow
 theme:
   name: material
   logo: assets/logo-light-icon.svg
-  favicon: assets/logo-light-icon.svg
+  favicon: assets/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
