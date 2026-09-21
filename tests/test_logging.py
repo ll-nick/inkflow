@@ -27,7 +27,7 @@ _ENV_VARS = (
 
 
 @pytest.fixture(autouse=True)
-def _isolated_logging(  # pyright: ignore[reportUnusedFunction]
+def _isolated_logging(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Clear the INKFLOW_LOG* env so resolution is deterministic, and detach any
