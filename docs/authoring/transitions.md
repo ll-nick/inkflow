@@ -2,6 +2,17 @@
 
 A transition controls how a slide enters from the previous one.
 
+| Transition | Effect | Own parameters |
+|---|---|---|
+| [`Cut`](#cut) | Instant switch | |
+| [`Crossfade`](#crossfade) | Dissolves one slide into the other | |
+| [`Push`](#push) | Both slides travel together | `direction` |
+| [`Cover`](#cover) | The new slide slides over the old one | `direction` |
+| [`Wipe`](#wipe) | The new slide is revealed from an edge | `direction` |
+| [`Zoom`](#zoom) | Scales one slide out and the other in | `amount` |
+| [`Fade`](#fade) | Fades through a solid colour | `color` |
+| [`Morph`](#morph) | Matching elements travel to their new positions | |
+
 ## Setting transitions
 
 Set a default transition for the whole deck on the `Deck` object,
@@ -131,76 +142,55 @@ transitions.Wipe(direction=Direction.UP, duration=0.7)
 
 ## Morph
 
-Smoothly interpolates matching elements between two slides.
-Elements with the same ID in the outgoing and incoming slides move and reshape to their new positions.
-Elements that exist only in the outgoing slide fade out.
-Elements only in the incoming slide fade in.
+Interpolates matching elements between the two slides.
+Anything with the same `id` on both sides travels to its new position, size and colour,
+and anything unmatched crossfades.
 
 ```python
 transitions.Morph()  # default 0.5s
-transitions.Morph(duration=1.0)  # slower morph
+transitions.Morph(duration=1.0)  # slower
 ```
 
-### What morphs
+Morph is the one transition that depends on how the slides themselves are drawn,
+so it has a page of its own: **[Morph in depth](morph.md)**.
 
-Each element is matched to its counterpart in the other slide by `id` and
-interpolated by its resolved on-screen pose — position, size, and rotation — so it
-animates correctly even inside translated, scaled, or rotated groups.
+## Writing your own
 
-Any leaf shape can morph:
+A custom transition is a Python dataclass plus a render function in JavaScript.
 
-| Element | Morphs |
-|---|---|
-| `<rect>` | position, size, rotation, corner radius (`rx`/`ry`) |
-| `<circle>`, `<ellipse>` | position, size |
-| `<line>` | endpoints |
-| `<path>`, `<polygon>`, `<image>`, … | position, size, rotation (bounding box) |
-| `<text>` | position, rotation, and font size — glyphs never stretch or shear |
+Subclass `Transition` in `deck.py`.
+Every field you add is serialized and handed to the render function,
+and the kebab-cased class name becomes the handler key (`MyWarp` becomes `my-warp`):
 
-Colors (`fill`, `stroke`) and opacities are interpolated too.
+```python
+from dataclasses import dataclass
+from inkflow import transitions
 
-### Groups
 
-A `<g>` is never animated as a rigid block — it only decides *what to match*.
-Give the **group** an `id` and the elements inside it morph individually to their
-new positions. Give an **individual element** an `id` to morph just that element.
-
-Content with no matched `id` crossfades: elements only in the outgoing slide fade out,
-elements only in the incoming slide fade in. Unchanged chrome (backgrounds, footers) is left untouched.
-
-### Backward navigation
-
-When navigating backward (pressing `←`), Morph plays in reverse automatically.
-
-### Naming elements from Inkscape
-
-Morph matches elements by `id`,
-but Inkscape's Layers & Objects panel only ever edits an element's *label*
-(`inkscape:label`), not its `id`.
-
-`inkflow label2id` bridges the two:
-name a group "headline" in the panel on both slides,
-run `inkflow label2id slides/*.svg`,
-and each element's label becomes its `id`.
-A label that is already a valid id is used verbatim,
-anything else is slugified (spaces to `-`, accents and symbols dropped).
-Labels do not have to be unique but ids do,
-so a clash is reported and skipped rather than overwriting an existing id.
-
-```bash
-inkflow label2id slides/*.svg          # rewrite ids in place
-inkflow label2id -n slides/three.svg   # preview the changes, write nothing
+@dataclass
+class MyWarp(transitions.Transition):
+    twist: float = 1.0
 ```
 
-Elements inside the locked preview layers that `inkflow sync` injects are left
-untouched. Run this before wiring up `deck.py` animations too, not just for Morph.
+Register the matching handler from a `scripts.js` next to `deck.py`,
+which is loaded automatically:
 
-### Tips for Morph slides
+```javascript
+// scripts.js
+window.inkflow.registerProgressTransition("my-warp", (ctx, progress, params) => {
+    // progress runs 0 (old slide shown) to 1 (new slide shown), already eased.
+    // ctx.oldLayer sits on top of ctx.newLayer.
+    ctx.oldLayer.style.opacity = String(1 - progress);
+    ctx.oldLayer.style.transform = `rotate(${progress * params.twist * 20}deg)`;
+});
+```
 
-- Keep element IDs stable between slides — the morph links elements by matching `id`.
-- `id` a `<text>` element to morph it (it moves, rotates, and changes size); leave it
-  un-`id`'d to crossfade it instead.
-- For a card-like object (a shape with a label), group them and put the `id` on the
-  `<g>` so they travel together while each stays crisp.
-- For dramatic reveal effects, try a slow `transitions.Morph(duration=1.5)` combined with
-  repositioned elements.
+The render function is called once per frame with the eased progress,
+so it only has to paint a single still frame.
+Reversing, interrupting and settling are handled for you.
+
+Use it like any built-in:
+
+```python
+Slide("diagram", transition=MyWarp(twist=2.0, duration=0.8))
+```

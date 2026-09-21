@@ -19,7 +19,7 @@ class MyTheme(Theme):
 Deck(theme=MyTheme())
 ```
 
-See the [Themes guide](../guides/themes.md) for the full workflow, including how a
+See the [Themes guide](../design/themes.md) for the full workflow, including how a
 theme ships its own layouts and fonts.
 
 ::: inkflow.themes.Theme

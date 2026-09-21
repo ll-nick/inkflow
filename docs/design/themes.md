@@ -104,7 +104,7 @@ class Corporate(Theme):
     overlays = [Overlay("theme:brand")]
 ```
 
-See the [layout system guide](layout-system.md#overlays) for how overlays compose.
+See [Overlays](overlays.md) for how they compose.
 
 `mode` sets the `data-theme` attribute the presenter reads:
 `ColorMode.DARK` leaves it empty (the `:root` palette applies) and
@@ -167,26 +167,10 @@ Available for these tokens: `inkflow-fill-<token>` and
 `accent-fg`, `code-bg`, `code-text`, and the named colors `red` … `grey`).
 The presenter's light/dark switch updates all of them automatically.
 
-## Authoring theme colors in Inkscape
-
-Inkscape can't read CSS custom properties, so semantically-classed elements appear
-unstyled in the editor without help.
-Three commands bridge the gap:
-
-```bash
-# 1. Install the palette as Inkscape swatches (once per machine):
-inkflow palette --deck deck.py > ~/.config/inkscape/palettes/inkflow.gpl
-
-# 2. Convert hardcoded hex fills/strokes to semantic classes:
-inkflow colorize slides/*.svg
-
-# 3. Refresh the editor preview (injects hex fallbacks Inkscape can render;
-#    stripped at serve time, never shipped to the browser):
-inkflow sync
-```
-
-`inkflow palette` derives the swatches from the active theme's palette,
-so a custom theme exports its own colors.
+Inkscape cannot read CSS custom properties,
+so a classed element looks unstyled in the editor until you install the palette
+and refresh the preview.
+See [theme colors in the editor](../authoring/inkscape.md#theme-colors-in-the-editor-colorize-and-palette).
 
 ## Per-deck and per-slide CSS
 
@@ -212,6 +196,20 @@ The full stylesheet order, each layer overriding the ones before it:
 4. the active theme's `styles.css`
 5. the project's `styles.css` next to `deck.py`
 6. `Deck(style=...)`, then `Slide(extra_style=...)`
+
+## Project files
+
+Two files next to `deck.py` are picked up automatically, with no wiring:
+
+| File | Used for |
+|---|---|
+| `styles.css` | Deck-wide CSS, and `@keyframes` for [custom animations](../authoring/animations.md#writing-your-own) |
+| `scripts.js` | JavaScript, including [custom transitions](../authoring/transitions.md#writing-your-own) |
+
+`styles.css` sits at level 5 of the cascade above,
+so it overrides the theme and is overridden by the per-deck and per-slide styles.
+
+A theme can ship its own pair of both, which load before the project's.
 
 ## Font size
 

@@ -66,7 +66,7 @@ Markdown-filled zones for text-heavy slides,
 a presenter view with speaker notes,
 one-command export to static HTML or PDF,
 and more.
-Browse the [guides](guides/slides.md) or read [Concepts](concepts.md) for the full picture.
+Start with [Authoring slides](authoring/slides.md), or read [Concepts](concepts.md) for the full picture.
 
 ### An example `deck.py`
 
@@ -143,10 +143,3 @@ and serve the result to your browser.
 [Demo](demo/index.html){ .md-button .md-button--primary }
 [Get started](getting-started.md){ .md-button }
 </div>
-
----
-
-!!! note
-    All guides are currently AI-generated drafts and may contain inaccuracies or incomplete information.
-    I'll review them once the API stabilizes 
-

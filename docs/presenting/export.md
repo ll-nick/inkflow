@@ -27,7 +27,7 @@ Fonts are embedded directly into the HTML, so they need no separate files.
 To embed the assets too and get a single file, see [`--inline-assets`](#one-file-instead-of-a-directory-inline-assets).
 
 Every reference is resolved relative to the file it was written in
-(see [Images](slides.md#images)),
+(see [Images](../authoring/markdown.md#images)),
 and the source tree is mirrored inside the output directory,
 so the build stays self-contained wherever it is copied.
 A theme's own assets are copied under `_theme/`.
