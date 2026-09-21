@@ -42,6 +42,8 @@ beforeEach(async () => {
             </div>
             <div id="notify-progress"></div>
         </div>
+        <button id="notify-history-btn"></button>
+        <div id="notify-history"><button id="notify-history-close"></button></div>
     `;
     vi.resetModules();
     ({ initEditMenu, renderEditButton } = await import("./edit"));
