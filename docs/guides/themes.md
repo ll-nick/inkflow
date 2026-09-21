@@ -162,7 +162,7 @@ Each token has a fill and a stroke variant, e.g.:
 <rect class="inkflow-fill-accent inkflow-stroke-surface" .../>
 ```
 
-Available for every palette token: `inkflow-fill-<token>` and
+Available for these tokens: `inkflow-fill-<token>` and
 `inkflow-stroke-<token>` (`bg`, `surface`, `border`, `text`, `text-muted`, `accent`,
 `accent-fg`, `code-bg`, `code-text`, and the named colors `red` … `grey`).
 The presenter's light/dark switch updates all of them automatically.
@@ -190,11 +190,17 @@ so a custom theme exports its own colors.
 
 ## Per-deck and per-slide CSS
 
-Beyond the theme you can inject CSS at two levels:
+Beyond the theme you can inject CSS at two levels.
+A bare string is read as a **path to a CSS file**,
+so wrap literal CSS in `Inline(...)`:
 
 ```python
-Deck(style='text { font-family: "Inter", sans-serif; }')  # every slide
-Slide("title", style="#headline { fill: hotpink; }")  # one slide
+from inkflow import Deck, Inline, Slide
+
+Deck(style=Inline('text { font-family: "Inter", sans-serif; }'))  # every slide
+Slide("title", extra_style=Inline("#headline { fill: hotpink; }"))  # one slide
+
+Deck(style="styles/deck.css")  # or point at a file, relative to deck.py
 ```
 
 Slide style beats deck style, which beats the theme.
@@ -205,7 +211,7 @@ The full stylesheet order, each layer overriding the ones before it:
 3. the built-in layout styling
 4. the active theme's `styles.css`
 5. the project's `styles.css` next to `deck.py`
-6. `Deck(style=...)`, then `Slide(style=...)`
+6. `Deck(style=...)`, then `Slide(extra_style=...)`
 
 ## Font size
 

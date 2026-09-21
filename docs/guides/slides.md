@@ -93,7 +93,9 @@ the [animations reference](../reference/animations.md) for the full table.
 | `Highlight` | Pulse a glow (`color`, `iterations`), without hiding | Visible |
 
 ```python
-animations.SlideIn("box", direction="left", duration=0.6)
+from inkflow import Direction, animations
+
+animations.SlideIn("box", direction=Direction.LEFT, duration=0.6)
 animations.ZoomIn("logo", scale=0.6)
 animations.Highlight("total", color="#cba6f7", iterations=2)
 ```
@@ -107,7 +109,7 @@ slide — it can enter, be emphasized, exit, and even re-enter, each on its own 
 animations = [
     animations.FadeIn("hero"),  # step 1: enters
     animations.Highlight("hero"),  # step 2: emphasized
-    animations.SlideOut("hero", direction="down"),  # step 3: exits
+    animations.SlideOut("hero", direction=Direction.DOWN),  # step 3: exits
     animations.Bounce("hero"),  # step 4: returns
 ]
 ```
@@ -218,13 +220,13 @@ Fill them the same way in either case.
 Pass content into named zones directly:
 
 ```python
-from inkflow import Image, Slide
+from inkflow import Image, MediaFit, Slide
 
 Slide(
     "title",
     zones={
         "title": "My talk title",
-        "media": Image("assets/headshot.jpg", fit="cover"),
+        "media": Image("assets/headshot.jpg", fit=MediaFit.COVER),
     },
 )
 ```
@@ -571,12 +573,12 @@ For images and video that should fill a zone (rather than sit inline in text),
 pass an `Image` or a `Video` through the `zones` dict:
 
 ```python
-from inkflow import Image, Slide
+from inkflow import Image, MediaFit, Slide
 
 Slide(
     "media-right",
     md="feature",
-    zones={"media": Image("assets/screenshot.png", fit="cover")},
+    zones={"media": Image("assets/screenshot.png", fit=MediaFit.COVER)},
 )
 ```
 
@@ -694,18 +696,26 @@ reveal's step, pin it with `Trigger.at(n)`.
 
 ## Per-slide styling
 
-The `style` parameter injects a CSS `<style>` block into the slide's SVG at render time.
+The `extra_style` parameter injects a CSS `<style>` block into the slide's SVG at render time.
 Use it as an escape hatch for one-off tweaks.
 For systematic visual changes, use a theme.
 
+A bare string is read as a **path to a CSS file**,
+so wrap literal CSS in `Inline(...)`:
+
 ```python
+from inkflow import Inline, Slide
+
 Slide(
     "title",
-    style="""
-    #headline { font-size: 72px; fill: var(--inkflow-accent); }
-""",
+    extra_style=Inline("#headline { font-size: 72px; fill: var(--inkflow-accent); }"),
 )
+
+Slide("diagram", extra_style="styles/diagram.css")  # path, relative to deck.py
 ```
+
+The same rule applies to `Deck(style=...)`, `Slide(md=...)`, and `Slide(notes=...)`:
+a bare `str` is a path, `Inline(...)` is the content itself.
 
 ## Slide dimensions
 

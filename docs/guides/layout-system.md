@@ -108,7 +108,7 @@ Layouts chain to their parents via an `inkflow:parent` attribute on the SVG root
 
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg"
-     xmlns:inkflow="https://inkflow.dev/ns"
+     xmlns:inkflow="urn:inkflow"
      inkflow:parent="theme:main"
      viewBox="0 0 1920 1080" width="1920" height="1080">
   <!-- layout-specific zones -->

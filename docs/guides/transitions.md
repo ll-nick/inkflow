@@ -29,7 +29,7 @@ All transition types share two parameters:
 | Parameter | Default | Description |
 |---|---|---|
 | `duration` | `0.5` | Duration in seconds (`Cut` defaults to `0.0`) |
-| `easing` | `None` | Any CSS easing string. `None` keeps the handler's built-in default |
+| `easing` | `Easing.EASE` | An [`Easing`](../reference/enums.md) preset, or a custom curve via `Easing.cubic_bezier(...)`. `Push`, `Cover`, `Zoom`, and `Wipe` default to `Easing.EASE_IN_OUT` |
 
 ## Cut
 
@@ -88,9 +88,11 @@ The incoming slide scales into place while the outgoing slide keeps zooming past
 `amount` controls how far they scale past their normal size.
 
 ```python
+from inkflow import Easing
+
 transitions.Zoom()
 transitions.Zoom(amount=0.4)  # gentler
-transitions.Zoom(amount=0.6, duration=0.6, easing="ease-in-out")
+transitions.Zoom(amount=0.6, duration=0.6, easing=Easing.EASE_IN_OUT)
 ```
 
 | Parameter | Default | Description |
