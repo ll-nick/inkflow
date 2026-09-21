@@ -14,6 +14,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 let initEditMenu: typeof import("./edit").initEditMenu;
 let renderEditButton: typeof import("./edit").renderEditButton;
+let editMenuSetActive: typeof import("./edit").editMenuSetActive;
+let editMenuCommit: typeof import("./edit").editMenuCommit;
 let menuOpened: typeof import("./menus").menuOpened;
 let state: typeof import("./state").state;
 let btnEdit: HTMLButtonElement;
@@ -46,7 +48,8 @@ beforeEach(async () => {
         <div id="notify-history"><button id="notify-history-close"></button></div>
     `;
     vi.resetModules();
-    ({ initEditMenu, renderEditButton } = await import("./edit"));
+    ({ initEditMenu, renderEditButton, editMenuSetActive, editMenuCommit } =
+        await import("./edit"));
     ({ menuOpened } = await import("./menus"));
     ({ state } = await import("./state"));
     btnEdit = document.getElementById("btn-edit") as HTMLButtonElement;
@@ -283,4 +286,59 @@ test("the general command also applies to SVG files when no SVG-specific overrid
         JSON.stringify({ type: "edit", path: "/deck/slide.svg" }),
     );
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+});
+
+// ── Keyboard navigation (editMenuSetActive / editMenuCommit) ──────────────────
+// The arrow/j/k/Enter wiring itself lives in keyboard.ts's global cascade (not
+// tested here — no keyboard.test.ts exists in this codebase, matching how
+// overview.ts's identically-shaped overviewSetActive/overviewCommit also have
+// no dedicated cascade test); this covers the exported units keyboard.ts calls.
+
+test("opening the menu highlights the first row", () => {
+    state.slides = [
+        slideWith(
+            { label: "Layout", name: "a.svg", path: "/deck/a.svg" },
+            { label: "Content", name: "b.md", path: "/deck/b.md" },
+        ),
+    ];
+    initEditMenu({ svg: false, default: false }, 7778);
+    btnEdit.click();
+    const rows = editMenu.querySelectorAll(".edit-row");
+    expect(rows[0].classList.contains("active")).toBe(true);
+    expect(rows[1].classList.contains("active")).toBe(false);
+    expect(state._editActive).toBe(0);
+});
+
+test("editMenuSetActive moves the highlight and clamps at both ends", () => {
+    state.slides = [
+        slideWith(
+            { label: "Layout", name: "a.svg", path: "/deck/a.svg" },
+            { label: "Content", name: "b.md", path: "/deck/b.md" },
+        ),
+    ];
+    initEditMenu({ svg: false, default: false }, 7778);
+    btnEdit.click();
+    const rows = editMenu.querySelectorAll(".edit-row");
+    editMenuSetActive(1);
+    expect(rows[1].classList.contains("active")).toBe(true);
+    expect(rows[0].classList.contains("active")).toBe(false);
+    editMenuSetActive(5); // past the end
+    expect(state._editActive).toBe(1);
+    editMenuSetActive(-3); // before the start
+    expect(state._editActive).toBe(0);
+});
+
+test("editMenuCommit acts on the highlighted row, not necessarily the first", () => {
+    state.slides = [
+        slideWith(
+            { label: "Layout", name: "a.svg", path: "/deck/a.svg" },
+            { label: "Content", name: "b.md", path: "/deck/b.md" },
+        ),
+    ];
+    initEditMenu({ svg: false, default: false }, 7778);
+    btnEdit.click();
+    editMenuSetActive(1);
+    editMenuCommit();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/deck/b.md");
+    expect(editMenu.classList.contains("open")).toBe(false);
 });
