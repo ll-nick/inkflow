@@ -2598,21 +2598,41 @@
   function snapInflight() {
     cancelInflight(true);
     stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+    fitSlideToStage(stage3.firstElementChild);
     applyCurrentStepInstant();
     updateStatus();
   }
+  var fittedSlides = /* @__PURE__ */ new Set();
+  function fitSlideToStage(el) {
+    for (const tracked of fittedSlides) {
+      if (!tracked.isConnected) fittedSlides.delete(tracked);
+    }
+    if (!(el instanceof SVGSVGElement)) return;
+    fittedSlides.add(el);
+    refit(el);
+  }
+  function refit(el) {
+    const parent = el.parentElement;
+    if (!parent) return;
+    const vb = parseViewBox(el.getAttribute("viewBox"));
+    const parentStyle = getComputedStyle(parent);
+    const availWidth = parent.clientWidth - Number.parseFloat(parentStyle.paddingLeft) - Number.parseFloat(parentStyle.paddingRight);
+    const availHeight = parent.clientHeight - Number.parseFloat(parentStyle.paddingTop) - Number.parseFloat(parentStyle.paddingBottom);
+    const scale = Math.min(availWidth / vb.w, availHeight / vb.h);
+    el.style.width = `${vb.w * scale}px`;
+    el.style.height = `${vb.h * scale}px`;
+  }
+  new ResizeObserver(() => {
+    for (const el of fittedSlides) {
+      if (el.isConnected) refit(el);
+      else fittedSlides.delete(el);
+    }
+  }).observe(stage3);
   function makeLayer() {
     const layer = document.createElement("div");
     layer.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
     layer.style.padding = getComputedStyle(stage3).padding;
     return layer;
-  }
-  function sizeLayerChild(layer) {
-    const child = layer.firstElementChild;
-    if (child) {
-      child.style.width = "100%";
-      child.style.height = "100%";
-    }
   }
   function dirAxis(dir) {
     return dir === "up" || dir === "down" ? "Y" : "X";
@@ -2687,12 +2707,12 @@
       this.settled = false;
       const newLayer = makeLayer();
       while (stage3.firstChild) newLayer.appendChild(stage3.firstChild);
-      sizeLayerChild(newLayer);
+      fitSlideToStage(newLayer.firstElementChild);
       stage3.appendChild(newLayer);
       this.newLayer = newLayer;
       const oldLayer = makeLayer();
       oldLayer.innerHTML = this.outgoingHtml;
-      sizeLayerChild(oldLayer);
+      fitSlideToStage(oldLayer.firstElementChild);
       stage3.appendChild(oldLayer);
       this.oldLayer = oldLayer;
     }
@@ -2765,7 +2785,7 @@
     rect.setAttribute("fill", color);
     svg.appendChild(rect);
     layer.appendChild(svg);
-    sizeLayerChild(layer);
+    fitSlideToStage(layer.firstElementChild);
     return layer;
   }
   var fadeRender = ({ stage: stageElement, oldLayer, newLayer }, progress, params) => {
@@ -2823,6 +2843,7 @@
     } : settleContent;
     const swap = () => {
       stage3.innerHTML = state.slides.length ? state.slides[state.slideIndex].svg : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
+      fitSlideToStage(stage3.firstElementChild);
       initialLand();
     };
     const canReverse = liveInstance?.reverse != null && liveParams != null && liveParams.type === params.type && Boolean(liveParams.reverse) !== Boolean(params.reverse);
