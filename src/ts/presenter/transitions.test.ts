@@ -42,7 +42,13 @@ beforeAll(async () => {
 
 beforeEach(() => {
     state.slides = [
-        { id: "a", svg: "<svg><rect id='a'/></svg>", title: "S1", notes: "" },
+        {
+            id: "a",
+            svg: "<svg><rect id='a'/></svg>",
+            title: "S1",
+            notes: "",
+            editableFiles: [],
+        },
     ];
     state.slideIndex = 0;
     state.step = 0;
@@ -61,12 +67,14 @@ describe("reverse", () => {
                 svg: "<svg><rect id='a'/></svg>",
                 title: "S1",
                 notes: "",
+                editableFiles: [],
             },
             {
                 id: "b",
                 svg: "<svg><rect id='b'/></svg>",
                 title: "S2",
                 notes: "",
+                editableFiles: [],
             },
         ];
         state.slideIndex = 1;
@@ -110,12 +118,14 @@ describe("reverse", () => {
                 svg: "<svg><rect id='a'/></svg>",
                 title: "A",
                 notes: "",
+                editableFiles: [],
             },
             {
                 id: "b",
                 svg: `<svg><rect id="b" data-cues='[{"step":2}]'/></svg>`,
                 title: "B",
                 notes: "",
+                editableFiles: [],
             },
         ];
         state.transitions = [
@@ -154,12 +164,14 @@ describe("reverse", () => {
                 svg: "<svg><rect id='a'/></svg>",
                 title: "A",
                 notes: "",
+                editableFiles: [],
             },
             {
                 id: "b",
                 svg: "<svg><rect id='b'/></svg>",
                 title: "B",
                 notes: "",
+                editableFiles: [],
             },
         ];
         state.transitions = [
@@ -201,12 +213,14 @@ describe("reverse", () => {
                 svg: "<svg><rect id='a'/></svg>",
                 title: "A",
                 notes: "",
+                editableFiles: [],
             },
             {
                 id: "b",
                 svg: "<svg><rect id='b'/></svg>",
                 title: "B",
                 notes: "",
+                editableFiles: [],
             },
         ];
         state.transitions = [
@@ -244,12 +258,14 @@ describe("snap in-flight", () => {
                 svg: "<svg><rect id='a'/></svg>",
                 title: "A",
                 notes: "",
+                editableFiles: [],
             },
             {
                 id: "b",
                 svg: "<svg><rect id='b'/></svg>",
                 title: "B",
                 notes: "",
+                editableFiles: [],
             },
         ];
     });

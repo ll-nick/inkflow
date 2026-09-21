@@ -1,4 +1,5 @@
 import type { SyncMode } from "../shared/types";
+import { menuClosed, menuOpened } from "./menus";
 import { state } from "./state";
 import { applySyncMode } from "./websocket";
 
@@ -59,6 +60,7 @@ function openMenu(): void {
     btnSync.setAttribute("aria-expanded", "true");
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKeydown);
+    menuOpened(closeMenu);
 }
 
 function closeMenu(): void {
@@ -67,6 +69,7 @@ function closeMenu(): void {
     btnSync.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", onDocClick);
     document.removeEventListener("keydown", onKeydown);
+    menuClosed(closeMenu);
 }
 
 function toggleMenu(): void {

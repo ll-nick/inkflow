@@ -53,6 +53,7 @@ body {
 }
 
 #statusbar {
+    position: relative;
     flex-shrink: 0;
     background: var(--bg);
     border-top: 1px solid var(--overlay);
@@ -98,11 +99,12 @@ body {
 
 /* ── Status-bar tooltips: driven by data-tooltip (not title) so the slow, unstyled
    native browser tooltip never doubles up with this one. Anchored above the bar,
-   since #statusbar sits at the bottom of the viewport. ── */
-.hud-btn[data-tooltip] {
+   since #statusbar sits at the bottom of the viewport. Not scoped to .hud-btn:
+   plain status spans (#slide-info, #step-info, #ws-dot) use it too. ── */
+[data-tooltip] {
     position: relative;
 }
-.hud-btn[data-tooltip]::after {
+[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     bottom: calc(100% + 8px);
@@ -121,8 +123,8 @@ body {
     transition: opacity 0.1s ease;
     z-index: 40;
 }
-.hud-btn[data-tooltip]:hover::after,
-.hud-btn[data-tooltip]:focus-visible::after {
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
     opacity: 1;
     transition-delay: 0.35s;
 }
@@ -131,14 +133,27 @@ body {
     opacity: 0;
     transition-delay: 0s;
 }
-/* Edge buttons: keep the bubble on-screen instead of centering off the bar. */
-#btn-theme[data-tooltip]::after {
+/* Edge elements: keep the bubble on-screen instead of centering off the bar. */
+#btn-theme[data-tooltip]::after,
+#btn-prev[data-tooltip]::after {
     left: 0;
     transform: none;
 }
 #log-indicator[data-tooltip]::after {
     left: auto;
     right: 0;
+    transform: none;
+}
+/* #ws-dot is narrower than its tooltip text, so right-aligning to its own
+   edge (like #log-indicator above) leaves the bubble hanging off to the left.
+   position:static borrows #statusbar's edge instead. */
+#ws-dot[data-tooltip] {
+    position: static;
+}
+#ws-dot[data-tooltip]::after {
+    left: auto;
+    right: 0;
+    transform: none;
 }
 
 .hud-sep {
@@ -164,6 +179,10 @@ body {
 #slide-info .slide-current {
     color: var(--text);
     font-size: 0.85rem;
+}
+
+#step-info {
+    margin-left: 0.6rem;
 }
 
 /* ── Log indicator: present only when the deck has messages (JS sets data-level to
@@ -194,17 +213,28 @@ body {
     display: block;
 }
 
+/* The badge X is stroked in --bg, not a contrasting colour, so it reads as
+   a cutout in the red circle rather than a separate mark. */
 #ws-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--red);
-    transition: background 0.3s;
+    display: inline-flex;
+    align-items: center;
+    color: var(--subtext);
     vertical-align: middle;
 }
-#ws-dot.connected {
-    background: var(--green);
+#ws-dot .ws-badge {
+    fill: var(--red);
+}
+#ws-dot .ws-badge-x {
+    stroke: var(--bg);
+}
+#ws-dot .ws-ic-on {
+    display: none;
+}
+#ws-dot.connected .ws-ic-off {
+    display: none;
+}
+#ws-dot.connected .ws-ic-on {
+    display: block;
 }
 
 /* ── Media zone theme-swap ────────────────────────────────────────────────── */

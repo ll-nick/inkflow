@@ -1,3 +1,9 @@
+import {
+    closeMenu as closeEditMenu,
+    editMenuCommit,
+    editMenuSetActive,
+    toggleMenu as toggleEditMenu,
+} from "./edit";
 import { toggleLaser } from "./laser";
 import {
     advance,
@@ -26,8 +32,10 @@ import {
     toggleHelp,
     toggleLogs,
     toggleMobileHud,
+    toggleNotifyHistory,
     toggleTheme,
 } from "./ui";
+import { openSyncedWindow } from "./windowsync";
 import { keyZoom, smoothResetCamera } from "./zoom";
 
 // ── Stage click and status bar buttons ──
@@ -126,6 +134,7 @@ const KEYBINDINGS: Record<
     $: { action: gotoLast },
     g: { action: openPicker, preventDefault: true },
     o: { action: toggleOverview, preventDefault: true },
+    e: { action: toggleEditMenu },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
     ".": { action: toggleLaser },
@@ -140,7 +149,9 @@ const KEYBINDINGS: Record<
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
-    m: { action: toggleLogs },
+    d: { action: toggleLogs },
+    m: { action: toggleNotifyHistory },
+    n: { action: openSyncedWindow },
     s: { action: cycleSyncMode },
 };
 
@@ -150,6 +161,8 @@ const overviewEl = document.getElementById("overview")!;
 const pickerEl = document.getElementById("picker")!;
 const curtainEl = document.getElementById("curtain")!;
 const logBannerEl = document.getElementById("log-banner")!;
+const notifyHistoryEl = document.getElementById("notify-history")!;
+const editMenuEl = document.getElementById("edit-menu")!;
 
 document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
@@ -158,6 +171,34 @@ document.addEventListener("keydown", (e) => {
             return;
         }
         if (e.key !== "t") return;
+    }
+    if (notifyHistoryEl.classList.contains("visible")) {
+        if (e.key === "Escape" || e.key === "q" || e.key === "m") {
+            toggleNotifyHistory();
+        }
+        return;
+    }
+    if (editMenuEl.classList.contains("open")) {
+        if (e.key === "Escape" || e.key === "q" || e.key === "e") {
+            closeEditMenu();
+            return;
+        }
+        if (e.key === "ArrowDown" || e.key === "j") {
+            e.preventDefault();
+            editMenuSetActive(state._editActive + 1);
+            return;
+        }
+        if (e.key === "ArrowUp" || e.key === "k") {
+            e.preventDefault();
+            editMenuSetActive(state._editActive - 1);
+            return;
+        }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            editMenuCommit();
+            return;
+        }
+        return;
     }
     if (overviewEl.classList.contains("visible")) {
         if (e.key === "Escape" || e.key === "q") {

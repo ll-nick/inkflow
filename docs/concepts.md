@@ -7,10 +7,8 @@ Reading it first makes everything else click faster.
 
 **Your drawings:** SVG files, one per slide.
 Open them in any editor, draw freely, save.
-Plain `Slide` files carry no Inkflow-specific markup at all.
-The one exception is slides that use the layout system: they carry an `inkflow:parent` attribute on the SVG root
-that tells Inkflow which layout SVG to inherit from.
-This is covered in the layout system section below.
+A slide carries no inkflow-specific markup beyond an `id` on anything you animate.
+Slides built on a [layout](#the-layout-system) add one attribute, `inkflow:parent`.
 
 **Your deck:** `deck.py`, a plain Python file.
 It says which slides to show, in what order, and which elements to animate.
@@ -54,10 +52,10 @@ The above example is a single slide with two animated elements: `headline` and `
 
 A **slide** maps to one SVG file.
 A **step** is a keypress within a slide.
-Each animation declares a `Trigger` (the default `ON_CLICK` takes the next
-step, `WITH_PREVIOUS` shares the previous one, `AFTER_PREVIOUS` shares it but
-plays itself once the previous cue finishes), and Inkflow works out the step
-numbers from the triggers and order.
+You never number steps by hand.
+Each animation and each Markdown reveal declares *when* it should fire,
+and inkflow works out the numbering from those declarations and their order.
+See [Steps](authoring/steps.md).
 
 ## Zones and Markdown
 
@@ -91,7 +89,7 @@ Slide("content", md="intro")
 ```
 
 This uses `slides/intro.md` to fill the zones defined in a slide or layout (see below) called `content.svg`.
-See the [guide](guides/slides.md) for details on what these Markdown files can contain and how they map to zones.
+See [Markdown content](authoring/markdown.md) for what these files can contain and how they map to zones.
 
 ## The layout system
 
@@ -109,7 +107,7 @@ theme/main.svg          ← background, brand elements (chain ends here)
 
 Inkflow resolves the full chain at build time and composites the layers in memory.
 The SVG files on disk are not modified.
-[`inkflow sync`](reference/cli.md#inkflow-sync) can optionally write locked preview layers into each SVG
+[`inkflow sync`](authoring/inkscape.md#previewing-the-full-slide-sync) can optionally write locked preview layers into each SVG
 so you can see the inherited background while editing in Inkscape.
 
 ## Overlays
@@ -129,7 +127,7 @@ Deck(
 ```
 
 Overlays can inherit from other overlays.
-See the [layout system guide](guides/layout-system.md#overlays) for the full picture.
+See [Overlays](design/overlays.md) for the full picture.
 
 ## Themes
 
@@ -159,19 +157,15 @@ injecting zone content, and annotating animated elements.
 The result is served to the browser.
 Nothing on disk is touched.
 
-## No SVG editor at runtime
-
-The pipeline reads plain SVG with lxml.
-No editor subprocess, no GUI window, no spawned processes.
-Any SVG editor that exports well-formed SVG works as an authoring environment.
-
 ## The presenter
 
-The browser presenter is a single HTML file with vanilla JavaScript.
-No framework is used.
-Slides are embedded as JSON.
-Navigation and step animation are handled client-side.
-The WebSocket connection listens for file changes and swaps slide content in place
-(preserving the current slide index) without a full page reload.
-Launching multiple browser windows connects them all to the same WebSocket and stay in sync by default.
-Open a second window and press `p` to see the presenter view with notes and upcoming slides.
+The deck runs in the browser.
+Navigation and animation happen client-side,
+and a WebSocket pushes changed slides in place as you save,
+without a full reload and without losing your place.
+
+Any number of windows can be open at once and they
+[stay in sync](presenting/sync.md),
+which is how a second screen with speaker notes works.
+
+See [Presenting a deck](presenting/index.md).

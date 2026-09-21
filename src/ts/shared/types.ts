@@ -1,11 +1,25 @@
 // Every field is always emitted by the Python side (pipeline.py process_deck),
 // so all are required here. Consumers that still guard with `|| ""` are being
 // defensive, not handling a real absent case.
+export interface EditableFile {
+    label: string;
+    name: string;
+    path: string;
+}
+
 export interface SlideData {
     id: string;
     svg: string;
     title: string;
     notes: string;
+    editableFiles: EditableFile[];
+}
+
+// Whether the server has a configured edit command for each file kind (env vars
+// INKFLOW_EDIT_CMD_SVG / INKFLOW_EDIT_CMD_MD), baked in at page load — see edit.ts.
+export interface EditCommandsConfig {
+    default: boolean;
+    svg: boolean;
 }
 
 // Per-client position-sync mode. Never sent to the server: it only decides,
@@ -48,6 +62,11 @@ export interface NavMessage {
 // the two (or WsMessage's "position" variant below).
 export type SyncPosition = Omit<NavMessage, "type">;
 
+// The colour a notification carries — the same vocabulary as inkflow.logging's
+// report()/`_level_render` (green for a completed action, yellow for attention,
+// red for an error), so client and server never invent two severity dialects.
+export type NotifyStyle = "green" | "yellow" | "red";
+
 export type WsMessage =
     | {
           type: "update";
@@ -56,4 +75,5 @@ export type WsMessage =
           logs: LogEntry[];
       }
     | { type: "error"; message: string }
+    | { type: "notify"; message: string; style: NotifyStyle }
     | ({ type: "position" } & SyncPosition);

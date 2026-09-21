@@ -27,7 +27,7 @@ Fonts are embedded directly into the HTML, so they need no separate files.
 To embed the assets too and get a single file, see [`--inline-assets`](#one-file-instead-of-a-directory-inline-assets).
 
 Every reference is resolved relative to the file it was written in
-(see [Images](slides.md#images)),
+(see [Images](../authoring/markdown.md#images)),
 and the source tree is mirrored inside the output directory,
 so the build stays self-contained wherever it is copied.
 A theme's own assets are copied under `_theme/`.
@@ -130,12 +130,21 @@ To embed in an MkDocs page, place the built output in `docs/demo/` and add an if
 </iframe>
 ```
 
-To generate and place the demo as part of your docs build,
-add a `poe` task:
+Build the deck into place before building the site,
+so the embedded demo is always current:
 
-```toml
-[tool.poe.tasks.docs-build-demo]
-cmd = "inkflow build --deck src/inkflow/theme/showcase/deck.py --output docs/demo"
+```bash
+inkflow build --deck deck.py --output docs/demo
+mkdocs build
 ```
 
-Then run `poe docs-build-demo` before `mkdocs build` or `mkdocs gh-deploy`.
+Wire that pair into whichever task runner your project already uses.
+These docs do it with [mise](https://mise.jdx.dev/):
+
+```toml
+[tasks.docs-build]
+run = [
+  "uv run inkflow build --deck demo/deck.py --output docs/demo",
+  "uv run mkdocs build",
+]
+```

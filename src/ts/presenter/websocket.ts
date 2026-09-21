@@ -14,7 +14,7 @@ import {
     snapStepRun,
 } from "./status";
 import { CUT, loadSlide, snapInflight } from "./transitions";
-import { hideError, showError, showLogs } from "./ui";
+import { hideError, showError, showLogs, showNotify } from "./ui";
 
 const wsDot = document.getElementById("ws-dot")!;
 // Direct DOM refs to avoid circular import with overview.ts
@@ -179,6 +179,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
 
     state.ws.onopen = () => {
         wsDot.className = "connected";
+        wsDot.dataset.tooltip = "Connected";
         const assert = authoritative && sends();
         firstPositionPending = assert;
         if (assert) sendNav();
@@ -209,6 +210,8 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
             renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);
+        } else if (msg.type === "notify") {
+            showNotify(msg.message, msg.style);
         } else if (msg.type === "position") {
             // Discard exactly the stale connect-time push so an authoritative window
             // keeps its own position; later updates apply normally. Mirrors the
@@ -224,6 +227,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
 
     state.ws.onclose = () => {
         wsDot.className = "";
+        wsDot.dataset.tooltip = "Disconnected";
         state.ws = null;
         // A reconnecting live window re-asserts its position rather than being
         // adopted by a possibly-stale server.

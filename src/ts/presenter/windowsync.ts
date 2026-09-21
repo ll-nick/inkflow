@@ -1,6 +1,6 @@
 import type { NavMessage } from "../shared/types";
 import { state } from "./state";
-import { showLogs } from "./ui";
+import { showNotify } from "./ui";
 import {
     applyIncomingPosition,
     currentNavMessage,
@@ -94,22 +94,30 @@ function detachLink(): void {
     linkPoll = undefined;
 }
 
+// Set once by initWindowSync; read by openSyncedWindow so the keyboard binding
+// (keyboard.ts's "n") can call the same logic as the click listener without
+// threading wsPort through a second parameter.
+let _wsPort: number | null = null;
+
+export function openSyncedWindow(): void {
+    if (_wsPort === null && state.windowLink) return; // already linked (2-window cap)
+    // No target name: a named target gets reused/refocused by a later
+    // window.open() call with the same name — including from inside the window
+    // it names, which would just reload itself. Serve has no window-count cap
+    // (the WS relay already syncs however many windows connect), so repeat
+    // clicks must always open a genuinely new window rather than colliding with
+    // whichever window happens to hold that name.
+    const child = window.open(location.href);
+    if (!child) {
+        showNotify(POPUP_BLOCKED_MESSAGE, "yellow");
+        return;
+    }
+    if (_wsPort === null) attachLink(child);
+}
+
 export function initWindowSync(wsPort: number | null): void {
-    btnPresenterView.addEventListener("click", () => {
-        if (wsPort === null && state.windowLink) return; // already linked (2-window cap)
-        // No target name: a named target gets reused/refocused by a later
-        // window.open() call with the same name — including from inside the window
-        // it names, which would just reload itself. Serve has no window-count cap
-        // (the WS relay already syncs however many windows connect), so repeat
-        // clicks must always open a genuinely new window rather than colliding with
-        // whichever window happens to hold that name.
-        const child = window.open(location.href);
-        if (!child) {
-            showLogs([{ level: "warning", message: POPUP_BLOCKED_MESSAGE }]);
-            return;
-        }
-        if (wsPort === null) attachLink(child);
-    });
+    _wsPort = wsPort;
+    btnPresenterView.addEventListener("click", openSyncedWindow);
 
     if (wsPort !== null) return; // serve: WS already syncs any window opened this way
 

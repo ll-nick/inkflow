@@ -1,5 +1,381 @@
 "use strict";
 (() => {
+  // src/ts/presenter/menus.ts
+  var activeClose = null;
+  function menuOpened(close) {
+    if (activeClose && activeClose !== close) activeClose();
+    activeClose = close;
+  }
+  function menuClosed(close) {
+    if (activeClose === close) activeClose = null;
+  }
+
+  // src/ts/presenter/state.ts
+  var state = {
+    slides: [],
+    transitions: [],
+    slideIndex: 0,
+    step: 0,
+    syncMode: "two-way",
+    _pickerMatches: [],
+    _pickerActive: 0,
+    _overviewActive: 0,
+    _overviewCols: 1,
+    _editActive: 0,
+    ws: null,
+    windowLink: null,
+    _syncingFromServer: false,
+    _laserMode: false
+  };
+
+  // src/ts/presenter/ui.ts
+  var curtain = document.getElementById("curtain");
+  var help = document.getElementById("help");
+  var errorOverlay = document.getElementById("error-overlay");
+  var errorMsg = document.getElementById("error-msg");
+  var logBanner = document.getElementById("log-banner");
+  var logList = document.getElementById("log-list");
+  var logClose = document.getElementById("log-close");
+  var logIndicator = document.getElementById("log-indicator");
+  var statusBarEl = document.getElementById("statusbar");
+  var notify = document.getElementById("notify");
+  var notifyText = document.getElementById("notify-text");
+  var notifyClose = document.getElementById("notify-close");
+  var notifyHistoryBtn = document.getElementById("notify-history-btn");
+  var notifyHistoryEl = document.getElementById("notify-history");
+  var notifyHistoryList = document.getElementById("notify-history-list");
+  var notifyHistoryClose = document.getElementById("notify-history-close");
+  var _doc = document;
+  var _fsHideTimer;
+  function showCurtain(color) {
+    curtain.style.background = color;
+    curtain.classList.add("visible");
+  }
+  function hideCurtain() {
+    curtain.classList.remove("visible");
+  }
+  function toggleCurtain(color) {
+    curtain.classList.contains("visible") ? hideCurtain() : showCurtain(color);
+  }
+  function toggleHelp() {
+    help.classList.toggle("visible");
+  }
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorOverlay.classList.add("visible");
+  }
+  function hideError() {
+    errorOverlay.classList.remove("visible");
+  }
+  var LOG_LEVEL_ORDER = {
+    debug: 0,
+    info: 1,
+    warning: 2,
+    error: 3
+  };
+  var LOG_ICON = {
+    debug: "\u25E6",
+    info: "\u2139\uFE0E",
+    warning: "\u26A0\uFE0E",
+    error: "\u2716\uFE0E"
+  };
+  function highestLevel(logs) {
+    return logs.reduce(
+      (top, e) => (LOG_LEVEL_ORDER[e.level] ?? 0) > (LOG_LEVEL_ORDER[top] ?? 0) ? e.level : top,
+      logs[0].level
+    );
+  }
+  var logSignature = "";
+  function showLogs(logs) {
+    if (logs.length === 0) {
+      hideLogs();
+      logSignature = "";
+      logIndicator.removeAttribute("data-level");
+      return;
+    }
+    const signature = JSON.stringify(logs);
+    const changed = signature !== logSignature;
+    logSignature = signature;
+    logList.replaceChildren(
+      ...logs.map((entry) => {
+        const li = document.createElement("li");
+        li.className = `log-${entry.level}`;
+        const ico = document.createElement("span");
+        ico.className = "log-ico";
+        ico.textContent = LOG_ICON[entry.level] ?? LOG_ICON.warning;
+        const msg = document.createElement("span");
+        msg.textContent = entry.message;
+        li.append(ico, msg);
+        return li;
+      })
+    );
+    logIndicator.dataset.level = highestLevel(logs);
+    if (changed) logBanner.classList.add("visible");
+  }
+  function hideLogs() {
+    logBanner.classList.remove("visible");
+  }
+  function toggleLogs() {
+    if (logBanner.classList.contains("visible")) {
+      hideLogs();
+    } else if (logIndicator.hasAttribute("data-level")) {
+      logBanner.classList.add("visible");
+    }
+  }
+  var notifyHistory = [];
+  var NOTIFY_DURATION_MS = 3e3;
+  var notifyTimeout = null;
+  function hideNotify() {
+    if (notifyTimeout) clearTimeout(notifyTimeout);
+    notify.classList.remove("visible");
+    notifyTimeout = null;
+  }
+  function showNotify(message, style = "green") {
+    notifyHistory.push({ message, style, time: Date.now() });
+    notifyText.textContent = message;
+    notify.dataset.style = style;
+    notify.classList.remove("visible");
+    void notify.offsetWidth;
+    notify.classList.add("visible");
+    if (notifyTimeout) clearTimeout(notifyTimeout);
+    notifyTimeout = setTimeout(hideNotify, NOTIFY_DURATION_MS);
+  }
+  var NOTIFY_HISTORY_ICON = {
+    green: "\u2713",
+    yellow: "\u26A0\uFE0E",
+    red: "\u2716\uFE0E"
+  };
+  function pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+  function formatHistoryTime(time) {
+    const d = new Date(time);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  }
+  function renderNotifyHistory() {
+    if (notifyHistory.length === 0) {
+      const empty = document.createElement("li");
+      empty.id = "notify-history-empty";
+      empty.className = "nh-row";
+      empty.textContent = "No messages yet.";
+      notifyHistoryList.replaceChildren(empty);
+      return;
+    }
+    notifyHistoryList.replaceChildren(
+      ...notifyHistory.slice().reverse().map((entry) => {
+        const li = document.createElement("li");
+        li.className = "nh-row";
+        const time = document.createElement("span");
+        time.className = "nh-time";
+        time.textContent = formatHistoryTime(entry.time);
+        const ico = document.createElement("span");
+        ico.className = `nh-ico nh-${entry.style}`;
+        ico.textContent = NOTIFY_HISTORY_ICON[entry.style];
+        const msg = document.createElement("span");
+        msg.className = "nh-message";
+        msg.textContent = entry.message;
+        li.append(time, ico, msg);
+        return li;
+      })
+    );
+  }
+  function openNotifyHistory() {
+    renderNotifyHistory();
+    notifyHistoryEl.classList.add("visible");
+  }
+  function closeNotifyHistory() {
+    notifyHistoryEl.classList.remove("visible");
+  }
+  function toggleNotifyHistory() {
+    if (notifyHistoryEl.classList.contains("visible")) closeNotifyHistory();
+    else openNotifyHistory();
+  }
+  function toggleTheme() {
+    const html = document.documentElement;
+    html.dataset.theme = html.dataset.theme === "light" ? "" : "light";
+  }
+  function toggleFullscreen() {
+    if (!document.fullscreenElement)
+      document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+  function showFsBar() {
+    statusBarEl.classList.add("fs-visible");
+    clearTimeout(_fsHideTimer);
+    _fsHideTimer = void 0;
+  }
+  function scheduleFsHide() {
+    if (_fsHideTimer) return;
+    _fsHideTimer = setTimeout(() => {
+      statusBarEl.classList.remove("fs-visible");
+      _fsHideTimer = void 0;
+    }, 600);
+  }
+  function handleFullscreenChange() {
+    const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
+    document.body.classList.toggle("is-fullscreen", isFS);
+    if (!isFS) {
+      statusBarEl.classList.remove("fs-visible");
+      clearTimeout(_fsHideTimer);
+      _fsHideTimer = void 0;
+    }
+  }
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+  document.addEventListener("mousemove", (e) => {
+    if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
+    const inZone = e.clientX < window.innerWidth * 0.2 && e.clientY > window.innerHeight * 0.9;
+    if (inZone) showFsBar();
+    else scheduleFsHide();
+  });
+  statusBarEl.addEventListener("mouseenter", () => {
+    if (document.fullscreenElement || _doc.webkitFullscreenElement) showFsBar();
+  });
+  statusBarEl.addEventListener("mouseleave", () => {
+    if (document.fullscreenElement || _doc.webkitFullscreenElement)
+      scheduleFsHide();
+  });
+  var _mhudTimer;
+  function showMobileHud() {
+    document.body.classList.add("mobile-hud-visible");
+    clearTimeout(_mhudTimer);
+    _mhudTimer = setTimeout(() => {
+      document.body.classList.remove("mobile-hud-visible");
+      _mhudTimer = void 0;
+    }, 3e3);
+  }
+  function toggleMobileHud() {
+    if (document.body.classList.contains("mobile-hud-visible")) {
+      document.body.classList.remove("mobile-hud-visible");
+      clearTimeout(_mhudTimer);
+      _mhudTimer = void 0;
+    } else {
+      showMobileHud();
+    }
+  }
+  document.getElementById("mobile-hud").addEventListener("pointerdown", showMobileHud, { passive: true });
+  logClose.addEventListener("click", hideLogs);
+  logIndicator.addEventListener("click", () => {
+    logBanner.classList.add("visible");
+  });
+  notifyClose.addEventListener("click", hideNotify);
+  notifyHistoryBtn.addEventListener("click", toggleNotifyHistory);
+  notifyHistoryClose.addEventListener("click", closeNotifyHistory);
+  notifyHistoryEl.addEventListener("click", (e) => {
+    if (e.target === notifyHistoryEl) closeNotifyHistory();
+  });
+  curtain.addEventListener("click", hideCurtain);
+  help.addEventListener("click", (e) => {
+    if (e.target === help) toggleHelp();
+  });
+
+  // src/ts/presenter/edit.ts
+  var btnEdit = document.getElementById("btn-edit");
+  var editMenu = document.getElementById("edit-menu");
+  var editWrap = btnEdit.closest(".edit-wrap");
+  var config = { default: false, svg: false };
+  var ROW_ICONS = {
+    Layout: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>`,
+    Parent: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5.5 8 9 2 5.5 8 2Z"/><path d="M2 9 8 12.5 14 9"/></svg>`,
+    Content: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z"/><path d="M9.5 1.5v3.5H13"/><path d="M4.7 9h6.2M4.7 11.3h4.3"/></svg>`,
+    Notes: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-3.2 3v-3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>`,
+    Deck: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4 2 8l3.5 4"/><path d="M10.5 4 14 8l-3.5 4"/></svg>`
+  };
+  function isConfigured(file) {
+    if (file.path.toLowerCase().endsWith(".svg")) {
+      return config.svg || config.default;
+    }
+    return config.default;
+  }
+  function actOn(file) {
+    if (isConfigured(file) && state.ws && state.ws.readyState === WebSocket.OPEN) {
+      state.ws.send(JSON.stringify({ type: "edit", path: file.path }));
+      showNotify(`Opened ${file.name}`);
+      return;
+    }
+    try {
+      void navigator.clipboard.writeText(file.path);
+      showNotify(`Copied ${file.path}`);
+    } catch (_) {
+    }
+  }
+  function renderEditButton() {
+    const files = state.slides[state.slideIndex]?.editableFiles ?? [];
+    editMenu.innerHTML = "";
+    for (const file of files) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "edit-row";
+      row.insertAdjacentHTML("beforeend", ROW_ICONS[file.label] ?? "");
+      const text = document.createElement("span");
+      text.className = "edit-row-text";
+      const label = document.createElement("span");
+      label.className = "edit-row-label";
+      label.textContent = file.label;
+      const name = document.createElement("span");
+      name.className = "edit-row-name";
+      name.textContent = file.name;
+      text.append(label, name);
+      row.appendChild(text);
+      row.addEventListener("click", () => {
+        actOn(file);
+        closeMenu();
+      });
+      editMenu.appendChild(row);
+    }
+  }
+  function editMenuSetActive(i) {
+    const rows = Array.from(
+      editMenu.querySelectorAll(".edit-row")
+    );
+    if (rows.length === 0) return;
+    state._editActive = Math.max(0, Math.min(rows.length - 1, i));
+    rows.forEach((row, idx) => {
+      row.classList.toggle("active", idx === state._editActive);
+    });
+    rows[state._editActive]?.scrollIntoView({ block: "nearest" });
+  }
+  function editMenuCommit() {
+    const files = state.slides[state.slideIndex]?.editableFiles ?? [];
+    const file = files[state._editActive];
+    if (file) actOn(file);
+    closeMenu();
+  }
+  function onDocClick(e) {
+    const t = e.target;
+    if (!btnEdit.contains(t) && !editMenu.contains(t)) closeMenu();
+  }
+  function openMenu() {
+    editMenu.classList.add("open");
+    btnEdit.setAttribute("aria-expanded", "true");
+    editMenuSetActive(0);
+    document.addEventListener("click", onDocClick);
+    menuOpened(closeMenu);
+  }
+  function closeMenu() {
+    if (!editMenu.classList.contains("open")) return;
+    editMenu.classList.remove("open");
+    btnEdit.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", onDocClick);
+    menuClosed(closeMenu);
+  }
+  function toggleMenu() {
+    if (editMenu.classList.contains("open")) closeMenu();
+    else openMenu();
+  }
+  function initEditMenu(cfg, wsPort) {
+    if (!wsPort) {
+      editWrap.style.display = "none";
+      return;
+    }
+    config = cfg;
+    btnEdit.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleMenu();
+    });
+    renderEditButton();
+  }
+
   // src/ts/shared/ring.ts
   function buildStepRing(current, total) {
     const size = 20, cx = 10, cy = 10, ro = 9, ri = 5;
@@ -269,23 +645,6 @@
     const round2 = (n) => Math.round(n * 1e3) / 1e3;
     return `${round2(vb.x)} ${round2(vb.y)} ${round2(vb.w)} ${round2(vb.h)}`;
   }
-
-  // src/ts/presenter/state.ts
-  var state = {
-    slides: [],
-    transitions: [],
-    slideIndex: 0,
-    step: 0,
-    syncMode: "two-way",
-    _pickerMatches: [],
-    _pickerActive: 0,
-    _overviewActive: 0,
-    _overviewCols: 1,
-    ws: null,
-    windowLink: null,
-    _syncingFromServer: false,
-    _laserMode: false
-  };
 
   // src/ts/presenter/deck-url.ts
   var SLIDE = "slide";
@@ -651,6 +1010,7 @@
     updatePvInfo();
     renderPvNext();
     renderPvNotes();
+    renderEditButton();
   }
   function togglePv() {
     document.body.classList.toggle("pv-open");
@@ -2540,166 +2900,6 @@
     });
   }
 
-  // src/ts/presenter/ui.ts
-  var curtain = document.getElementById("curtain");
-  var help = document.getElementById("help");
-  var errorOverlay = document.getElementById("error-overlay");
-  var errorMsg = document.getElementById("error-msg");
-  var logBanner = document.getElementById("log-banner");
-  var logList = document.getElementById("log-list");
-  var logClose = document.getElementById("log-close");
-  var logIndicator = document.getElementById("log-indicator");
-  var statusBarEl = document.getElementById("statusbar");
-  var _doc = document;
-  var _fsHideTimer;
-  function showCurtain(color) {
-    curtain.style.background = color;
-    curtain.classList.add("visible");
-  }
-  function hideCurtain() {
-    curtain.classList.remove("visible");
-  }
-  function toggleCurtain(color) {
-    curtain.classList.contains("visible") ? hideCurtain() : showCurtain(color);
-  }
-  function toggleHelp() {
-    help.classList.toggle("visible");
-  }
-  function showError(msg) {
-    errorMsg.textContent = msg;
-    errorOverlay.classList.add("visible");
-  }
-  function hideError() {
-    errorOverlay.classList.remove("visible");
-  }
-  var LOG_LEVEL_ORDER = {
-    debug: 0,
-    info: 1,
-    warning: 2,
-    error: 3
-  };
-  var LOG_ICON = {
-    debug: "\u25E6",
-    info: "\u2139\uFE0E",
-    warning: "\u26A0\uFE0E",
-    error: "\u2716\uFE0E"
-  };
-  function highestLevel(logs) {
-    return logs.reduce(
-      (top, e) => (LOG_LEVEL_ORDER[e.level] ?? 0) > (LOG_LEVEL_ORDER[top] ?? 0) ? e.level : top,
-      logs[0].level
-    );
-  }
-  var logSignature = "";
-  function showLogs(logs) {
-    if (logs.length === 0) {
-      hideLogs();
-      logSignature = "";
-      logIndicator.removeAttribute("data-level");
-      return;
-    }
-    const signature = JSON.stringify(logs);
-    const changed = signature !== logSignature;
-    logSignature = signature;
-    logList.replaceChildren(
-      ...logs.map((entry) => {
-        const li = document.createElement("li");
-        li.className = `log-${entry.level}`;
-        const ico = document.createElement("span");
-        ico.className = "log-ico";
-        ico.textContent = LOG_ICON[entry.level] ?? LOG_ICON.warning;
-        const msg = document.createElement("span");
-        msg.textContent = entry.message;
-        li.append(ico, msg);
-        return li;
-      })
-    );
-    logIndicator.dataset.level = highestLevel(logs);
-    if (changed) logBanner.classList.add("visible");
-  }
-  function hideLogs() {
-    logBanner.classList.remove("visible");
-  }
-  function toggleLogs() {
-    if (logBanner.classList.contains("visible")) {
-      hideLogs();
-    } else if (logIndicator.hasAttribute("data-level")) {
-      logBanner.classList.add("visible");
-    }
-  }
-  function toggleTheme() {
-    const html = document.documentElement;
-    html.dataset.theme = html.dataset.theme === "light" ? "" : "light";
-  }
-  function toggleFullscreen() {
-    if (!document.fullscreenElement)
-      document.documentElement.requestFullscreen();
-    else document.exitFullscreen();
-  }
-  function showFsBar() {
-    statusBarEl.classList.add("fs-visible");
-    clearTimeout(_fsHideTimer);
-    _fsHideTimer = void 0;
-  }
-  function scheduleFsHide() {
-    if (_fsHideTimer) return;
-    _fsHideTimer = setTimeout(() => {
-      statusBarEl.classList.remove("fs-visible");
-      _fsHideTimer = void 0;
-    }, 600);
-  }
-  function handleFullscreenChange() {
-    const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
-    document.body.classList.toggle("is-fullscreen", isFS);
-    if (!isFS) {
-      statusBarEl.classList.remove("fs-visible");
-      clearTimeout(_fsHideTimer);
-      _fsHideTimer = void 0;
-    }
-  }
-  document.addEventListener("fullscreenchange", handleFullscreenChange);
-  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-  document.addEventListener("mousemove", (e) => {
-    if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
-    const inZone = e.clientX < window.innerWidth * 0.2 && e.clientY > window.innerHeight * 0.9;
-    if (inZone) showFsBar();
-    else scheduleFsHide();
-  });
-  statusBarEl.addEventListener("mouseenter", () => {
-    if (document.fullscreenElement || _doc.webkitFullscreenElement) showFsBar();
-  });
-  statusBarEl.addEventListener("mouseleave", () => {
-    if (document.fullscreenElement || _doc.webkitFullscreenElement)
-      scheduleFsHide();
-  });
-  var _mhudTimer;
-  function showMobileHud() {
-    document.body.classList.add("mobile-hud-visible");
-    clearTimeout(_mhudTimer);
-    _mhudTimer = setTimeout(() => {
-      document.body.classList.remove("mobile-hud-visible");
-      _mhudTimer = void 0;
-    }, 3e3);
-  }
-  function toggleMobileHud() {
-    if (document.body.classList.contains("mobile-hud-visible")) {
-      document.body.classList.remove("mobile-hud-visible");
-      clearTimeout(_mhudTimer);
-      _mhudTimer = void 0;
-    } else {
-      showMobileHud();
-    }
-  }
-  document.getElementById("mobile-hud").addEventListener("pointerdown", showMobileHud, { passive: true });
-  logClose.addEventListener("click", hideLogs);
-  logIndicator.addEventListener("click", () => {
-    logBanner.classList.add("visible");
-  });
-  curtain.addEventListener("click", hideCurtain);
-  help.addEventListener("click", (e) => {
-    if (e.target === help) toggleHelp();
-  });
-
   // src/ts/presenter/websocket.ts
   var wsDot = document.getElementById("ws-dot");
   var overviewEl = document.getElementById("overview");
@@ -2800,6 +3000,7 @@
     let firstPositionPending = false;
     state.ws.onopen = () => {
       wsDot.className = "connected";
+      wsDot.dataset.tooltip = "Connected";
       const assert = authoritative && sends();
       firstPositionPending = assert;
       if (assert) sendNav();
@@ -2829,6 +3030,8 @@
         renderPv();
       } else if (msg.type === "error") {
         showError(msg.message);
+      } else if (msg.type === "notify") {
+        showNotify(msg.message, msg.style);
       } else if (msg.type === "position") {
         if (receives() && !msg.snap && firstPositionPending) {
           firstPositionPending = false;
@@ -2839,6 +3042,7 @@
     };
     state.ws.onclose = () => {
       wsDot.className = "";
+      wsDot.dataset.tooltip = "Disconnected";
       state.ws = null;
       setTimeout(() => connectWS(wsPort, true), 2e3);
     };
@@ -2869,43 +3073,45 @@
   function setSyncMode(mode) {
     applySyncMode(mode);
     renderSyncButton();
-    closeMenu();
+    closeMenu2();
   }
   function cycleSyncMode() {
     const i = SYNC_ORDER.indexOf(state.syncMode);
     setSyncMode(SYNC_ORDER[(i + 1) % SYNC_ORDER.length]);
   }
-  function onDocClick(e) {
+  function onDocClick2(e) {
     const t = e.target;
-    if (!btnSync.contains(t) && !syncMenu.contains(t)) closeMenu();
+    if (!btnSync.contains(t) && !syncMenu.contains(t)) closeMenu2();
   }
   function onKeydown(e) {
     if (e.key === "Escape") {
-      closeMenu();
+      closeMenu2();
       btnSync.focus();
     }
   }
-  function openMenu() {
+  function openMenu2() {
     syncMenu.classList.add("open");
     btnSync.setAttribute("aria-expanded", "true");
-    document.addEventListener("click", onDocClick);
+    document.addEventListener("click", onDocClick2);
     document.addEventListener("keydown", onKeydown);
+    menuOpened(closeMenu2);
   }
-  function closeMenu() {
+  function closeMenu2() {
     if (!syncMenu.classList.contains("open")) return;
     syncMenu.classList.remove("open");
     btnSync.setAttribute("aria-expanded", "false");
-    document.removeEventListener("click", onDocClick);
+    document.removeEventListener("click", onDocClick2);
     document.removeEventListener("keydown", onKeydown);
+    menuClosed(closeMenu2);
   }
-  function toggleMenu() {
-    if (syncMenu.classList.contains("open")) closeMenu();
-    else openMenu();
+  function toggleMenu2() {
+    if (syncMenu.classList.contains("open")) closeMenu2();
+    else openMenu2();
   }
   function initSyncMenu() {
     btnSync.addEventListener("click", (e) => {
       e.stopPropagation();
-      toggleMenu();
+      toggleMenu2();
     });
     for (const row of syncMenu.querySelectorAll(".sync-row"))
       row.addEventListener(
@@ -2957,16 +3163,19 @@
     clearInterval(linkPoll);
     linkPoll = void 0;
   }
+  var _wsPort = null;
+  function openSyncedWindow() {
+    if (_wsPort === null && state.windowLink) return;
+    const child = window.open(location.href);
+    if (!child) {
+      showNotify(POPUP_BLOCKED_MESSAGE, "yellow");
+      return;
+    }
+    if (_wsPort === null) attachLink(child);
+  }
   function initWindowSync(wsPort) {
-    btnPresenterView.addEventListener("click", () => {
-      if (wsPort === null && state.windowLink) return;
-      const child = window.open(location.href);
-      if (!child) {
-        showLogs([{ level: "warning", message: POPUP_BLOCKED_MESSAGE }]);
-        return;
-      }
-      if (wsPort === null) attachLink(child);
-    });
+    _wsPort = wsPort;
+    btnPresenterView.addEventListener("click", openSyncedWindow);
     if (wsPort !== null) return;
     if (window.opener) attachLink(window.opener, true);
   }
@@ -3547,6 +3756,7 @@
     $: { action: gotoLast },
     g: { action: openPicker, preventDefault: true },
     o: { action: toggleOverview, preventDefault: true },
+    e: { action: toggleMenu },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
     ".": { action: toggleLaser },
@@ -3561,7 +3771,9 @@
     "?": { action: toggleHelp },
     t: { action: toggleTheme },
     p: { action: togglePv },
-    m: { action: toggleLogs },
+    d: { action: toggleLogs },
+    m: { action: toggleNotifyHistory },
+    n: { action: openSyncedWindow },
     s: { action: cycleSyncMode }
   };
   var helpEl = document.getElementById("help");
@@ -3569,6 +3781,8 @@
   var pickerEl = document.getElementById("picker");
   var curtainEl = document.getElementById("curtain");
   var logBannerEl = document.getElementById("log-banner");
+  var notifyHistoryEl2 = document.getElementById("notify-history");
+  var editMenuEl = document.getElementById("edit-menu");
   document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
       if (e.key === "?" || e.key === "Escape" || e.key === "q") {
@@ -3576,6 +3790,34 @@
         return;
       }
       if (e.key !== "t") return;
+    }
+    if (notifyHistoryEl2.classList.contains("visible")) {
+      if (e.key === "Escape" || e.key === "q" || e.key === "m") {
+        toggleNotifyHistory();
+      }
+      return;
+    }
+    if (editMenuEl.classList.contains("open")) {
+      if (e.key === "Escape" || e.key === "q" || e.key === "e") {
+        closeMenu();
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "j") {
+        e.preventDefault();
+        editMenuSetActive(state._editActive + 1);
+        return;
+      }
+      if (e.key === "ArrowUp" || e.key === "k") {
+        e.preventDefault();
+        editMenuSetActive(state._editActive - 1);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        editMenuCommit();
+        return;
+      }
+      return;
     }
     if (overviewEl2.classList.contains("visible")) {
       if (e.key === "Escape" || e.key === "q") {
@@ -3633,6 +3875,7 @@
   var INITIAL_SLIDES = __SLIDES_JSON__;
   var INITIAL_TRANSITIONS = __TRANSITIONS_JSON__;
   var WS_PORT = __WS_PORT__;
+  var EDIT_COMMANDS = __EDIT_COMMANDS_JSON__;
   var INITIAL_ERROR = __ERROR_JSON__;
   var INITIAL_LOGS = __LOGS_JSON__;
   state.slides = INITIAL_SLIDES;
@@ -3650,6 +3893,7 @@
   loadSyncMode();
   initSyncMenu();
   initWindowSync(WS_PORT);
+  initEditMenu(EDIT_COMMANDS, WS_PORT);
   var deepLinked = readURL();
   loadSlide();
   renderPv();
