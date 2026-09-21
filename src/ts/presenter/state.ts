@@ -10,6 +10,7 @@ export const state = {
     _pickerActive: 0,
     _overviewActive: 0,
     _overviewCols: 1,
+    _editActive: 0,
     ws: null as WebSocket | null,
     windowLink: null as Window | null,
     _syncingFromServer: false,

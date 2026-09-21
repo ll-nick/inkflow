@@ -57,6 +57,7 @@
         <tr><td>$ End</td><td>Last slide</td></tr>
         <tr><td>g</td><td>Slide picker</td></tr>
         <tr><td>o</td><td>Slide overview</td></tr>
+        <tr><td>e</td><td>Edit source</td></tr>
         <tr class="kb-group"><td colspan="2">Present</td></tr>
         <tr><td>.</td><td>Laser pointer</td></tr>
         <tr><td>Ctrl + scroll</td><td>Zoom · Ctrl + drag to pan</td></tr>
@@ -69,6 +70,7 @@
         <tr><td>p</td><td>Presenter panel</td></tr>
         <tr><td>d</td><td>Diagnostics</td></tr>
         <tr><td>m</td><td>Messages</td></tr>
+        <tr><td>n</td><td>New window</td></tr>
         <tr id="help-sync-row"><td>s</td><td>Cycle sync mode</td></tr>
         <tr><td>?</td><td>This help</td></tr>
       </table>
@@ -183,7 +185,7 @@
       </svg>
     </button>
     <span class="hud-sep"></span>
-    <button type="button" class="hud-btn" id="btn-prev" data-tooltip="Previous (← h Backspace)" aria-label="Previous">
+    <button type="button" class="hud-btn" id="btn-prev" data-tooltip="Previous (← · h · Backspace)" aria-label="Previous">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M10 12L6 8l4-4"/>
       </svg>
@@ -193,7 +195,7 @@
         <path d="M1 5V2h3M12 2h3v3M15 11v3h-3M4 14H1v-3"/>
       </svg>
     </button>
-    <button type="button" class="hud-btn" id="btn-next" data-tooltip="Next (→ l Space)" aria-label="Next">
+    <button type="button" class="hud-btn" id="btn-next" data-tooltip="Next (→ · l · Space)" aria-label="Next">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M6 4l4 4-4 4"/>
       </svg>
@@ -255,7 +257,7 @@
         </button>
       </div>
     </span>
-    <button type="button" class="hud-btn" id="btn-presenter-view" data-tooltip="Open a synced window" aria-label="Open a synced window">
+    <button type="button" class="hud-btn" id="btn-presenter-view" data-tooltip="Open a synced window (n)" aria-label="Open a synced window">
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <path d="M6.5 2H2.75A.75.75 0 0 0 2 2.75v10.5c0 .414.336.75.75.75h10.5a.75.75 0 0 0 .75-.75V9.5"/>
         <path d="M9.5 2h4v4"/>
@@ -264,7 +266,7 @@
     </button>
     <span class="hud-sep"></span>
     <span class="edit-wrap">
-      <button type="button" class="hud-btn" id="btn-edit" aria-haspopup="true" aria-expanded="false" data-tooltip="Edit source file" aria-label="Edit source file">
+      <button type="button" class="hud-btn" id="btn-edit" aria-haspopup="true" aria-expanded="false" data-tooltip="Edit source file (e)" aria-label="Edit source file">
         <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
           <path d="M11.3 2a1.9 1.9 0 1 1 2.7 2.7L5 13.7 1.3 14.7l1-3.7Z"/>
         </svg>
@@ -274,9 +276,8 @@
     <span id="sb-spacer" style="flex:1"></span>
     <span id="zoom-indicator" aria-hidden="true">1.0×</span>
     <span class="hud-sep"></span>
-    <span id="slide-info">– / –</span>
-    <span class="sep">|</span>
-    <span id="step-info">step –</span>
+    <span id="slide-info" data-tooltip="Slide position">– / –</span>
+    <span id="step-info" data-tooltip="Animation step">step –</span>
     <span class="hud-sep"></span>
     <button type="button" class="hud-btn" id="log-indicator" data-tooltip="Diagnostics" aria-label="Diagnostics">
       <svg class="log-ic log-ic-debug" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
@@ -308,7 +309,22 @@
         <line x1="5.5" y1="12" x2="14" y2="12"/>
       </svg>
     </button>
-    <span id="ws-dot"></span>
+    <span class="sep">|</span>
+    <span id="ws-dot" data-tooltip="Disconnected">
+      <svg class="ws-ic-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        <circle class="ws-badge" cx="17.5" cy="17.5" r="6.5" stroke="none"/>
+        <g class="ws-badge-x" stroke-width="2.5">
+          <line x1="14.5" y1="14.5" x2="20.5" y2="20.5"/>
+          <line x1="20.5" y1="14.5" x2="14.5" y2="20.5"/>
+        </g>
+      </svg>
+      <svg class="ws-ic-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+    </span>
   </div>
 
   <script>/* __JS__ */</script>

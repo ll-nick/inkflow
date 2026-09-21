@@ -92,6 +92,36 @@ export function renderEditButton(): void {
     }
 }
 
+// ── Keyboard navigation (mirrors overview.ts's active-index pattern) ───────────
+// Unlike syncmenu.ts's identically-shaped dropdown, this one can't just cycle
+// through options on a single keypress — acting on a file has a real side effect
+// (a clipboard write or a spawned editor command), so highlighting a row and
+// committing it must be separate steps. Ownership of the open-state keys
+// (arrows/j/k/Enter/Escape) therefore lives in keyboard.ts's global cascade, not
+// a listener local to this module: a local listener registered only while the
+// menu is open would run *after* keyboard.ts's (registered once at boot), too
+// late to stop it from also treating j/k/arrows as slide navigation underneath
+// the open menu.
+
+export function editMenuSetActive(i: number): void {
+    const rows = Array.from(
+        editMenu.querySelectorAll<HTMLElement>(".edit-row"),
+    );
+    if (rows.length === 0) return;
+    state._editActive = Math.max(0, Math.min(rows.length - 1, i));
+    rows.forEach((row, idx) => {
+        row.classList.toggle("active", idx === state._editActive);
+    });
+    rows[state._editActive]?.scrollIntoView({ block: "nearest" });
+}
+
+export function editMenuCommit(): void {
+    const files = state.slides[state.slideIndex]?.editableFiles ?? [];
+    const file = files[state._editActive];
+    if (file) actOn(file);
+    closeMenu();
+}
+
 // ── Menu open/close ────────────────────────────────────────────────────────────
 
 function onDocClick(e: MouseEvent): void {
@@ -99,31 +129,23 @@ function onDocClick(e: MouseEvent): void {
     if (!btnEdit.contains(t) && !editMenu.contains(t)) closeMenu();
 }
 
-function onKeydown(e: KeyboardEvent): void {
-    if (e.key === "Escape") {
-        closeMenu();
-        btnEdit.focus();
-    }
-}
-
 function openMenu(): void {
     editMenu.classList.add("open");
     btnEdit.setAttribute("aria-expanded", "true");
+    editMenuSetActive(0);
     document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onKeydown);
     menuOpened(closeMenu);
 }
 
-function closeMenu(): void {
+export function closeMenu(): void {
     if (!editMenu.classList.contains("open")) return;
     editMenu.classList.remove("open");
     btnEdit.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", onDocClick);
-    document.removeEventListener("keydown", onKeydown);
     menuClosed(closeMenu);
 }
 
-function toggleMenu(): void {
+export function toggleMenu(): void {
     if (editMenu.classList.contains("open")) closeMenu();
     else openMenu();
 }

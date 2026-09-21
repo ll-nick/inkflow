@@ -179,6 +179,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
 
     state.ws.onopen = () => {
         wsDot.className = "connected";
+        wsDot.dataset.tooltip = "Connected";
         const assert = authoritative && sends();
         firstPositionPending = assert;
         if (assert) sendNav();
@@ -226,6 +227,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
 
     state.ws.onclose = () => {
         wsDot.className = "";
+        wsDot.dataset.tooltip = "Disconnected";
         state.ws = null;
         // A reconnecting live window re-asserts its position rather than being
         // adopted by a possibly-stale server.
