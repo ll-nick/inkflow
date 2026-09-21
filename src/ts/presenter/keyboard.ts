@@ -142,7 +142,7 @@ const KEYBINDINGS: Record<
     t: { action: toggleTheme },
     p: { action: togglePv },
     d: { action: toggleLogs },
-    n: { action: toggleNotifyHistory },
+    m: { action: toggleNotifyHistory },
     s: { action: cycleSyncMode },
 };
 
@@ -163,7 +163,7 @@ document.addEventListener("keydown", (e) => {
         if (e.key !== "t") return;
     }
     if (notifyHistoryEl.classList.contains("visible")) {
-        if (e.key === "Escape" || e.key === "q" || e.key === "n") {
+        if (e.key === "Escape" || e.key === "q" || e.key === "m") {
             toggleNotifyHistory();
         }
         return;

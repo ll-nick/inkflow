@@ -310,7 +310,7 @@ kbd {
     color: var(--red);
 }
 
-/* ── Notifications dialog (modal) ──
+/* ── Messages dialog (modal) ──
    Same box treatment as #help-box. Its status-bar button is always visible
    (unlike #log-indicator, which only appears once there's something to show) —
    see ui.ts for why. */

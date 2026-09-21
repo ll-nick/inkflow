@@ -131,7 +131,7 @@ export function toggleLogs(): void {
 // green/yellow/red vocabulary as inkflow.logging's report(). Pushed by the server
 // (websocket.ts's "notify" message) or called directly by a client-only action
 // (edit.ts's clipboard-copy confirmation, which never touches the server). Every
-// call is also recorded to the notifications history below, so a toast that
+// call is also recorded to the message history below, so a toast that
 // auto-dismissed unseen can still be found.
 
 interface NotifyHistoryEntry {
@@ -170,7 +170,7 @@ export function showNotify(
     notifyTimeout = setTimeout(hideNotify, NOTIFY_DURATION_MS);
 }
 
-// ── Notifications (message history) ──
+// ── Messages (notification history) ──
 // An append-only record of every showNotify() call, in memory only (cleared on
 // reload — this answers "what did I just miss", not "what happened yesterday").
 // Deliberately named and keybound apart from #log-banner ("Diagnostics", d) so
@@ -200,7 +200,7 @@ function renderNotifyHistory(): void {
         const empty = document.createElement("li");
         empty.id = "notify-history-empty";
         empty.className = "nh-row";
-        empty.textContent = "No notifications yet.";
+        empty.textContent = "No messages yet.";
         notifyHistoryList.replaceChildren(empty);
         return;
     }

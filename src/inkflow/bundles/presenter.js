@@ -156,7 +156,7 @@
       const empty = document.createElement("li");
       empty.id = "notify-history-empty";
       empty.className = "nh-row";
-      empty.textContent = "No notifications yet.";
+      empty.textContent = "No messages yet.";
       notifyHistoryList.replaceChildren(empty);
       return;
     }
@@ -3155,7 +3155,7 @@
       if (wsPort === null && state.windowLink) return;
       const child = window.open(location.href);
       if (!child) {
-        showLogs([{ level: "warning", message: POPUP_BLOCKED_MESSAGE }]);
+        showNotify(POPUP_BLOCKED_MESSAGE, "yellow");
         return;
       }
       if (wsPort === null) attachLink(child);
@@ -3755,7 +3755,7 @@
     t: { action: toggleTheme },
     p: { action: togglePv },
     d: { action: toggleLogs },
-    n: { action: toggleNotifyHistory },
+    m: { action: toggleNotifyHistory },
     s: { action: cycleSyncMode }
   };
   var helpEl = document.getElementById("help");
@@ -3773,7 +3773,7 @@
       if (e.key !== "t") return;
     }
     if (notifyHistoryEl2.classList.contains("visible")) {
-      if (e.key === "Escape" || e.key === "q" || e.key === "n") {
+      if (e.key === "Escape" || e.key === "q" || e.key === "m") {
         toggleNotifyHistory();
       }
       return;

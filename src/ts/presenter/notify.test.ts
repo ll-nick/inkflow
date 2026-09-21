@@ -116,7 +116,7 @@ test("opens to an empty state before any notification has fired", () => {
     openNotifyHistory();
     expect(historyOpen()).toBe(true);
     expect(historyRows().length).toBe(0);
-    expect(historyList().textContent).toContain("No notifications yet");
+    expect(historyList().textContent).toContain("No messages yet");
 });
 
 test("every showNotify call is recorded, newest first", () => {
