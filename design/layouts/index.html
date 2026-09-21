@@ -1,0 +1,1956 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Beautiful slides from SVG. Your editor, your style.">
+      
+      
+      
+        <link rel="canonical" href="https://ll-nick.github.io/inkflow/design/layouts/">
+      
+      
+        <link rel="prev" href="../../authoring/inkscape/">
+      
+      
+        <link rel="next" href="../overlays/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Layouts - Inkflow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#layouts" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Inkflow" class="md-header__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Inkflow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Layouts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Inkflow" class="md-nav__button md-logo" aria-label="Inkflow" data-md-component="logo">
+      
+  <img src="../../assets/logo-light-icon.svg" alt="logo">
+
+    </a>
+    Inkflow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ll-nick/inkflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ll-nick/inkflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authoring
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Authoring
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/slides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Slides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/markdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown content
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/animations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/morph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Morph in depth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../authoring/inkscape/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working in Inkscape
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layouts and themes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layouts and themes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layouts
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zones
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zones">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#non-rectangular-zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-rectangular zones
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reserved-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reserved names
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-default-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The default zone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-the-title-zone-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When the title zone is missing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inheritance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#finding-a-layout-by-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding a layout by name
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in layouts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-slide-from-a-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a slide from a layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-your-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing your own
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hiding-an-element-on-one-slide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hiding an element on one slide
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layouts-within-a-theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layouts within a theme
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overlays/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlays
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../themes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fonts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fonts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../built-in-theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presenting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Presenting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../presenting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presenting a deck
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../presenting/presenter-panel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presenter panel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../presenting/sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-window sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../presenting/export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Themes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/enums/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/animations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transitions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zones
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zones">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#non-rectangular-zones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-rectangular zones
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reserved-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reserved names
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-default-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The default zone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-the-title-zone-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When the title zone is missing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inheritance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#finding-a-layout-by-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding a layout by name
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in layouts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-slide-from-a-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a slide from a layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-your-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing your own
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hiding-an-element-on-one-slide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hiding an element on one slide
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layouts-within-a-theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layouts within a theme
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="layouts">Layouts<a class="headerlink" href="#layouts" title="Permanent link">&para;</a></h1>
+<p>A layout is a reusable slide template, the same idea as a master slide.
+It is an ordinary SVG holding the parts every slide of that kind shares,
+with named <strong>zones</strong> left empty for the content.</p>
+<p>Layouts are optional.
+A deck of hand-drawn SVGs never needs one.
+They earn their place the moment two slides should look identical
+apart from their text.</p>
+<h2 id="zones">Zones<a class="headerlink" href="#zones" title="Permanent link">&para;</a></h2>
+<p>A zone is any shape whose <code>id</code> starts with <code>zone-</code>.
+A <code>&lt;rect&gt;</code> is the usual choice:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">&lt;rect</span><span class="w"> </span><span class="na">id=</span><span class="s">"zone-content"</span><span class="w"> </span><span class="na">x=</span><span class="s">"120"</span><span class="w"> </span><span class="na">y=</span><span class="s">"200"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1680"</span><span class="w"> </span><span class="na">height=</span><span class="s">"760"</span><span class="nt">/&gt;</span>
+</code></pre></div>
+<p>When inkflow builds the slide it replaces that shape with a <code>&lt;foreignObject&gt;</code>
+of the same bounding box, holding the rendered content.
+A zone that the slide never fills is removed rather than left showing.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Inkscape's Layers &amp; Objects panel edits an element's <em>label</em>, not its <code>id</code>.
+Label the rect <code>zone-content</code> there and run
+<a href="../../authoring/inkscape/#naming-elements-label2id"><code>inkflow label2id</code></a>.</p>
+</div>
+<h3 id="non-rectangular-zones">Non-rectangular zones<a class="headerlink" href="#non-rectangular-zones" title="Permanent link">&para;</a></h3>
+<p><code>&lt;polygon&gt;</code>, <code>&lt;ellipse&gt;</code>, <code>&lt;circle&gt;</code> and <code>&lt;path&gt;</code> work too.</p>
+<p>For <strong>media</strong> zones, inkflow generates a <code>&lt;clipPath&gt;</code> from the exact shape,
+so an image or video is cropped to the outline.
+For <strong>text</strong> zones only the bounding box is used,
+since text reflows in a rectangle whatever the shape.</p>
+<h3 id="reserved-names">Reserved names<a class="headerlink" href="#reserved-names" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zone-title</code></td>
+<td>The leading <code># H1</code> from Markdown, when the zone exists</td>
+</tr>
+<tr>
+<td><code>zone-subtitle</code></td>
+<td>The <code>## H2</code> right after it, when the zone exists</td>
+</tr>
+<tr>
+<td><code>zone-slide-number</code></td>
+<td>The current slide number. Must be a <code>&lt;text&gt;</code> element</td>
+</tr>
+<tr>
+<td><code>zone-slide-total</code></td>
+<td>The total slide count. Must be a <code>&lt;text&gt;</code> element</td>
+</tr>
+</tbody>
+</table>
+<p>Every other <code>zone-*</code> name is yours.
+Pick names your Markdown will use: <code>zone-content</code>, <code>zone-left</code>, <code>zone-media</code>.</p>
+<h3 id="the-default-zone">The default zone<a class="headerlink" href="#the-default-zone" title="Permanent link">&para;</a></h3>
+<p>The default zone takes all the Markdown that nothing else claimed,
+meaning everything outside an explicit <code>::zone::</code> marker
+and outside the title and subtitle extraction.</p>
+<p>A layout containing <code>zone-content</code> uses it as the default automatically.
+For anything else, declare it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">&lt;svg</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://www.w3.org/2000/svg"</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">     </span><span class="na">xmlns:inkflow=</span><span class="s">"urn:inkflow"</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">     </span><span class="na">inkflow:parent=</span><span class="s">"builtin:content"</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">     </span><span class="na">inkflow:default-zone=</span><span class="s">"quote"</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">     </span><span class="na">viewBox=</span><span class="s">"0 0 1920 1080"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1920"</span><span class="w"> </span><span class="na">height=</span><span class="s">"1080"</span><span class="nt">&gt;</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">&lt;rect</span><span class="w"> </span><span class="na">id=</span><span class="s">"zone-quote"</span><span class="w"> </span><span class="na">x=</span><span class="s">"120"</span><span class="w"> </span><span class="na">y=</span><span class="s">"200"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1680"</span><span class="w"> </span><span class="na">height=</span><span class="s">"720"</span><span class="nt">/&gt;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">&lt;/svg&gt;</span>
+</code></pre></div>
+<p>A layout with no text zone at all, like <code>cover</code> or <code>section</code>, needs no default.</p>
+<p>If a slide has unrouted Markdown and its layout declares no default zone,
+the build fails with a red overlay in the browser naming the slide.</p>
+<h3 id="when-the-title-zone-is-missing">When the title zone is missing<a class="headerlink" href="#when-the-title-zone-is-missing" title="Permanent link">&para;</a></h3>
+<p>If a layout has no <code>zone-title</code> or <code>zone-subtitle</code>,
+a leading <code># H1</code> or <code>## H2</code> is not discarded.
+It falls through into the default zone as rendered HTML.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gh"># This is a Quote</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>And this is the attribution line.
+</code></pre></div>
+<p>On the <code>quote</code> layout, which has no <code>zone-title</code>, both lines land in <code>zone-quote</code>.
+On <code>content</code>, which has one, the <code># H1</code> routes to <code>zone-title</code> as usual.</p>
+<p>To bypass the question entirely, mark the zones explicitly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>::quote::
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>This text always goes to zone-quote.
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>::attribution::
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>— Author name
+</code></pre></div>
+<h2 id="inheritance">Inheritance<a class="headerlink" href="#inheritance" title="Permanent link">&para;</a></h2>
+<p>A layout points at its parent with <code>inkflow:parent</code> on the root <code>&lt;svg&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">&lt;svg</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://www.w3.org/2000/svg"</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">     </span><span class="na">xmlns:inkflow=</span><span class="s">"urn:inkflow"</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">     </span><span class="na">inkflow:parent=</span><span class="s">"theme:main"</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">     </span><span class="na">viewBox=</span><span class="s">"0 0 1920 1080"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1920"</span><span class="w"> </span><span class="na">height=</span><span class="s">"1080"</span><span class="nt">&gt;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="cm">&lt;!-- zones specific to this layout --&gt;</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nt">&lt;/svg&gt;</span>
+</code></pre></div>
+<p>Chains can be any depth:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>slides/bullets.svg
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  └─ inkflow:parent="content"         → layouts/content.svg
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>       └─ inkflow:parent="theme:main" → theme/main.svg  (no parent, chain ends)
+</code></pre></div>
+<p>inkflow resolves the whole chain in memory and composites the layers
+from root to leaf, behind the slide's own content.
+<strong>The files on disk are never modified.</strong></p>
+<p>To see the composed result while drawing,
+run <a href="../../authoring/inkscape/#previewing-the-full-slide-sync"><code>inkflow sync</code></a>.</p>
+<h2 id="finding-a-layout-by-name">Finding a layout by name<a class="headerlink" href="#finding-a-layout-by-name" title="Permanent link">&para;</a></h2>
+<p>A bare name is searched in three places, first match winning:</p>
+<ol>
+<li>the project's <code>layouts/</code> directory</li>
+<li>the active theme's <code>layouts/</code> directory</li>
+<li>the built-in layouts</li>
+</ol>
+<p>So a project <code>layouts/content.svg</code> shadows the built-in <code>content</code>
+without any configuration.</p>
+<p>A prefix skips the search:</p>
+<table>
+<thead>
+<tr>
+<th>Written as</th>
+<th>Resolves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"content"</code></td>
+<td>The three-level search</td>
+</tr>
+<tr>
+<td><code>"local:content"</code></td>
+<td><code>{project}/layouts/content.svg</code></td>
+</tr>
+<tr>
+<td><code>"theme:content"</code></td>
+<td><code>{theme}/layouts/content.svg</code></td>
+</tr>
+<tr>
+<td><code>"builtin:content"</code></td>
+<td>The built-in layout</td>
+</tr>
+<tr>
+<td><code>"./relative/path.svg"</code></td>
+<td>Relative to the current SVG file</td>
+</tr>
+</tbody>
+</table>
+<p>To see what is available in your project right now:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>inkflow<span class="w"> </span>layouts
+</code></pre></div>
+<p>It prints every layout and overlay with its parent chain and its zones.</p>
+<h2 id="built-in-layouts">Built-in layouts<a class="headerlink" href="#built-in-layouts" title="Permanent link">&para;</a></h2>
+<p>The built-in theme ships eleven layouts, usable by bare name in any deck:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Zones</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cover</code></td>
+<td>title, subtitle, media</td>
+<td>The opening slide</td>
+</tr>
+<tr>
+<td><code>section</code></td>
+<td>title, subtitle</td>
+<td>A section divider</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>title</td>
+<td>A bare title, no content zone</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>title, content</td>
+<td>The standard text slide</td>
+</tr>
+<tr>
+<td><code>center</code></td>
+<td>content</td>
+<td>A single centered block</td>
+</tr>
+<tr>
+<td><code>two-cols</code></td>
+<td>title, left, right</td>
+<td>Two-column comparison</td>
+</tr>
+<tr>
+<td><code>fact</code></td>
+<td>fact, caption</td>
+<td>One big number or claim</td>
+</tr>
+<tr>
+<td><code>quote</code></td>
+<td>quote, attribution</td>
+<td>A pull quote</td>
+</tr>
+<tr>
+<td><code>media-left</code></td>
+<td>title, content, media</td>
+<td>Text with an image or video on the left</td>
+</tr>
+<tr>
+<td><code>media-right</code></td>
+<td>title, content, media</td>
+<td>The same, media on the right</td>
+</tr>
+<tr>
+<td><code>end</code></td>
+<td>title, subtitle</td>
+<td>The closing slide</td>
+</tr>
+</tbody>
+</table>
+<p>Two more exist as building blocks: <code>base</code> is the parentless background,
+and <code>numbered</code> adds the slide-number zones.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"cover"</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="s2">"title"</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"two-cols"</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="s2">"compare"</span><span class="p">)</span>
+</code></pre></div>
+<p>The <a href="../../built-in-theme/">built-in theme page</a> has a live showcase of all of them.</p>
+<p>They take your theme's palette automatically,
+because they paint through the token classes rather than hardcoded colours.
+See <a href="../themes/#built-in-layouts-recolored">Themes</a>.</p>
+<h2 id="creating-a-slide-from-a-layout">Creating a slide from a layout<a class="headerlink" href="#creating-a-slide-from-a-layout" title="Permanent link">&para;</a></h2>
+<p><code>inkflow add</code> writes a new SVG already wired to a parent:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>inkflow<span class="w"> </span>add<span class="w"> </span>slides/new.svg<span class="w"> </span>-p<span class="w"> </span>content
+</code></pre></div>
+<p>It creates the file with <code>inkflow:parent="content"</code>
+and runs <code>inkflow sync</code> so the preview layers are there when you open it.
+Omit <code>-p</code> for a blank slide with no parent.</p>
+<p>Then add it to <code>deck.py</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"slides/new.svg"</span><span class="p">)</span>
+</code></pre></div>
+<p>To rewire or detach an existing slide:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>inkflow<span class="w"> </span>parent<span class="w"> </span><span class="nb">set</span><span class="w"> </span>slides/new.svg<span class="w"> </span>builtin:content
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>inkflow<span class="w"> </span>parent<span class="w"> </span>strip<span class="w"> </span>slides/new.svg
+</code></pre></div>
+<h2 id="writing-your-own">Writing your own<a class="headerlink" href="#writing-your-own" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Create <code>layouts/my-layout.svg</code>.</li>
+<li>Point <code>inkflow:parent</code> at a base layout, or leave it off for a standalone one.</li>
+<li>Add <code>zone-*</code> shapes where content belongs.</li>
+<li>Set <code>inkflow:default-zone</code> unless the layout has a <code>zone-content</code>.</li>
+<li>Reference it by name: <code>Slide("my-layout", md="custom")</code>.</li>
+</ol>
+<p>A narrower content column:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">&lt;svg</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://www.w3.org/2000/svg"</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">     </span><span class="na">xmlns:inkflow=</span><span class="s">"urn:inkflow"</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">     </span><span class="na">inkflow:parent=</span><span class="s">"builtin:content"</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">     </span><span class="na">inkflow:default-zone=</span><span class="s">"content"</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">     </span><span class="na">viewBox=</span><span class="s">"0 0 1920 1080"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1920"</span><span class="w"> </span><span class="na">height=</span><span class="s">"1080"</span><span class="nt">&gt;</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">  </span><span class="nt">&lt;rect</span><span class="w"> </span><span class="na">id=</span><span class="s">"zone-content"</span><span class="w"> </span><span class="na">x=</span><span class="s">"300"</span><span class="w"> </span><span class="na">y=</span><span class="s">"200"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1320"</span><span class="w"> </span><span class="na">height=</span><span class="s">"720"</span><span class="nt">/&gt;</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="nt">&lt;/svg&gt;</span>
+</code></pre></div>
+<p>Two columns, where unmarked Markdown flows into the left one:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">&lt;svg</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://www.w3.org/2000/svg"</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">     </span><span class="na">xmlns:inkflow=</span><span class="s">"urn:inkflow"</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">     </span><span class="na">inkflow:parent=</span><span class="s">"builtin:content"</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">     </span><span class="na">inkflow:default-zone=</span><span class="s">"left"</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">     </span><span class="na">viewBox=</span><span class="s">"0 0 1920 1080"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1920"</span><span class="w"> </span><span class="na">height=</span><span class="s">"1080"</span><span class="nt">&gt;</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span><span class="nt">&lt;rect</span><span class="w"> </span><span class="na">id=</span><span class="s">"zone-left"</span><span class="w">  </span><span class="na">x=</span><span class="s">"80"</span><span class="w">   </span><span class="na">y=</span><span class="s">"200"</span><span class="w"> </span><span class="na">width=</span><span class="s">"840"</span><span class="w"> </span><span class="na">height=</span><span class="s">"720"</span><span class="nt">/&gt;</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span><span class="nt">&lt;rect</span><span class="w"> </span><span class="na">id=</span><span class="s">"zone-right"</span><span class="w"> </span><span class="na">x=</span><span class="s">"1000"</span><span class="w"> </span><span class="na">y=</span><span class="s">"200"</span><span class="w"> </span><span class="na">width=</span><span class="s">"840"</span><span class="w"> </span><span class="na">height=</span><span class="s">"720"</span><span class="nt">/&gt;</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="nt">&lt;/svg&gt;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="gh"># Two Columns</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>Left column content here.
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>::right::
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>Right column content here.
+</code></pre></div>
+<p>Set per-layout defaults for alignment with CSS variables in the layout's own <code>&lt;defs&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="p">#</span><span class="nn">zone-title</span><span class="w">   </span><span class="p">{</span><span class="w"> </span><span class="nv">--inkflow-valign</span><span class="p">:</span><span class="w"> </span><span class="kc">center</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="p">#</span><span class="nn">zone-content</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">--inkflow-padding</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span><span class="kt">px</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<h2 id="hiding-an-element-on-one-slide">Hiding an element on one slide<a class="headerlink" href="#hiding-an-element-on-one-slide" title="Permanent link">&para;</a></h2>
+<p>To drop an inherited element from a single slide, style it away.
+The CSS is already scoped to that slide:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">Slide</span><span class="p">(</span><span class="s2">"content"</span><span class="p">,</span> <span class="n">extra_style</span><span class="o">=</span><span class="n">Inline</span><span class="p">(</span><span class="s2">"#logo { display: none }"</span><span class="p">))</span>
+</code></pre></div>
+<h2 id="layouts-within-a-theme">Layouts within a theme<a class="headerlink" href="#layouts-within-a-theme" title="Permanent link">&para;</a></h2>
+<p>A theme's layouts live outside any project and have no <code>deck.py</code>,
+so <code>local:</code> and <code>theme:</code> are unavailable there.
+Use <code>builtin:</code> or a relative path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="cm">&lt;!-- theme/layouts/content.svg --&gt;</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nt">&lt;svg</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://www.w3.org/2000/svg"</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">     </span><span class="na">xmlns:inkflow=</span><span class="s">"urn:inkflow"</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">     </span><span class="na">inkflow:parent=</span><span class="s">"builtin:content"</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">     </span><span class="na">viewBox=</span><span class="s">"0 0 1920 1080"</span><span class="w"> </span><span class="na">width=</span><span class="s">"1920"</span><span class="w"> </span><span class="na">height=</span><span class="s">"1080"</span><span class="nt">&gt;</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">  </span>...
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="nt">&lt;/svg&gt;</span>
+</code></pre></div>
+<p>See <a href="../themes/#shipping-a-theme-as-a-package">Themes</a> for packaging,
+and <a href="../../authoring/inkscape/#working-on-a-theme"><code>sync --no-deck</code></a>
+for previewing them while you work.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
