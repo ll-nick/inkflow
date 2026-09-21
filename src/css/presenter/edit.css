@@ -70,3 +70,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Keyboard-driven highlight (keyboard.ts, arrows/j/k while the menu is open) —
+   same accent/bg swap as #picker-list's own [role="option"].active. Declared
+   last so it reliably overrides the base rules above. */
+.edit-row.active {
+    background: var(--accent);
+    color: var(--bg);
+}
+.edit-row.active .edit-row-name {
+    opacity: 0.75;
+}
