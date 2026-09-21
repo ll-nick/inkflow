@@ -21,6 +21,7 @@
     _pickerActive: 0,
     _overviewActive: 0,
     _overviewCols: 1,
+    _editActive: 0,
     ws: null,
     windowLink: null,
     _syncingFromServer: false,
@@ -323,21 +324,32 @@
       editMenu.appendChild(row);
     }
   }
+  function editMenuSetActive(i) {
+    const rows = Array.from(
+      editMenu.querySelectorAll(".edit-row")
+    );
+    if (rows.length === 0) return;
+    state._editActive = Math.max(0, Math.min(rows.length - 1, i));
+    rows.forEach((row, idx) => {
+      row.classList.toggle("active", idx === state._editActive);
+    });
+    rows[state._editActive]?.scrollIntoView({ block: "nearest" });
+  }
+  function editMenuCommit() {
+    const files = state.slides[state.slideIndex]?.editableFiles ?? [];
+    const file = files[state._editActive];
+    if (file) actOn(file);
+    closeMenu();
+  }
   function onDocClick(e) {
     const t = e.target;
     if (!btnEdit.contains(t) && !editMenu.contains(t)) closeMenu();
   }
-  function onKeydown(e) {
-    if (e.key === "Escape") {
-      closeMenu();
-      btnEdit.focus();
-    }
-  }
   function openMenu() {
     editMenu.classList.add("open");
     btnEdit.setAttribute("aria-expanded", "true");
+    editMenuSetActive(0);
     document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onKeydown);
     menuOpened(closeMenu);
   }
   function closeMenu() {
@@ -345,7 +357,6 @@
     editMenu.classList.remove("open");
     btnEdit.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", onDocClick);
-    document.removeEventListener("keydown", onKeydown);
     menuClosed(closeMenu);
   }
   function toggleMenu() {
@@ -2989,6 +3000,7 @@
     let firstPositionPending = false;
     state.ws.onopen = () => {
       wsDot.className = "connected";
+      wsDot.dataset.tooltip = "Connected";
       const assert = authoritative && sends();
       firstPositionPending = assert;
       if (assert) sendNav();
@@ -3030,6 +3042,7 @@
     };
     state.ws.onclose = () => {
       wsDot.className = "";
+      wsDot.dataset.tooltip = "Disconnected";
       state.ws = null;
       setTimeout(() => connectWS(wsPort, true), 2e3);
     };
@@ -3070,7 +3083,7 @@
     const t = e.target;
     if (!btnSync.contains(t) && !syncMenu.contains(t)) closeMenu2();
   }
-  function onKeydown2(e) {
+  function onKeydown(e) {
     if (e.key === "Escape") {
       closeMenu2();
       btnSync.focus();
@@ -3080,7 +3093,7 @@
     syncMenu.classList.add("open");
     btnSync.setAttribute("aria-expanded", "true");
     document.addEventListener("click", onDocClick2);
-    document.addEventListener("keydown", onKeydown2);
+    document.addEventListener("keydown", onKeydown);
     menuOpened(closeMenu2);
   }
   function closeMenu2() {
@@ -3088,7 +3101,7 @@
     syncMenu.classList.remove("open");
     btnSync.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", onDocClick2);
-    document.removeEventListener("keydown", onKeydown2);
+    document.removeEventListener("keydown", onKeydown);
     menuClosed(closeMenu2);
   }
   function toggleMenu2() {
@@ -3150,16 +3163,19 @@
     clearInterval(linkPoll);
     linkPoll = void 0;
   }
+  var _wsPort = null;
+  function openSyncedWindow() {
+    if (_wsPort === null && state.windowLink) return;
+    const child = window.open(location.href);
+    if (!child) {
+      showNotify(POPUP_BLOCKED_MESSAGE, "yellow");
+      return;
+    }
+    if (_wsPort === null) attachLink(child);
+  }
   function initWindowSync(wsPort) {
-    btnPresenterView.addEventListener("click", () => {
-      if (wsPort === null && state.windowLink) return;
-      const child = window.open(location.href);
-      if (!child) {
-        showNotify(POPUP_BLOCKED_MESSAGE, "yellow");
-        return;
-      }
-      if (wsPort === null) attachLink(child);
-    });
+    _wsPort = wsPort;
+    btnPresenterView.addEventListener("click", openSyncedWindow);
     if (wsPort !== null) return;
     if (window.opener) attachLink(window.opener, true);
   }
@@ -3740,6 +3756,7 @@
     $: { action: gotoLast },
     g: { action: openPicker, preventDefault: true },
     o: { action: toggleOverview, preventDefault: true },
+    e: { action: toggleMenu },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
     ".": { action: toggleLaser },
@@ -3756,6 +3773,7 @@
     p: { action: togglePv },
     d: { action: toggleLogs },
     m: { action: toggleNotifyHistory },
+    n: { action: openSyncedWindow },
     s: { action: cycleSyncMode }
   };
   var helpEl = document.getElementById("help");
@@ -3764,6 +3782,7 @@
   var curtainEl = document.getElementById("curtain");
   var logBannerEl = document.getElementById("log-banner");
   var notifyHistoryEl2 = document.getElementById("notify-history");
+  var editMenuEl = document.getElementById("edit-menu");
   document.addEventListener("keydown", (e) => {
     if (helpEl.classList.contains("visible")) {
       if (e.key === "?" || e.key === "Escape" || e.key === "q") {
@@ -3775,6 +3794,28 @@
     if (notifyHistoryEl2.classList.contains("visible")) {
       if (e.key === "Escape" || e.key === "q" || e.key === "m") {
         toggleNotifyHistory();
+      }
+      return;
+    }
+    if (editMenuEl.classList.contains("open")) {
+      if (e.key === "Escape" || e.key === "q" || e.key === "e") {
+        closeMenu();
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "j") {
+        e.preventDefault();
+        editMenuSetActive(state._editActive + 1);
+        return;
+      }
+      if (e.key === "ArrowUp" || e.key === "k") {
+        e.preventDefault();
+        editMenuSetActive(state._editActive - 1);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        editMenuCommit();
+        return;
       }
       return;
     }

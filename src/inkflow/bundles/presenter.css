@@ -78,6 +78,7 @@ body {
   height: 100%;
 }
 #statusbar {
+  position: relative;
   flex-shrink: 0;
   background: var(--bg);
   border-top: 1px solid var(--overlay);
@@ -116,10 +117,10 @@ body {
 [data-theme=light] .hud-btn:hover {
   background: rgba(0, 0, 0, 0.08);
 }
-.hud-btn[data-tooltip] {
+[data-tooltip] {
   position: relative;
 }
-.hud-btn[data-tooltip]::after {
+[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
   bottom: calc(100% + 8px);
@@ -138,8 +139,8 @@ body {
   transition: opacity 0.1s ease;
   z-index: 40;
 }
-.hud-btn[data-tooltip]:hover::after,
-.hud-btn[data-tooltip]:focus-visible::after {
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
   opacity: 1;
   transition-delay: 0.35s;
 }
@@ -147,13 +148,23 @@ body {
   opacity: 0;
   transition-delay: 0s;
 }
-#btn-theme[data-tooltip]::after {
+#btn-theme[data-tooltip]::after,
+#btn-prev[data-tooltip]::after {
   left: 0;
   transform: none;
 }
 #log-indicator[data-tooltip]::after {
   left: auto;
   right: 0;
+  transform: none;
+}
+#ws-dot[data-tooltip] {
+  position: static;
+}
+#ws-dot[data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 .hud-sep {
   width: 1px;
@@ -175,6 +186,9 @@ body {
 #slide-info .slide-current {
   color: var(--text);
   font-size: 0.85rem;
+}
+#step-info {
+  margin-left: 0.6rem;
 }
 #log-indicator:not([data-level]) {
   display: none;
@@ -201,16 +215,25 @@ body {
   display: block;
 }
 #ws-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  transition: background 0.3s;
+  display: inline-flex;
+  align-items: center;
+  color: var(--subtext);
   vertical-align: middle;
 }
-#ws-dot.connected {
-  background: var(--green);
+#ws-dot .ws-badge {
+  fill: var(--red);
+}
+#ws-dot .ws-badge-x {
+  stroke: var(--bg);
+}
+#ws-dot .ws-ic-on {
+  display: none;
+}
+#ws-dot.connected .ws-ic-off {
+  display: none;
+}
+#ws-dot.connected .ws-ic-on {
+  display: block;
 }
 [data-inkflow-theme] {
   display: block;
@@ -821,6 +844,13 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.edit-row.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+.edit-row.active .edit-row-name {
+  opacity: 0.75;
 }
 
 /* src/css/presenter/overview.css */
