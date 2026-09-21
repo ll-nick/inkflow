@@ -12,6 +12,10 @@ const statusBarEl = document.getElementById("statusbar")!;
 const notify = document.getElementById("notify")!;
 const notifyText = document.getElementById("notify-text")!;
 const notifyClose = document.getElementById("notify-close")!;
+const notifyHistoryBtn = document.getElementById("notify-history-btn")!;
+const notifyHistoryEl = document.getElementById("notify-history")!;
+const notifyHistoryList = document.getElementById("notify-history-list")!;
+const notifyHistoryClose = document.getElementById("notify-history-close")!;
 
 // biome-ignore lint/suspicious/noExplicitAny: webkit prefix not in TS DOM lib
 const _doc = document as any;
@@ -126,7 +130,17 @@ export function toggleLogs(): void {
 // A transient, self-dismissing confirmation/warning/error, styled by the same
 // green/yellow/red vocabulary as inkflow.logging's report(). Pushed by the server
 // (websocket.ts's "notify" message) or called directly by a client-only action
-// (edit.ts's clipboard-copy confirmation, which never touches the server).
+// (edit.ts's clipboard-copy confirmation, which never touches the server). Every
+// call is also recorded to the notifications history below, so a toast that
+// auto-dismissed unseen can still be found.
+
+interface NotifyHistoryEntry {
+    message: string;
+    style: NotifyStyle;
+    time: number;
+}
+
+const notifyHistory: NotifyHistoryEntry[] = [];
 
 // Must match the CSS animation duration on #notify-progress (overlays.css).
 const NOTIFY_DURATION_MS = 3000;
@@ -143,6 +157,7 @@ export function showNotify(
     message: string,
     style: NotifyStyle = "green",
 ): void {
+    notifyHistory.push({ message, style, time: Date.now() });
     notifyText.textContent = message;
     notify.dataset.style = style;
     // Drop .visible and force a reflow before re-adding it, even if a notification
@@ -153,6 +168,76 @@ export function showNotify(
     notify.classList.add("visible");
     if (notifyTimeout) clearTimeout(notifyTimeout);
     notifyTimeout = setTimeout(hideNotify, NOTIFY_DURATION_MS);
+}
+
+// ── Notifications (message history) ──
+// An append-only record of every showNotify() call, in memory only (cleared on
+// reload — this answers "what did I just miss", not "what happened yesterday").
+// Deliberately named and keybound apart from #log-banner ("Diagnostics", d) so
+// the two don't read as the same feature: diagnostics are current build health
+// (repopulated wholesale each rebuild, only exist in relation to one that just
+// ran), this is a history of what *you* did (repopulated never — only grows),
+// and its own status-bar button is always visible rather than appearing on the
+// first message — it's a plain utility, not an alert.
+
+const NOTIFY_HISTORY_ICON: Record<NotifyStyle, string> = {
+    green: "✓",
+    yellow: "⚠︎",
+    red: "✖︎",
+};
+
+function pad2(n: number): string {
+    return String(n).padStart(2, "0");
+}
+
+function formatHistoryTime(time: number): string {
+    const d = new Date(time);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+function renderNotifyHistory(): void {
+    if (notifyHistory.length === 0) {
+        const empty = document.createElement("li");
+        empty.id = "notify-history-empty";
+        empty.className = "nh-row";
+        empty.textContent = "No notifications yet.";
+        notifyHistoryList.replaceChildren(empty);
+        return;
+    }
+    notifyHistoryList.replaceChildren(
+        ...notifyHistory
+            .slice()
+            .reverse()
+            .map((entry) => {
+                const li = document.createElement("li");
+                li.className = "nh-row";
+                const time = document.createElement("span");
+                time.className = "nh-time";
+                time.textContent = formatHistoryTime(entry.time);
+                const ico = document.createElement("span");
+                ico.className = `nh-ico nh-${entry.style}`;
+                ico.textContent = NOTIFY_HISTORY_ICON[entry.style];
+                const msg = document.createElement("span");
+                msg.className = "nh-message";
+                msg.textContent = entry.message;
+                li.append(time, ico, msg);
+                return li;
+            }),
+    );
+}
+
+export function openNotifyHistory(): void {
+    renderNotifyHistory();
+    notifyHistoryEl.classList.add("visible");
+}
+
+export function closeNotifyHistory(): void {
+    notifyHistoryEl.classList.remove("visible");
+}
+
+export function toggleNotifyHistory(): void {
+    if (notifyHistoryEl.classList.contains("visible")) closeNotifyHistory();
+    else openNotifyHistory();
 }
 
 // ── Theme ──
@@ -244,6 +329,11 @@ logIndicator.addEventListener("click", () => {
     logBanner.classList.add("visible");
 });
 notifyClose.addEventListener("click", hideNotify);
+notifyHistoryBtn.addEventListener("click", toggleNotifyHistory);
+notifyHistoryClose.addEventListener("click", closeNotifyHistory);
+notifyHistoryEl.addEventListener("click", (e) => {
+    if (e.target === notifyHistoryEl) closeNotifyHistory();
+});
 curtain.addEventListener("click", hideCurtain);
 help.addEventListener("click", (e) => {
     if (e.target === help) toggleHelp();
