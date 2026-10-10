@@ -862,9 +862,52 @@ commands:
       -d, --deck=: Path to deck.py
       --all: Include hidden slides
       --strict: Treat warnings as errors
+      --no-portable: Skip the deck-wide portability checks
     completion:
       positionalany:
         - "$files([\".svg\"])"
+
+  - name: fonts
+    description: Where each font the deck uses comes from.
+    flags:
+      -d, --deck=: Path to deck.py
+      --json: Print the report as JSON
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+    commands:
+      - name: bundle
+        description: Copy the fonts only this computer has into fonts/.
+        flags:
+          -d, --deck=: Path to deck.py
+          --all-weights: Copy every file of each family
+          -n, --dry-run: Only say what would be copied
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+      - name: set
+        description: Use a font for the deck's body, heading or mono text.
+        flags:
+          -d, --deck=: Path to deck.py
+          --no-bundle: Only set the font, do not copy its files in
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+          positional:
+            - ["body", "heading", "mono"]
+
+  - name: pack
+    description: Make the deck self-contained, so a clone looks the same anywhere.
+    flags:
+      -d, --deck=: Path to deck.py
+      --zip=: Also zip the packed deck's source tree
+      -n, --dry-run: Only say what packing would do
+      --with-pdf-pages: Commit PDF figures' pages as SVG beside each PDF
+      --all-weights: Bundle every weight of each font family
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+        zip: ["$files([\".zip\"])"]
 
   - name: layouts
     description: List available layouts with their zones.

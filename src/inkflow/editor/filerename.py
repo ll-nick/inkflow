@@ -246,6 +246,9 @@ class _World:
     root: Path
     theme: Theme | None
     moves: dict[Path, Path]
+    relative: bool = False
+    """Write every rewritten reference relative (``plan_copy_in``: an
+    absolute path names this machine's folders)."""
 
     def exists(self, path: Path, after: bool) -> bool:
         if after:
@@ -317,7 +320,7 @@ class _World:
         """A reference to ``target`` written like ``raw`` was, from ``base``."""
         if kind is Kind.PATH:
             file, rest = _split_ref(raw)
-            if os.path.isabs(file):
+            if os.path.isabs(file) and not self.relative:
                 return target.as_posix() + rest
             rel = _rel(target, base)
             if file.startswith("./") and not rel.startswith("../"):
@@ -325,7 +328,7 @@ class _World:
             return rel + rest
         if kind is Kind.MD:
             p = Path(raw)
-            if p.is_absolute():
+            if p.is_absolute() and not self.relative:
                 return str(target)
             if len(p.parts) == 1 and target.parent == self.root / "slides":
                 return target.name if p.suffix else target.stem
@@ -349,7 +352,7 @@ class _World:
                 return f"local:{target.stem}"
             if raw.startswith("local:") and target.parent == self.root / "layouts":
                 return f"local:{name}"
-            if os.path.isabs(raw):
+            if os.path.isabs(raw) and not self.relative:
                 return str(target)
             rel = _rel(target, self.root)
             return rel if "/" in rel else f"./{rel}"
@@ -370,7 +373,7 @@ class _World:
             and target.parent == _abs(self.theme.asset_dir() / namespace.value)
         ):
             return f"theme:{name}"
-        if os.path.isabs(raw):
+        if os.path.isabs(raw) and not self.relative:
             return str(target)
         rel = _rel(target, base)
         if not Path(written).suffix and rel.endswith(".svg"):
@@ -1460,3 +1463,241 @@ def reference_counts(project_dir: Path, deck_path: Path, deck: Deck) -> dict[str
 def posix_join(folder: str, name: str) -> str:
     """``folder/name`` (no folder: just the name)."""
     return posixpath.join(folder, name) if folder.strip("/") else name
+
+
+# ── Copying outside files in (inkflow pack) ───────────────────────────────────
+
+_LINK_LABELS = frozenset({"link", "Markdown link", "link definition", "<a href>"})
+_HOME_OF = {
+    Kind.PATH: "assets",
+    Kind.SLIDE: "slides",
+    Kind.MD: "slides",
+    Kind.LAYOUT: "layouts",
+    Kind.OVERLAY: "overlays",
+}
+_TEXT_SUFFIXES = (".svg", ".md", ".css")
+
+
+@dataclass(frozen=True)
+class FoundRef:
+    """A reference as written, in the file it is written in."""
+
+    file: str
+    kind: str
+    raw: str
+
+
+@dataclass
+class CopyInPlan:
+    """What makes a deck independent of files outside its folder: each such
+    file copied in, every reference to it rewritten (``plan_copy_in``)."""
+
+    copies: list[tuple[Path, Path]]
+    """The real file (outside the deck, or behind a symlink) → its new place."""
+    writes: dict[Path, bytes]
+    """New contents by path: rewritten references, copied text files."""
+    edits: list[RefEdit]
+    remote: list[FoundRef] = field(default_factory=list)
+    """Pictures and data read from the web (``https://…``)."""
+    warnings: list[str] = field(default_factory=list)
+
+    def summary(self, project_dir: Path) -> dict[str, object]:
+        root = _abs(project_dir)
+        created = {dst for dst in self.writes if not dst.exists()} | {
+            dst for _, dst in self.copies
+        }
+        return {
+            "copies": [
+                {"from": str(src), "to": _rel(dst, root)} for src, dst in self.copies
+            ],
+            "created": sorted(_rel(p, root) for p in created),
+            "edits": [
+                {"file": e.file, "kind": e.kind, "old": e.old, "new": e.new}
+                for e in self.edits
+            ],
+            "references": len(self.edits),
+            "files": len({e.file for e in self.edits}),
+            "remote": [
+                {"file": r.file, "kind": r.kind, "ref": r.raw} for r in self.remote
+            ],
+            "warnings": list(self.warnings),
+        }
+
+
+def through_symlink(path: Path, root: Path) -> bool:
+    """Whether ``path`` (inside ``root``) is a symlink or lies in a linked folder."""
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        return False
+    current = root
+    for part in parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _shipped(path: Path, theme: Theme | None) -> bool:
+    """A file of the theme or of inkflow: it comes with the pinned version."""
+    homes = [builtin_theme_dir()]
+    if theme is not None:
+        homes.append(theme.asset_dir())
+    real = path.resolve()
+    return any(
+        real.is_relative_to(h.resolve()) or path.is_relative_to(h) for h in homes
+    )
+
+
+def _same_bytes(a: Path, b: Path) -> bool:
+    try:
+        return a.stat().st_size == b.stat().st_size and a.read_bytes() == b.read_bytes()
+    except OSError:
+        return False
+
+
+def _ignore(_raw: str, _kind: Kind, _label: str) -> str | None:
+    return None
+
+
+def plan_copy_in(project_dir: Path, deck_path: Path, deck: Deck) -> CopyInPlan:
+    """Every file the deck names that a clone of its folder would not have:
+    outside the folder, or reached through a symlink (git keeps the link,
+    not the file, and Windows checks links out as text files). Each is copied
+    into the deck (pictures and data to ``assets/``, layouts to ``layouts/``,
+    overlays to ``overlays/``, slides to ``slides/``), names kept unique, and
+    every reference to it rewritten where it is written, as a rename rewrites
+    them, but always relative. A copied SVG, Markdown or CSS file's own
+    references are followed too. Theme and inkflow files are left alone: they
+    come with the version the deck pins. Links (``<a href>``, Markdown links)
+    are not copied in."""
+    root = _abs(project_dir)
+    deck_file = _abs(deck_path)
+    theme = deck.theme
+    plain = _World(root, theme, {})
+    remote: list[FoundRef] = []
+    wanted: dict[Path, Kind] = {}
+    pending: list[Path] = []
+
+    def needs_copy(target: Path) -> bool:
+        if not target.is_file() or _shipped(target, theme):
+            return False
+        if not target.is_relative_to(root):
+            return True
+        top = target.relative_to(root).parts[0]
+        if top in _RESERVED_TOP or top.startswith("."):
+            return False
+        return through_symlink(target, root)
+
+    def collector(path: Path) -> Visit:
+        where = _rel(path, root) if path.is_relative_to(root) else str(path)
+
+        def visit(raw: str, kind: Kind, label: str) -> str | None:
+            if raw.startswith(("http://", "https://", "//")):
+                if label not in _LINK_LABELS:
+                    remote.append(FoundRef(where, label, raw))
+                return None
+            if label in _LINK_LABELS:
+                return None
+            target = plain.resolve(raw, kind, path.parent, after=False)
+            if target is not None and target not in wanted and needs_copy(target):
+                wanted[target] = kind
+                if target.suffix.lower() in _TEXT_SUFFIXES:
+                    pending.append(target)
+            return None
+
+        return visit
+
+    overlays = _overlay_files(root, deck)
+    texts: dict[Path, str] = {}
+    for path in text_files(root, deck_file):
+        text = _read(path)
+        if text is None:
+            continue
+        texts[path] = text
+        _ = _scan(
+            path, text, collector(path), _is_overlay(path, root, overlays), _ignore
+        )
+    deck_text = deck_file.read_text(encoding="utf-8")
+    try:
+        _ = scan_deck(deck_text, collector(deck_file))
+    except cst.ParserSyntaxError as exc:
+        raise RenameError(f"deck.py does not parse: {exc}") from exc
+    outside: dict[Path, str] = {}
+    while pending:
+        path = pending.pop()
+        text = _read(path)
+        if text is None or path.name.lower().endswith(".drawio.svg"):
+            continue
+        outside[path] = text
+        _ = _scan(path, text, collector(path), wanted[path] is Kind.OVERLAY, _ignore)
+
+    # Where each goes: its kind's folder (not one that is itself a link).
+    mapping: dict[Path, Path] = {}
+    taken: set[Path] = set()
+    for target, kind in wanted.items():
+        folder = root / _HOME_OF[kind]
+        if through_symlink(folder, root) or (folder.exists() and not folder.is_dir()):
+            folder = root / f"{_HOME_OF[kind]}-packed"
+        suffix = full_suffix(target.name)
+        stem = target.name[: len(target.name) - len(suffix)]
+        dest = folder / target.name
+        n = 2
+        while dest in taken or (
+            dest.exists()
+            and (through_symlink(dest, root) or not _same_bytes(dest, target))
+        ):
+            dest = folder / f"{stem}-{n}{suffix}"
+            n += 1
+        taken.add(dest)
+        mapping[target] = dest
+
+    world = _World(root, theme, mapping, relative=True)
+    edits: list[RefEdit] = []
+    warnings: list[str] = []
+
+    def visitor(path: Path) -> Visit:
+        base_old = path.parent
+        base_new = mapping.get(path, path).parent
+        where = _rel(mapping.get(path, path), root)
+
+        def visit(raw: str, kind: Kind, label: str) -> str | None:
+            if label in _LINK_LABELS and path not in mapping:
+                return None
+            if raw.startswith(("http://", "https://", "//")):
+                return None
+            target = world.resolve(raw, kind, base_old, after=False)
+            if target is None or (target not in mapping and base_old == base_new):
+                return None
+            try:
+                new = world.rewrite(raw, kind, base_old, base_new, where)
+            except RenameError as exc:
+                warnings.append(str(exc))
+                return None
+            if new is not None:
+                edits.append(RefEdit(where, label, raw, new))
+            return new
+
+        return visit
+
+    writes: dict[Path, bytes] = {}
+    for path, text in texts.items():
+        overlay = _is_overlay(path, root, overlays)
+        new = _scan(path, text, visitor(path), overlay, _ignore)
+        if new != text:
+            writes[path] = new.encode("utf-8")
+    new_deck = scan_deck(deck_text, visitor(deck_file))
+    if new_deck != deck_text:
+        writes[deck_file] = new_deck.encode("utf-8")
+    copies: list[tuple[Path, Path]] = []
+    for target, dest in mapping.items():
+        if dest.exists():
+            continue  # the same file is there already
+        text = outside.get(target)
+        if text is not None:
+            overlay = wanted[target] is Kind.OVERLAY
+            rewritten = _scan(target, text, visitor(target), overlay, _ignore)
+            writes[dest] = rewritten.encode("utf-8")
+        else:
+            copies.append((target.resolve(), dest))
+    return CopyInPlan(copies, writes, edits, remote, warnings)

@@ -49,6 +49,11 @@ my-talk/
 Fonts in `fonts/` take precedence over system fonts, so you always get exactly the
 variant you committed regardless of what's installed on the machine running `inkflow`.
 
+`inkflow fonts` lists where each font the deck uses comes from (`project`,
+`theme`, `machine`, `missing`, `generic`), and `inkflow fonts bundle` copies the
+ones only your computer has into `fonts/`, with their licences: see
+[A deck that looks the same everywhere](../presenting/portable.md).
+
 ## Serve vs. build
 
 - **`inkflow serve`** — embeds the full font file for each variant. The font index is built

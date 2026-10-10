@@ -30,6 +30,7 @@ from lxml import etree
 
 from inkflow import animations as animations_module
 from inkflow import drawio, instances, pdf, publish
+from inkflow import pack as deck_pack
 from inkflow import transitions as transitions_module
 from inkflow.animations import Cue
 from inkflow.assets import AssetRoots
@@ -114,6 +115,20 @@ from inkflow.editor.transfer import (
     retarget_fragment,
 )
 from inkflow.enums import ColorMode, MediaFit
+from inkflow.fontreport import (
+    BundlePlan,
+    FontDirs,
+    FontReport,
+    FontSetError,
+    Where,
+    build_index,
+    family_report,
+    first_family,
+    font_report,
+    plan_bundle,
+    role_faces,
+    token_value,
+)
 from inkflow.fonts import font_index
 from inkflow.ink import (
     InkError,
@@ -187,6 +202,9 @@ class _Move:
     src: Path
     dst: Path
     content: bool = False
+    copy: bool = False
+    """A copy (``_Txn.copy``) rather than a rename: ``src`` stays where it
+    is (it may be outside the project), undo removes ``dst``."""
 
 
 def _prune_empty(paths: list[Path], root: Path) -> None:
@@ -255,8 +273,15 @@ class History:
         moves = [
             (m.src, m.dst) if forward else (m.dst, m.src)
             for m in step.moves
-            if not m.content
+            if not m.content and not m.copy
         ]
+        copies = [(m.src, m.dst) for m in step.moves if m.copy]
+        for src, dst in copies:
+            if forward and (not src.is_file() or dst.exists()):
+                raise EditError(
+                    f"{src.name} moved or {dst.name} changed outside the editor; "
+                    + "cannot redo that edit"
+                )
         for src, dst in moves:
             if not src.is_file() or dst.exists():
                 raise EditError(
@@ -273,6 +298,10 @@ class History:
                 )
         if forward:
             _do_moves(moves)
+            _do_copies(copies)
+        else:
+            for _src, dst in copies:
+                dst.unlink(missing_ok=True)
         for change in step.changes:
             target = change.after if forward else change.before
             if target is None:
@@ -283,7 +312,8 @@ class History:
         if not forward:
             _do_moves(list(reversed(moves)))
         if step.prune is not None:
-            left = [m.src if forward else m.dst for m in step.moves]
+            left = [m.src if forward else m.dst for m in step.moves if not m.copy]
+            left += [m.dst for m in step.moves if m.copy and not forward]
             left += [
                 c.path
                 for c in step.changes
@@ -317,6 +347,12 @@ def _do_moves(moves: list[tuple[Path, Path]]) -> None:
         os.rename(src, dst)
 
 
+def _do_copies(copies: list[tuple[Path, Path]]) -> None:
+    for src, dst in copies:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+
+
 class _Txn:
     """The files one request writes, staged in memory until commit."""
 
@@ -344,6 +380,17 @@ class _Txn:
             self.write(src, None)
             self.write(dst, content)
         self.moves.append(_Move(src, dst, content is not None))
+
+    def copy(self, src: Path, dst: Path) -> None:
+        """Copy ``src`` (anywhere: a font of this computer, a picture outside
+        the deck) to ``dst`` in the project, without holding its bytes: undo
+        removes the copy, redo copies again."""
+        dst = self._check(dst)
+        if dst.exists() or dst in self.staged:
+            raise EditError(f"{dst.name} already exists")
+        if not src.is_file():
+            raise EditError(f"{src} does not exist")
+        self.moves.append(_Move(src.resolve(), dst, copy=True))
 
     def read(self, path: Path) -> bytes:
         data = self.read_optional(path)
@@ -379,17 +426,20 @@ class _Txn:
             for path, data in self.staged.items()
             if self.originals[path] != data
         ]
-        _do_moves([(m.src, m.dst) for m in self.moves if not m.content])
+        _do_moves([(m.src, m.dst) for m in self.moves if not m.content and not m.copy])
+        _do_copies([(m.src, m.dst) for m in self.moves if m.copy])
         for change in changes:
             if change.after is None:
                 change.path.unlink(missing_ok=True)
                 continue
             change.path.parent.mkdir(parents=True, exist_ok=True)
             change.path.write_bytes(change.after)
-        prune = self.project_dir.resolve() if self.prune else None
+        # A step that copied files in removes the folders its undo empties.
+        copied = any(m.copy for m in self.moves)
+        prune = self.project_dir.resolve() if self.prune or copied else None
         if prune is not None:
             gone = [c.path for c in changes if c.after is None]
-            _prune_empty([m.src for m in self.moves] + gone, prune)
+            _prune_empty([m.src for m in self.moves if not m.copy] + gone, prune)
         return _Step(label, changes, moves=list(self.moves), prune=prune)
 
 
@@ -405,6 +455,10 @@ def _unique_path(directory: Path, stem: str, suffix: str) -> Path:
         candidate = directory / f"{stem}-{n}{suffix}"
         n += 1
     return candidate
+
+
+def as_strings(value: list[object]) -> list[str]:
+    return [str(v) for v in value]
 
 
 def _py(value: object) -> str:
@@ -555,6 +609,11 @@ class EditorSession:
             raise EditError("the deck has not built yet")
         if action == "theme-get":
             return {"ok": True, "theme": self._theme_info(deck)}
+        if action == "fonts" and msg.get("op") in (None, "report"):
+            report = font_report(deck, self.project_dir)
+            return {"ok": True, "fonts": report.json(self.project_dir)}
+        if action == "pack":
+            return self._pack(msg, deck)
         if action == "chart-preview":
             return self._chart_preview(msg, deck)
         if action == "chart-data":
@@ -591,6 +650,7 @@ class EditorSession:
             "shape-text": self._shape_text,
             "to-markdown": self._to_markdown,
             "theme-set": self._theme_set,
+            "fonts": self._fonts,
             "replace": self._replace,
             "md-text": self._md_text,
             "notes": self._notes,
@@ -684,6 +744,10 @@ class EditorSession:
         renamed: set[Path] = set()
         moved: set[Path] = set()
         for m in step.moves:
+            if m.copy:
+                change = "deleted" if undo else "created"
+                out.append({"path": rel(m.dst), "change": change, "from": str(m.src)})
+                continue
             src, dst = (m.dst, m.src) if undo else (m.src, m.dst)
             out.append({"path": rel(dst), "change": "renamed", "from": rel(src)})
             moved |= {src, dst}
@@ -2091,6 +2155,168 @@ class EditorSession:
         if source is not None:
             self._save_deck(txn, source, imports)
         return str(msg.get("label") or "Theme")
+
+    def _fonts(
+        self, msg: dict[str, object], deck: Deck, txn: _Txn, extra: dict[str, object]
+    ) -> str:
+        """``bundle``: copy the fonts only this computer has into ``fonts/``
+        (``families``: only those; ``allWeights``; ``dryRun``: only the plan),
+        with their licences and ``fonts/README.md``. ``set``: a font token
+        (``role`` body/heading/mono, ``family``) written as the Theme dialog
+        writes it, and that family bundled when it comes from this computer.
+        One step either way; the fonts are copied, not held in the History."""
+        op = msg.get("op")
+        if op == "bundle":
+            report = font_report(deck, self.project_dir)
+            families = msg.get("families")
+            plan = plan_bundle(
+                report,
+                self.project_dir,
+                families=as_strings(cast("list[object]", families))
+                if isinstance(families, list)
+                else None,
+                all_weights=msg.get("allWeights") is True,
+            )
+            extra["bundle"] = plan.json(self.project_dir)
+            if msg.get("dryRun"):
+                return "Bundle fonts"
+            if plan.copies:
+                self._local_only(msg, "copy this computer's fonts into the deck")
+            self._apply_bundle(plan, txn)
+            return "Bundle fonts into the deck"
+        if op != "set":
+            raise EditError(f"unknown fonts op {op!r}")
+        role = str(msg.get("role") or "")
+        try:
+            value = token_value(role, str(msg.get("family") or ""))
+        except FontSetError as exc:
+            raise EditError(str(exc)) from exc
+        styles = self.project_dir / "styles.css"
+        css = txn.read(styles).decode("utf-8") if styles.is_file() else ""
+        try:
+            merged = merge(read_overrides(css), {"typography": {f"{role}_font": value}})
+        except ThemeEditError as exc:
+            raise EditError(str(exc)) from exc
+        txn.write(styles, write_overrides(css, merged).encode("utf-8"))
+        extra["value"] = value
+        report = font_report(deck, self.project_dir)
+        family = first_family(value)
+        bundled: dict[str, object] = {}
+        if family is not None:
+            dirs = FontDirs.for_deck(deck, self.project_dir)
+            index = build_index(dirs)
+            one = family_report(family[0], role_faces(report, role), dirs, index)
+            extra["family"] = one.json(self.project_dir)
+            if one.where is Where.MACHINE and msg.get("bundle") is not False:
+                if msg.get("_local") is True:
+                    plan = plan_bundle(
+                        FontReport([one], report.tokens, dirs),
+                        self.project_dir,
+                        index=index,
+                    )
+                    self._apply_bundle(plan, txn)
+                    bundled = plan.json(self.project_dir)
+                else:
+                    extra["note"] = (
+                        f'"{one.family}" comes from the server\'s computer: bundle '
+                        + "it from an editor on that machine"
+                    )
+        extra["bundle"] = bundled
+        return f"Font: {role} = {value}"
+
+    def _apply_bundle(self, plan: BundlePlan, txn: _Txn) -> None:
+        for copy in plan.copies:
+            txn.copy(copy.src, copy.dst)
+        for path, text in plan.texts.items():
+            txn.write(path, text.encode("utf-8"))
+        if plan.readme is not None:
+            txn.write(self.project_dir / "fonts" / "README.md", plan.readme.encode())
+
+    # ── Packing (a deck that looks the same everywhere) ──
+
+    def _pack(self, msg: dict[str, object], deck: Deck) -> dict[str, object]:
+        """``check``: what ties the deck to this machine (the commit's
+        question); ``plan``: that and what packing would write; ``apply``:
+        pack (local only: it copies this computer's files) as one step, then
+        ``uv lock`` when a lock is missing, its file added to the step."""
+        op = msg.get("op") or "check"
+        try:
+            plan = deck_pack.plan_pack(
+                deck,
+                self.project_dir,
+                self.deck_path,
+                with_pdf_pages=msg.get("withPdfPages") is True,
+                all_weights=msg.get("allWeights") is True,
+            )
+        except (RenameError, OSError, ValueError) as exc:
+            raise EditError(str(exc)) from exc
+        summary = plan.json(self.project_dir)
+        if op in ("check", "plan"):
+            return {"ok": True, "pack": summary}
+        if op != "apply":
+            raise EditError(f"unknown pack op {op!r}")
+        self._local_only(msg, "pack the deck (it copies this computer's files)")
+        expected = msg.get("deckHash")
+        if (
+            isinstance(expected, str)
+            and self.built_hash is not None
+            and expected != self.built_hash
+        ):
+            raise EditError("deck.py changed since the last build; try again")
+        txn = _Txn(self.project_dir)
+        self._apply_bundle(plan.bundle, txn)
+        for src, dst in plan.copy_in.copies:
+            txn.copy(src, dst)
+        for path, data in {**plan.copy_in.writes, **plan.writes}.items():
+            if path.resolve().is_relative_to(self.project_dir.resolve()):
+                txn.write(path, data)
+        outside = {
+            p: d
+            for p, d in plan.writes.items()
+            if not p.resolve().is_relative_to(self.project_dir.resolve())
+        }
+        label = "Pack the deck"
+        agent = msg.get("agent")
+        if isinstance(agent, str) and agent.strip():
+            label = f"Agent: {agent.strip()}"
+        step = txn.commit(label)
+        # A pyproject.toml up the tree (the repository's) is not the deck's
+        # file: written, but outside the step.
+        for path, data in outside.items():
+            path.write_bytes(data)
+        lock_note = None
+        if plan.lock_dir is not None:
+            lock = plan.lock_dir / "uv.lock"
+            before = lock.read_bytes() if lock.is_file() else None
+            ok, lock_note = deck_pack.run_uv_lock(plan.lock_dir)
+            after = lock.read_bytes() if lock.is_file() else None
+            inside = lock.resolve().is_relative_to(self.project_dir.resolve())
+            if ok and after != before and inside:
+                step.changes.append(_Change(lock.resolve(), before, after))
+        if step.changes or step.moves:
+            self.history.record(step)
+        result = self._result(step)
+        changed = (
+            [c.path for c in step.changes] + [m.dst for m in step.moves] + list(outside)
+        )
+        if plan.lock_dir is not None and (plan.lock_dir / "uv.lock").is_file():
+            changed.append(plan.lock_dir / "uv.lock")
+        root = gitops.repo_root(self.project_dir)
+        git_paths: list[str] = []
+        if root is not None:
+            for path in changed:
+                with contextlib.suppress(ValueError):
+                    git_paths.append(
+                        path.resolve().relative_to(root.resolve()).as_posix()
+                    )
+        return {
+            **result,
+            "pack": summary,
+            "remaining": [i.json() for i in plan.remaining],
+            "lock": lock_note,
+            "gitPaths": sorted(set(git_paths)),
+            "structural": True,
+        }
 
     def _shape_text(
         self, msg: dict[str, object], deck: Deck, txn: _Txn, extra: dict[str, object]

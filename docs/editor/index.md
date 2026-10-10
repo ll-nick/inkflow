@@ -167,7 +167,21 @@ branch and how many files changed. Its menu covers what a deck needs day to day:
   repository not) with a message ready to change, *Update slides (2026-10-09
   14:30)*; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> commits. **Commit and push** does
   both when there is a remote. If git does not know who you are yet, the dialog
-  asks for a name and email for this repository.
+  asks for a name and email for this repository. When the deck depends on
+  this computer in a way packing would fix (a font only your computer has, a
+  file outside the deck, no `uv.lock`, no line-ending or Git LFS rules), the
+  commit first asks: it lists what is missing in plain words, and **Pack and
+  commit** (the default) packs the deck and puts the files packing wrote into
+  the same commit; **Commit without packing (not recommended)** commits as it
+  is and says what other machines will lack (another font for the slides, a
+  picture missing from the repository…). When nothing is missing, the commit
+  goes ahead with no question.
+- **Pack deck…** makes the deck self-contained: fonts, outside files, lock
+  file, git rules, so it looks the same on every machine. The dialog lists what
+  packing will do and what will still depend on the machine; **Pack** does it
+  as one step you can undo, then shows the files written. It copies files from
+  your computer, so it works only from an editor on the computer running
+  `inkflow edit`. See [A deck that looks the same everywhere](../presenting/portable.md).
 - **Push** and **Pull** (fast-forward only). The first push of a new branch sets
   its upstream on `origin`.
 - **Discard changes…** puts the ticked files back as they were in the last commit
@@ -802,6 +816,21 @@ Colours and fonts are written as one marked block in the project's `styles.css`,
 which overrides the theme without changing it, and the rest of that file is left
 alone. Fonts found in `fonts/`, in the theme or on your computer are embedded in
 the deck, so a build carries them.
+
+A font typed into a font field is written as `inkflow fonts set` writes it: a
+bare family gets a generic fallback (`Inter, sans-serif`), a generic family
+first (`sans-serif`) is refused, and a font only your computer has is copied
+into the deck's `fonts/` in the same step.
+
+Below the font fields, the dialog lists **where each font comes from**:
+*in the deck (fonts/)* and *ships with inkflow / the theme* (green) travel with
+the deck; *this computer only* and *each machine's own* (a generic family
+first) (yellow) look different elsewhere; *not installed* (red) is missing here
+too. Each row shows the weights the deck uses and, for a problem, what to do.
+**Bundle fonts into the deck** copies the fonts only this computer has into
+`fonts/`, with their licences; the confirmation names any font whose licence
+does not allow sharing (a system font such as Arial, with an open alternative).
+See [A deck that looks the same everywhere](../presenting/portable.md).
 
 ## Find and replace
 

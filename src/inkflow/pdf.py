@@ -296,6 +296,42 @@ def convert(pdf: Path, page: int, project_dir: Path, tool: str | None = None) ->
     return target
 
 
+# ── Committed pages ──
+
+DIGEST_ATTR = "data-inkflow-pdf-digest"
+"""On a committed page's root: the content hash of the PDF it was drawn from."""
+_DIGEST_RE = re.compile(DIGEST_ATTR + r'="([0-9a-f]{64})"')
+
+
+def committed_path(pdf: Path, page: int) -> Path:
+    """Where ``inkflow pack --with-pdf-pages`` commits a page beside its PDF:
+    ``figure.pdf`` page 1 is ``figure.pdf.p1.svg``. References keep naming
+    the PDF; the build shows this file while the PDF is the one it was drawn
+    from, so a clone needs no converter and every machine shows the same."""
+    return pdf.with_name(f"{pdf.name}.p{page}.svg")
+
+
+def committed_page(pdf: Path, page: int) -> Path | None:
+    """The committed page for the PDF as it is now, or None (none, or the PDF
+    changed since: then it converts again, as without one)."""
+    path = committed_path(pdf, page)
+    try:
+        with path.open("rb") as f:
+            head = f.read(4096).decode("utf-8", "replace")
+    except OSError:
+        return None
+    m = _DIGEST_RE.search(head)
+    return path if m and m.group(1) == digest(pdf) else None
+
+
+def page_for_commit(pdf: Path, page: int, project_dir: Path) -> str:
+    """The page converted, as the text of its committed file (its PDF's hash
+    on the root). Raises `PdfError` as `convert` does."""
+    text = convert(pdf, page, project_dir).read_text(encoding="utf-8")
+    stamp = f' {DIGEST_ATTR}="{digest(pdf)}"'
+    return re.sub(r"<svg\b", lambda m: m.group(0) + stamp, text, count=1)
+
+
 _PAGES_RE = re.compile(r"^Pages:\s+(\d+)\s*$", re.MULTILINE)
 _PAGE_OBJECT_RE = re.compile(rb"/Type\s*/Page(?![a-zA-Z])")
 
@@ -378,6 +414,9 @@ class PdfPages:
         if page is None:
             logger.warning(f"{name}: no page number in {ref!r} (write #page=2)")
             return None, "no such page"
+        committed = committed_page(pdf, page)
+        if committed is not None:
+            return self.roots.canonicalize(committed), ""
         if self.tool is None:
             if not self.warned:
                 self.warned = True

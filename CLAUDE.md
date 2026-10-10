@@ -200,7 +200,10 @@ src/
                                `move_section`, slides reindented to their new list),
                                codegen.py (DSL object -> shortest constructor source; field
                                schemas for the property panels), session.py (one request ->
-                               one undoable whole-file step; EditorSession/History; a video
+                               one undoable whole-file step; EditorSession/History; the
+                               `fonts` action (report / bundle / set) and the `pack`
+                               action (check / plan / apply, `gitPaths` for the commit);
+                               `_Txn.copy` = a file copied in without its bytes; a video
                                inserted anywhere is a new zone-video rect + a Video(...)
                                zones= entry in one step; the `ink` action adds / erases /
                                clears strokes, local only, and slide-list edits move a
@@ -280,7 +283,12 @@ src/
                                style (bare layout name, `local:`, path); ids inferred from
                                renamed files follow (ink moved, `slide:` links rewritten);
                                `plan_slide_rename` = a slide's own files to one stem;
-                               `reference_counts`/`project_files` for the Files view),
+                               `reference_counts`/`project_files` for the Files view;
+                               `plan_copy_in` = every file named outside the deck or
+                               through a symlink copied in (assets/, layouts/,
+                               overlays/, slides/) and its references re-expressed
+                               relative by the same `_World` (`relative=True`), for
+                               `inkflow pack`),
                                previews.py (layout gallery renders; like the model's
                                layout list, `layout.layouts_for`: built-in layouts
                                in the deck's shape, the project's own always),
@@ -355,6 +363,11 @@ src/
                                ops; `remove` takes `indices` for several in one step),
                                types from inkflow.animations + the deck module, targets
                                from the built slide's ids, nearest names on a miss),
+                               fonts.py (`inkflow fonts [--json]` = the fontreport
+                               table; `fonts bundle`/`fonts set` send the session's
+                               `fonts` action, `inkflow pack [--zip] [-n]
+                               [--with-pdf-pages]` its `pack` action, all through
+                               editor/remote.py, then zips locally),
                                files.py (`inkflow mv OLD NEW [-n]`: the session's
                                `rename` action, through editor/remote.py; slides.py adds
                                `slide rename-files`),
@@ -405,7 +418,12 @@ src/
                                `<image>`/`<img>` after content injection, keeping the PDF
                                ref in `data-inkflow-pdf`, or draws a placeholder (one
                                warning per build, `install_hint`); `page_count` for
-                               the editor's page picker and `verify`
+                               the editor's page picker and `verify`. A page committed
+                               beside its PDF (`committed_path`: `figure.pdf.p1.svg`,
+                               written by `pack --with-pdf-pages`, root stamped with
+                               the PDF's hash `data-inkflow-pdf-digest`) is used
+                               instead while the hash matches (`committed_page`), so
+                               references keep naming the PDF
     backgrounds.py    a background behind a picture (`Image(background=...)`,
                                `inkflow:background` on an `<image>` or a drawn-in diagram):
                                `background_paint` (paper = white in any mode, surface,
@@ -452,6 +470,31 @@ src/
                                git status's `pages`), `plan` (conflicts: refuses
                                unless force), `font_warnings` (fonts.font_sources:
                                fonts outside the project's/theme's fonts/)
+    fontreport.py     where each font family the deck uses comes from (`font_report`:
+                               effective token values from the styles cascade, other
+                               CSS font-family, every font in the built slides; faces
+                               used, body bold/italic from the HTML): `Where` project /
+                               theme (the active theme's or inkflow's fonts/) /
+                               machine / missing / generic (a generic family first);
+                               its own uncached index over fonts._font_dirs;
+                               `licence_of` (licence files beside the font, name IDs
+                               13/14/0, fsType, `_SYSTEM_FONTS` with open
+                               alternatives); `plan_bundle` (machine fonts' used
+                               files, or a variable font, to fonts/<family>/ with
+                               licences + fonts/README.md table, warnings never
+                               refusals); `token_value` (what `fonts set` writes)
+    pack.py           `inkflow pack`: `plan_pack` = fonts bundle + `plan_copy_in` +
+                               `plan_pyproject` (pin inkflow and a pip-installed theme,
+                               nearest pyproject.toml or a new one) + uv.lock
+                               (`run_uv_lock`, patched out in tests by conftest) +
+                               `plan_attributes` (LF rules one per pattern, SVG diff
+                               line, LFS block or missing font rules, lfs-off kept) +
+                               committed PDF pages; `Item`s (key, message,
+                               consequence, fixable) are what `verify_portable`, the
+                               commit question and the CLI report read; `make_zip`
+                               (git ls-files or .gitignore, LFS smudged);
+                               `ensure_text_rules`/`bundle_fonts_now`/`lock_new_deck`
+                               for `init` and the editor's new decks
     init.py           project scaffolding (inkflow init): copies templates/ into
                                slides/ + notes/, writes a 3-slide deck.py and a bare
                                pyproject.toml pinning inkflow (`~=` compatible release);
@@ -491,7 +534,11 @@ src/
                                compose_with_ancestors, compose_overlays,
                                duplicate_zone_ids, is_full_canvas_fill)
     svgio.py          SVG parse/serialize primitives: one hardened parser, SvgElement alias
-    verify.py         slide authoring checks (inkflow verify; arrows whose shapes moved: editor/scene.py)
+    verify.py         slide authoring checks (inkflow verify; arrows whose shapes moved: editor/scene.py);
+                               `verify_portable` = the deck-wide "deck" lines from
+                               pack's items (machine/missing/generic fonts, outside
+                               files, web pictures, pyproject, uv.lock, eol rules;
+                               `--no-portable`); `render --check` does not repeat them
     ns.py             XML namespace constants
     tui.py            terminal UI (Rich)
     presenter.html    shell template — inlined with CSS/JS at serve time
@@ -582,7 +629,10 @@ src/
                       richtext.ts (zone HTML <-> Markdown for in-place rich editing; throws
                       Unsupported rather than drop content), crop.ts, objects.ts (Objects
                       tab: hide/lock), gallery.ts, grid.ts (grid view of all slides;
-                      shares sorter.ts's Thumbs cache class and slide menu), theme.ts,
+                      shares sorter.ts's Thumbs cache class and slide menu), theme.ts
+                      (its Fonts section: the session's `fonts` report colour-coded,
+                      Bundle fonts into the deck with the licence warnings in a
+                      confirm; font fields send `fonts` op `set`),
                       find.ts, exportdlg.ts, openwith.ts ("Open ▾" in other programs),
                       decks.ts ("deck ▾": new/open/recent decks, start page),
                       folderpicker.ts (the folder picker those and the video picker
@@ -599,7 +649,12 @@ src/
                       Remove with a force retry, New worktree for an agent…;
                       "Published at <url>" + Publish… → publish.ts: host,
                       release, README link, files to write, then commit + next
-                      steps; its pure parts in publishtext.ts, tested),
+                      steps; its pure parts in publishtext.ts, tested; Pack deck…
+                      and Commit's pack question → pack.ts: `pack` op `check`
+                      first, "Pack and commit" (focused) = op `apply` then commit
+                      the ticked paths + its `gitPaths` in the same commit,
+                      "Commit without packing (not recommended)"; its words in
+                      packtext.ts, tested),
                       canvasmenu.ts (right-click menu on the canvas; text fields and
                       Shift+right-click keep the browser's), videopreview.ts (canvas
                       videos lose controls + pointer events so they select and drag;
@@ -739,6 +794,9 @@ An asset must live under an allowed root: the project dir (canonical prefix `""`
 
 **Renaming a file rewrites every reference to it, by the same rule.**
 `editor/filerename.py` finds references where they are written and resolves each against its own file (never by matching a name across the project), then writes the new one in the style it was written: a bare layout name stays a name (`local:` when a `slides/` file would shadow it), a path stays a path relative to its file, a `#page=` stays. SVGs are rewritten by a small tokenizer (only the attribute values change), contents of preview layers are copies and left alone, but their markers are followed through the chain that declared them (`_Chains`: an ancestor's parent is relative to that ancestor). The session applies the plan as one step whose moves are kept without bytes (videos), so undo moves files back and restores the folders; the extension never changes; `styles.css`, `deck.py` and files in hidden folders are refused. `inkflow mv` and `inkflow slide rename-files` are the same action from the CLI.
+
+**A deck is portable when a clone of its folder looks the same anywhere.**
+Only the deck's own files and the pinned inkflow/theme travel with a `git clone`, so `fontreport.py` classifies every font as project / theme (portable) or machine / missing / generic, and `pack.py` lists everything else that ties the deck to this computer as `Item`s (fixable or not): outside or symlinked files (`filerename.plan_copy_in`, references rewritten by the rename machinery, never string-replaced), pyproject pin + uv.lock, `.gitattributes` LF/diff/LFS rules, PDF pages. The same plan feeds `inkflow fonts`/`pack`, `verify`'s "deck" warnings, the Theme dialog's Fonts section and the commit's pack question, so they cannot disagree. Writes go through the session (`fonts`, `pack` actions; `pack` and copying fonts are local only) as one undoable step; `_Txn.copy` records a file copied in from anywhere without holding its bytes (undo deletes it, redo copies again, emptied folders are pruned), and `pack` runs `uv lock` after the commit and adds the lock file's change to the same step. Licences warn, never refuse. The other agent's fonts.py owns embedding; fontreport only reads its discovery (`_font_dirs`, `_read_font_record`) with its own uncached index, so a just-bundled font is seen at once.
 
 **PDF figures are a derived asset, converted at build time and never committed.**
 Browsers show no PDF in `<image>`/`<img>`, so `pdf.PdfPages.apply` (a pipeline step after content injection, so SVG pictures, `Image` zones and Markdown images are covered alike) points each PDF reference at its page converted to SVG in `.inkflow/cache/pdf/` (git-ignored, unwatched; named by content hash + page + converter, so a saved PDF converts again and the watcher's rebuild shows it). The cache is a third `AssetRoots` root with the canonical prefix `_pdf/`, reserved like `_theme/`: `serve`, `build` (copied to `out/_pdf/`, not a hidden folder static hosts may refuse), `--inline-assets` and `export` handle a converted page exactly as any picture, with no special case. The PDF reference survives beside it as `data-inkflow-pdf`, which the editor reads instead of the href (`pdfpages.sourceRef`), so nothing it writes back (page change, replace, copy/paste) ever names the cache; moves and crops edit the source SVG, whose href is the PDF. PyMuPDF is optional (`inkflow[pdf]`) and loaded with `importlib` so inkflow stays MIT and type-checks without it; the system tools are the fallback. With no converter the picture becomes a placeholder data URI and the build warns once.
