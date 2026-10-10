@@ -18,6 +18,7 @@
     .anim-fade-out[data-step] { opacity: 0 !important; }
     /* A page shows a video's first frame, not its player (whose 0:00 is
        drawn in the computer's own font). */
+    /* biome-ignore lint/complexity/noImportantStyles: beats the player's own styles for PDF rendering */
     video::-webkit-media-controls { display: none !important; }
   </style>
   <style>/* __STYLES__ */</style>
