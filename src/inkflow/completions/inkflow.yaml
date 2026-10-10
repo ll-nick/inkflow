@@ -26,10 +26,12 @@ commands:
       --force: Scaffold even into a non-empty directory
       --poster: A conference poster instead of a talk
       --size=: The poster's paper size (a0, a1, a0-landscape, letter)
+      --theme=: The deck's theme (default, paper, stage)
       --pages=: Publish on GitHub Pages or GitLab Pages at every push
       --release: With --pages, also release the slides at every tag v*
     completion:
       flag:
+        theme: ["default", "paper", "stage"]
         pages: ["github", "gitlab"]
       positional:
         - ["$directories"]

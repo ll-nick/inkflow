@@ -10,6 +10,7 @@ from typing import cast
 import click
 
 from inkflow import git_setup, init, publish, sync
+from inkflow.builtin_themes import THEMES
 from inkflow.cli._common import (
     Project,
     deck_option,
@@ -77,6 +78,15 @@ def _sync_layout_previews(target: Path) -> None:
     + "841x1189mm. Implies --poster.",
 )
 @click.option(
+    "--theme",
+    "theme",
+    type=click.Choice(list(THEMES)),
+    default="default",
+    show_default=True,
+    help="The deck's theme: the built-in default, paper (quiet, white) or "
+    + "stage (big bold type, black).",
+)
+@click.option(
     "--pages",
     "pages",
     type=click.Choice(list(publish.HOSTS)),
@@ -97,6 +107,7 @@ def init_cmd(
     force: bool,
     poster: bool,
     size: str | None,
+    theme: str,
     pages: str | None,
     release: bool,
 ) -> None:
@@ -120,6 +131,11 @@ def init_cmd(
     `slides/poster.md`, a chart from `data/results.csv` and a figure and a logo
     placeholder in `figures/`. `inkflow export` prints it as a PDF at its size.
 
+    `--theme paper` (a quiet white document look) or `--theme stage` (big bold
+    type on black, keynote-style) starts the deck on one of the themes inkflow
+    ships instead of the default; it is `Deck(theme=...)` in `deck.py`, so it
+    can change any time.
+
     `--pages github` (or `gitlab`) also writes the CI file publishing the deck
     at every push, and a README.md linking to it (see `setup-pages`);
     `--release` adds a release at every tag `v*`.
@@ -138,16 +154,16 @@ def init_cmd(
             )
     if poster or size is not None:
         try:
-            sheet = init.scaffold_poster(target, size or "a0")
+            sheet = init.scaffold_poster(target, size or "a0", theme)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
         report("Created", "slides/poster.md, figures/, data/results.csv")
         report("Created", f"deck.py (a poster, {sheet.label})")
     else:
-        init.scaffold(target)
+        init.scaffold(target, theme)
         report("Created", "slides/ (title.svg, diagram.svg, guide.md, diagram.md)")
         report("Created", "notes/ (title.md, guide.md, diagram.md)")
-        report("Created", "deck.py")
+        report("Created", "deck.py" if theme == "default" else f"deck.py ({theme})")
     report("Created", "pyproject.toml")
     _sync_layout_previews(target)
     if not no_git:

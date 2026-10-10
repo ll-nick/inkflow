@@ -14,10 +14,43 @@ import { ed, on } from "./state";
 const menu = document.getElementById("context-menu")!;
 const button = document.getElementById("btn-deck")!;
 
+interface LookColours {
+    bg: string;
+    surface: string;
+    heading: string;
+    muted: string;
+    accent: string;
+}
+
 interface Look {
     id: string;
     label: string;
     description: string;
+    preview?: LookColours | null;
+}
+
+// A look's thumbnail: a tiny slide in its theme's colours (a title, two
+// lines of text, a card and an accent), portrait for a poster.
+function lookThumb(look: Look): HTMLElement | null {
+    const c = look.preview;
+    if (!c) return null;
+    const bar = (cls: string, colour: string) => {
+        const el = h("span", { class: cls });
+        el.style.background = colour;
+        return el;
+    };
+    const thumb = h(
+        "span",
+        { class: `look-thumb${look.id === "poster" ? " portrait" : ""}` },
+        bar("look-thumb-title", c.heading),
+        bar("look-thumb-line", c.muted),
+        bar("look-thumb-line short", c.muted),
+        bar("look-thumb-card", c.surface),
+        bar("look-thumb-accent", c.accent),
+    );
+    thumb.style.background = c.bg;
+    thumb.style.borderColor = c.surface;
+    return thumb;
 }
 
 interface DeckInfo {
@@ -192,6 +225,7 @@ function newDeckDialog(data: DeckInfo): void {
                 "label",
                 { class: "look" },
                 radio,
+                lookThumb(t),
                 h(
                     "span",
                     { class: "look-text" },
@@ -443,7 +477,7 @@ export async function showStart(): Promise<void> {
                 // picker since counts.
                 action(
                     "New deck…",
-                    "Start from one of five looks",
+                    "Start from one of seven looks",
                     async () => {
                         const fresh = await info();
                         if (fresh) newDeckDialog(fresh);

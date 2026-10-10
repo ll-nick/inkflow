@@ -1,5 +1,6 @@
 from inkflow import animations, transitions
 from inkflow.animations import Cue
+from inkflow.builtin_themes import Paper, Stage
 from inkflow.enums import (
     Align,
     AnimationKind,
@@ -51,8 +52,10 @@ __all__ = [
     "Overlay",
     "PageSize",
     "Palette",
+    "Paper",
     "Section",
     "Slide",
+    "Stage",
     "TextBox",
     "Theme",
     "Transition",

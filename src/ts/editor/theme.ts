@@ -1,8 +1,8 @@
 // The Theme dialog: the deck's colours, fonts, base font size and colour mode.
 //
 // Colours and fonts are the active theme's tokens; a change is written as an
-// override in the project's styles.css (inkflow/editor/themeedit.py), the mode
-// and font size as Deck(...) arguments. Colours preview live while the picker is
+// override in the project's styles.css (inkflow/editor/themeedit.py), the
+// theme (one inkflow ships), mode and font size as Deck(...) arguments. Colours preview live while the picker is
 // dragged; the rebuild then restyles every open window (presenter included).
 
 import { openDialog } from "./dialog";
@@ -12,6 +12,10 @@ import { ed, on } from "./state";
 
 interface ThemeInfo {
     name: string;
+    /** The shipped theme the deck is on (`default`, `paper`, `stage`), or
+     * null for a theme of its own. */
+    theme: string | null;
+    themes: { id: string; label: string }[];
     mode: string;
     deckMode: string | null;
     themeMode: string;
@@ -207,6 +211,23 @@ function render(): void {
     if (!content || !info) return;
     const t = info;
     clear(content);
+    // Which theme: the ones inkflow ships, or (shown, not offered) the
+    // deck's own class. Changing it rewrites Deck(theme=...) in deck.py.
+    const theme = h("select", {});
+    for (const { id, label } of t.themes) {
+        theme.append(h("option", { value: id }, label));
+    }
+    if (t.theme === null) {
+        theme.append(
+            h("option", { value: "", disabled: true }, `${t.name} (deck.py)`),
+        );
+    }
+    theme.value = t.theme ?? "";
+    theme.disabled = !ed.model?.deckEditable;
+    theme.addEventListener(
+        "change",
+        () => void save({ theme: theme.value }, "Theme"),
+    );
     const mode = h("select", {});
     for (const [v, l] of [
         ["", `Theme default (${t.themeMode})`],
@@ -242,6 +263,7 @@ function render(): void {
         h(
             "div",
             { class: "theme-top" },
+            h("label", {}, h("span", {}, "Theme"), theme),
             h("label", {}, h("span", {}, "Colour mode"), mode),
             h("label", {}, h("span", {}, "Base font size (px)"), size),
         ),

@@ -15026,6 +15026,27 @@ ${UNDO_NOTICE}` : question)) {
   // src/ts/editor/decks.ts
   var menu4 = document.getElementById("context-menu");
   var button2 = document.getElementById("btn-deck");
+  function lookThumb(look) {
+    const c2 = look.preview;
+    if (!c2) return null;
+    const bar = (cls, colour) => {
+      const el2 = h("span", { class: cls });
+      el2.style.background = colour;
+      return el2;
+    };
+    const thumb2 = h(
+      "span",
+      { class: `look-thumb${look.id === "poster" ? " portrait" : ""}` },
+      bar("look-thumb-title", c2.heading),
+      bar("look-thumb-line", c2.muted),
+      bar("look-thumb-line short", c2.muted),
+      bar("look-thumb-card", c2.surface),
+      bar("look-thumb-accent", c2.accent)
+    );
+    thumb2.style.background = c2.bg;
+    thumb2.style.borderColor = c2.surface;
+    return thumb2;
+  }
   function baseName2(path) {
     return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? path;
   }
@@ -15158,6 +15179,7 @@ Decks: new, open, recent` : "Decks";
           "label",
           { class: "look" },
           radio,
+          lookThumb(t2),
           h(
             "span",
             { class: "look-text" },
@@ -15383,7 +15405,7 @@ Decks: new, open, recent` : "Decks";
           // picker since counts.
           action(
             "New deck\u2026",
-            "Start from one of five looks",
+            "Start from one of seven looks",
             async () => {
               const fresh = await info2();
               if (fresh) newDeckDialog(fresh);
@@ -18096,6 +18118,21 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
     if (!content || !info3) return;
     const t2 = info3;
     clear(content);
+    const theme = h("select", {});
+    for (const { id, label: label4 } of t2.themes) {
+      theme.append(h("option", { value: id }, label4));
+    }
+    if (t2.theme === null) {
+      theme.append(
+        h("option", { value: "", disabled: true }, `${t2.name} (deck.py)`)
+      );
+    }
+    theme.value = t2.theme ?? "";
+    theme.disabled = !ed.model?.deckEditable;
+    theme.addEventListener(
+      "change",
+      () => void save3({ theme: theme.value }, "Theme")
+    );
     const mode2 = h("select", {});
     for (const [v2, l2] of [
       ["", `Theme default (${t2.themeMode})`],
@@ -18130,6 +18167,7 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
       h(
         "div",
         { class: "theme-top" },
+        h("label", {}, h("span", {}, "Theme"), theme),
         h("label", {}, h("span", {}, "Colour mode"), mode2),
         h("label", {}, h("span", {}, "Base font size (px)"), size4)
       ),

@@ -1,0 +1,255 @@
+/* Stage: the big-type keynote look.
+ *
+ * Loaded only for decks on Stage, after the built-in layouts' styling
+ * (theme/styles.css), so these rules restyle the built-in layouts without
+ * touching the default theme. The colours are the theme's tokens
+ * (builtin_themes/__init__.py); this file holds what tokens cannot say:
+ * heavy, tight headings, centred title, section and end slides, soft cards
+ * and no colour bars. Decorative shapes of a built-in layout are matched by
+ * their exact geometry, so a shape drawn on a slide is never caught by these
+ * rules. */
+
+/* Text ---------------------------------------------------------------------- */
+
+.inkflow-content :is(h1, h2) {
+    letter-spacing: -0.025em;
+}
+.inkflow-content h3 {
+    letter-spacing: -0.01em;
+}
+.inkflow-content strong {
+    font-weight: 700;
+    color: var(--inkflow-heading);
+}
+.inkflow-content a {
+    text-decoration: none;
+}
+.inkflow-content li::marker {
+    color: var(--inkflow-text-muted);
+}
+.inkflow-content blockquote {
+    border-left: 4px solid var(--inkflow-accent);
+    border-radius: 2px;
+    color: var(--inkflow-text);
+}
+.inkflow-content code {
+    border-radius: 0.3em;
+    padding: 0.08em 0.32em;
+}
+.inkflow-content pre,
+.inkflow-codeblock pre.highlight {
+    border-radius: 18px;
+    padding: 0.9em 1.1em;
+}
+
+/* Tables: soft header band, hairlines between rows, no grid. */
+.inkflow-content table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.inkflow-content th,
+.inkflow-content td {
+    border: none;
+    border-bottom: 1px solid var(--inkflow-border);
+    padding: 0.4em 0.9em;
+}
+.inkflow-content th {
+    background: var(--inkflow-surface);
+    font-weight: 600;
+    border-bottom: none;
+}
+.inkflow-content th:first-child {
+    border-radius: 12px 0 0 12px;
+}
+.inkflow-content th:last-child {
+    border-radius: 0 12px 12px 0;
+}
+.inkflow-content tr:last-child td {
+    border-bottom: none;
+}
+
+/* Slide titles: big, bold, tight ------------------------------------------- */
+
+.layout-base #zone-title .inkflow-content h1 {
+    color: var(--inkflow-heading);
+}
+/* full-media's title sits on a photo under a dark fade: keep it white. */
+.layout-full-media #zone-title .inkflow-content :is(h1, h2, p) {
+    color: #fff;
+}
+:is(.layout-title, .layout-media-left, .layout-media-right) #zone-title {
+    --inkflow-valign: center;
+}
+:is(.layout-title, .layout-media-left, .layout-media-right)
+    #zone-title
+    .inkflow-content
+    :is(h1, h2, p) {
+    font-size: 1.8em;
+    font-weight: 700;
+    line-height: 1.05;
+    margin: 0;
+}
+
+/* Slide numbers: small and grey, the number alone. */
+.layout-numbered #zone-slide-number {
+    fill: var(--inkflow-text-muted);
+    font-size: 24px;
+    font-weight: 500;
+    /* flush with the content's right edge (x = 1840) */
+    transform: translateX(28px);
+}
+.layout-numbered :is(#zone-slide-total, #zone-slide-total + text) {
+    display: none;
+}
+/* Under media-right's picture the number is covered: leave it out. */
+.layout-media-right:has(#zone-media) #zone-slide-number {
+    display: none;
+}
+
+/* Cover: centred, heavy ---------------------------------------------------- */
+
+.layout-cover :is(#zone-title, #zone-subtitle) {
+    --inkflow-align: center;
+}
+.layout-cover #zone-title .inkflow-content h1 {
+    font-size: 2.7em;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.12;
+    margin: 0;
+}
+.layout-cover #zone-subtitle .inkflow-content,
+.layout-cover #zone-subtitle .inkflow-content h2 {
+    font-style: normal;
+    font-weight: 500;
+    font-size: 1.2em;
+    letter-spacing: -0.01em;
+}
+/* Over a picture: white, with a soft shadow to lift it off any photo. */
+.layout-cover:where(:has(#zone-media))
+    :is(#zone-title, #zone-subtitle)
+    .inkflow-content,
+.layout-cover:where(:has(#zone-media))
+    :is(#zone-title, #zone-subtitle)
+    .inkflow-content
+    :is(h1, h2, p) {
+    color: #fff;
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.45);
+}
+
+/* Section and end: centred, very large, no colour bar ---------------------- */
+
+:is(.layout-section, .layout-end) rect.inkflow-fill-accent[y="0"][height="8"] {
+    display: none;
+}
+:is(.layout-section, .layout-end) #zone-title .inkflow-content h1 {
+    font-size: 3.6em;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    color: var(--inkflow-heading);
+}
+:is(.layout-section, .layout-end) #zone-subtitle .inkflow-wrapper {
+    padding-top: 10px;
+}
+:is(.layout-section, .layout-end) #zone-subtitle .inkflow-content,
+:is(.layout-section, .layout-end) #zone-subtitle .inkflow-content :is(h2, p) {
+    color: var(--inkflow-text-muted);
+    font-size: 1.2em;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* Fact: one huge figure in the accent. */
+.layout-fact rect.inkflow-fill-accent[y="624"][height="3"] {
+    display: none;
+}
+.layout-fact #zone-fact .inkflow-content h1 {
+    font-size: 5.5em;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+}
+.layout-fact #zone-caption .inkflow-content {
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+/* Quote: large and centred, no bar. */
+.layout-quote rect.inkflow-fill-accent[x="100"][width="4"] {
+    display: none;
+}
+.layout-quote :is(#zone-quote, #zone-attribution) {
+    --inkflow-align: center;
+}
+.layout-quote #zone-quote .inkflow-content blockquote {
+    border: none;
+    padding: 0;
+    font-size: 1.7em;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--inkflow-heading);
+}
+.layout-quote #zone-attribution .inkflow-content {
+    font-size: 1em;
+}
+
+/* Agenda: big numbers in the accent, no rule. */
+.layout-agenda rect.inkflow-fill-accent[y="196"][height="4"] {
+    display: none;
+}
+.layout-agenda #zone-content .inkflow-content ol > li {
+    font-weight: 500;
+    margin: 0.5em 0;
+}
+.layout-agenda #zone-content .inkflow-content ol > li::before {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Comparison: bold column heads over a hairline. */
+.layout-comparison rect.inkflow-fill-accent[y="318"][height="3"] {
+    fill: var(--inkflow-border);
+}
+.layout-comparison #zone-left-title .inkflow-content :is(h1, h2, h3, p),
+.layout-comparison #zone-right-title .inkflow-content :is(h1, h2, h3, p) {
+    color: var(--inkflow-heading);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+/* Cards: soft grey, generous radius. */
+.layout-three-cards rect.inkflow-fill-surface[rx="18"] {
+    rx: 28px;
+}
+.layout-three-cards :is(#zone-media-1, #zone-media-2, #zone-media-3) img {
+    border-radius: 28px 28px 0 0;
+}
+.layout-three-cards
+    :is(#zone-card-1, #zone-card-2, #zone-card-3)
+    .inkflow-content
+    :is(h2, h3) {
+    color: var(--inkflow-heading);
+}
+
+/* Poster: bold heads in the accent, no rules ------------------------------- */
+
+:is(.layout-poster-base, .layout-poster-landscape-base)
+    #zone-title
+    .inkflow-content
+    :is(h1, h2, p) {
+    font-size: 3.1em;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+}
+:is(.layout-poster-base, .layout-poster-landscape-base)
+    :is(#zone-col-1, #zone-col-2, #zone-col-3, #zone-col-4)
+    .inkflow-content
+    h2 {
+    border-bottom: none;
+    padding-bottom: 0;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
