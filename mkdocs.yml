@@ -99,6 +99,7 @@ nav:
     - Multi-window sync: presenting/sync.md
     - Export: presenting/export.md
     - Publishing online: presenting/publish.md
+    - A deck that looks the same everywhere: presenting/portable.md
   - Reference:
     - Manifest: reference/manifest.md
     - Themes: reference/theme.md

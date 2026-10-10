@@ -60,6 +60,11 @@ Rename or move a deck's files with `inkflow mv OLD NEW` (`-n` to preview) and a
 slide's own files with `inkflow slide rename-files N NAME`, never by hand: every
 reference to the file is rewritten with it, which a plain `mv` would break.
 
+A deck must look the same on every machine: `inkflow fonts` says where each font
+comes from (`machine`/`generic`/`missing` are not portable); set fonts with
+`inkflow fonts set body|heading|mono FAMILY` (never a generic family first) and
+run `inkflow pack` (fonts, outside files, lock file, git rules) before handing over.
+
 Sections (`Section("Method", slides=[...])` entries in `slides=[...]`) group
 slides by name: `inkflow slide section add NAME --at N`, `section rename`,
 `section move`, `section remove`, and `inkflow slide move N --section NAME`.

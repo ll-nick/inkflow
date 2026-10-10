@@ -192,6 +192,29 @@ With the editor open, the rename is one *Agent: …* step there, undone with
 <kbd>Ctrl</kbd>+<kbd>Z</kbd>. A path built in code in `deck.py` cannot be
 followed: the command warns when `deck.py` still names the old file.
 
+## Fonts and a self-contained deck
+
+A deck should look the same on every machine that clones it. These commands
+show and fix what ties it to this one (see
+[A deck that looks the same everywhere](../presenting/portable.md)):
+
+```bash
+inkflow fonts                    # where each font comes from: project, theme,
+                                 # machine (path), missing, generic
+inkflow fonts --json             # the same, machine-readable
+inkflow fonts bundle             # copy this machine's fonts into fonts/ (+ licences)
+inkflow fonts set body Inter     # the body/heading/mono token, bundled if needed
+inkflow pack --dry-run           # everything pack would change
+inkflow pack                     # fonts, outside files, pyproject + uv.lock,
+                                 # .gitattributes rules; then what remains
+inkflow pack --zip talk.zip      # and a zip of the deck's source tree
+```
+
+`fonts bundle`, `fonts set` and `pack` go through the editor when it is open:
+each is one *Agent: …* step there, undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+`inkflow verify` warns about each font from this machine, generic-first
+stacks, files outside the deck, a missing `uv.lock` or line-ending rules.
+
 ## Shapes and arrows
 
 `inkflow shape` makes the change the editor makes for the same click, through
