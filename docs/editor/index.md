@@ -74,13 +74,16 @@ takes back that change while nothing else came after it; then use
 
 The **deck ▾** button next to the logo names the open deck and manages decks:
 
-- **New deck…** asks for a title, a look and a folder:
+- **New deck…** asks for a title, a look (each drawn as a small slide in its
+  colours) and a folder:
     - *This deck's look* keeps the open deck's `deck.py` (theme, overlays, colour
       mode, transitions, its own animation classes) with three starter slides in
       place of its slides, and copies its `styles.css`, `scripts.js`, `layouts/`,
       `overlays/` and `fonts/`, with the files those refer to;
     - *Inkflow default* is what `inkflow init` makes: the built-in theme and three
       starter slides;
+    - *Paper* and *Stage* are the same starter slides on the other two
+      [built-in themes](../built-in-theme/index.md) (`inkflow init --theme`);
     - *Inkflow example* is the same in the look of inkflow's demo deck (the logo
       footer overlay);
     - *Layout showcase* has one slide for each built-in layout, to start from;
@@ -787,8 +790,10 @@ row to:
 
 ## Theme
 
-**Theme** in the toolbar sets the look of the whole deck: every colour of the
-active theme, for dark and for light mode, the body, heading and code fonts, the
+**Theme** in the toolbar sets the look of the whole deck: which of the
+[built-in themes](../built-in-theme/index.md) it is on (Inkflow, Paper or Stage:
+`Deck(theme=...)` in `deck.py`, one undo step; a theme class of the deck's own is
+shown, not offered), every colour of the active theme, for dark and for light mode, the body, heading and code fonts, the
 base font size and whether the deck shows in dark or light mode. Colours preview
 while you drag the picker; the open presenter windows restyle as soon as the change
 is saved. ↺ returns a colour or font to the theme's own.

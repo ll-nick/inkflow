@@ -129,6 +129,9 @@ orange yellow green teal blue purple pink grey`.
 - **Picture**: on a layout with a `media` zone,
   `zones={"media": Image("assets/photo.jpg")}`; in Markdown,
   `![alt](../assets/photo.jpg)` (relative to the `.md`).
+- **Theme**: `Deck(theme=Paper())` (quiet white document look) or
+  `Deck(theme=Stage())` (big bold keynote type), both `from inkflow import`;
+  no `theme=` is the default Catppuccin theme.
 - **Light/dark and colours**: `Deck(mode=ColorMode.LIGHT)` (or `DARK`). Token
   overrides go in `styles.css` between `/* inkflow:theme */` and
   `/* /inkflow:theme */` (add both lines if missing):
