@@ -26,6 +26,7 @@ from inkflow.layout import (
     PreviewLayer,
     PreviewLayers,
     chain_layers,
+    has_preview_style,
     inject_preview_layers,
     resolve_chain,
     resolve_parent_path,
@@ -257,6 +258,19 @@ class PreviewPlan(NamedTuple):
     def is_bare(self) -> bool:
         """True when only the preview style block would be written."""
         return not self.layers.behind and not self.layers.overlays
+
+    def swept(self, path: Path) -> bool:
+        """Whether a whole-deck ``sync`` keeps ``path`` up to date (and so whether
+        ``verify`` may call it stale). A bare slide is left alone: only a style
+        block would be written, which is worth it for a file named explicitly,
+        not for every raw SVG in the deck. Once it carries that block (an
+        explicit sync, the editor's Open ▾) the sweep keeps it current, or a
+        mode or theme change would leave it stale with no way to fix it. An
+        overlay file is always swept, since the block is all it gets until it
+        names a backdrop."""
+        if not self.is_bare or self.is_overlay:
+            return True
+        return has_preview_style(path)
 
 
 def plan_preview(path: Path, ctx: PreviewContext) -> PreviewPlan:

@@ -1,0 +1,554 @@
+/* ── Compare view (compare.ts): two versions of the deck side by side ── */
+
+#compare-view {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    background: var(--ui-canvas);
+    outline: none;
+    --cmp-changed: #f2a516;
+    --cmp-added: #3fbf6f;
+    --cmp-removed: #ef5350;
+    --cmp-moved: #4f8cff;
+}
+
+#compare-view[hidden] {
+    display: none;
+}
+
+#compare-view.busy {
+    cursor: progress;
+}
+
+/* Editing is off while comparing: the tools are greyed out. */
+body.compare-mode #toolbar .tb-group:not(.brand) > .tb-btn[data-tool],
+body.compare-mode #btn-image,
+body.compare-mode #btn-diagram,
+body.compare-mode #btn-video,
+body.compare-mode #btn-chart,
+body.compare-mode #btn-layout,
+body.compare-mode #btn-grid,
+body.compare-mode #btn-find,
+body.compare-mode #step-select,
+body.compare-mode #zoom-in,
+body.compare-mode #zoom-out,
+body.compare-mode #zoom-fit,
+body.compare-mode #zoom-label {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.cmp-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--ui-line);
+    background: var(--ui-panel);
+    font-size: 12px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.cmp-title {
+    font-size: 14px;
+    margin-right: 4px;
+}
+
+.cmp-spacer {
+    flex: 1;
+}
+
+.cmp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 30ch;
+    padding: 3px 9px 3px 4px;
+    border-radius: 999px;
+    background: var(--surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cmp-chip.error {
+    box-shadow: inset 0 0 0 1px var(--cmp-removed);
+}
+
+.cmp-chip-kind {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--overlay);
+    font-size: 10px;
+    font-weight: 700;
+    flex: none;
+}
+
+.cmp-warn {
+    color: var(--cmp-changed);
+}
+
+.cmp-swap {
+    font-size: 15px;
+}
+
+.cmp-counts {
+    color: var(--subtext);
+}
+
+.cmp-deckdiff {
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--cmp-changed) 22%, transparent);
+}
+
+.cmp-only {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--subtext);
+    cursor: pointer;
+}
+
+.cmp-loading {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    color: var(--subtext);
+    font-size: 14px;
+}
+
+.cmp-loading.error {
+    color: var(--red);
+}
+
+.cmp-body {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+}
+
+#compare-view.busy .cmp-body {
+    opacity: 0.6;
+    transition: opacity 0.3s 0.2s;
+}
+
+/* The paired slide list */
+
+.cmp-list {
+    position: relative;
+    overflow-y: auto;
+    padding: 10px 10px 30px;
+    border-right: 1px solid var(--ui-line);
+    background: var(--ui-panel);
+}
+
+.cmp-empty {
+    padding: 30px 10px;
+    text-align: center;
+    color: var(--subtext);
+}
+
+.cmp-row {
+    --cmp-tone: transparent;
+    position: relative;
+    padding: 5px 6px 7px 9px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    border-left: 3px solid var(--cmp-tone);
+}
+
+.cmp-row:hover {
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.cmp-row.active {
+    background: var(--sel-soft);
+    box-shadow: inset 0 0 0 1px var(--sel);
+}
+
+.cmp-row.s-changed {
+    --cmp-tone: var(--cmp-changed);
+}
+.cmp-row.s-added {
+    --cmp-tone: var(--cmp-added);
+}
+.cmp-row.s-removed {
+    --cmp-tone: var(--cmp-removed);
+}
+.cmp-row.s-moved:not(.s-changed) {
+    --cmp-tone: var(--cmp-moved);
+}
+
+.cmp-row-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    margin-bottom: 4px;
+    min-width: 0;
+}
+
+.cmp-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--subtext);
+    white-space: nowrap;
+}
+
+.cmp-id {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cmp-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 12px;
+    color: #111;
+    background: var(--cmp-changed);
+    flex: none;
+}
+.cmp-badge.added {
+    background: var(--cmp-added);
+}
+.cmp-badge.removed {
+    background: var(--cmp-removed);
+    color: #fff;
+}
+.cmp-badge.moved:not(.changed) {
+    background: var(--cmp-moved);
+    color: #fff;
+}
+
+.cmp-row-thumbs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+}
+
+.cmp-row.s-same .cmp-row-thumbs {
+    opacity: 0.7;
+}
+
+.cmp-thumb {
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+    aspect-ratio: var(--deck-ar, 16 / 9);
+}
+
+.cmp-thumb.none,
+.cmp-slide.empty {
+    background: repeating-linear-gradient(
+        -45deg,
+        transparent 0 6px,
+        color-mix(in srgb, var(--overlay) 30%, transparent) 6px 8px
+    );
+    box-shadow: inset 0 0 0 1px var(--ui-line);
+}
+
+.cmp-slide.empty {
+    display: grid;
+    place-items: center;
+    aspect-ratio: var(--deck-ar, 16 / 9);
+    color: var(--subtext);
+    font-size: 12px;
+}
+
+.cmp-thumb.empty {
+    font-size: 9px;
+}
+
+/* The selected pair */
+
+.cmp-main {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.cmp-stagebar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 16px 0;
+    font-size: 12px;
+}
+
+.cmp-modes {
+    display: inline-flex;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--ui-line);
+}
+
+.cmp-modes .seg {
+    border: 0;
+    background: transparent;
+    padding: 4px 11px;
+    cursor: pointer;
+    color: var(--subtext);
+}
+
+.cmp-modes .seg.on {
+    background: var(--sel);
+    color: #fff;
+}
+
+.cmp-legend {
+    color: var(--subtext);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cmp-legend .lg {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border: 2px solid;
+    border-radius: 3px;
+    margin-left: 6px;
+}
+.cmp-legend .lg.changed {
+    border-color: var(--cmp-changed);
+}
+.cmp-legend .lg.added {
+    border-color: var(--cmp-added);
+}
+.cmp-legend .lg.removed {
+    border-color: var(--cmp-removed);
+}
+
+.cmp-stage {
+    display: grid;
+    gap: 16px;
+    padding: 10px 16px;
+}
+
+.cmp-stage.mode-side {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.cmp-stage:not(.mode-side) {
+    grid-template-columns: minmax(0, min(100%, 1100px));
+    justify-content: center;
+}
+
+.cmp-pane-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.cmp-frame {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 0.35);
+    isolation: isolate;
+}
+
+.cmp-frame.stacked {
+    background: #000;
+    touch-action: none;
+}
+
+.mode-slider .cmp-frame.stacked {
+    cursor: ew-resize;
+}
+
+.cmp-frame.stacked .cmp-slide.over {
+    position: absolute;
+    inset: 0;
+}
+
+.mode-diff .cmp-frame.stacked .cmp-slide.over {
+    mix-blend-mode: difference;
+}
+
+.cmp-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 2px solid #fff;
+    box-shadow: 0 0 6px rgb(0 0 0 / 0.6);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.cmp-handle::after {
+    content: "⇔";
+    position: absolute;
+    top: 50%;
+    left: -15px;
+    width: 28px;
+    height: 28px;
+    margin-top: -14px;
+    border-radius: 50%;
+    background: #fff;
+    color: #222;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+}
+
+.cmp-outlines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.cmp-outlines .mark {
+    fill: none;
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+    pointer-events: visibleStroke;
+}
+.cmp-outlines .mark.changed {
+    stroke: var(--cmp-changed);
+    fill: color-mix(in srgb, var(--cmp-changed) 8%, transparent);
+}
+.cmp-outlines .mark.added {
+    stroke: var(--cmp-added);
+    fill: color-mix(in srgb, var(--cmp-added) 8%, transparent);
+}
+.cmp-outlines .mark.removed {
+    stroke: var(--cmp-removed);
+    stroke-dasharray: 8 5;
+}
+
+.cmp-info {
+    padding: 6px 16px 24px;
+    font-size: 12px;
+}
+
+.cmp-info-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ui-line);
+}
+
+.cmp-info h4 {
+    margin: 12px 0 5px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--subtext);
+}
+
+.cmp-files {
+    display: grid;
+    gap: 3px;
+}
+
+.cmp-file {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.cmp-fstat {
+    min-width: 58px;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--cmp-changed);
+}
+.cmp-fstat.added {
+    color: var(--cmp-added);
+}
+.cmp-fstat.removed {
+    color: var(--cmp-removed);
+}
+
+.cmp-notes {
+    white-space: pre-wrap;
+    line-height: 1.55;
+    padding: 8px 10px;
+    border-radius: 5px;
+    background: var(--ui-panel);
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.cmp-notes del {
+    background: color-mix(in srgb, var(--cmp-removed) 30%, transparent);
+    text-decoration: line-through;
+}
+
+.cmp-notes ins {
+    background: color-mix(in srgb, var(--cmp-added) 30%, transparent);
+    text-decoration: none;
+}
+
+.cmp-elcount {
+    margin-top: 8px;
+}
+
+.cmp-picker h3 {
+    margin: 14px 0 6px;
+    font-size: 13px;
+}
+
+.cmp-picker .cmp-commits {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.cmp-picker .btn-row input {
+    flex: 1;
+}
+
+.cmp-outlines .mark.before {
+    fill: none;
+    stroke-dasharray: 6 5;
+    opacity: 0.8;
+}
+
+button.cmp-chip {
+    border: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+button.cmp-chip:hover {
+    box-shadow: inset 0 0 0 1px var(--sel);
+}
+
+.cmp-empty.error {
+    color: var(--red);
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

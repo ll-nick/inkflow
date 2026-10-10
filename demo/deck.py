@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from inkflow import (
+    Chart,
     Deck,
     Direction,
     Image,
@@ -161,6 +162,24 @@ def main() -> Deck:
                     animations.FadeIn("video-section", Trigger.WITH_PREVIOUS),
                 ],
                 notes="notes/media.md",
+            ),
+            # Charts drawn from data: a Markdown fence and a CSV file, series by series.
+            Slide(
+                "two-cols",
+                md="charts.md",
+                zones={
+                    "right": Chart(
+                        "data/sales.csv",
+                        title="Revenue and cost",
+                        labels=True,
+                    )
+                },
+                transition=transitions.Push(direction=Direction.LEFT),
+                animations=[
+                    animations.FadeIn("right-series-revenue"),
+                    animations.FadeIn("right-series-cost"),
+                ],
+                notes="notes/charts.md",
             ),
             # Close. Arrives via the custom Flip transition it then name-checks.
             Slide(

@@ -5,6 +5,9 @@ import subprocess
 from pathlib import Path
 from typing import cast
 
+from inkflow.lfs import available as lfs_available
+from inkflow.lfs import ensure_attributes
+from inkflow.lfs import install as lfs_install
 from inkflow.logging import logger, report
 from inkflow.os_compat import venv_executable
 
@@ -18,9 +21,9 @@ __pycache__/
 venv/
 env/
 
-# Inkflow output
+# Inkflow output (an exported deck; a PDF figure elsewhere is a source)
 /build/
-*.pdf
+/*.pdf
 
 # OS
 .DS_Store
@@ -212,7 +215,26 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
         report("Up to date", "git hooks and SVG diff driver", style="dim")
 
 
-def init_project_git(target: Path, *, verbose: bool = False) -> None:
+def setup_lfs(target: Path, *, lfs: bool, own_repo: bool) -> None:
+    """The deck's Git LFS rules (or its opt-out) in its ``.gitattributes``, and,
+    in a repository inkflow just created, ``git lfs install --local``."""
+    result = ensure_attributes(target / ".gitattributes", lfs)
+    if result != "ok":
+        detail = "Git LFS for videos, images and fonts" if lfs else "git only, no LFS"
+        report(result.capitalize(), f".gitattributes ({detail})")
+    if not lfs:
+        return
+    if not lfs_available():
+        report(
+            "Skipped",
+            "git-lfs is not installed: media stays in git until you install it",
+            style="yellow",
+        )
+    elif own_repo and lfs_install(target):
+        report("Configured", "Git LFS")
+
+
+def init_project_git(target: Path, *, verbose: bool = False, lfs: bool = True) -> None:
     """Bootstrap git for a freshly scaffolded project.
 
     Only takes ownership of a repository it creates itself: when ``target`` is not
@@ -221,6 +243,10 @@ def init_project_git(target: Path, *, verbose: bool = False) -> None:
     repo, it leaves that repo's config untouched (never rewrites ``core.hooksPath``)
     and points the user at ``inkflow setup-git`` instead. A missing ``git`` binary
     is a quiet skip, not an error.
+
+    Either way the deck's ``.gitattributes`` gets its Git LFS rules for videos,
+    images and other media (``lfs=False``: a committed "git only" opt-out
+    instead), and a repository created here gets ``git lfs install --local``.
     """
     if shutil.which("git") is None:
         report("Skipped", "git not found", style="dim")
@@ -229,6 +255,7 @@ def init_project_git(target: Path, *, verbose: bool = False) -> None:
     existing = detect_git_root(target)
     if existing is not None:
         report("Using", f"existing git repo at {existing}")
+        setup_lfs(target, lfs=lfs, own_repo=False)
         report(
             "Skipped",
             "SVG hooks — run `inkflow setup-git` to enable",
@@ -255,3 +282,4 @@ def init_project_git(target: Path, *, verbose: bool = False) -> None:
         report("Created", ".gitignore")
 
     run_git_setup(target, verbose=verbose)
+    setup_lfs(target, lfs=lfs, own_repo=True)

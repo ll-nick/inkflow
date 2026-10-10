@@ -1,0 +1,61 @@
+# Releases the slides at every tag v<version> (git tag v1.0 && git push origin v1.0):
+# a GitHub release with the slides as one self-contained HTML file and a PDF.
+# Made by `inkflow setup-pages github --release`; run it again with --force to update it.
+
+name: Release slides
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # The release files are <name>-<version>-slides.html and .pdf.
+      NAME: ${{ github.event.repository.name }}__NAME_SUFFIX__
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install a PDF converter if the deck has PDF figures
+        run: |
+          if git ls-files -- __PDF_GLOB__ | grep -q .; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q poppler-utils
+          fi
+
+      - name: Build the slides as a single self-contained file
+        run: |
+          __UV_RUN__ inkflow build__DECK_OPT__ --output dist
+
+      # The runner comes with Chrome and Chromium, which inkflow finds. A
+      # throwaway machine printing the deck's own pages can do without
+      # Chromium's sandbox (which some runner images cannot start).
+      - name: Print the slides to PDF
+        run: |
+          __UV_RUN__ inkflow export__DECK_OPT__ --no-sandbox --output dist/slides.pdf
+
+      - name: Name the release files
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cp dist/index.html "$NAME-$VERSION-slides.html"
+          cp dist/slides.pdf "$NAME-$VERSION-slides.pdf"
+
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "$NAME"-*-slides.html \
+            "$NAME"-*-slides.pdf \
+            --generate-notes

@@ -1,8 +1,8 @@
 <svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" inkflow:parent="builtin:numbered" viewBox="0 0 1920 1080" width="1920" height="1080" version="1.1" id="svg1">
   <g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:base__" sodipodi:insensitive="true" inkflow:layout-src="./base" inkflow:layout-hash="0e0184e9"><defs/><rect width="1920" height="1080" class="inkflow-fill-bg"/>
-</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="builtin:numbered" inkflow:layout-hash="6a4a92fb"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
-  <text id="zone-slide-total" x="1831.1567" y="1034.5802" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">99</text>
-  <text id="text1" x="1816.5184" y="1032.2501" class="inkflow-fill-text-muted inkflow-fill-grey" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">/</text>
+</g><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:numbered__" sodipodi:insensitive="true" inkflow:layout-src="builtin:numbered" inkflow:layout-hash="fec6fc73"><defs/><text id="zone-slide-number" x="1812.359" y="1034.4382" class="inkflow-fill-text-muted inkflow-fill-text inkflow-fill-code-text" text-anchor="end" font-size="39.6642px" font-family="sans-serif" style="stroke-width: 1.41658">99</text>
+  <text id="zone-slide-total" x="1831.1567" y="1034.5802" class="inkflow-fill-text-muted" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">99</text>
+  <text id="text1" x="1816.5184" y="1032.2501" class="inkflow-fill-text-muted" font-size="29.6395px" font-family="sans-serif" style="stroke-width: 1.05855">/</text>
 </g><defs id="defs5">
     <marker style="overflow:visible" id="ConcaveTriangle" refX="0" refY="0" orient="auto-start-reverse" markerWidth="1" markerHeight="1" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid">
       <path transform="scale(0.7)" d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z" style="fill:context-stroke;fill-rule:evenodd;stroke:none" id="path7"/>
@@ -45,13 +45,14 @@
 .inkflow-fill-pink { fill: #f5c2e7; }
 .inkflow-stroke-pink { stroke: #f5c2e7; }
 .inkflow-fill-grey { fill: #6c7086; }
-.inkflow-stroke-grey { stroke: #6c7086; }</style></defs>
+.inkflow-stroke-grey { stroke: #6c7086; }
+#zone-title, #zone-video { fill: #808080; fill-opacity: 0.08; stroke: #808080; stroke-opacity: 0.7; stroke-width: 2; stroke-dasharray: 12 8; }</style></defs>
   <g inkscape:groupmode="layer" inkscape:label="zones" id="layer-zones">
     <!-- Text zone: left column, full height -->
     <rect id="zone-title" x="60" y="80" width="800" height="120" style="stroke-width:0.353553"/>
     <!-- Video zone: bottom-right, rounded corners -->
     <path style="fill:none;stroke-width:3.85028;stroke-linecap:round;stroke-miterlimit:3;stroke:#000000;stroke-opacity:1" d="m 920.55881,479.23217 c 6.01628,-25.84173 29.56898,-29.69812 29.56898,-29.69812 0,0 618.14721,-1.35162 876.71661,-0.59242 14.7024,0.0432 32.6723,19.77942 32.6907,30.83263 l -0.676,-406.753736 c 0,0 2.3391,-23.118268 -22.612,-23.118268 0,0 -409.9158,5.779567 -722.0233,5.779567 -138.29758,0 -180.56727,100.997697 -184.8443,206.326377 z" id="zone-image"/>
-    <text xml:space="preserve" style="font-size:24px;line-height:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';text-decoration-color:#000000;writing-mode:lr-tb;direction:ltr;fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round;stroke-miterlimit:3;stroke-opacity:1" x="421.5784" y="1050.1134" id="text6"><tspan id="tspan6"></tspan></text>
+    <text xml:space="preserve" style="font-size:24px;line-height:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';text-decoration-color:#000000;writing-mode:lr-tb;direction:ltr;fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round;stroke-miterlimit:3;stroke-opacity:1" x="421.5784" y="1050.1134" id="text6"><tspan id="tspan6"/></text>
     <g id="g9">
       <g id="g8" transform="rotate(-2.6558387,-813.23881,439.26803)">
         <text xml:space="preserve" style="font-size:31.2403px;line-height:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';text-decoration-color:#000000;writing-mode:lr-tb;direction:ltr;fill:none;stroke:#000000;stroke-width:5.20672;stroke-linecap:round;stroke-miterlimit:3;stroke-opacity:1" x="69.664604" y="420.27765" id="text7"><tspan id="tspan7" x="69.664604" y="420.27765" style="stroke: none; stroke-width: 5.20672" class="inkflow-fill-text inkflow-fill-code-text">Draw a shape in SVG, insert an image deck.py</tspan></text>

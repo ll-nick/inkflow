@@ -174,3 +174,11 @@ class TestRenderMdWithSteps:
     def test_spec_fence_base_step_matches_step_at_entry(self) -> None:
         html, _ = render_md_with_steps("```text {1|2}\na\nb\n```\n", 4)
         assert 'data-base-step="4"' in html
+
+
+def test_math_carries_its_latex() -> None:
+    from inkflow.markdown import html_fragment_to_xml, markdown_to_html
+
+    html = html_fragment_to_xml(markdown_to_html('Inline $a < "b"$\n\n$$\nx^2\n$$\n'))
+    assert 'data-latex="a &lt; &quot;b&quot;"' in html
+    assert 'data-latex="x^2"' in html

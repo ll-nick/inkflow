@@ -22,8 +22,17 @@ commands:
     description: Scaffold a new presentation project.
     flags:
       --no-git: Skip git hook setup
+      --no-lfs: Git only, no Git LFS rules for media
       --force: Scaffold even into a non-empty directory
+      --poster: A conference poster instead of a talk
+      --size=: The poster's paper size (a0, a1, a0-landscape, letter)
+      --theme=: The deck's theme (default, paper, stage)
+      --pages=: Publish on GitHub Pages or GitLab Pages at every push
+      --release: With --pages, also release the slides at every tag v*
     completion:
+      flag:
+        theme: ["default", "paper", "stage"]
+        pages: ["github", "gitlab"]
       positional:
         - ["$directories"]
 
@@ -34,6 +43,655 @@ commands:
       --host=: Bind address
       --port=: HTTP port
       --ws-port=: WebSocket port
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+
+  - name: edit
+    description: Open the visual editor.
+    flags:
+      -d, --deck=: Path to deck.py
+      --host=: Bind address
+      --port=: HTTP port
+      --ws-port=: WebSocket port
+      --no-open: Do not open the editor in a browser on start
+      --start: Open the start page (new deck, open, recent) instead of a deck
+      --quit-when-idle=: Stop once no page has been open this many seconds
+      --compare=: Open the compare view against a revision or deck folder
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+        compare: ["$files"]
+
+  - name: context
+    description: Show what is selected in the visual editor.
+    flags:
+      -d, --deck=: Path to deck.py
+      --json: Print the raw JSON
+      --hook: Prompt-hook mode (quiet when stale, never fails)
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+
+  - name: outline
+    description: Print what is on every slide, in a few lines each.
+    flags:
+      -d, --deck=: Path to deck.py
+      -s, --slide=: One slide (1-based) in detail
+      --json: Print the full structure
+      --boxes: With --slide, every element's box as rendered
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+
+  - name: render
+    description: Render slides to PNG images and report layout problems.
+    flags:
+      -d, --deck=: Path to deck.py
+      -s, --slide=: Slide number (1-based); repeatable
+      --all: Render every slide
+      --step=: Build step to show
+      --sheet: One contact-sheet PNG of the slides
+      --check: Only measure the layout; exit 1 on a problem
+      -o, --output=: PNG file or directory
+      --scale=: Image scale
+      --boxes: Print every element's rendered box (no images unless -o)
+      --no-contrast: Skip the text contrast check
+      --json: Print the result as JSON
+      --chromium=: Path to a Chromium/Chrome binary
+      --no-sandbox: Pass --no-sandbox to Chromium
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+        output: ["$files"]
+        chromium: ["$files"]
+
+  - name: compare
+    description: Show which slides differ between two versions of the deck.
+    flags:
+      -d, --deck=: Path to deck.py
+      --json: Print the comparison as JSON
+      --sheet: Side-by-side images of the slides that differ
+      -o, --output=: PNG file or directory for --sheet
+      --chromium=: Path to a Chromium/Chrome binary
+      --no-sandbox: Pass --no-sandbox to Chromium
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+        output: ["$files"]
+        chromium: ["$files"]
+      positional:
+        - ["$files"]
+        - ["$files"]
+
+  - name: goto
+    description: Show a slide in every open editor.
+    flags:
+      -d, --deck=: Path to deck.py
+      --ws-port=: The server's WebSocket port
+      --host=: Server host
+
+  - name: select
+    description: Select elements by id in every open editor.
+    flags:
+      --slide=: Go to this slide first
+      -d, --deck=: Path to deck.py
+      --ws-port=: The server's WebSocket port
+      --host=: Server host
+
+  - name: slide
+    description: Add, delete, duplicate, move, hide or rename slides; sections.
+    commands:
+      - name: add
+        description: Add a slide with its own drawing, built on a layout.
+        flags:
+          -d, --deck=: Path to deck.py
+          -l, --layout=: Layout to build it on
+          --like=: The same layout as this slide
+          --after=: Insert after this slide (0 = first)
+          --id=: Name for its files, which gives its id
+          --title=: Its title
+          --md=: Its Markdown text (- reads stdin)
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: delete
+        description: Delete slides, with the files only they use.
+        flags:
+          -d, --deck=: Path to deck.py
+          --keep-files: Leave the slide's files in place
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: duplicate
+        description: Copy a slide, with its own files, right after it.
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: move
+        description: Move a slide so it becomes slide number --to, or into --section.
+        flags:
+          --to=: The number it gets
+          --section=: The section it joins
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: hide
+        description: Leave a slide out of the presentation.
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: show
+        description: Put a hidden slide back in the presentation.
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: rename
+        description: Give a slide a new id; its ink and links follow.
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: rename-files
+        description: Rename a slide's own files; references, id, ink and links follow.
+        flags:
+          --keep-id: Keep the slide's current id (written as id=)
+          -n, --dry-run: Print the moves and reference edits; change nothing
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: title
+        description: Set a slide's title (title=).
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: section
+        description: Add, rename, move or remove sections (named groups of slides).
+        commands:
+          - name: add
+            description: Start a section at slide --at.
+            flags:
+              --at=: The slide it starts at
+              -d, --deck=: Path to deck.py
+            completion:
+              flag:
+                deck: ["$files([\".py\"])"]
+
+          - name: rename
+            description: Rename a section.
+            flags:
+              -d, --deck=: Path to deck.py
+            completion:
+              flag:
+                deck: ["$files([\".py\"])"]
+
+          - name: move
+            description: Move a section, with its slides, among the sections.
+            flags:
+              --to=: Its position among the sections
+              --before=: Put it before this section
+              -d, --deck=: Path to deck.py
+            completion:
+              flag:
+                deck: ["$files([\".py\"])"]
+
+          - name: remove
+            description: Remove a section; its slides join the one before it.
+            flags:
+              --with-slides: Delete its slides too
+              --keep-files: With --with-slides, leave their files in place
+              -d, --deck=: Path to deck.py
+            completion:
+              flag:
+                deck: ["$files([\".py\"])"]
+  - name: shape
+    description: Draw on a slide as the visual editor does.
+    commands:
+      - name: add
+        description: Add a rect, ellipse, line, arrow, text, textbox, image or chart
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --at=: Top-left corner (a text's baseline start)
+          --size=: Width and height
+          --id=: Its id (a text box's or chart's - its zone name)
+          --text=: Text - in a rect/ellipse (it becomes a text zone), a text box's Markdown, a text's line(s)
+          --fill=: Theme colour (accent, surface, …), hex or none
+          --stroke=: Outline colour - theme colour, hex or none
+          --stroke-width=: Outline width
+          --rx=: A rect's corner radius
+          --font-size=: A text's size
+          --from=: A line's or arrow's start
+          --to=: A line's or arrow's end
+          --style=: A line's route
+          --arrow=: Arrowheads
+          --src=: An image's file (copied into assets/ from outside the project)
+          --page=: A PDF's page
+          --drawio=: A draw.io diagram drawn into the slide
+          --data=: A chart's data (CSV, TSV, JSON, Markdown table)
+          --chart=: A chart's kind
+          --title=: A chart's title
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+            src: ["$files"]
+            data: ["$files"]
+          positional:
+            - ["rect", "ellipse", "line", "arrow", "text", "textbox", "image", "chart"]
+
+      - name: connect
+        description: Draw an arrow from A to B, attached to both
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --from=: Where on A - top|right|bottom|left or side@fraction (top@0.25)
+          --to=: Where on B
+          --style=: The route
+          --arrow=: Arrowheads
+          --bend=: An elbow's adjustable segment, in slide units
+          --id=: The arrow's id
+          --stroke=: Its colour - theme colour or hex
+          --stroke-width=: Its width
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: sites
+        description: Offer N connection points per side on ID (1 = each side's middle)
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: reroute
+        description: Re-attach arrows to their shapes where the shapes are now
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --all: Every slide (one step each)
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: move
+        description: Move objects; attached arrows follow
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --by=: Move by this much
+          --to=: Move the top-left corner (of them all) here
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: resize
+        description: Resize an object (its box, in slide units); its arrows follow
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --size=: The new width and height
+          --anchor=: What stays put
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: align
+        description: Line objects up - left|center|right|top|middle|bottom
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --to=: Align to the slide, not to each other
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: distribute
+        description: Space three or more objects evenly between the outermost two
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: style
+        description: Colour objects with theme colours or hex
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --fill=: Theme colour (accent, surface, …), hex or none
+          --stroke=: Outline - theme colour, hex or none
+          --stroke-width=: Outline width
+          --opacity=: 0 to 1
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: text
+        description: Set the text of a text, a zone or a shape
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: delete
+        description: Delete objects; a zone's text or media goes with it
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: group
+        description: Group objects side by side in the same layer
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: lock
+        description: Lock objects (the editor will not select them)
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: unlock
+        description: Unlock objects
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: hide
+        description: Hide objects (display:none, in the presentation too)
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: show
+        description: Show hidden objects
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: duplicate
+        description: Copy an object (a zone with its content)
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+          --by=: Offset of the copy
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: ungroup
+        description: Dissolve a group, keeping where its objects are
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: order
+        description: Bring an object to the front or send it back
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: rename
+        description: Give an object a new id; arrows and animations follow
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: link
+        description: Link an object - slide:<id>, a slide number, a URL; none removes it
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: batch
+        description: Run a JSON list of commands as one step
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+          positional:
+            - ["$files([\".json\"])"]
+
+      - name: list
+        description: List the slide's objects, boxes and arrows
+        flags:
+          -d, --deck=: Path to deck.py
+          -s, --slide=: Slide number or id
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+  - name: anim
+    description: List a slide's clicks; add, change, reorder or remove its animations.
+    commands:
+      - name: list
+        description: Print a slide's click timeline.
+        flags:
+          -s, --slide=: The slide (number or id)
+          -d, --deck=: Path to deck.py
+          --json: Print the timeline as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: add
+        description: Animate an element (or a video zone) with an animation type.
+        flags:
+          -s, --slide=: The slide (number or id)
+          -d, --deck=: Path to deck.py
+          --trigger=: click, with, after or at:N
+          --duration=: Milliseconds (400) or 0.4s
+          --delay=: Milliseconds (200) or 0.2s
+          --easing=: A CSS easing
+          --direction=: left, right, up or down
+          --set=: NAME=VALUE for any other field; repeatable
+          --at=: Its place in animations=[...]
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+            trigger: ["click", "with", "after"]
+            direction: ["left", "right", "up", "down"]
+            easing: ["ease", "ease-in", "ease-out", "ease-in-out", "linear"]
+
+      - name: set
+        description: Change an animation's type, target, trigger, timing or fields.
+        flags:
+          -s, --slide=: The slide (number or id)
+          -d, --deck=: Path to deck.py
+          --type=: Another animation type
+          --target=: Another element (or video zone)
+          --trigger=: click, with, after or at:N
+          --duration=: Milliseconds (400) or 0.4s
+          --delay=: Milliseconds (200) or 0.2s
+          --easing=: A CSS easing
+          --direction=: left, right, up or down
+          --set=: NAME=VALUE for any other field; repeatable
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+            trigger: ["click", "with", "after"]
+            direction: ["left", "right", "up", "down"]
+            easing: ["ease", "ease-in", "ease-out", "ease-in-out", "linear"]
+
+      - name: move
+        description: Move an animation to another place in animations=[...].
+        flags:
+          --to=: Its new place (1 = first)
+          -s, --slide=: The slide (number or id)
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: remove
+        description: Remove animations from a slide, in one step.
+        flags:
+          -s, --slide=: The slide (number or id)
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+  - name: find
+    description: Find text on the slides, as the editor's Find does.
+    flags:
+      -d, --deck=: Path to deck.py
+      -r, --regex: TEXT is a regular expression
+      -c, --case: Match case
+      -w, --word: Whole words only
+      -s, --slide=: Only this slide (number or id)
+      --json: Print the matches as JSON
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+
+  - name: replace
+    description: Replace text on the slides, as the editor's Replace All does.
+    flags:
+      -d, --deck=: Path to deck.py
+      -r, --regex: TEXT is a regular expression
+      -c, --case: Match case
+      -w, --word: Whole words only
+      -s, --slide=: Only this slide (number or id)
+      -n, --dry-run: Show what would change; write nothing
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+
+  - name: mv
+    description: Rename or move a project file; every reference to it follows.
+    flags:
+      -d, --deck=: Path to deck.py
+      -n, --dry-run: Print the moves and reference edits; change nothing
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+      positional:
+        - ["$files"]
+        - ["$files"]
+
+  - name: worktree
+    description: Work on the deck in a separate git worktree, on its own branch.
+    commands:
+      - name: add
+        description: A new worktree on branch deck/NAME.
+        flags:
+          --base=: Start from this commit or branch
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: list
+        description: Every worktree of the deck's repository.
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: merge
+        description: Merge a worktree's branch into the deck's branch.
+        flags:
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+      - name: remove
+        description: Remove a worktree (and its merged deck/ branch).
+        flags:
+          --force: Even with uncommitted changes or unmerged commits
+          -d, --deck=: Path to deck.py
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
+  - name: setup-claude
+    description: Install the Claude Code prompt hook and inkflow skill.
+    flags:
+      -d, --deck=: Path to deck.py
+      --command=: Command the prompt hook runs
     completion:
       flag:
         deck: ["$files([\".py\"])"]
@@ -70,8 +728,28 @@ commands:
       positional:
         - ["bash", "zsh", "fish", "carapace"]
 
+  - name: setup-desktop
+    description: Add Inkflow to the desktop's application menu.
+    flags:
+      --remove: Remove the launcher instead
+      --terminal: Run the server in a terminal window
+
   - name: setup-git
     description: Configure git hooks and SVG diff driver.
+
+  - name: setup-pages
+    description: Publish the deck on GitHub Pages or GitLab Pages at every push.
+    flags:
+      -d, --deck=: Path to deck.py
+      --release: Also release the slides (HTML and PDF) at every tag v*
+      --force: Replace workflow files that exist with other contents
+      --readme: Add an 'Open the slides' link to README.md
+      --print: Print the files instead of writing them
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+      positional:
+        - ["github", "gitlab"]
 
   - name: parent
     description: Manage slide layout parents.
@@ -118,11 +796,12 @@ commands:
         - ["$files([\".svg\"])"]
 
   - name: build
-    description: Export a self-contained presentation directory for offline use.
+    description: Export the presentation as one self-contained HTML file.
     flags:
       -d, --deck=: Path to deck.py
       -o, --output=: Output directory
-      --inline-assets: Embed assets as data URIs so the build is one file
+      --assets-folder: Copy images and videos beside index.html instead of inside it
+      --inline-assets: The default now (kept for older scripts)
     completion:
       flag:
         deck: ["$files([\".py\"])"]
@@ -134,10 +813,14 @@ commands:
       -o, --output=: Output PDF path
       --chromium=: Path to chromium/chrome binary
       --no-sandbox: Pass --no-sandbox to Chromium
-      --size=: Override PDF page size, e.g. 1280x720
+      --size=: Page size for every page (a0, a1-landscape, 841x1189mm, 1920x1080)
+      --bleed=: Print the background this far past each edge (3mm)
+      --crop-marks: Mark the corners outside the bleed
     completion:
       flag:
         deck: ["$files([\".py\"])"]
+        size: ["16:9", "4:3", "9:16", "a0", "a1", "a2", "a3", "a4", "a0-landscape", "a1-landscape", "letter"]
+        bleed: ["3mm", "5mm", "0.125in"]
 
   - name: sync
     description: Refresh layout layers and preview styles in slide SVGs.
@@ -180,9 +863,52 @@ commands:
       -d, --deck=: Path to deck.py
       --all: Include hidden slides
       --strict: Treat warnings as errors
+      --no-portable: Skip the deck-wide portability checks
     completion:
       positionalany:
         - "$files([\".svg\"])"
+
+  - name: fonts
+    description: Where each font the deck uses comes from.
+    flags:
+      -d, --deck=: Path to deck.py
+      --json: Print the report as JSON
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+    commands:
+      - name: bundle
+        description: Copy the fonts only this computer has into fonts/.
+        flags:
+          -d, --deck=: Path to deck.py
+          --all-weights: Copy every file of each family
+          -n, --dry-run: Only say what would be copied
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+      - name: set
+        description: Use a font for the deck's body, heading or mono text.
+        flags:
+          -d, --deck=: Path to deck.py
+          --no-bundle: Only set the font, do not copy its files in
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+          positional:
+            - ["body", "heading", "mono"]
+
+  - name: pack
+    description: Make the deck self-contained, so a clone looks the same anywhere.
+    flags:
+      -d, --deck=: Path to deck.py
+      --zip=: Also zip the packed deck's source tree
+      -n, --dry-run: Only say what packing would do
+      --with-pdf-pages: Commit PDF figures' pages as SVG beside each PDF
+      --all-weights: Bundle every weight of each font family
+    completion:
+      flag:
+        deck: ["$files([\".py\"])"]
+        zip: ["$files([\".zip\"])"]
 
   - name: layouts
     description: List available layouts with their zones.

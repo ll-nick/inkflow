@@ -10,6 +10,9 @@ This page takes you from zero to a running presentation in about five minutes.
 - An SVG editor.
   [Inkscape](https://inkscape.org/) is the primary authoring tool,
   but any editor that exports standard SVG works
+- Optional, for [PDF figures](authoring/pdf-figures.md) on slides:
+  `pip install "inkflow[pdf]"` (brings in PyMuPDF, AGPL-3.0), or poppler's
+  `pdftocairo`, MuPDF's `mutool` or Inkscape
 
 ## Run the demo
 
@@ -130,6 +133,13 @@ project out of the box. The hooks set up two things:
   window size) from staged SVGs, so that noise never lands in git history.
 - A diff driver so `git diff` and GitHub show only visual changes for SVGs.
 
+Videos, images, fonts and PDFs go through [Git LFS](https://git-lfs.com): the deck's
+`.gitattributes` lists them, and a new repository gets `git lfs install --local`, so
+the history does not grow by a full copy of every video at each change. For a
+small repository, or a host without LFS, `inkflow init --no-lfs` keeps everything in
+git itself and records that choice in `.gitattributes` (the editor then does not
+warn about media outside LFS).
+
 If you run `inkflow init` inside an *existing* repository, it leaves that repo's
 git configuration untouched and instead points you at `inkflow setup-git`. Skip all
 git steps during scaffolding with `inkflow init --no-git`, or run the hook setup
@@ -142,6 +152,11 @@ inkflow setup-git
 Git won't run hooks automatically on clone — that's an intentional security
 boundary — so commit `.githooks/pre-commit` and `.gitattributes`, and have
 teammates run `inkflow setup-git` once in their own clone to activate it.
+
+To put the deck online at every push, `inkflow init my-talk --pages github` (or
+`gitlab`) also writes the CI file that publishes it with GitHub Pages or GitLab
+Pages; for an existing project, run `inkflow setup-pages`. See
+[Publishing online](presenting/publish.md).
 
 ## Next steps
 

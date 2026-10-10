@@ -1,0 +1,53 @@
+
+# Releases the slides at every tag v<version> (git tag v1.0 && git push origin v1.0):
+# a GitLab release linking the slides as one self-contained HTML file and a PDF,
+# kept for good as the artifacts of release-files.
+release-files:
+  extends: .inkflow
+  stage: build
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  variables:
+    # inkflow export prints the PDF with Chromium.
+    EXTRA_PACKAGES: chromium
+  script:
+    - |
+      __UV_RUN__ inkflow build__DECK_OPT__ --output dist
+      __UV_RUN__ inkflow export__DECK_OPT__ --no-sandbox --output dist/slides.pdf
+      VERSION="${CI_COMMIT_TAG#v}"
+      mkdir -p release
+      cp dist/index.html "release/${CI_PROJECT_NAME}__NAME_SUFFIX__-$VERSION-slides.html"
+      cp dist/slides.pdf "release/${CI_PROJECT_NAME}__NAME_SUFFIX__-$VERSION-slides.pdf"
+      echo "VERSION=$VERSION" >> release.env
+      echo "FILES_JOB_ID=$CI_JOB_ID" >> release.env
+    - uv cache prune --ci
+  artifacts:
+    paths:
+      - release
+    expire_in: never
+    reports:
+      dotenv: release.env
+
+release:
+  stage: deploy
+  # The release keyword needs glab (or the older release-cli) in the image.
+  image: __GLAB_IMAGE__
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  needs:
+    - job: release-files
+      artifacts: true
+  script:
+    - echo "Releasing $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: $CI_COMMIT_TAG
+    description: Slides for $CI_COMMIT_TAG.
+    assets:
+      links:
+        - name: Slides (one HTML file)
+          url: $CI_PROJECT_URL/-/jobs/$FILES_JOB_ID/artifacts/raw/release/${CI_PROJECT_NAME}__NAME_SUFFIX__-$VERSION-slides.html
+          link_type: other
+        - name: Slides (PDF)
+          url: $CI_PROJECT_URL/-/jobs/$FILES_JOB_ID/artifacts/raw/release/${CI_PROJECT_NAME}__NAME_SUFFIX__-$VERSION-slides.pdf
+          link_type: other

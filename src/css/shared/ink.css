@@ -1,0 +1,123 @@
+/* Ink palette (shared/inkpalette.ts), the same in the presenter and the
+   editor; each page places it. Chrome colours come from theme-vars. */
+
+.ink-palette {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    border: 1px solid var(--overlay);
+    box-shadow: 0 6px 24px rgb(0 0 0 / 0.3);
+    color: var(--subtext);
+    font:
+        13px / 1 "Inkflow UI",
+        "Inkflow UI Symbols",
+        system-ui,
+        sans-serif;
+    user-select: none;
+    touch-action: none;
+}
+
+.ink-palette[hidden] {
+    display: none;
+}
+
+.ink-group {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: 0 4px;
+    border-right: 1px solid var(--overlay);
+}
+
+.ink-group:last-child {
+    border-right: none;
+}
+
+.ink-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.ink-btn:hover {
+    background: color-mix(in srgb, var(--overlay) 45%, transparent);
+    color: var(--text);
+}
+
+.ink-btn[aria-pressed="true"],
+.ink-custom.on {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+    color: var(--text);
+}
+
+.ink-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.6);
+}
+
+.ink-dot {
+    display: block;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.ink-dot.highlighter {
+    border-radius: 1px;
+}
+
+/* The native colour input, shrunk to a swatch-sized well. */
+.ink-custom input {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+}
+
+.ink-custom input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.ink-custom input::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.6);
+}
+
+.ink-custom input::-moz-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+
+/* The eraser has no colour or width. */
+.ink-palette.erasing .ink-colours,
+.ink-palette.erasing .ink-sizes {
+    opacity: 0.4;
+}
+
+/* The eraser's reach while it is down (inkpad.ts sizes it). */
+.inkflow-eraser-cursor {
+    fill: rgb(127 127 127 / 0.15);
+    stroke: rgb(127 127 127 / 0.8);
+    pointer-events: none;
+}
+
+.inkflow-live-stroke {
+    pointer-events: none;
+}

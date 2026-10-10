@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" width="900" height="330" font-family="sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4c4f69"/>
+    </marker>
+  </defs>
+  <rect x="10" y="90" width="230" height="150" rx="18" fill="#dce0e8" stroke="#1e66f5" stroke-width="4"/>
+  <text x="125" y="160" text-anchor="middle" font-size="34" font-weight="700" fill="#4c4f69">Collect</text>
+  <text x="125" y="200" text-anchor="middle" font-size="24" fill="#6c6f85">1,200 samples</text>
+  <rect x="335" y="90" width="230" height="150" rx="18" fill="#dce0e8" stroke="#8839ef" stroke-width="4"/>
+  <text x="450" y="160" text-anchor="middle" font-size="34" font-weight="700" fill="#4c4f69">Model</text>
+  <text x="450" y="200" text-anchor="middle" font-size="24" fill="#6c6f85">three variants</text>
+  <rect x="660" y="90" width="230" height="150" rx="18" fill="#dce0e8" stroke="#40a02b" stroke-width="4"/>
+  <text x="775" y="160" text-anchor="middle" font-size="34" font-weight="700" fill="#4c4f69">Evaluate</text>
+  <text x="775" y="200" text-anchor="middle" font-size="24" fill="#6c6f85">held-out set</text>
+  <line x1="248" y1="165" x2="325" y2="165" stroke="#4c4f69" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="573" y1="165" x2="650" y2="165" stroke="#4c4f69" stroke-width="5" marker-end="url(#arrow)"/>
+</svg>

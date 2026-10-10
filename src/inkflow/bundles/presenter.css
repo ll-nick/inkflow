@@ -36,8 +36,10 @@ body {
   background: #000;
   color: var(--text);
   font-family:
-    "JetBrains Mono",
-    "Fira Code",
+    "Inkflow UI Mono",
+    "Inkflow UI",
+    "Inkflow UI Symbols",
+    "Inkflow UI Emoji",
     ui-monospace,
     monospace;
   height: 100vh;
@@ -59,6 +61,7 @@ body {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  touch-action: none;
 }
 #stage {
   display: flex;
@@ -709,6 +712,29 @@ kbd {
   color: var(--bg);
   opacity: 0.75;
 }
+.pk-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk-section {
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--subtext);
+  font-size: 0.72rem;
+}
+#picker-list .pk-section-row .pk-title {
+  font-weight: 600;
+}
+#picker-list [role=option].active .pk-section {
+  color: var(--bg);
+  opacity: 0.75;
+}
 #picker-hint {
   border-top: 1px solid var(--overlay);
   color: var(--subtext);
@@ -880,6 +906,31 @@ kbd {
   gap: 1.75rem;
   width: 100%;
 }
+.overview-section {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0.75rem 0 -0.75rem;
+  padding: 0 0.2rem 0.4rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.16);
+  cursor: pointer;
+}
+.overview-section:first-child {
+  margin-top: 0;
+}
+.overview-section-name {
+  color: #f4f4f6;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.overview-section-count {
+  color: rgb(255 255 255 / 0.55);
+  font-size: 0.72rem;
+}
+.overview-section:hover .overview-section-name {
+  color: var(--accent);
+}
 .overview-cell {
   display: flex;
   flex-direction: column;
@@ -988,6 +1039,19 @@ body.pv-open #pv-resize-handle {
 #pv-strip.timer-paused #pv-elapsed,
 #pv-strip.timer-paused #pv-timer-toggle {
   color: var(--yellow);
+}
+#pv-section {
+  flex-shrink: 0;
+  margin-top: -0.25rem;
+  padding: 0 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--subtext);
+  font-size: 0.85rem;
+}
+#pv-slide-info {
+  white-space: nowrap;
 }
 #pv-slide-info .slide-current {
   color: var(--text);
@@ -1234,6 +1298,132 @@ body.laser-mode:not(.camera-armed) #laser-dot {
 }
 .trail {
   animation: trail-fade 1.5s ease-out forwards;
+}
+
+/* src/css/shared/ink.css */
+.ink-palette {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border: 1px solid var(--overlay);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.3);
+  color: var(--subtext);
+  font:
+    13px / 1 "Inkflow UI",
+    "Inkflow UI Symbols",
+    system-ui,
+    sans-serif;
+  user-select: none;
+  touch-action: none;
+}
+.ink-palette[hidden] {
+  display: none;
+}
+.ink-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 4px;
+  border-right: 1px solid var(--overlay);
+}
+.ink-group:last-child {
+  border-right: none;
+}
+.ink-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ink-btn:hover {
+  background: color-mix(in srgb, var(--overlay) 45%, transparent);
+  color: var(--text);
+}
+.ink-btn[aria-pressed=true],
+.ink-custom.on {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--text);
+}
+.ink-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.6);
+}
+.ink-dot {
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ink-dot.highlighter {
+  border-radius: 1px;
+}
+.ink-custom input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.ink-custom input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.ink-custom input::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.6);
+}
+.ink-custom input::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+.ink-palette.erasing .ink-colours,
+.ink-palette.erasing .ink-sizes {
+  opacity: 0.4;
+}
+.inkflow-eraser-cursor {
+  fill: rgb(127 127 127 / 0.15);
+  stroke: rgb(127 127 127 / 0.8);
+  pointer-events: none;
+}
+.inkflow-live-stroke {
+  pointer-events: none;
+}
+
+/* src/css/presenter/ink.css */
+.ink-palette {
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  max-width: calc(100% - 20px);
+  overflow-x: auto;
+}
+body.ink-mode #stage-wrap {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+#stage .inkflow-ink,
+#stage .inkflow-live-ink {
+  pointer-events: none;
+}
+#btn-ink.active {
+  color: var(--accent);
 }
 
 /* src/css/presenter/zoom.css */

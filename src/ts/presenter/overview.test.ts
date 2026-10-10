@@ -177,3 +177,29 @@ test("closing mid-open aborts cleanly and reverses instead of racing", async () 
     expect(overview.style.opacity).toBe("");
     expect(overviewGrid.innerHTML).toBe("");
 });
+
+test("sections get a heading, and cells keep their slide index", async () => {
+    vi.useFakeTimers();
+    state.slides[1] = {
+        ...state.slides[1],
+        section: { name: "Part", index: 0 },
+    };
+    state.slideIndex = 1;
+    const opened = openOverview();
+    await vi.runAllTimersAsync();
+    await opened;
+    const kids = [...overviewGrid.children].map((el) =>
+        el.classList.contains("overview-section")
+            ? `[${el.textContent}]`
+            : (el as HTMLElement).dataset.index,
+    );
+    expect(kids).toEqual(["0", "[Part1 slide]", "1"]);
+    expect(
+        overviewGrid
+            .querySelector(".overview-cell.active")
+            ?.getAttribute("data-index"),
+    ).toBe("1");
+    const closed = closeOverview();
+    await vi.runAllTimersAsync();
+    await closed;
+});

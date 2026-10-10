@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { formatViewBox, parseViewBox } from "./viewbox";
+import {
+    formatViewBox,
+    getDeckCanvas,
+    parseViewBox,
+    setDeckCanvas,
+} from "./viewbox";
 
 describe("parseViewBox / formatViewBox", () => {
     test("round-trips a plain viewBox string", () => {
@@ -22,5 +27,26 @@ describe("parseViewBox / formatViewBox", () => {
         expect(parseViewBox(null)).toEqual(base);
         expect(parseViewBox("nope")).toEqual(base);
         expect(parseViewBox("0 0 -5 0")).toEqual(base);
+    });
+});
+
+describe("the deck canvas", () => {
+    test("is the fallback once the deck's size is known", () => {
+        expect(getDeckCanvas()).toEqual({ w: 1920, h: 1080 });
+        setDeckCanvas(3179, 4494);
+        try {
+            expect(parseViewBox(null)).toEqual({
+                x: 0,
+                y: 0,
+                w: 3179,
+                h: 4494,
+            });
+            // A slide's own viewBox still wins.
+            expect(parseViewBox("0 0 1920 1080").w).toBe(1920);
+            setDeckCanvas(0, 10); // ignored
+            expect(getDeckCanvas()).toEqual({ w: 3179, h: 4494 });
+        } finally {
+            setDeckCanvas(1920, 1080);
+        }
     });
 });

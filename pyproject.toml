@@ -21,6 +21,7 @@ dependencies = [
   "click>=8.0",
   "fonttools>=4.63.0",
   "latex2mathml>=3.81.0",
+  "libcst>=1.9.0",
   "lxml>=5.0",
   "markdown-it-py>=3.0",
   "mdit-py-plugins>=0.6.1",
@@ -31,6 +32,11 @@ dependencies = [
   "watchfiles>=0.21",
   "websockets>=12.0",
 ]
+
+[project.optional-dependencies]
+# PDF figures without system tools. PyMuPDF is AGPL-3.0 (or commercial, by
+# Artifex): optional, so inkflow itself stays MIT (see inkflow/pdf.py).
+pdf = ["pymupdf>=1.24"]
 
 [project.urls]
 Homepage = "https://ll-nick.github.io/inkflow"
@@ -64,12 +70,14 @@ fonttools = "fontTools"
 
 [tool.deptry.per_rule_ignores]
 # brotli is never imported directly; fontTools' WOFF2 encoder picks it up at runtime.
-DEP002 = ["brotli"]
+# pymupdf (the optional `pdf` extra) is imported by name in inkflow/pdf.py, so the
+# type checker works without it installed.
+DEP002 = ["brotli", "pymupdf"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inkflow"]
 artifacts = ["src/inkflow/theme/**", "src/inkflow/templates/**"]
-exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**"]
+exclude = ["src/inkflow/theme/**/__pycache__/**"]
 
 [tool.pyright]
 reportUnusedCallResult = "none"

@@ -1,3 +1,5 @@
+import type { SectionRef } from "./sections";
+
 // Every field is always emitted by the Python side (pipeline.py process_deck),
 // so all are required here. Consumers that still guard with `|| ""` are being
 // defensive, not handling a real absent case.
@@ -13,13 +15,18 @@ export interface SlideData {
     title: string;
     notes: string;
     editableFiles: EditableFile[];
+    // The Section(...) the slide is in (absent before the first section).
+    section?: SectionRef;
 }
 
 // Whether the server has a configured edit command for each file kind (env vars
-// INKFLOW_EDIT_CMD_SVG / INKFLOW_EDIT_CMD_MD), baked in at page load — see edit.ts.
+// INKFLOW_EDIT_CMD, _SVG, _<EXT>, _IMAGE / _TEXT / _VIDEO), baked in at page
+// load — see edit.ts.
 export interface EditCommandsConfig {
     default: boolean;
     svg: boolean;
+    // Extensions (lower-case, no dot) a command is configured for.
+    suffixes?: string[];
 }
 
 // Per-client position-sync mode. Never sent to the server: it only decides,
@@ -67,12 +74,46 @@ export type SyncPosition = Omit<NavMessage, "type">;
 // red for an error), so client and server never invent two severity dialects.
 export type NotifyStyle = "green" | "yellow" | "red";
 
+// Ink drawn for the talk only, relayed between the windows of one
+// presentation like the position (presenter/ink.ts). The server forwards it
+// untouched; strokes are referred to by the slide's id, which survives a
+// rebuild. Fields from another window are `unknown` until checked.
+export type InkMessage =
+    // A stroke still being drawn: its style and the samples from `from` on.
+    | {
+          type: "ink";
+          op: "draw";
+          slide: string;
+          stroke: unknown;
+          from: number;
+          points: unknown;
+      }
+    | { type: "ink"; op: "abandon"; slide: string; id: unknown }
+    // Finished strokes (a stroke ending, or ones an undo puts back).
+    | { type: "ink"; op: "add"; slide: string; strokes: unknown[] }
+    | { type: "ink"; op: "erase"; slide: string; ids: unknown[] }
+    // A window that just connected asks; the others answer with "state".
+    | { type: "ink"; op: "request" }
+    | { type: "ink"; op: "state"; slides: Record<string, unknown> };
+
 export type WsMessage =
+    | InkMessage
+    | {
+          type: "edit-result";
+          id: unknown;
+          ok: boolean;
+          error?: string;
+          [key: string]: unknown;
+      }
     | {
           type: "update";
           slides: SlideData[];
           transitions: TransitionData[];
           logs: LogEntry[];
+          // Sent only when they changed (a theme edit): the deck's stylesheet
+          // and its colour mode ("" dark, "light").
+          styles?: string;
+          mode?: string;
       }
     | { type: "error"; message: string }
     | { type: "notify"; message: string; style: NotifyStyle }

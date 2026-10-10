@@ -1,4 +1,5 @@
 import { buildStepRing } from "../shared/ring";
+import { sectionPosition } from "../shared/sections";
 import { applyStepInstant } from "../shared/step";
 import { parseViewBox } from "../shared/viewbox";
 import { renderEditButton } from "./edit";
@@ -14,6 +15,7 @@ const pvElapsed = document.getElementById("pv-elapsed")!;
 const pvTimerToggle = document.getElementById("pv-timer-toggle")!;
 const pvTimerReset = document.getElementById("pv-timer-reset")!;
 const pvSlideInfo = document.getElementById("pv-slide-info")!;
+const pvSection = document.getElementById("pv-section");
 const pvStepRing = document.getElementById("pv-step-ring")!;
 const pvNextInner = document.getElementById("pv-next-inner")!;
 const pvNotes = document.getElementById("pv-notes")!;
@@ -77,6 +79,15 @@ export function updatePvInfo(): void {
     const total = state.slides.length;
     pvSlideInfo.innerHTML = `<span class="slide-current">${total ? state.slideIndex + 1 : "–"}</span> / ${total || "–"}`;
     pvStepRing.innerHTML = buildStepRing(state.step, maxStep());
+    if (pvSection) {
+        // The section being presented, and how far into it.
+        const at = sectionPosition(state.slides, state.slideIndex);
+        pvSection.hidden = !at;
+        pvSection.textContent = at ? `§ ${at.name} · ${at.at}/${at.of}` : "";
+        pvSection.title = at
+            ? `Section “${at.name}”: slide ${at.at} of ${at.of}`
+            : "";
+    }
 }
 
 function _scalePvNext(): void {

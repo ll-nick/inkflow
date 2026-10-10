@@ -7,6 +7,7 @@ All are imported from the top-level `inkflow` package:
 from inkflow import (
     Align,
     AnimationKind,
+    ChartKind,
     ColorMode,
     Direction,
     Easing,
@@ -79,6 +80,12 @@ value-object shape: presets (`Trigger.ON_CLICK`, `Trigger.WITH_PREVIOUS`,
         attributes: true
 
 ::: inkflow.enums.ColorMode
+    options:
+      docstring_section_style: spacy
+      summary:
+        attributes: true
+
+::: inkflow.enums.ChartKind
     options:
       docstring_section_style: spacy
       summary:

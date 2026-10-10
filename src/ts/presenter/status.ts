@@ -1,4 +1,5 @@
 import { buildStepRing } from "../shared/ring";
+import { sectionPosition } from "../shared/sections";
 import {
     appliedStep,
     applyCodeHighlights,
@@ -196,6 +197,9 @@ export function readURL(): boolean {
 
 export function updateStatus(): void {
     const infoHtml = `<span class="slide-current">${state.slideIndex + 1}</span> / ${state.slides.length}`;
+    // The section, as a hover hint on the slide counter.
+    const at = sectionPosition(state.slides, state.slideIndex);
+    slideInfo.title = at ? `${at.name}: ${at.at} of ${at.of}` : "";
     const ringHtml = buildStepRing(state.step, maxStep());
     slideInfo.innerHTML = infoHtml;
     stepInfo.innerHTML = ringHtml;

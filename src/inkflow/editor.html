@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="__DATA_THEME__">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>__TITLE__</title>
+  <link rel="icon" type="image/svg+xml" href="__FAVICON__">
+  <style id="deck-styles">/* __STYLES__ */</style>
+  <style>/* __CSS__ */</style>
+</head>
+<body data-tool="select">
+  <header id="toolbar">
+    <div class="tb-group brand"><span class="logo">ink<b>flow</b></span><button type="button" class="tb-btn text deck-btn" id="btn-deck" title="Decks: new, open, recent">deck ▾</button></div>
+    <div class="tb-group">
+      <button type="button" class="tb-btn" id="btn-undo" title="Undo (Ctrl+Z)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h7a3.5 3.5 0 0 1 0 7H8"/><path d="M6.5 4.5 4 7l2.5 2.5"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7H5a3.5 3.5 0 0 0 0 7h3"/><path d="M9.5 4.5 12 7 9.5 9.5"/></svg></button>
+    </div>
+    <div class="tb-group">
+      <button type="button" class="tb-btn" data-tool="select" title="Select (V)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 2l9 5-4 1.2L6.5 12z"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="text" title="Text (T)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3.5h10M8 3.5V13M6 13h4"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="rect" title="Rectangle (R)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="4" width="11" height="8" rx="1.2"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="ellipse" title="Ellipse (O)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="8" rx="5.5" ry="4.2"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="line" title="Line (L)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13 13 3"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="arrow" title="Arrow (A)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13 13 3"/><path d="M7.5 3H13v5.5"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="elbow" title="Elbow arrow (E)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13H8V4h5"/><path d="M10.5 1.8 13 4l-2.5 2.2"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="curve" title="Curved arrow (C)"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13C3 6 9 10 13 4"/><path d="M9.5 3.6 13 4l-.4 3.5"/></svg></button>
+      <button type="button" class="tb-btn" data-tool="pen" title="Pen (P): draw ink on the slide"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5 12 5l-6 6-3 .8.8-3Z"/><path d="M2 14.5c2-1.2 3.5-.2 5 .2s3 .2 4.5-1 2.5-.8 3 0"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-image" title="Image (I) — or drop / paste one"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.2"/><circle cx="5.8" cy="6.5" r="1.2"/><path d="m2.5 12 4-4 3 3 2-2 2.5 2.5"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-diagram" title="New draw.io diagram"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="2" width="5" height="3.5" rx=".8"/><rect x="9.5" y="10.5" width="5" height="3.5" rx=".8"/><path d="M4 5.5v6.75h5.5"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-video" title="Video (Shift+I) — or drop one"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.2"/><path d="M6.5 6v4l3.5-2z" fill="currentColor"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-chart" title="Chart from data"><svg aria-hidden="true" viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2.5v11h12"/><path d="M5 11V8M8 11V5M11 11V7"/></svg></button>
+    </div>
+    <div class="tb-group">
+      <button type="button" class="tb-btn" id="zoom-out" title="Zoom out (−)">−</button>
+      <button type="button" class="tb-btn zoom-label" id="zoom-label" title="Fit (0)">100%</button>
+      <button type="button" class="tb-btn" id="zoom-in" title="Zoom in (+)">+</button>
+      <button type="button" class="tb-btn" id="zoom-fit" title="Fit to window (0)"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
+    </div>
+    <div class="tb-group">
+      <select id="step-select" title="Preview a build step (editing is paused while previewing)"></select>
+      <button type="button" class="tb-btn text" id="btn-layout" title="Edit the shared layouts this slide is built on">Edit layout</button>
+      <button type="button" class="tb-btn" id="btn-grid" title="All slides as a grid (G)"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-find" title="Find and replace (Ctrl+F)"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg></button>
+      <button type="button" class="tb-btn text" id="btn-theme-panel" title="Theme: the deck's colours, fonts and size">Theme</button>
+    </div>
+    <span class="tb-spacer"></span>
+    <div class="tb-group">
+      <span id="conn" title="Connection to the inkflow server"></span>
+      <button type="button" class="tb-btn text git-btn" id="btn-git" title="Version control (git)" hidden><svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="4.5" cy="3.5" r="1.6"/><circle cx="4.5" cy="12.5" r="1.6"/><circle cx="11.5" cy="5.5" r="1.6"/><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2 3-5.4 4.3"/></svg><span class="git-label"></span><span class="git-badge" hidden></span></button>
+      <button type="button" class="tb-btn" id="btn-theme" title="Dark / light"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg></button>
+      <button type="button" class="tb-btn" id="btn-fullscreen" title="Full screen (F)"><svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5V2h3.5M10.5 2H14v3.5M14 10.5V14h-3.5M5.5 14H2v-3.5"/></svg></button>
+      <button type="button" class="tb-btn text" id="btn-export" title="Export as a web page, a single HTML file or a PDF">Export</button>
+      <button type="button" class="tb-btn present" id="btn-present" title="Present from this slide (Ctrl+Enter)"><svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M5 3.2 12.5 8 5 12.8Z"/></svg> Present</button>
+    </div>
+  </header>
+  <div id="workspace">
+    <!-- The canvas comes first in the document so its ids win url(#…) lookups
+         over the identical ids inside the slide thumbnails. -->
+    <main id="canvas">
+      <div id="paper">
+        <div id="slide-host"></div>
+        <svg id="overlay" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </main>
+    <section id="notes">
+      <div class="notes-head"><span>Speaker notes</span><span id="notes-file"></span></div>
+      <textarea id="notes-input" placeholder="Click to add speaker notes (Markdown)"></textarea>
+      <div id="zone-dock"></div>
+    </section>
+    <section id="grid-view" hidden tabindex="-1" aria-label="All slides">
+      <div class="grid-head">
+        <span>All slides · double-click to open, drag to reorder</span>
+        <label>Size <input type="range" id="grid-size" min="160" max="480" step="20"></label>
+        <button type="button" class="pbtn" id="grid-close" title="Back to the slide (Esc)">Close</button>
+      </div>
+      <div id="grid-list"></div>
+    </section>
+    <section id="compare-view" hidden tabindex="-1" aria-label="Compare two versions"></section>
+    <div id="find-panel" hidden></div>
+    <aside id="sorter">
+      <div id="sorter-list"></div>
+      <button type="button" id="sorter-add" title="New slide: pick a layout (Ctrl+Shift+M; Ctrl+M repeats this slide's layout)">+ New slide</button>
+    </aside>
+    <aside id="props">
+      <div id="panel-tabs" role="tablist">
+        <button type="button" role="tab" data-tab="props" class="on">Properties</button>
+        <button type="button" role="tab" data-tab="objects">Objects</button>
+      </div>
+      <div id="props-body"></div>
+      <div id="objects" hidden></div>
+    </aside>
+  </div>
+  <div id="text-layer"></div>
+  <div id="context-menu" role="menu"></div>
+  <div id="gallery"></div>
+  <div id="dialog"></div>
+  <div id="toast" role="status"></div>
+  <pre id="build-error"></pre>
+  <div id="offline-banner">Reconnecting to the inkflow server…</div>
+  <script>/* __JS__ */</script>
+</body>
+</html>

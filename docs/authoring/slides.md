@@ -31,6 +31,11 @@ You can also write a full path, or point anywhere else.
 That is a complete slide.
 The SVG is loaded, stripped of editor metadata, and served.
 
+A slide's size is its SVG's `viewBox`. The deck's own size,
+`Deck(size="4:3")`, `"9:16"`, `"a0"` for a poster, is the canvas new slides are
+drawn on and the page the PDF prints at; without one, new slides are 16:9
+(1920 x 1080). See [Posters and page sizes](posters.md).
+
 ## Element IDs
 
 The one convention a slide must follow:
@@ -93,6 +98,7 @@ Slide(
 | `str` | Rendered as inline Markdown |
 | `TextBox` | Text with explicit `align`, `valign` and `padding` |
 | `Image` / `Video` | Media, fitted and cropped to the zone |
+| `Chart` | A chart plotted from a data file, drawn at the zone's size (see [Charts](charts.md)) |
 
 A zone the slide never fills is removed from the output rather than left empty.
 
@@ -124,6 +130,11 @@ Slide(
 
 Both share the same placement fields:
 `fit`, `align`, `x`, `y`, and `alt_src` (a different file for the other color mode).
+An `Image` can be a page of a PDF, `Image("figures/plot.pdf", page=2)`:
+see [PDF figures](pdf-figures.md). `background="paper"` paints white behind a
+picture whose own background is transparent (a figure made for paper, a plot,
+a transparent PNG), so it stays legible on a dark deck; `"surface"`, a theme
+colour name or `#rrggbb` paint other colours.
 The [manifest reference](../reference/manifest.md#inkflow.manifest.Image) lists them all.
 
 ### Video playback
@@ -209,6 +220,49 @@ Slide("diagram", extra_style="styles/diagram.css")  # a path, relative to deck.p
 
 The same rule holds for `Deck(style=...)`, `Slide(md=...)` and `Slide(notes=...)`:
 a bare `str` is a path, `Inline(...)` is the content itself.
+
+## Sections
+
+Long decks read better in named parts, like PowerPoint's sections. Wrap the
+slides of each part in a `Section` inside `slides=[...]`:
+
+```python
+from inkflow import Deck, Section, Slide
+
+
+def main() -> Deck:
+    return Deck(
+        slides=[
+            Slide("title"),
+            Section(
+                "Method",
+                slides=[
+                    Slide("content", md="setup"),
+                    Slide("content", md="data"),
+                ],
+            ),
+            Section("Results", slides=[Slide("plots.svg")]),
+        ],
+    )
+```
+
+A section changes nothing on the slides themselves: the deck still runs from
+the first slide to the last. The name groups the slide list and the grid view
+in the [editor](../editor/index.md#sections), heads its slides in the
+presenter's [overview](../presenting/index.md#moving-around) and picker, and
+shows in the [presenter panel](../presenting/presenter-panel.md#layout).
+
+- Slides written before the first section belong to none; after it, every
+  slide goes in a section (a bare `Slide` after one is an error).
+- A section may be empty, and two may share a name.
+- Hidden slides keep their section.
+- In Python, `deck.slides` is still the flat list of every slide;
+  `deck.sections` lists the `Section`s and `deck.section_ranges()` their slide
+  indices.
+
+The editor and [`inkflow slide section …`](../editor/claude-code.md#changing-the-slide-list)
+add, rename, move and remove sections by rewriting these `Section(...)` entries,
+keeping your comments and formatting.
 
 ## Hiding a slide
 

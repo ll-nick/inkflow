@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import html as html_module
 import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TypeAlias, TypedDict, cast
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 from latex2mathml.converter import convert as _latex_to_mathml
 from lxml import etree
@@ -25,6 +26,8 @@ from pygments.lexers import (
 )
 from pygments.lexers.special import TextLexer as _TextLexer
 from pygments.util import ClassNotFound as _ClassNotFound
+
+from inkflow.svgio import SvgElement
 
 # This module renders Markdown (and raw HTML fragments) to HTML. It owns the
 # markdown-it configuration, code-fence highlighting, and LaTeX math, and knows
@@ -61,7 +64,11 @@ class _MathOpts(TypedDict, total=False):
 
 def _math_to_mathml(content: str, options: _MathOpts) -> str:
     display = "block" if options.get("display_mode") else "inline"
-    return _latex_to_mathml(content, display=display)
+    mathml = _latex_to_mathml(content, display=display)
+    # The LaTeX travels with its rendering: the visual editor edits a formula
+    # in place and writes this back as Markdown.
+    latex = quoteattr(content.strip())
+    return mathml.replace("<math ", f"<math data-latex={latex} ", 1)
 
 
 _md = (
@@ -173,12 +180,31 @@ def _fence_renderer(
     _fence_pos[0] += 1
 
     if entry is not None:
-        return _render_codeblock(token.content, entry.lang, entry.spec, entry.base_step)
-    lang, spec = _parse_fence_info(token.info.strip() if token.info else "")
-    return _render_codeblock(token.content, lang, spec, 0)
+        lang, spec, base_step = entry.lang, entry.spec, entry.base_step
+    else:
+        lang, spec = _parse_fence_info(token.info.strip() if token.info else "")
+        base_step = 0
+    if lang == "chart":
+        return _chart_placeholder(token.content)
+    return _render_codeblock(token.content, lang, spec, base_step)
 
 
 _md.add_render_rule("fence", _fence_renderer)
+
+
+# ── Chart fences ──────────────────────────────────────────────────────────────
+
+CHART_PLACEHOLDER_RE = re.compile(
+    r'<div class="inkflow-chart-fence" data-chart="([^"]*)"></div>'
+)
+"""A ```` ```chart ```` fence as rendered here; group 1 is its escaped body."""
+
+
+def _chart_placeholder(body: str) -> str:
+    """A chart fence stands as a placeholder until ``inkflow.charts`` draws it,
+    where the Markdown file it was written in (its data's base) is known."""
+    escaped = html_module.escape(body, quote=True).replace("\n", "&#10;")
+    return f'<div class="inkflow-chart-fence" data-chart="{escaped}"></div>'
 
 
 def _render_link_open(
@@ -232,6 +258,62 @@ def markdown_to_html(md_str: str) -> str:
     return cast(str, _md.render(md_str))
 
 
+# lxml's HTML parser lowercases every name; inside an inline ``<svg>`` (a drawn
+# chart, an author's own) these are case-sensitive and get their case back.
+_SVG_NAMES = {
+    name.lower(): name
+    for name in (
+        "viewBox",
+        "preserveAspectRatio",
+        "textLength",
+        "lengthAdjust",
+        "gradientUnits",
+        "gradientTransform",
+        "patternUnits",
+        "patternContentUnits",
+        "patternTransform",
+        "clipPathUnits",
+        "maskUnits",
+        "maskContentUnits",
+        "markerUnits",
+        "markerWidth",
+        "markerHeight",
+        "refX",
+        "refY",
+        "startOffset",
+        "spreadMethod",
+        "pathLength",
+        "stdDeviation",
+        "linearGradient",
+        "radialGradient",
+        "clipPath",
+        "foreignObject",
+        "textPath",
+        "feGaussianBlur",
+        "feOffset",
+        "feBlend",
+        "feFlood",
+        "feComposite",
+        "feMerge",
+        "feMergeNode",
+        "feColorMatrix",
+        "feDropShadow",
+    )
+}
+
+
+def _restore_svg_case(root: SvgElement) -> None:
+    for svg in root.iter("svg"):
+        for el in svg.iter():
+            tag = cast("object", el.tag)
+            if not isinstance(tag, str):
+                continue
+            el.tag = _SVG_NAMES.get(tag, tag)
+            for name in [str(n) for n in el.attrib if str(n) in _SVG_NAMES]:
+                value = str(el.attrib.pop(name))
+                el.set(_SVG_NAMES[name], value)
+
+
 def html_fragment_to_xml(html: str) -> str:
     """Normalise a rendered-HTML fragment into well-formed XML markup.
 
@@ -249,6 +331,7 @@ def html_fragment_to_xml(html: str) -> str:
         div = root.find(".//div")
         if div is None:
             return escape(html)
+        _restore_svg_case(div)
         inner = etree.tostring(div, encoding="unicode")[len("<div>") : -len("</div>")]
         etree.fromstring(f"<x>{inner}</x>")  # guarantee well-formed downstream
     except (etree.XMLSyntaxError, ValueError):

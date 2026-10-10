@@ -1,8 +1,13 @@
 // Zoom camera: a presenter-local pan/zoom of the mounted slide's `viewBox`.
-// Ctrl is the camera modifier:
-//   Ctrl + wheel / trackpad pinch  → zoom toward the pointer
+//   Ctrl/⌘ + wheel, trackpad pinch → zoom toward the pointer (smoothly, per
+//                                    frame: shared/gesturepad.ts)
+//   two-finger scroll, wheel       → pan, while zoomed in (else nothing)
+//   two fingers on a touchscreen   → pinch-zoom and pan at once
 //   Ctrl + drag                    → pan
-//   + / - / 0                      → zoom in / out / reset (animated)
+//   + / - / 0, double-click or tap → zoom in / out / reset (animated)
+// A second finger landing soon after the first takes back whatever that
+// finger began (an ink stroke, a laser trail: onTouchCancel), and the
+// gesture ends with no click and no swipe.
 // Purely client-side, never synced (followers keep their own view). Holding Ctrl
 // also suppresses the laser draw, so the two never fight over a drag.
 //
@@ -12,6 +17,8 @@
 // Not the `transitions.Zoom` slide transition; the only shared word is "zoom".
 
 import { cubicBezierEasing } from "../shared/easing";
+import { GesturePad } from "../shared/gesturepad";
+import type { Pt } from "../shared/gestures";
 import { formatViewBox, parseViewBox, type ViewBox } from "../shared/viewbox";
 import {
     isZoomedIn,
@@ -31,7 +38,6 @@ const stageWrap = document.getElementById("stage-wrap");
 const indicator = document.getElementById("zoom-indicator");
 
 const LIMITS: ScaleLimits = { minScale: 1, maxScale: 8 };
-const WHEEL_STEP = 1.0015; // per unit of wheel deltaY
 const KEY_ZOOM_STEP = 1.4; // per +/- press
 const KEY_ANIM_MS = 140;
 const RESET_ANIM_MS = 240;
@@ -212,6 +218,48 @@ export function keyZoom(direction: "in" | "out"): void {
     animateCameraTo(target, KEY_ANIM_MS);
 }
 
+// Zoom by `factor` about client point `from`, then pan so that the slide
+// point under `from` sits under `to` (a pinch's midpoint moving).
+function zoomAbout(factor: number, from: Pt, to: Pt): void {
+    flushPendingNav();
+    cancelAnim();
+    if (!ensureBase() || !camera || !baseViewBox) return;
+    const focus = clientToUser(from.x, from.y);
+    if (!focus) return;
+    camera = zoomAt(camera, baseViewBox, factor, focus, LIMITS);
+    applyCamera();
+    if (from.x === to.x && from.y === to.y) return;
+    const a = clientToUser(from.x, from.y);
+    const b = clientToUser(to.x, to.y);
+    if (!a || !b) return;
+    camera = panBy(camera, baseViewBox, a.ux - b.ux, a.uy - b.uy);
+    applyCamera();
+}
+
+// Pan by screen pixels (a trackpad's two-finger scroll while zoomed in).
+function panPixels(dx: number, dy: number): void {
+    if (!camera || !baseViewBox) return;
+    const inv = currentSvg()?.getScreenCTM()?.inverse();
+    if (!inv) return;
+    const units = Math.hypot(inv.a, inv.b);
+    camera = panBy(camera, baseViewBox, dx * units, dy * units);
+    applyCamera();
+}
+
+// What a finger began, to be taken back when a second one makes a pinch.
+const touchCancels: (() => void)[] = [];
+export function onTouchCancel(fn: () => void): void {
+    touchCancels.push(fn);
+}
+
+let gestures: GesturePad | null = null;
+
+// The touch sequence in progress (or just ended) had two fingers: its end is
+// no swipe.
+export function multiTouch(): boolean {
+    return gestures?.multiTouch ?? false;
+}
+
 function overGrid(target: EventTarget | null): boolean {
     return Boolean((target as Element | null)?.closest?.("#overview"));
 }
@@ -235,22 +283,20 @@ window.addEventListener("blur", () => setArmed(false));
 if (stageWrap) {
     const wrap = stageWrap;
 
-    wrap.addEventListener(
-        "wheel",
-        (e) => {
-            if (!isCameraGesture(e) || overGrid(e.target)) return;
-            e.preventDefault(); // otherwise the browser page-zooms
-            flushPendingNav();
-            cancelAnim();
-            if (!ensureBase() || !camera || !baseViewBox) return;
-            const focus = clientToUser(e.clientX, e.clientY);
-            if (!focus) return;
-            const factor = Math.min(Math.max(WHEEL_STEP ** -e.deltaY, 0.2), 5);
-            camera = zoomAt(camera, baseViewBox, factor, focus, LIMITS);
-            applyCamera();
+    gestures = new GesturePad({
+        surface: wrap,
+        accepts: (e) =>
+            !overGrid(e.target) &&
+            !(e.target as Element).closest?.(".ink-palette"),
+        acceptsWheel: (e) => !overGrid(e.target),
+        cancelSingle: () => {
+            for (const fn of touchCancels) fn();
         },
-        { passive: false },
-    );
+        zoom: zoomAbout,
+        canPan: () => cameraIsZoomed(),
+        pan: panPixels,
+        doubleTap: smoothResetCamera,
+    });
 
     wrap.addEventListener("pointerdown", (e) => {
         if (!isCameraGesture(e) || overGrid(e.target)) return;

@@ -26,6 +26,34 @@
     width: 100%;
 }
 
+/* A section's heading spans the grid, so its slides start a row of their own. */
+.overview-section {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0.75rem 0 -0.75rem;
+    padding: 0 0.2rem 0.4rem;
+    /* The backdrop is black in both colour modes. */
+    border-bottom: 1px solid rgb(255 255 255 / 0.16);
+    cursor: pointer;
+}
+.overview-section:first-child {
+    margin-top: 0;
+}
+.overview-section-name {
+    color: #f4f4f6;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.overview-section-count {
+    color: rgb(255 255 255 / 0.55);
+    font-size: 0.72rem;
+}
+.overview-section:hover .overview-section-name {
+    color: var(--accent);
+}
+
 .overview-cell {
     display: flex;
     flex-direction: column;

@@ -1,4 +1,6 @@
 import { cubicBezierEasing } from "../shared/easing";
+import { escapeHtml } from "../shared/escape";
+import { gridRows, sectionRuns, verticalNeighbor } from "../shared/sections";
 import { applyStepInstant, maxStep as computeMaxStep } from "../shared/step";
 import { parseViewBox } from "../shared/viewbox";
 import { ProgressDriver } from "./progress-driver";
@@ -32,7 +34,17 @@ function scaleThumb(thumb: Element): void {
     svg.style.width = `${vb.w}px`;
     svg.style.height = `${vb.h}px`;
     const scale = Math.min(thumb.clientWidth / vb.w, thumb.clientHeight / vb.h);
-    svg.style.transform = `scale(${scale})`;
+    // A slide of another shape than the first is centred in its cell.
+    const dx = (thumb.clientWidth - vb.w * scale) / 2;
+    const dy = (thumb.clientHeight - vb.h * scale) / 2;
+    svg.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+}
+
+/** Slide `i`'s cell (section headings sit between the cells). */
+function cellAt(i: number): HTMLElement | null {
+    return overviewGrid.querySelector<HTMLElement>(
+        `.overview-cell[data-index="${i}"]`,
+    );
 }
 
 function computeCols(): void {
@@ -51,12 +63,24 @@ function applyOptimalCols(): void {
         parseFloat(getComputedStyle(overview).paddingBottom);
     const [vbW, vbH] = firstSlideViewBox();
     const ratio = vbH / vbW;
+    // Each section starts a row under its heading.
+    const runs = sectionRuns(state.slides);
+    const heading =
+        overviewGrid.querySelector<HTMLElement>(".overview-section");
+    const headings = runs.filter((r) => r.section).length;
+    const headingH = heading ? heading.offsetHeight + gap : 0;
 
-    let cols = n;
-    for (let c = 1; c <= n; c++) {
+    // Tall slides (a phone deck, a poster) may need more columns than there
+    // are slides for a row of them to fit the screen's height.
+    const most = Math.max(n, 8);
+    let cols = most;
+    for (let c = 1; c <= most; c++) {
         const thumbW = (availW - (c - 1) * gap) / c;
-        const rows = Math.ceil(n / c);
-        if (rows * (thumbW * ratio + gap) - gap <= availH) {
+        const rows = gridRows(runs, c);
+        if (
+            rows * (thumbW * ratio + gap) - gap + headings * headingH <=
+            availH
+        ) {
             cols = Math.max(2, c);
             break;
         }
@@ -66,11 +90,34 @@ function applyOptimalCols(): void {
 
 export function overviewSetActive(i: number): void {
     state._overviewActive = Math.max(0, Math.min(state.slides.length - 1, i));
-    overviewGrid.querySelectorAll(".overview-cell").forEach((el, idx) => {
-        el.classList.toggle("active", idx === state._overviewActive);
-    });
-    const active = overviewGrid.children[state._overviewActive];
-    if (active) active.scrollIntoView({ block: "nearest" });
+    overviewGrid
+        .querySelectorAll<HTMLElement>(".overview-cell")
+        .forEach((el) => {
+            el.classList.toggle(
+                "active",
+                Number(el.dataset.index) === state._overviewActive,
+            );
+        });
+    cellAt(state._overviewActive)?.scrollIntoView({ block: "nearest" });
+}
+
+/** Arrow up/down in the overview: the nearest cell of the row above/below,
+ * across section headings. */
+export function overviewMoveVertical(dir: 1 | -1): void {
+    const cells = [
+        ...overviewGrid.querySelectorAll<HTMLElement>(".overview-cell"),
+    ];
+    const boxes = cells.map((el) => ({
+        left: el.offsetLeft,
+        top: el.offsetTop,
+        width: el.offsetWidth,
+    }));
+    const here = cells.findIndex(
+        (el) => Number(el.dataset.index) === state._overviewActive,
+    );
+    if (here === -1) return;
+    const next = cells[verticalNeighbor(boxes, here, dir)];
+    overviewSetActive(Number(next.dataset.index));
 }
 
 export function overviewCommit(): void {
@@ -86,9 +133,7 @@ export function overviewCommit(): void {
 }
 
 function computeStageFlip(): { s: number; ox: number; oy: number } | null {
-    const activeCell = overviewGrid.children[
-        state._overviewActive
-    ] as HTMLElement;
+    const activeCell = cellAt(state._overviewActive);
     if (!activeCell) return null;
     const thumb = activeCell.querySelector<HTMLElement>(".overview-thumb");
     const el = thumb ?? activeCell;
@@ -137,9 +182,7 @@ function paintScale(progress: number): void {
 // so it doesn't show while the cell stands in for the stage. A plain CSS
 // transition retargets correctly on interruption, so it needs no driving.
 function setActiveHighlight(visible: boolean, durationSeconds: number): void {
-    const activeCell = overviewGrid.children[
-        state._overviewActive
-    ] as HTMLElement;
+    const activeCell = cellAt(state._overviewActive);
     const thumb = activeCell?.querySelector<HTMLElement>(".overview-thumb");
     const num = activeCell?.querySelector<HTMLElement>(".overview-num");
     if (thumb) {
@@ -157,15 +200,28 @@ export async function openOverview(): Promise<void> {
     overviewGrid.style.cssText = "";
     const [vbW, vbH] = firstSlideViewBox();
     overview.style.setProperty("--thumb-ar", `${vbW} / ${vbH}`);
-    state.slides.forEach((s, i) => {
-        const cell = document.createElement("div");
-        cell.className = "overview-cell";
-        cell.dataset.index = String(i);
-        cell.innerHTML =
-            `<div class="overview-num">${i + 1}</div>` +
-            `<div class="overview-thumb">${s.svg}</div>`;
-        overviewGrid.appendChild(cell);
-    });
+    for (const run of sectionRuns(state.slides)) {
+        if (run.section) {
+            // A heading across the grid: the section's slides start a new row.
+            const head = document.createElement("div");
+            head.className = "overview-section";
+            head.dataset.index = String(run.start);
+            const count = run.end - run.start;
+            head.innerHTML =
+                `<span class="overview-section-name">${escapeHtml(run.section.name)}</span>` +
+                `<span class="overview-section-count">${count} slide${count === 1 ? "" : "s"}</span>`;
+            overviewGrid.appendChild(head);
+        }
+        for (let i = run.start; i < run.end; i++) {
+            const cell = document.createElement("div");
+            cell.className = "overview-cell";
+            cell.dataset.index = String(i);
+            cell.innerHTML =
+                `<div class="overview-num">${i + 1}</div>` +
+                `<div class="overview-thumb">${state.slides[i].svg}</div>`;
+            overviewGrid.appendChild(cell);
+        }
+    }
     state._overviewActive = state.slideIndex;
     // Layout computation runs while the overlay is still hidden (visibility:hidden
     // preserves dimensions). The overlay is revealed only once the FLIP snap is
@@ -182,9 +238,7 @@ export async function openOverview(): Promise<void> {
 
     // The grid was just rebuilt, so recompute geometry from the fresh layout.
     geometry = computeStageFlip();
-    const activeCell = overviewGrid.children[
-        state._overviewActive
-    ] as HTMLElement;
+    const activeCell = cellAt(state._overviewActive);
     const activeThumb =
         activeCell?.querySelector<HTMLElement>(".overview-thumb");
     const activeNum = activeCell?.querySelector<HTMLElement>(".overview-num");
@@ -250,7 +304,10 @@ export function toggleOverview(): void {
 }
 
 overview.addEventListener("click", (e) => {
-    const cell = (e.target as Element).closest(".overview-cell");
+    // A section heading jumps to the section's first slide.
+    const cell = (e.target as Element).closest(
+        ".overview-cell, .overview-section",
+    );
     if (cell) {
         state._overviewActive = +(cell as HTMLElement).dataset.index!;
         overviewCommit();

@@ -43,6 +43,9 @@ depends = ["install-js"]
 run = [
   "pnpm exec esbuild src/ts/presenter/main.ts --bundle --outfile=src/inkflow/bundles/presenter.js",
   "pnpm exec esbuild src/css/presenter/index.css --bundle --outfile=src/inkflow/bundles/presenter.css",
+  "pnpm exec esbuild src/ts/editor/main.ts --bundle --outfile=src/inkflow/bundles/editor.js",
+  "pnpm exec esbuild src/css/editor/index.css --bundle --outfile=src/inkflow/bundles/editor.css",
+  "pnpm exec esbuild src/ts/render/main.ts --bundle --outfile=src/inkflow/bundles/render.js",
 ]
 
 [tasks.docs]

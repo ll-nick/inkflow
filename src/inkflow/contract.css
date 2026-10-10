@@ -64,6 +64,20 @@
     fill: var(--inkflow-grey);
 }
 
+/* Pen ink (inkflow/ink.py): a highlighter tints what it covers, like a marker
+   on paper, instead of painting over it. On a light slide it multiplies; on a
+   dark one multiply darkens it to nothing and plain opacity mixes it into a
+   muddy brown, so it screens (only ever lightens: light text stays readable)
+   at a stronger opacity than the file's 0.35. */
+.inkflow-highlighter {
+    fill-opacity: 0.55;
+    mix-blend-mode: screen;
+}
+[data-theme="light"] .inkflow-highlighter {
+    fill-opacity: 0.35;
+    mix-blend-mode: multiply;
+}
+
 /* ── SVG element stroke utilities ─────────────────────────────────────────── */
 
 .inkflow-stroke-bg {
@@ -121,6 +135,87 @@
     stroke: var(--inkflow-grey);
 }
 
+/* ── HTML text colour utilities (coloured words in Markdown: <span class=…>) ── */
+
+.inkflow-color-bg {
+    color: var(--inkflow-bg);
+}
+.inkflow-color-surface {
+    color: var(--inkflow-surface);
+}
+.inkflow-color-border {
+    color: var(--inkflow-border);
+}
+.inkflow-color-text {
+    color: var(--inkflow-text);
+}
+.inkflow-color-text-muted {
+    color: var(--inkflow-text-muted);
+}
+.inkflow-color-accent {
+    color: var(--inkflow-accent);
+}
+.inkflow-color-accent-fg {
+    color: var(--inkflow-accent-fg);
+}
+.inkflow-color-code-bg {
+    color: var(--inkflow-code-bg);
+}
+.inkflow-color-code-text {
+    color: var(--inkflow-code-text);
+}
+.inkflow-color-red {
+    color: var(--inkflow-red);
+}
+.inkflow-color-orange {
+    color: var(--inkflow-orange);
+}
+.inkflow-color-yellow {
+    color: var(--inkflow-yellow);
+}
+.inkflow-color-green {
+    color: var(--inkflow-green);
+}
+.inkflow-color-teal {
+    color: var(--inkflow-teal);
+}
+.inkflow-color-blue {
+    color: var(--inkflow-blue);
+}
+.inkflow-color-purple {
+    color: var(--inkflow-purple);
+}
+.inkflow-color-pink {
+    color: var(--inkflow-pink);
+}
+.inkflow-color-grey {
+    color: var(--inkflow-grey);
+}
+
+/* ── Fonts ─────────────────────────────────────────────────────────────────── */
+
+/* A slide's text that names no font is in the deck's body font: the same in
+ * the presenter, the editor and an export, never the page's interface font. */
+svg[id^="inkflow-slide-"] {
+    font-family: var(--inkflow-body-font);
+}
+/* A generic family written as an attribute (the built-in layouts, many SVG
+ * tools) is whatever sans or monospace the computer has; it means the deck's
+ * own fonts, which every machine shows alike. A rule, so any stylesheet rule
+ * still wins as it would over the attribute. Inline styles: svg.py. */
+[font-family="sans-serif" i],
+[font-family="sans" i] {
+    font-family: var(--inkflow-body-font);
+}
+[font-family="monospace" i] {
+    font-family: var(--inkflow-mono-font);
+}
+/* Formulas (MathML) in a font with an OpenType MATH table, not whatever math
+ * font the browser finds. */
+math {
+    font-family: var(--inkflow-math-font);
+}
+
 /* ── foreignObject layout wrapper ────────────────────────────────────────── */
 
 /* --inkflow-valign: start | center | end  (set on #zone-* in layout SVG CSS) */
@@ -162,6 +257,43 @@
 .inkflow-content li {
     display: list-item;
     margin-bottom: 0.3em;
+}
+
+/* Task lists (- [ ] / - [x]): the checkbox is the marker, not a bullet. */
+.inkflow-content ul.contains-task-list {
+    list-style-type: none;
+    padding-left: 0.2em;
+}
+.inkflow-content .task-list-item ul.contains-task-list {
+    padding-left: 1.4em;
+}
+/* Drawn in theme colours: a native box is greyed out when disabled, and on a
+ * slide it always is (it is a status, not a control). */
+.inkflow-content .task-list-item-checkbox {
+    appearance: none;
+    font-size: inherit; /* form controls do not inherit it */
+    display: inline-grid;
+    place-content: center;
+    box-sizing: border-box;
+    width: 0.8em;
+    height: 0.8em;
+    margin: 0 0.45em 0 0;
+    vertical-align: -0.05em;
+    border: 0.08em solid var(--inkflow-text-muted);
+    border-radius: 0.15em;
+    background: transparent;
+}
+.inkflow-content .task-list-item-checkbox:checked {
+    background: var(--inkflow-accent);
+    border-color: var(--inkflow-accent);
+}
+.inkflow-content .task-list-item-checkbox:checked::before {
+    content: "";
+    width: 0.42em;
+    height: 0.22em;
+    border-left: 0.09em solid var(--inkflow-accent-fg);
+    border-bottom: 0.09em solid var(--inkflow-accent-fg);
+    transform: translateY(-0.04em) rotate(-45deg);
 }
 .inkflow-content dl {
     margin-bottom: 0.5em;
@@ -232,6 +364,8 @@
     border-radius: 3px;
 }
 .inkflow-content pre {
+    /* Not the browser's own pre { font-family: monospace }. */
+    font-family: var(--inkflow-mono-font);
     overflow: auto;
     background: var(--inkflow-code-bg);
     color: var(--inkflow-code-text);
@@ -486,4 +620,14 @@
 
 .code-line.hl-active {
     opacity: 1;
+}
+
+/* A draw.io diagram drawn into its slide (drawio_inline.py): draw.io's own
+   light-dark() colours follow the deck's mode, not the viewer's system. */
+.inkflow-diagram {
+    color-scheme: dark;
+}
+
+[data-theme="light"] .inkflow-diagram {
+    color-scheme: light;
 }

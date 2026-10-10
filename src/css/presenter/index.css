@@ -9,5 +9,7 @@
 @import "./pv.css";
 @import "../shared/animations.css";
 @import "./laser.css";
+@import "../shared/ink.css";
+@import "./ink.css";
 @import "./zoom.css";
 @import "./mobile.css";

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" font-family="sans-serif">
+  <rect x="8" y="8" width="384" height="384" rx="40" fill="none" stroke="#8c8fa1" stroke-width="8" stroke-dasharray="24 16"/>
+  <text x="200" y="185" text-anchor="middle" font-size="56" font-weight="700" fill="#8c8fa1">Your</text>
+  <text x="200" y="255" text-anchor="middle" font-size="56" font-weight="700" fill="#8c8fa1">logo</text>
+</svg>

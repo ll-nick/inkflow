@@ -154,7 +154,7 @@ It prints every layout and overlay with its parent chain and its zones.
 
 ## Built-in layouts
 
-The built-in theme ships eleven layouts, usable by bare name in any deck:
+The built-in theme ships eighteen layouts, usable by bare name in any deck:
 
 | Name | Zones | For |
 |---|---|---|
@@ -168,17 +168,32 @@ The built-in theme ships eleven layouts, usable by bare name in any deck:
 | `quote` | quote, attribution | A pull quote |
 | `media-left` | title, content, media | Text with an image or video on the left |
 | `media-right` | title, content, media | The same, media on the right |
+| `agenda` | title, content | A numbered outline (write a `1.` list) |
+| `three-cols` | title, left, middle, right | Three side-by-side columns |
+| `comparison` | title, left-title, left, right-title, right | Two headed columns: before/after, pros/cons |
+| `quad` | title, top-left, top-right, bottom-left, bottom-right | A two-by-two grid |
+| `three-cards` | title, media-1…3, card-1…3 | Three cards, each an image over text |
+| `title-media` | title, media, caption | One large image or video with a caption |
+| `full-media` | media, title, subtitle | A full-bleed photo or video, title over a fade |
 | `end` | title, subtitle | The closing slide |
 
 Two more exist as building blocks: `base` is the parentless background,
 and `numbered` adds the slide-number zones.
+
+Four poster layouts are drawn on the A paper sizes' canvas (3179 x 4494
+portrait, 4494 x 3179 landscape), for a deck with `Deck(size="a0")` or another
+A size: `poster-3col` and `poster-2col` (portrait), `poster-landscape-3col` and
+`poster-landscape-4col`. Their zones are title, authors, affiliations, logos,
+col-1…col-4, references and contact, on the building blocks `poster-base` and
+`poster-landscape-base`. See [Posters and page sizes](../authoring/posters.md).
 
 ```python
 Slide("cover", md="title")
 Slide("two-cols", md="compare")
 ```
 
-The [built-in theme page](../built-in-theme/index.md) has a live showcase of all of them.
+The [built-in themes page](../built-in-theme/index.md) has a live showcase of all of them,
+and shows them in each of the three themes.
 
 They take your theme's palette automatically,
 because they paint through the token classes rather than hardcoded colours.

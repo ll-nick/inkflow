@@ -1,10 +1,13 @@
+import { applyDeckStyles } from "../shared/deck-styles";
 import type {
+    InkMessage,
     NavMessage,
     SyncMode,
     SyncPosition,
     TransitionData,
     WsMessage,
 } from "../shared/types";
+import { applyIncomingInk, inkSaveResult, requestInk } from "./ink";
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
 import {
@@ -68,7 +71,9 @@ export function applySyncMode(mode: SyncMode): void {
 // (build; windowsync.ts). Exactly one is ever active — see initWindowSync.
 // targetOrigin is "*": a window-link peer can be a file:// window carrying an
 // opaque origin, which a stricter target could never reliably match.
-function postToPeer(msg: NavMessage | { type: "sync-request" }): void {
+function postToPeer(
+    msg: NavMessage | InkMessage | { type: "sync-request" },
+): void {
     if (state.ws && state.ws.readyState === WebSocket.OPEN) {
         state.ws.send(JSON.stringify(msg));
     } else if (state.windowLink && !state.windowLink.closed) {
@@ -93,6 +98,20 @@ export function sendNav(transition?: TransitionData | null): void {
         step: state.step,
         ...(transition ? { transition } : {}),
     });
+}
+
+// Ink drawn here, for the other windows: sent under the same sync mode as
+// the position, so a "present" window draws for the room and a "follow"
+// window only watches. A request for the others' ink is an answer this
+// window wants, so it goes when this window receives.
+export function sendInk(msg: InkMessage): void {
+    if (msg.op === "request" ? !receives() : !sends()) return;
+    postToPeer(msg);
+}
+
+// A peer's ink, applied when this window receives.
+export function applyPeerInk(msg: InkMessage): void {
+    if (msg.op === "request" ? sends() : receives()) applyIncomingInk(msg);
 }
 
 // Tell other connected screens to snap their in-flight transition to its end,
@@ -183,6 +202,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
         const assert = authoritative && sends();
         firstPositionPending = assert;
         if (assert) sendNav();
+        requestInk();
     };
 
     state.ws.onmessage = (ev) => {
@@ -193,6 +213,7 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
             return;
         }
         if (msg.type === "update") {
+            applyDeckStyles(msg);
             state.slides = msg.slides;
             state.transitions = msg.transitions;
             hideError();
@@ -210,6 +231,10 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
             renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);
+        } else if (msg.type === "ink") {
+            applyPeerInk(msg);
+        } else if (msg.type === "edit-result") {
+            inkSaveResult(msg);
         } else if (msg.type === "notify") {
             showNotify(msg.message, msg.style);
         } else if (msg.type === "position") {

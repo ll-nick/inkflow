@@ -22,7 +22,9 @@ from inkflow.layout import (
     layout_zones,
     resolve_chain,
     resolve_parent_path,
+    zone_placeholder_css,
 )
+from inkflow.svgio import parse_svg
 from inkflow.themes import Theme
 
 _SIMPLE_SVG = textwrap.dedent("""\
@@ -306,6 +308,13 @@ class TestDiscoverLayouts:
         local_idx = next(i for i, lbl in enumerate(labels) if lbl == "local")
         assert builtin_idx < local_idx
 
+    def test_built_in_theme_not_listed_twice(self) -> None:
+        # The default theme's asset dir is the built-in dir itself.
+        results = discover_layouts(None, Theme())
+        paths = [p for _, p in results]
+        assert len(paths) == len(set(paths))
+        assert {label for label, _ in results} == {"builtin"}
+
     def test_no_project_dir_no_local(self) -> None:
         results = discover_layouts(None, None)
         assert all(label != "local" for label, _ in results)
@@ -509,3 +518,24 @@ class TestDiscoverOverlays:
 
     def test_empty_without_overlays_dir(self, tmp_path: Path) -> None:
         assert discover_overlays(tmp_path, None) == []
+
+
+def test_unstyled_zone_shapes_preview_as_dashed_outlines(tmp_path: Path) -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<rect id="zone-title" width="10" height="10"/>'
+        '<rect id="zone-text" class="inkflow-fill-surface" width="10" height="10"/>'
+        '<rect id="zone-media" style="fill: red" width="10" height="10"/>'
+        '<text id="zone-slide-number">1</text>'
+        "</svg>"
+    )
+    css = zone_placeholder_css(parse_svg(svg))
+    assert css.startswith("#zone-title {") and "stroke-dasharray" in css
+    assert "zone-text" not in css and "zone-media" not in css
+
+    path = tmp_path / "slide.svg"
+    path.write_text(svg, encoding="utf-8")
+    layers = PreviewLayers(preview_css=".inkflow-fill-bg { fill: #000; }")
+    assert inject_preview_layers(path, layers)
+    assert "#zone-title {" in path.read_text()
+    assert are_preview_layers_current(path, layers)

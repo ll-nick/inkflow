@@ -7,10 +7,9 @@ import { showNotify } from "./ui";
 // button + dropdown DOM (structurally mirrors syncmenu.ts).
 //
 // Default action is copying the resolved path to the clipboard — universal,
-// works with any editor via paste-navigate. INKFLOW_EDIT_CMD / INKFLOW_EDIT_CMD_SVG
-// (server env vars, baked into EditCommandsConfig at page load) override that:
-// INKFLOW_EDIT_CMD_SVG overrides INKFLOW_EDIT_CMD for SVG files, which otherwise
-// covers every file kind. When configured *and* there's a live server connection,
+// works with any editor via paste-navigate. INKFLOW_EDIT_CMD and its
+// per-extension / per-kind forms (server env vars, baked into
+// EditCommandsConfig at page load) override that. When configured *and* there's a live server connection,
 // the path is sent to the server to launch instead. The live-connection check
 // (not just the boot-time config flag) mirrors websocket.ts's postToPeer
 // reasoning — check the real transport, not a static flag — so a disconnected
@@ -38,11 +37,11 @@ const ROW_ICONS: Record<string, string> = {
 };
 
 function isConfigured(file: EditableFile): boolean {
-    // config.svg overrides config.default for SVG files; every other kind
-    // always uses the general command — mirrors edit.py's command_for.
-    if (file.path.toLowerCase().endsWith(".svg")) {
-        return config.svg || config.default;
-    }
+    // The server resolved which extensions have a command (edit.py's
+    // command_for: per extension, then per kind, then the general one).
+    const suffix = file.path.split(".").pop()?.toLowerCase() ?? "";
+    if (config.suffixes) return config.suffixes.includes(suffix);
+    if (suffix === "svg") return config.svg || config.default;
     return config.default;
 }
 

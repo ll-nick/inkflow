@@ -74,22 +74,32 @@ nav:
   - Authoring:
     - Slides: authoring/slides.md
     - Markdown content: authoring/markdown.md
+    - PDF figures: authoring/pdf-figures.md
     - Steps: authoring/steps.md
     - Animations: authoring/animations.md
     - Transitions: authoring/transitions.md
     - Morph in depth: authoring/morph.md
+    - Charts: authoring/charts.md
+    - Posters and page sizes: authoring/posters.md
     - Working in Inkscape: authoring/inkscape.md
   - Layouts and themes:
     - Layouts: design/layouts.md
     - Overlays: design/overlays.md
     - Themes: design/themes.md
     - Fonts: design/fonts.md
-    - Built-in theme: built-in-theme/index.md
+    - Built-in themes: built-in-theme/index.md
+  - Visual editor:
+    - Editing slides: editor/index.md
+    - Comparing two versions: editor/compare.md
+    - Editing with Claude Code: editor/claude-code.md
   - Presenting:
     - Presenting a deck: presenting/index.md
+    - Drawing with a pen: presenting/ink.md
     - Presenter panel: presenting/presenter-panel.md
     - Multi-window sync: presenting/sync.md
     - Export: presenting/export.md
+    - Publishing online: presenting/publish.md
+    - A deck that looks the same everywhere: presenting/portable.md
   - Reference:
     - Manifest: reference/manifest.md
     - Themes: reference/theme.md

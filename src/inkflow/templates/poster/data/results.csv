@@ -1,0 +1,4 @@
+model,accuracy,baseline
+Small,71,64
+Medium,82,66
+Large,89,67

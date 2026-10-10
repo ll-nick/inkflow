@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from lxml import etree
@@ -34,16 +35,31 @@ def strip_preview_layers(root: SvgElement) -> None:
         root.remove(el)
 
 
-def clean_inkscape_tree(src: Path, keep_preview: bool = False) -> SvgElement:
+def clean_inkscape_tree(
+    src: Path,
+    keep_preview: bool = False,
+    before_clean: Callable[[SvgElement], None] | None = None,
+) -> SvgElement:
     """Parse an SVG file, strip Inkscape/Sodipodi editor metadata, return the root.
 
     When keep_preview is False (default), also removes inkflow preview content
     (injected layout/overlay layers and the inkflow-preview style block) so the tree is
     suitable for the presentation pipeline.  Pass keep_preview=True to preserve
     that content for Inkscape editing (used by the clean CLI and pre-commit hook).
+
+    ``before_clean`` sees the tree exactly as parsed from disk, before anything is
+    removed. The editor stamps source locators there, so they index the file the
+    way it will be re-parsed when an edit is written back.
     """
     root = parse_svg_file(src)
+    if before_clean is not None:
+        before_clean(root)
+    return clean_inkscape_root(root, keep_preview)
 
+
+def clean_inkscape_root(root: SvgElement, keep_preview: bool = False) -> SvgElement:
+    """``clean_inkscape_tree`` for a tree already parsed (from bytes not yet
+    written, say): the same cleaning, in place."""
     # Before the namespace cleanup, not after: the injected layers are the only
     # users of the inkscape/sodipodi prefixes in an otherwise clean file, so
     # dropping them afterwards would leave the declarations stranded on the root

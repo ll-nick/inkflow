@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from inkflow import ns, pdf
 from inkflow.animations import Animation, PlayVideo
 from inkflow.assets import AssetRoots, AssetSource
+from inkflow.charts import ResolvedChart, render
 from inkflow.clean import clean_inkscape_tree
+from inkflow.editor.scene import Scene
 from inkflow.layout import (
     are_preview_layers_current,
     discover_layouts,
@@ -13,9 +17,11 @@ from inkflow.layout import (
     resolve_default_zone,
 )
 from inkflow.loaders import load_md, resolve_content_src
-from inkflow.manifest import Inline, Media, Slide, Video
-from inkflow.pipeline import resolve_overlay_chains, resolve_slide_src
+from inkflow.manifest import Chart, Deck, Inline, Media, Slide, TextBox, Video
+from inkflow.pipeline import resolve_overlay_chains, resolve_slide_src, slide_ids
+from inkflow.sizes import same_aspect
 from inkflow.svg import (
+    canvas_size,
     compose_overlays,
     compose_with_ancestors,
     duplicate_zone_ids,
@@ -25,6 +31,8 @@ from inkflow.sync import PreviewContext, plan_preview, slide_overlays
 from inkflow.zones import build_slide_content, parse_markdown_zones
 
 if TYPE_CHECKING:
+    from inkflow.manifest import Deck
+    from inkflow.svgio import SvgElement
     from inkflow.themes import Theme
 
 Issue = tuple[str, str]  # (level, message) — level is "error" or "warn"
@@ -73,13 +81,40 @@ def _check_media(slide: Slide, project_dir: Path) -> list[Issue]:
             for src_field in filter(None, refs):
                 if src_field.startswith(("http://", "https://", "//")):
                     continue
-                media_p = (
-                    Path(src_field)
-                    if Path(src_field).is_absolute()
-                    else project_dir / src_field
-                )
+                file = pdf.split_ref(src_field)[0]  # a PDF names its page after #
+                media_p = Path(file) if Path(file).is_absolute() else project_dir / file
                 if not media_p.exists():
                     issues.append(("error", f"media not found: {src_field}"))
+    return issues
+
+
+_HREFS = ("href", f"{{{ns.XLINK}}}href")
+
+
+def _check_pdfs(slide: Slide, project_dir: Path, src: Path) -> list[Issue]:
+    """PDF pictures that will not show: a page the PDF does not have, or no
+    converter installed. Those in the slide's own SVG and in its zones; a
+    missing file is the media check's."""
+    refs: list[tuple[Path, str]] = []
+    for content in slide.zones.values():
+        if isinstance(content, Media):
+            refs += [(project_dir, r) for r in (content.src, content.alt_src) if r]
+    for image in clean_inkscape_tree(src).iter(f"{{{ns.SVG}}}image"):
+        refs += [(src.parent, r) for a in _HREFS if (r := image.get(a))]
+    issues: list[Issue] = []
+    for base, ref in refs:
+        if not pdf.is_pdf_ref(ref):
+            continue
+        file = base / pdf.split_ref(ref)[0]
+        if not file.is_file():
+            continue
+        page = pdf.page_of(ref)
+        if page is None:
+            issues.append(("error", f"not a page number: {ref} (write #page=2)"))
+        elif page > (count := pdf.page_count(file) or page):
+            issues.append(("error", f"{file.name} has {count} pages, not {page}"))
+        elif pdf.converter() is None and pdf.committed_page(file, page) is None:
+            issues.append(("warn", f"{file.name} cannot show: {pdf.install_hint()}"))
     return issues
 
 
@@ -131,6 +166,59 @@ def _check_animations(slide: Slide, all_ids: set[str]) -> list[Issue]:
     return issues
 
 
+_ID_RE = re.compile(r'\bid="([^"]+)"')
+
+
+def _check_charts(
+    slide: Slide, project_dir: Path, zone_ids: set[str], default_zone: str
+) -> tuple[set[str], list[Issue]]:
+    """The ids a slide's charts draw (series an animation may target), and
+    their data problems.
+
+    A chart's elements exist only once it is drawn, so they are drawn here the
+    way the build draws them; the size does not change an id.
+    """
+    has_fence = False
+    md = None
+    if slide.md is not None:
+        try:
+            md = load_md(slide.md, project_dir)
+        except (FileNotFoundError, OSError):
+            md = None
+        has_fence = md is not None and "```chart" in md.text
+    if not has_fence and not any(isinstance(v, Chart) for v in slide.zones.values()):
+        return set(), []
+    roots = AssetRoots(project_dir)
+    deck_source = AssetSource.for_deck(roots)
+    md_source = (
+        AssetSource.for_file(roots, md.path)
+        if md is not None and md.path is not None
+        else deck_source
+    )
+    try:
+        content = build_slide_content(
+            parse_markdown_zones(md.text) if md is not None else None,
+            slide.zones,
+            md_source,
+            deck_source,
+            available_zones=zone_ids,
+            default_zone=default_zone,
+        ).content
+    except ValueError:
+        return set(), []  # reported by _check_default_zone
+    ids: set[str] = set()
+    issues: list[Issue] = []
+    for zone_id, item in content.items():
+        if isinstance(item, ResolvedChart):
+            if item.error:
+                issues.append(("error", item.error))
+            drawn = render(item, 960, 540, zone_id.removeprefix("zone-"))
+            ids |= {eid for el in drawn.iter() if (eid := el.get("id"))}
+        elif isinstance(item, TextBox) and item.text and "inkflow-chart" in item.text:
+            ids |= set(_ID_RE.findall(item.text))
+    return ids, issues
+
+
 def _check_default_zone(
     slide: Slide,
     project_dir: Path,
@@ -145,14 +233,17 @@ def _check_default_zone(
         return []
     if md is None:
         return []
-    # verify only reads the zone structure, so the asset sources are the plain
-    # project-rooted ones: nothing it returns depends on how a reference resolves.
-    source = AssetSource.for_deck(AssetRoots(project_dir))
+    # verify only reads the zone structure, but each reference still resolves
+    # against its own file, or a Markdown `![](../assets/x.png)` would be warned
+    # about as leaving the project.
+    roots = AssetRoots(project_dir)
+    source = AssetSource.for_deck(roots)
+    md_source = AssetSource.for_file(roots, md.path) if md.path else source
     try:
         build_slide_content(
             parse_markdown_zones(md.text),
             slide.zones,
-            source,
+            md_source,
             source,
             available_zones=zone_ids,
             default_zone=default_zone,
@@ -185,6 +276,26 @@ def _check_overlays(overlay_chains: list[list[Path]]) -> list[Issue]:
     return issues
 
 
+def check_size(root: SvgElement, deck: Deck | None) -> list[Issue]:
+    """A slide drawn in another shape than the deck's size: it still shows,
+    fitted (letterboxed) onto the deck's page."""
+    if deck is None or deck.size is None:
+        return []
+    canvas = canvas_size(root)
+    size = deck.effective_size
+    if canvas is None or same_aspect(canvas, size.canvas):
+        return []
+    w, h = (f"{v:g}" for v in canvas)
+    dw, dh = (f"{v:g}" for v in size.canvas)
+    return [
+        (
+            "warn",
+            f"the slide is {w}x{h}, not the shape of the deck's size {size} "
+            + f"({dw}x{dh}): it is shown and printed letterboxed",
+        )
+    ]
+
+
 def _check_sync(src: Path, preview: PreviewContext) -> list[Issue]:
     """Staleness through the same plan ``sync`` writes, so the two agree.
 
@@ -197,9 +308,42 @@ def _check_sync(src: Path, preview: PreviewContext) -> list[Issue]:
     # those, so reporting them as stale would be advice no one can follow.
     if preview.project_dir is None or not src.is_relative_to(preview.project_dir):
         return []
-    if not are_preview_layers_current(src, plan_preview(src, preview).layers):
+    plan = plan_preview(src, preview)
+    # A bare slide `sync` would not touch is not stale, whatever it lacks.
+    if plan.swept(src) and not are_preview_layers_current(src, plan.layers):
         return [("warn", "preview layers stale — run inkflow sync")]
     return []
+
+
+def _check_connectors(
+    slide: Slide, project_dir: Path, deck: Deck | None
+) -> list[Issue]:
+    """Arrows attached to shapes whose drawn ends no longer meet them (the
+    shapes moved in Inkscape, draw.io or by hand since the arrow was routed):
+    the editor's stale-arrow rule, which ``inkflow shape reroute`` fixes."""
+    if deck is None:
+        return []
+    visible = [s for s in deck.slides if s.visible]
+    shown = [i for i, s in enumerate(visible) if s is slide]
+    slide_id = slide_ids(visible)[shown[0]] if shown else slide_ids([slide])[0]
+    try:
+        scene = Scene.compose(project_dir, deck, slide, slide_id)
+    except (ValueError, OSError):
+        return []  # reported by the composition checks
+    issues: list[Issue] = []
+    for conn in scene.attached():
+        shapes = scene.stale_ends(conn)
+        if shapes:
+            name = f"#{conn.get('id')}" if conn.get("id") else "without an id"
+            issues.append(
+                (
+                    "warn",
+                    f"arrow {name} no longer meets {' and '.join(shapes)} "
+                    + "(moved since it was routed): run `inkflow shape reroute "
+                    + f"-s {slide_id}`",
+                )
+            )
+    return issues
 
 
 def _unresolved_src_issue(src: str, project_dir: Path, theme: Theme | None) -> Issue:
@@ -269,9 +413,12 @@ def verify_slide(
     zone_ids = {eid for eid in all_ids if eid.startswith("zone-")}
     default_zone = resolve_default_zone(root, zone_ids)
 
+    chart_ids, chart_issues = _check_charts(slide, project_dir, zone_ids, default_zone)
     issues += _check_media(slide, project_dir)
+    issues += _check_pdfs(slide, project_dir, src)
     issues += _check_zones(slide, project_dir, zone_ids)
-    issues += _check_animations(slide, all_ids)
+    issues += chart_issues
+    issues += _check_animations(slide, all_ids | chart_ids)
     issues += _check_default_zone(slide, project_dir, zone_ids, default_zone)
     issues += _check_overlays(overlay_chains)
     issues += [
@@ -282,5 +429,62 @@ def verify_slide(
         )
         for zone_id in duplicate_zone_ids(root)
     ]
+    issues += check_size(root, preview.deck)
     issues += _check_sync(src, preview)
+    issues += _check_connectors(slide, project_dir, preview.deck)
+    return issues
+
+
+# ── The deck as a whole: does it look the same on another machine? ──
+
+
+def verify_portable(deck: Deck, project_dir: Path, deck_path: Path) -> list[Issue]:
+    """What ties the deck to this machine (``inkflow pack``'s checks), one
+    warning line each: fonts from this machine, missing or generic first,
+    files outside the deck or behind a symlink, pictures from the web, no
+    pinned inkflow, no uv.lock, no LF line-ending rules. (Git LFS has the
+    editor's git menu; emoji and math fonts are ``inkflow pack``'s report.)"""
+    from inkflow.pack import plan_pack
+
+    try:
+        plan = plan_pack(deck, project_dir, deck_path)
+    except Exception as exc:
+        return [("warn", f"could not check portability: {exc}")]
+    issues: list[Issue] = []
+    by_key: dict[str, list[str]] = {}
+    for item in plan.items:
+        by_key.setdefault(item.key, []).append(item.message)
+    for key in ("font", "missing-font", "generic-font"):
+        issues += [("warn", message) for message in by_key.get(key, [])]
+    outside = [src for src, _ in plan.copy_in.copies] + [
+        dst for dst in plan.copy_in.writes if not dst.exists()
+    ]
+    if outside:
+        names = ", ".join(p.name for p in outside[:3]) + (
+            " …" if len(outside) > 3 else ""
+        )
+        issues.append(
+            (
+                "warn",
+                f"{len(outside)} file(s) outside the deck or behind a symlink "
+                + f"({names}): a clone will not have them; inkflow pack copies them in",
+            )
+        )
+    remote = plan.copy_in.remote
+    if remote:
+        issues.append(
+            (
+                "warn",
+                f"{len(remote)} picture(s) read from the web ({remote[0].raw}"
+                + (" …" if len(remote) > 1 else "")
+                + "): they need internet access",
+            )
+        )
+    for key, hint in (
+        ("pyproject", "inkflow pack"),
+        ("lock", "inkflow pack (or uv lock)"),
+        ("eol", "inkflow pack adds them"),
+    ):
+        for message in by_key.get(key, []):
+            issues.append(("warn", f"{message}: {hint}"))
     return issues

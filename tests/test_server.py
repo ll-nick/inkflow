@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from websockets.asyncio.server import ServerConnection
 
 from inkflow.assets import AssetRoots
 from inkflow.edit import EditCommands
@@ -14,8 +15,10 @@ from inkflow.pipeline import EditableFile, SlideData
 from inkflow.server import (
     State,
     _coerce_nav_position,  # pyright: ignore[reportPrivateUsage]
+    _is_loopback,  # pyright: ignore[reportPrivateUsage]
     _resolve_asset,  # pyright: ignore[reportPrivateUsage]
     _resolve_edit_request,  # pyright: ignore[reportPrivateUsage]
+    _versioned,  # pyright: ignore[reportPrivateUsage]
     build_html,
 )
 
@@ -118,7 +121,7 @@ def test_build_html_transitions_json_embedded() -> None:
 
 def test_build_html_edit_commands_default_both_false() -> None:
     html = build_html(_state(), ws_port=7778).decode()
-    assert json.dumps({"default": False, "svg": False}) in html
+    assert json.dumps({"default": False, "svg": False, "suffixes": []}) in html
 
 
 def test_build_html_edit_commands_reflects_configured() -> None:
@@ -127,7 +130,7 @@ def test_build_html_edit_commands_reflects_configured() -> None:
         ws_port=7778,
         edit_commands=EditCommands(svg="code {path}", default=None),
     ).decode()
-    assert json.dumps({"default": False, "svg": True}) in html
+    assert json.dumps({"default": False, "svg": True, "suffixes": ["svg"]}) in html
 
 
 def test_build_html_logs_json_embedded() -> None:
@@ -139,6 +142,36 @@ def test_build_html_logs_json_embedded() -> None:
 
 
 # ── _resolve_asset ────────────────────────────────────────────────────────────
+
+
+def test_served_slides_name_each_asset_with_its_version(tmp_path: Path) -> None:
+    import os
+
+    (tmp_path / "diagrams").mkdir()
+    diagram = tmp_path / "diagrams" / "flow.drawio.svg"
+    diagram.write_text("<svg/>", encoding="utf-8")
+    roots = AssetRoots(tmp_path)
+    slide: SlideData = {
+        "id": "s",
+        "svg": '<svg><image href="diagrams/flow.drawio.svg"/>'
+        + '<image href="missing.png"/><image href="https://x.org/a.png"/></svg>',
+        "title": "",
+        "notes": '<img src="diagrams/flow.drawio.svg">',
+        "editableFiles": [],
+    }
+    first = _versioned(slide, roots)
+    assert 'href="diagrams/flow.drawio.svg?v=' in first["svg"]
+    assert 'href="missing.png"' in first["svg"]  # nothing to version
+    assert 'href="https://x.org/a.png"' in first["svg"]
+    assert 'src="diagrams/flow.drawio.svg?v=' in first["notes"]
+    assert _versioned(slide, roots) == first  # same file, same slide
+    # The file changes (draw.io, Inkscape): the slide changes with it.
+    stat = diagram.stat()
+    os.utime(diagram, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
+    assert _versioned(slide, roots)["svg"] != first["svg"]
+    # The version is not part of the file's name when it is served.
+    stamped = first["svg"].split('href="')[1].split('"')[0]
+    assert _resolve_asset(roots, "/" + stamped) == diagram.resolve()
 
 
 def test_resolve_asset_path_traversal(tmp_path: Path) -> None:
@@ -202,6 +235,25 @@ def test_resolve_asset_symlink_outside_project(tmp_path: Path) -> None:
     (project / "photo.png").symlink_to(real_img)
     result = _resolve_asset(AssetRoots(project), "/photo.png")
     assert result == real_img.resolve()
+
+
+# ── _is_loopback ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("address", "local"),
+    [
+        (("127.0.0.1", 5000), True),
+        (("::1", 5000, 0, 0), True),
+        (("192.168.1.20", 5000), False),
+        (None, False),
+    ],
+)
+def test_only_loopback_peers_are_local(address: object, local: bool) -> None:
+    class Peer:
+        remote_address: object = address
+
+    assert _is_loopback(cast("ServerConnection", cast("object", Peer()))) is local
 
 
 # ── _coerce_nav_position ──────────────────────────────────────────────────────

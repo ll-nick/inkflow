@@ -149,6 +149,9 @@ Local files are copied into the output of
 [`inkflow build` and `inkflow export`](../presenting/export.md).
 Remote `https://` and `data:` URIs are left alone.
 
+A PDF works too, `![Results](../figures/results.pdf#page=2)`:
+see [PDF figures](pdf-figures.md).
+
 ## Linking to another slide
 
 A link with the `slide:` scheme jumps to the slide with that `id`:
@@ -171,6 +174,24 @@ Slide("diagram", md="architecture", id="overview")
 IDs must be unique across the deck.
 Collisions get `-2`, `-3` appended.
 A link to an id that does not exist is left inert.
+
+The same scheme works on drawn objects: wrap one in an SVG link,
+`<a href="slide:overview">…</a>` (the visual editor's **Link** field does this),
+and clicking it in the presentation jumps there. A web link on an object opens in
+a new tab, so the presentation stays where it is.
+
+## Coloured words
+
+To colour a few words with the theme's palette, wrap them in a span with an
+`inkflow-color-<name>` class (any token: `accent`, `text-muted`, `red`, `orange`,
+`yellow`, `green`, `teal`, `blue`, `purple`, `pink`, `grey`, …):
+
+```markdown
+Revenue is <span class="inkflow-color-green">up 12%</span> this quarter.
+```
+
+The colour follows dark and light mode. The visual editor's text colour button
+writes exactly this.
 
 ## Speaker notes
 

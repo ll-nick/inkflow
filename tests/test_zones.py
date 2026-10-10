@@ -697,3 +697,58 @@ class TestRerouteZones:
         # Without available_zones, no rerouting — no ValueError even without default
         result = build_slide_content(md.read_text(encoding="utf-8"), {})
         assert "zone-content" in result.content
+
+
+def test_deck_zone_strings_reveal_like_markdown_sections() -> None:
+    """A zones={...} string is Markdown like a .md section: ::step:: reveals,
+    numbered on after the slide's Markdown reveals (one timeline)."""
+    result = build_slide_content(
+        "# T\n\none\n\n::step::\n\ntwo\n",
+        {"text": "First\n\n::step::\n\nSecond"},
+    )
+    text = result.content["zone-text"]
+    assert isinstance(text, TextBox) and "::step::" not in (text.text or "")
+    assert _steps(result.animations) == [1, 2]
+    assert result.max_step == 2
+
+
+def test_shown_zone_shape_paints_the_text_box() -> None:
+    from lxml import etree
+
+    from inkflow.content import substitute_content
+
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow">'
+        '<rect id="zone-a" x="0" y="0" width="100" height="50" rx="8"'
+        ' class="inkflow-fill-surface inkflow-stroke-accent"'
+        ' style="stroke-width:3;--inkflow-padding:12px" inkflow:show-shape="true"/>'
+        '<ellipse id="zone-b" cx="50" cy="50" rx="40" ry="20"'
+        ' style="fill:#ff0000;stroke:none" inkflow:show-shape="true"/>'
+        '<rect id="zone-c" x="0" y="0" width="10" height="10"'
+        ' style="fill:#123456;--inkflow-valign:center"/>'
+        '<rect id="zone-d" x="0" y="0" width="10" height="10"'
+        ' inkflow:show-shape="true" style="fill:#abcdef"/>'
+        "</svg>"
+    )
+    root = etree.fromstring(svg.encode())
+    root = substitute_content(
+        root,
+        {
+            "zone-a": TextBox(text="<p>A</p>"),
+            "zone-b": TextBox(text="<p>B</p>"),
+            "zone-c": TextBox(text="<p>C</p>"),
+        },
+    )
+    out = etree.tostring(root).decode()
+    assert "background:var(--inkflow-surface)" in out
+    assert "border:3px solid var(--inkflow-accent)" in out
+    assert "border-radius:8px" in out
+    assert "background:#ff0000;border-radius:50%" in out
+    assert "color:var(--inkflow-accent-fg)" not in out  # a surface is not vivid
+    # An unmarked zone's paint stays a placeholder; its --inkflow-* vars apply.
+    assert "#123456" not in out
+    assert 'style="--inkflow-valign:center"' in out
+    # A shown shape stays even while empty.
+    from inkflow.content import remove_unreferenced_zones
+
+    assert remove_unreferenced_zones(root).find(".//*[@id='zone-d']") is not None

@@ -217,6 +217,10 @@ When a slide has both Markdown reveals and an `animations=[...]` list,
 they number in one continuous sequence.
 **Markdown reveals come first, in reading order, then the animation list continues.**
 
+A Markdown string given to a zone in `deck.py` (`zones={"text": "…"}`) is
+Markdown like a `.md` section, `::step::` and `::steps::` included; its reveals
+number on after the `.md` file's, before the animation list.
+
 With two reveals and two animations, the reveals take steps 1 and 2
 and the animations take 3 and 4:
 

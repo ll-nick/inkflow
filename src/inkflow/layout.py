@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.resources
+import re
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -25,7 +26,13 @@ from inkflow.ns import (
     INKFLOW_OVERLAY_SRC,
     INKFLOW_PARENT,
 )
-from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
+from inkflow.sizes import PageSize, same_aspect
+from inkflow.svg import (
+    canvas_size,
+    compose_with_ancestors,
+    ensure_defs,
+    with_namespaces,
+)
 from inkflow.svgio import SvgElement, parse_svg_file
 
 if TYPE_CHECKING:
@@ -324,6 +331,52 @@ def _layers_match(
     return True
 
 
+_ZONE_SHAPES = {"rect", "ellipse", "circle", "path", "polygon"}
+_CSS_ID = re.compile(r"^[A-Za-z_][\w-]*$")
+
+
+def zone_placeholder_css(root: SvgElement) -> str:
+    """Paint the file's unstyled zone shapes as faint dashed outlines.
+
+    A zone shape is a placeholder the pipeline fills with content, so it
+    carries no fill of its own, and an SVG shape without a fill is painted
+    black: in Inkscape a layout's title and content zones would cover the
+    slide. Zone shapes that are styled (a drawn text box) keep their look.
+    """
+    ids: list[str] = []
+    for el in root.iter(*(f"{{{ns.SVG}}}{tag}" for tag in _ZONE_SHAPES)):
+        zone_id = el.get("id") or ""
+        if not zone_id.startswith("zone-") or not _CSS_ID.match(zone_id):
+            continue
+        styled = (
+            el.get("fill") is not None
+            or "fill:" in (el.get("style") or "").replace(" ", "")
+            or "inkflow-fill-" in (el.get("class") or "")
+        )
+        if not styled and zone_id not in ids:
+            ids.append(zone_id)
+    if not ids:
+        return ""
+    selector = ", ".join(f"#{i}" for i in ids)
+    return (
+        f"{selector} {{ fill: #808080; fill-opacity: 0.08; stroke: #808080; "
+        + "stroke-opacity: 0.7; stroke-width: 2; stroke-dasharray: 12 8; }"
+    )
+
+
+def _preview_css(root: SvgElement, layers: PreviewLayers) -> str:
+    """The theme's colours plus the zone placeholders (none without a theme)."""
+    if not layers.preview_css:
+        return ""
+    return "\n".join(filter(None, [layers.preview_css, zone_placeholder_css(root)]))
+
+
+def has_preview_style(svg_path: Path) -> bool:
+    """Whether the file carries the preview ``<style>`` block ``sync`` writes."""
+    root = parse_svg_file(svg_path)
+    return root.find(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]') is not None
+
+
 def are_preview_layers_current(svg_path: Path, layers: PreviewLayers) -> bool:
     """Return True if svg_path already carries exactly these layers and style."""
     root = parse_svg_file(svg_path)
@@ -332,11 +385,9 @@ def are_preview_layers_current(svg_path: Path, layers: PreviewLayers) -> bool:
     if not _layers_match(root, layers.flat_overlays(), _OVERLAY):
         return False
     if layers.preview_css:
+        css = _preview_css(root, layers)
         style_el = root.find(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]')
-        if (
-            style_el is None
-            or (style_el.text or "").strip() != layers.preview_css.strip()
-        ):
+        if style_el is None or (style_el.text or "").strip() != css.strip():
             return False
     return True
 
@@ -380,19 +431,22 @@ def create_slide(
     output_path: Path,
     project_dir: Path | None,
     theme: Theme | None,
+    canvas: tuple[float, float] = (1920, 1080),
 ) -> None:
     """Create a minimal slide SVG, optionally wired to a layout parent.
 
     With ``parent_str`` set, resolves the parent, records ``inkflow:parent``, and
-    injects ancestor layout layers for editor preview. With ``parent_str`` None,
-    writes a blank slide carrying no parent.
+    injects ancestor layout layers for editor preview; the slide takes the
+    parent's size. With ``parent_str`` None, writes a blank slide of ``canvas``
+    (the deck's `PageSize.canvas`) carrying no parent.
 
     Raises ValueError if a given parent string cannot be resolved.
     """
+    w, h = (f"{v:g}" for v in canvas)
     if parent_str is None:
         blank = (
             f'<svg xmlns="{ns.SVG}"\n'
-            f'     viewBox="0 0 1920 1080" width="1920" height="1080">\n'
+            f'     viewBox="0 0 {w} {h}" width="{w}" height="{h}">\n'
             f"</svg>\n"
         )
         output_path.write_text(blank, encoding="utf-8")
@@ -400,7 +454,7 @@ def create_slide(
 
     parent_abs = resolve_parent_path(parent_str, output_path.parent, project_dir, theme)
 
-    view_box, width, height = "0 0 1920 1080", "1920", "1080"
+    view_box, width, height = f"0 0 {w} {h}", w, h
     if parent_abs.exists():
         root = parse_svg_file(parent_abs)
         view_box = root.get("viewBox", view_box)
@@ -441,17 +495,17 @@ def _update_preview_style(
     style_el.text = preview_css
 
 
-def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
-    """Inject preview layers as locked Inkscape layers into svg_path in place.
+def preview_layers_text(svg_path: Path, layers: PreviewLayers) -> str | None:
+    """svg_path with its preview layers injected as locked Inkscape layers.
 
     Ancestors are inserted below the file's own content and overlays appended
     above it, so the Inkscape layer stack matches runtime paint order. Also writes
     a ``<style id="inkflow-preview">`` block when ``preview_css`` is provided, so
     Inkscape renders semantic classes with the correct colors.
-    Returns True if the file was modified, False if already up to date.
+    Returns the file's new text, or None when it is already up to date.
     """
     if are_preview_layers_current(svg_path, layers):
-        return False
+        return None
 
     root = parse_svg_file(svg_path)
     overlay_layers = layers.flat_overlays()
@@ -465,7 +519,7 @@ def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
     for layer in overlay_layers:
         root.append(_build_layer_group(layer, hashes, _OVERLAY))
 
-    _update_preview_style(root, layers.preview_css)
+    _update_preview_style(root, _preview_css(root, layers))
 
     # inkflow among them: the marker attributes are the first use of that namespace
     # in a file with no inkflow:parent (an overlay), and without the declaration they
@@ -474,10 +528,18 @@ def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
         root,
         {"inkflow": ns.INKFLOW, "inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI},
     )
-    svg_path.write_text(
-        etree.tostring(out, encoding="unicode", xml_declaration=False),
-        encoding="utf-8",
-    )
+    return etree.tostring(out, encoding="unicode", xml_declaration=False) + "\n"
+
+
+def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
+    """Inject preview layers into svg_path in place (see ``preview_layers_text``).
+
+    Returns True if the file was modified, False if already up to date.
+    """
+    text = preview_layers_text(svg_path, layers)
+    if text is None:
+        return False
+    svg_path.write_text(text, encoding="utf-8")
     return True
 
 
@@ -520,14 +582,17 @@ def discover_assets(
     Order: builtin → theme → local.
     """
     sources: list[tuple[str, Path]] = []
+    seen: set[Path] = set()
 
     for label, base in (
         ("builtin", builtin_theme_dir()),
         ("theme", theme.asset_dir() if theme is not None else None),
         ("local", project_dir),
     ):
-        if base is None:
+        # The built-in theme's asset dir is the built-in dir: list it once.
+        if base is None or base.resolve() in seen:
             continue
+        seen.add(base.resolve())
         directory = base / kind
         if directory.is_dir():
             sources.extend((label, p) for p in sorted(directory.glob("*.svg")))
@@ -541,6 +606,33 @@ def discover_layouts(
 ) -> list[tuple[str, Path]]:
     """Return (source_label, path) pairs from every available layout directory."""
     return discover_assets(AssetKind.LAYOUT, project_dir, theme)
+
+
+def layout_canvas(path: Path) -> tuple[float, float] | None:
+    """A layout's drawing size (`svg.canvas_size`), or ``None`` if unreadable."""
+    try:
+        return canvas_size(parse_svg_file(path))
+    except Exception:
+        return None
+
+
+def layouts_for(
+    layouts: list[tuple[str, Path]], size: PageSize
+) -> list[tuple[str, Path]]:
+    """The layouts to offer a deck of ``size``: the built-in ones drawn in its
+    shape (a poster deck gets the poster layouts, a 16:9 deck the 16:9 ones)
+    and every layout of the project's and the theme's own, whatever its shape.
+    When no built-in layout has its shape (a letter-sized deck), all are."""
+    builtin = [entry for entry in layouts if entry[0] == "builtin"]
+    fitting = {
+        path
+        for _, path in builtin
+        if (canvas := layout_canvas(path)) is not None
+        and same_aspect(canvas, size.canvas)
+    }
+    if not fitting:
+        return layouts
+    return [e for e in layouts if e[0] != "builtin" or e[1] in fitting]
 
 
 def discover_overlays(

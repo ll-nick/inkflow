@@ -22,6 +22,17 @@ Set no theme and you get the built-in Catppuccin theme:
 Deck()  # == Deck(theme=Builtin())
 ```
 
+Inkflow ships two more, `Paper` (a quiet white document look) and `Stage` (big
+bold type, keynote-style), shown in light and dark on
+[Built-in themes](../built-in-theme/index.md):
+
+```python
+from inkflow import Deck, Paper, Stage
+
+Deck(theme=Paper())
+Deck(theme=Stage())
+```
+
 ## Defining a theme
 
 Subclass `Theme` and set class attributes:

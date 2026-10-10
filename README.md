@@ -71,12 +71,18 @@ open formats, plain text, not tied to any software or service—fully compatible
 3. **Run `inkflow serve`.** A browser tab opens with your presentation. Save a change
    in your editor and it appears instantly, without losing your place.
 
+Prefer to click and drag? **`inkflow edit`** opens a [visual editor](#the-visual-editor)
+in the browser that writes every change straight back to the same files.
+
 That's the core loop—the rest is there once you need it:
 reusable layouts that inherit from each other like master slides,
 Markdown-filled zones for text-heavy slides,
 a presenter view with speaker notes,
-one-command export to static HTML or PDF,
+one-command export to a single self-contained HTML file or a PDF,
 and more.
+Inkflow ships its fonts (Inter, JetBrains Mono, STIX Two Math for formulas,
+Twemoji for emoji) and embeds every font a deck uses,
+so a deck looks the same on every computer, offline included.
 
 ### An example `deck.py`
 
@@ -147,6 +153,58 @@ It will inject the Markdown and media files into the SVGs,
 apply the transitions and animations,
 and serve the result to your browser.
 
+## The visual editor
+
+<p align="center">
+  <img src="docs/assets/editor.png" alt="The inkflow editor: the slide list, a diagram slide with a selected box and the arrows attached to it, the properties panel with its animation, and the speaker notes" width="100%">
+</p>
+
+`inkflow edit` opens a slide editor in the browser, in the spirit of PowerPoint and Google Slides.
+There is no project format of its own: every change goes straight back into the deck's
+SVG, Markdown and `deck.py` files, so Inkscape, your text editor and
+[Claude Code](https://ll-nick.github.io/inkflow/editor/claude-code/) work on the same deck
+at the same time and see each other's changes live.
+
+- **Draw and arrange.** Shapes, text boxes that wrap, lines and arrows that stay attached to
+  their shapes (straight, elbow or curved), smart guides, groups, copy-by-dragging and a
+  format painter. Pictures with crop, figures straight from a PDF page (a paper backing
+  keeps a black-on-white plot readable on a dark slide); videos of any size and, with
+  ffmpeg, any format. Bigger diagrams open in [draw.io](https://www.drawio.com), kept as
+  editable SVG and drawn into the slide in the theme's font and colours.
+- **Charts from data.** Bar, line, area, scatter and pie charts plotted from a CSV kept in
+  the deck, edited in a spreadsheet-like grid with a live preview, drawn in the theme's
+  colours, with fixed axis ranges and a second axis when you need them.
+- **Draw with a pen.** Pressure-sensitive ink, highlighter and eraser, on the slide in the
+  editor or live while presenting; kept as plain vector paths in the deck, or gone when you
+  move on.
+- **Type on the slide.** Rich text with lists, tables, links and LaTeX formulas, saved as Markdown.
+- **Any size, posters too.** 16:9, 4:3, phone-shaped 9:16, or paper from A0 to letter:
+  poster layouts with a print type scale, checks for text and pictures too small for print,
+  and a PDF at the exact printed size, with bleed and crop marks when a print shop asks.
+- **Layouts and themes.** Start slides from a layout gallery, edit the shared layouts, pick
+  one of three built-in themes (the Catppuccin default, quiet white *Paper*, big-type
+  *Stage*) and set the deck's colours and fonts in a theme dialog.
+- **Animations, transitions and notes** from the properties panel; preview each build step,
+  then present from the current slide (and come back with <kbd>Shift</kbd>+<kbd>E</kbd>).
+- **Decks and git.** A start page for new and recent decks, commit/push/pull with Git LFS
+  for media, export to HTML or PDF, copy slides between decks, find and replace, and undo
+  for every change.
+
+```bash
+inkflow edit             # the deck in this folder (or: --deck path/to/deck.py)
+inkflow edit --start     # no deck yet: create one, open one, or pick a recent one
+inkflow setup-desktop    # add Inkflow to your application menu
+```
+
+See the [editor guide](https://ll-nick.github.io/inkflow/editor/) for everything it does.
+
+A coding agent gets the same deck through the command line: `inkflow outline` sums it up
+in a few lines per slide, `inkflow slide add/move/delete …` changes the slide list with
+every file it touches (an undoable step in the open editor), `inkflow shape …` draws
+shapes, text boxes and attached arrows exactly as the editor does, and `inkflow render --check`
+reports text that overflows its box or objects off the slide, with `--sheet` for all
+slides in one image ([Editing with Claude Code](https://ll-nick.github.io/inkflow/editor/claude-code/)).
+
 ## Quick start
 
 ```bash
@@ -155,6 +213,7 @@ cd my-deck
 uv run inkflow serve # or, without uv: inkflow serve
 # press "o" in the tui to open http://localhost:7777 in your browser,
 # press ? in the presenter for keyboard shortcuts
+uv run inkflow edit  # or open the visual editor instead
 ```
 
 To try the bundled demo:
@@ -165,11 +224,26 @@ cd inkflow/demo
 uv run inkflow serve
 ```
 
+**PDF figures** from a paper go on a slide as they are (vector, with their own fonts).
+The easiest way to show them is the `pdf` extra, one install on any system:
+`pip install "inkflow[pdf]"` (or `uv add "inkflow[pdf]"` in a deck's folder).
+It brings in PyMuPDF, which is AGPL-3.0 (or commercially licensed by Artifex);
+Inkflow itself stays MIT and never requires it. Poppler's `pdftocairo`, MuPDF's
+`mutool` or Inkscape work instead, with nothing to add.
+See [PDF figures](https://ll-nick.github.io/inkflow/authoring/pdf-figures/).
+
 No SVG editor is invoked at serve time. Inkscape or any other tool writes the files, Inkflow reads them.
 Saving a slide reloads the presenter automatically.
 
 ## Acknowledgements
 
 [Slidev](https://sli.dev) is an excellent presentation tool and a direct inspiration for this project.
+
+Inkflow ships these fonts, each under its own licence (see `src/inkflow/theme/fonts/`):
+[Inter](https://rsms.me/inter/) by Rasmus Andersson and
+[JetBrains Mono](https://www.jetbrains.com/lp/mono/) by JetBrains (both SIL OFL 1.1),
+[STIX Two Math](https://www.stixfonts.org/) by the STIX Fonts Project (SIL OFL 1.1), and
+[Twemoji](https://github.com/twitter/twemoji) by Twitter, Inc and other contributors
+(graphics CC BY 4.0, in [Mozilla's COLR font build](https://github.com/mozilla/twemoji-colr)).
 
 This project was built making heavy use of coding agents and would not have been possible without them.

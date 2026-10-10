@@ -9,7 +9,7 @@ from lxml import etree as _etree
 from rich import box as rich_box
 from rich.table import Table
 
-from inkflow import ns, sync
+from inkflow import drawio, ns, sync
 from inkflow.clean import clean_inkscape_svg
 from inkflow.cli._common import (
     Project,
@@ -39,6 +39,7 @@ from inkflow.layout import (
 )
 from inkflow.logging import console, logger, report
 from inkflow.pipeline import resolve_slide_src
+from inkflow.sizes import PageSize
 from inkflow.svg import with_namespaces
 from inkflow.svgio import parse_svg_file
 from inkflow.themes import Theme
@@ -76,6 +77,13 @@ def clean(
     errors = False
     for target in targets:
         try:
+            data = target.path.read_bytes()
+            if drawio.is_drawio_path(target.path) or drawio.is_drawio_svg(data):
+                # draw.io's own file is never rewritten; as git's textconv
+                # (--stdout) it shows the diagram's source, readable in a diff.
+                if to_stdout:
+                    sys.stdout.write(drawio.textconv(data))
+                continue
             cleaned = clean_inkscape_svg(target.path, keep_preview=True)
             if check:
                 if cleaned != target.path.read_text(encoding="utf-8"):
@@ -318,15 +326,19 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
 
     OUTPUT is the path for the new SVG file. With `-p`/`--parent`, the slide is
     wired to that layout (bare name, 'local:foo', 'theme:foo', 'builtin:foo', or a
-    relative path) and given preview layers. Without it, a blank slide is created.
+    relative path) and given preview layers. Without it, a blank slide is created
+    at the deck's size (`Deck(size=...)`, 16:9 without one or without a deck).
     """
+    project_dir: Path | None = None
+    theme = None
+    canvas = PageSize.WIDESCREEN.canvas
     if parent is not None and not no_deck:
         project = Project.load(deck_path)
-        project_dir: Path | None = project.dir
+        project_dir = project.dir
         theme = project.theme
-    else:
-        project_dir = None
-        theme = None
+        canvas = project.deck.effective_size.canvas
+    elif not no_deck and deck_path.exists():
+        canvas = Project.load(deck_path).deck.effective_size.canvas
 
     output_path = output.resolve()
     if output_path.exists():
@@ -334,7 +346,7 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        create_slide(parent, output_path, project_dir, theme)
+        create_slide(parent, output_path, project_dir, theme, canvas)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -417,11 +429,8 @@ def sync_cmd(
             plan = sync.plan_preview(target.path, ctx)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
-        # A file with no layers only gains the preview style block, which is worth
-        # writing when it was named explicitly but not when sweeping the whole deck.
-        # An overlay file is the exception: it is swept precisely to get that block,
-        # and it legitimately has no layers until it names a backdrop.
-        if plan.is_bare and not plan.is_overlay and not (files or no_deck):
+        # A file named explicitly is always written; a sweep follows `swept`.
+        if not (files or no_deck or plan.swept(target.path)):
             continue
         label = _sync_label(target.label, plan)
         if check:
