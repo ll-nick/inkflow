@@ -32,7 +32,8 @@ src/
                                Cue, Transition, Align, VAlign, Direction, Easing,
                                AnimationKind, Trigger, Inline, Content, ZoneContent,
                                ColorMode, MediaFit,
-                               MediaAlign, Muted, Overlay, Chart, ChartKind, PageSize, Section
+                               MediaAlign, Muted, Overlay, Chart, ChartKind, PageSize, Section,
+                               Palette, Theme, Typography, the shipped themes Paper + Stage,
                                and the `animations` and `transitions` namespaces
                                (`Animation` is NOT top-level — it lives in `animations`)
     manifest.py       dataclasses for the deck DSL; Cue/Transition base.
@@ -285,7 +286,9 @@ src/
                                in the deck's shape, the project's own always),
                                themeedit.py (Theme
                                dialog: token overrides as one marked block in the project's
-                               styles.css, values validated, never raw CSS), findreplace.py
+                               styles.css, values validated, never raw CSS; the session's
+                               `theme-set` also takes `theme` = a `THEMES` name, written
+                               as `Deck(theme=Paper())`), findreplace.py
                                (find/replace over SVG text, Markdown and deck.py author-text
                                literals only; `deckSlide` keeps deck.py to one slide's
                                text, the dialog's "This slide"), gitops.py (the Git menu: status, commit,
@@ -303,8 +306,9 @@ src/
                                commit, refused while the deck is dirty, a conflict
                                aborted and named; `remove` refuses dirty/unmerged unless
                                forced, deletes only merged (or forced) `deck/` branches),
-                               projects.py (new deck in one of five
-                               looks, folder browsing, recent decks), places.py (favourite
+                               projects.py (new deck in one of seven
+                               looks, each with `preview` colours for its thumbnail,
+                               folder browsing, recent decks), places.py (favourite
                                folders + the default deck location, user config dir),
                                nativedialog.py (the OS folder/file chooser shown by the
                                server: zenity/kdialog, osascript, PowerShell; `system-pick`,
@@ -455,7 +459,9 @@ src/
                                unless --force. `scaffold_poster` (init --poster
                                [--size], the editor's Poster look): templates/poster/
                                (poster.md, figures/, data/results.csv) on poster-3col
-                               (poster-landscape-3col for a landscape sheet)
+                               (poster-landscape-3col for a landscape sheet).
+                               `with_theme` (init --theme, the Paper/Stage looks):
+                               `theme=Paper()` + its import in the scaffolded deck.py
     loaders.py        deck style / script loading helpers. `load_deck_styles` emits the
                                CSS cascade: contract.css → active theme tokens → the
                                *built-in* theme's styles.css (always, since any theme may
@@ -505,6 +511,20 @@ src/
                                contact), icon.svg, showcase/, and
                                styles.css (per-layout zone styling for those layouts,
                                loaded for every deck — keep its rules `.layout-*`-scoped)
+    builtin_themes/   the themes shipped besides the default (`Builtin`, themes.py):
+                               `Paper` (quiet white document look, light by default) and
+                               `Stage` (big-type keynote look, black on screen; leaves
+                               `mode` unset so a printed deck is still light), `THEMES`
+                               (default/paper/stage: init --theme, the Theme dialog's
+                               selector) + `theme_id`. Each: palettes for both modes
+                               (contrast checked in tests/test_builtin_themes.py),
+                               `replace(Builtin.typography, ...)` (never their own font
+                               families), `fonts_dir` = the default theme's fonts,
+                               `asset_dir` = paper/ or stage/ here even for a subclass,
+                               holding only a styles.css: unscoped text rules plus
+                               `.layout-*` refinements of the built-in layouts
+                               (decorative layout shapes matched by exact geometry,
+                               e.g. `rect.inkflow-fill-accent[y="0"][height="8"]`)
     templates/        inkflow init starter files (title.svg, diagram.svg, guide.md,
                                diagram.md, notes/*.md) copied verbatim into new projects;
                                example/ is the demo deck's look (footer overlay + styles)
@@ -627,6 +647,9 @@ src/
   css/                CSS source
     shared/           theme variables, animation keyframes, ink.css (the ink palette)
     presenter/        presenter partials including pv.css (sidebar panel)
+themes-tour/          a theme on every layout with text, code, a table and charts
+                      (INKFLOW_TOUR_THEME / INKFLOW_TOUR_MODE): the built-in themes
+                      page's screenshots (docs/built-in-theme/img/)
 demo/
   deck.py             12-slide demo deck (SVG slides, some filling zones with Markdown via md=)
   slides/             source SVGs and Markdown content files

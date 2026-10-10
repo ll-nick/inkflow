@@ -28,4 +28,14 @@ theme ships its own layouts and fonts.
 
 ::: inkflow.themes.Typography
 
+## Built-in themes
+
+The default theme, and the two others inkflow ships (see [Built-in themes](../built-in-theme/index.md)).
+
+::: inkflow.themes.Builtin
+
+::: inkflow.builtin_themes.Paper
+
+::: inkflow.builtin_themes.Stage
+
 ::: inkflow.themes.Builtin

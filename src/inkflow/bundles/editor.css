@@ -2866,6 +2866,66 @@ foreignObject.rich-editing .math-chip.editing {
   flex-direction: column;
   gap: 2px;
 }
+.look-thumb {
+  position: relative;
+  flex: none;
+  width: 56px;
+  height: 32px;
+  border: 1px solid;
+  border-radius: 3px;
+  overflow: hidden;
+  align-self: center;
+}
+.look-thumb.portrait {
+  width: 26px;
+  height: 36px;
+  margin: 0 15px;
+}
+.look-thumb > span[class] {
+  position: absolute;
+  left: 5px;
+  height: 2px;
+  border-radius: 1px;
+}
+.look-thumb .look-thumb-title {
+  top: 5px;
+  width: 26px;
+  height: 4px;
+}
+.look-thumb .look-thumb-line {
+  top: 13px;
+  width: 20px;
+}
+.look-thumb .look-thumb-line.short {
+  top: 18px;
+  width: 14px;
+}
+.look-thumb .look-thumb-card {
+  top: 13px;
+  left: 30px;
+  width: 20px;
+  height: 13px;
+  border-radius: 2px;
+}
+.look-thumb .look-thumb-accent {
+  top: 24px;
+  width: 8px;
+}
+.look-thumb.portrait .look-thumb-title {
+  width: 16px;
+}
+.look-thumb.portrait .look-thumb-line {
+  width: 7px;
+}
+.look-thumb.portrait .look-thumb-card {
+  left: 14px;
+  width: 7px;
+  height: 16px;
+}
+.look-thumb.portrait .look-thumb-accent {
+  top: 30px;
+  width: 16px;
+}
 .folder-picker {
   display: flex;
   flex-direction: column;

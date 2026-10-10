@@ -33,6 +33,7 @@ from inkflow import drawio, instances, pdf, publish
 from inkflow import transitions as transitions_module
 from inkflow.animations import Cue
 from inkflow.assets import AssetRoots
+from inkflow.builtin_themes import THEMES, theme_id
 from inkflow.charts import (
     ChartError,
     ResolvedChart,
@@ -2027,6 +2028,8 @@ class EditorSession:
             families = []
         return {
             "name": theme.name,
+            "theme": theme_id(theme),
+            "themes": [{"id": k, "label": cls().name} for k, cls in THEMES.items()],
             "mode": "light" if deck.effective_mode == ColorMode.LIGHT else "dark",
             "deckMode": deck.mode.value if deck.mode is not None else None,
             "themeMode": theme.mode.value,
@@ -2040,8 +2043,9 @@ class EditorSession:
     def _theme_set(
         self, msg: dict[str, object], _deck: Deck, txn: _Txn, _extra: dict[str, object]
     ) -> str:
-        """Theme panel changes: token overrides in styles.css, the deck's colour
-        mode and base font size in deck.py, as one step."""
+        """Theme panel changes: token overrides in styles.css, the deck's
+        theme (one inkflow ships), colour mode and base font size in deck.py,
+        as one step."""
         changes = msg.get("changes")
         if isinstance(changes, dict):
             styles = self.project_dir / "styles.css"
@@ -2056,9 +2060,20 @@ class EditorSession:
                 raise EditError(str(exc)) from exc
         source: DeckSource | None = None
         imports: set[str] = set()
+        if "theme" in msg:
+            name = msg.get("theme")
+            if not isinstance(name, str) or name not in THEMES:
+                raise EditError(f"unknown theme {name!r}")
+            source = self._deck_source(txn)
+            if name == "default":
+                source.set_deck_arg("theme", None)
+            else:
+                cls = THEMES[name].__name__
+                source.set_deck_arg("theme", f"{cls}()")
+                imports.add(cls)
         if "mode" in msg:
             mode = msg.get("mode")
-            source = self._deck_source(txn)
+            source = source or self._deck_source(txn)
             if mode in ("dark", "light"):
                 source.set_deck_arg("mode", f"ColorMode.{str(mode).upper()}")
                 imports.add("ColorMode")

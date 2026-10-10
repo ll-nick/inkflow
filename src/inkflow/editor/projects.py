@@ -1,9 +1,11 @@
 """Decks as projects: creating a new deck from the editor, browsing for a
 folder to put it in, and remembering the decks recently opened.
 
-A new deck is what ``inkflow init`` makes, in one of five looks:
+A new deck is what ``inkflow init`` makes, in one of seven looks:
 
 - ``starter``: the built-in theme and the three starter slides;
+- ``paper``, ``stage``: the starter slides on one of the other themes inkflow
+  ships (``inkflow init --theme``);
 - ``showcase``: the built-in theme, one slide per built-in layout;
 - ``example``: the starter slides in the inkflow example look (the footer logo
   overlay and its styles, as in inkflow's own demo deck);
@@ -35,6 +37,7 @@ import platformdirs
 from inkflow import init, sync
 from inkflow import lfs as lfs_rules
 from inkflow.assets import REFERENCE_PATTERNS, is_local_ref
+from inkflow.builtin_themes import Paper, Stage
 from inkflow.editor import gitops, places
 from inkflow.editor.codegen import Code
 from inkflow.editor.deckedit import DeckEditError, DeckSource
@@ -42,6 +45,7 @@ from inkflow.enums import ColorMode
 from inkflow.logging import logger
 from inkflow.manifest import Deck
 from inkflow.sizes import PageSize
+from inkflow.themes import Builtin, Theme
 
 THEMES: list[dict[str, str]] = [
     {
@@ -53,6 +57,18 @@ THEMES: list[dict[str, str]] = [
         "id": "starter",
         "label": "Inkflow default",
         "description": "The built-in theme with three starter slides",
+    },
+    {
+        "id": "paper",
+        "label": "Paper",
+        "description": "A quiet white theme: near-black text, hairline rules, "
+        + "one ink-blue accent",
+    },
+    {
+        "id": "stage",
+        "label": "Stage",
+        "description": "Big bold type on black (or white), soft cards, "
+        + "one vivid blue",
     },
     {
         "id": "example",
@@ -71,6 +87,18 @@ THEMES: list[dict[str, str]] = [
         + "and a figure; exports as a PDF at its printed size",
     },
 ]
+
+# The theme each look is on, for its preview in the dialog.
+_LOOK_THEMES: dict[str, type[Theme]] = {
+    "starter": Builtin,
+    "paper": Paper,
+    "stage": Stage,
+    "example": Builtin,
+    "showcase": Builtin,
+    "poster": Builtin,
+}
+# Looks that are the starter slides on another theme (init.scaffold's names).
+_THEMED_STARTERS = ("paper", "stage")
 
 # The sizes the new-deck dialog offers a poster in (any PageSize works).
 POSTER_SIZES = ("a0", "a1", "a2", "a0-landscape", "a1-landscape", "a2-landscape")
@@ -171,10 +199,35 @@ def new_deck_info(deck_path: Path | None, deck: Deck | None) -> dict[str, object
         "name": name,
         "home": str(Path.home()),
         "current": str(project_dir),
-        "themes": [t for t in THEMES if t["id"] != "current" or can_reuse],
+        "themes": [
+            {**t, "preview": _preview(t["id"], deck)}
+            for t in THEMES
+            if t["id"] != "current" or can_reuse
+        ],
         "posterSizes": [{"id": s, "label": PageSize(s).label} for s in POSTER_SIZES],
         "git": gitops.available(),
         "lfs": lfs_rules.available(),
+    }
+
+
+def _preview(look: str, deck: Deck | None) -> dict[str, str] | None:
+    """The colours a look's thumbnail is drawn in: its theme in the mode a
+    deck of that look opens in (a poster is printed: light)."""
+    if look == "current":
+        if deck is None:
+            return None
+        theme = deck.theme
+        light = deck.effective_mode == ColorMode.LIGHT
+    else:
+        theme = _LOOK_THEMES[look]()
+        light = look == "poster" or theme.mode == ColorMode.LIGHT
+    p = theme.light if light else theme.dark
+    return {
+        "bg": p.bg,
+        "surface": p.surface,
+        "heading": p.heading,
+        "muted": p.text_muted,
+        "accent": p.accent,
     }
 
 
@@ -225,6 +278,8 @@ def create_deck(
                 init.scaffold_poster(target, size or "a0")
             except ValueError as exc:
                 raise ProjectError(str(exc)) from exc
+        elif theme in _THEMED_STARTERS:
+            init.scaffold(target, theme)
         else:
             init.scaffold(target)
         if theme == "example":

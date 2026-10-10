@@ -192,7 +192,8 @@ Slide("cover", md="title")
 Slide("two-cols", md="compare")
 ```
 
-The [built-in theme page](../built-in-theme/index.md) has a live showcase of all of them.
+The [built-in themes page](../built-in-theme/index.md) has a live showcase of all of them,
+and shows them in each of the three themes.
 
 They take your theme's palette automatically,
 because they paint through the token classes rather than hardcoded colours.

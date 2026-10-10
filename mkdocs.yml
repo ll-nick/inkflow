@@ -87,7 +87,7 @@ nav:
     - Overlays: design/overlays.md
     - Themes: design/themes.md
     - Fonts: design/fonts.md
-    - Built-in theme: built-in-theme/index.md
+    - Built-in themes: built-in-theme/index.md
   - Visual editor:
     - Editing slides: editor/index.md
     - Comparing two versions: editor/compare.md
