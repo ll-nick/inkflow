@@ -113,7 +113,7 @@ def _check_pdfs(slide: Slide, project_dir: Path, src: Path) -> list[Issue]:
             issues.append(("error", f"not a page number: {ref} (write #page=2)"))
         elif page > (count := pdf.page_count(file) or page):
             issues.append(("error", f"{file.name} has {count} pages, not {page}"))
-        elif pdf.converter() is None:
+        elif pdf.converter() is None and pdf.committed_page(file, page) is None:
             issues.append(("warn", f"{file.name} cannot show: {pdf.install_hint()}"))
     return issues
 
@@ -432,4 +432,59 @@ def verify_slide(
     issues += check_size(root, preview.deck)
     issues += _check_sync(src, preview)
     issues += _check_connectors(slide, project_dir, preview.deck)
+    return issues
+
+
+# ── The deck as a whole: does it look the same on another machine? ──
+
+
+def verify_portable(deck: Deck, project_dir: Path, deck_path: Path) -> list[Issue]:
+    """What ties the deck to this machine (``inkflow pack``'s checks), one
+    warning line each: fonts from this machine, missing or generic first,
+    files outside the deck or behind a symlink, pictures from the web, no
+    pinned inkflow, no uv.lock, no LF line-ending rules. (Git LFS has the
+    editor's git menu; emoji and math fonts are ``inkflow pack``'s report.)"""
+    from inkflow.pack import plan_pack
+
+    try:
+        plan = plan_pack(deck, project_dir, deck_path)
+    except Exception as exc:
+        return [("warn", f"could not check portability: {exc}")]
+    issues: list[Issue] = []
+    by_key: dict[str, list[str]] = {}
+    for item in plan.items:
+        by_key.setdefault(item.key, []).append(item.message)
+    for key in ("font", "missing-font", "generic-font"):
+        issues += [("warn", message) for message in by_key.get(key, [])]
+    outside = [src for src, _ in plan.copy_in.copies] + [
+        dst for dst in plan.copy_in.writes if not dst.exists()
+    ]
+    if outside:
+        names = ", ".join(p.name for p in outside[:3]) + (
+            " …" if len(outside) > 3 else ""
+        )
+        issues.append(
+            (
+                "warn",
+                f"{len(outside)} file(s) outside the deck or behind a symlink "
+                + f"({names}): a clone will not have them; inkflow pack copies them in",
+            )
+        )
+    remote = plan.copy_in.remote
+    if remote:
+        issues.append(
+            (
+                "warn",
+                f"{len(remote)} picture(s) read from the web ({remote[0].raw}"
+                + (" …" if len(remote) > 1 else "")
+                + "): they need internet access",
+            )
+        )
+    for key, hint in (
+        ("pyproject", "inkflow pack"),
+        ("lock", "inkflow pack (or uv lock)"),
+        ("eol", "inkflow pack adds them"),
+    ):
+        for message in by_key.get(key, []):
+            issues.append(("warn", f"{message}: {hint}"))
     return issues

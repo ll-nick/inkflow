@@ -43,8 +43,7 @@ name = "{name}"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "{requirement}",
-]
+{requirements}]
 """
 
 
@@ -163,11 +162,16 @@ def scaffold_poster(target: Path, size: str = "a0") -> PageSize:
     return sheet
 
 
+def write_pyproject_text(target: Path, requirements: list[str]) -> str:
+    """A bare ``pyproject.toml`` for a deck in ``target`` needing ``requirements``."""
+    return _PYPROJECT.format(
+        name=_project_name(target),
+        requirements="".join(f'    "{r}",\n' for r in requirements),
+    )
+
+
 def write_pyproject(target: Path) -> None:
     """A bare ``pyproject.toml`` declaring the deck's inkflow dependency."""
     (target / "pyproject.toml").write_text(
-        _PYPROJECT.format(
-            name=_project_name(target), requirement=inkflow_requirement()
-        ),
-        encoding="utf-8",
+        write_pyproject_text(target, [inkflow_requirement()]), encoding="utf-8"
     )

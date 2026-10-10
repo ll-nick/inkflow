@@ -20,6 +20,7 @@ for _submodule in (
     "compare",
     "color",
     "files",
+    "fonts",
     "present",
     "project",
     "shapes",

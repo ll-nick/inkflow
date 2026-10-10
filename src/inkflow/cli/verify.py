@@ -5,11 +5,11 @@ from pathlib import Path
 
 import click
 
-from inkflow.cli._common import Project, deck_option, main
+from inkflow.cli._common import Project, deck_option, main, resolve_deck_path
 from inkflow.enums import ColorMode
 from inkflow.logging import console
 from inkflow.pipeline import resolve_slide_src
-from inkflow.verify import verify_slide
+from inkflow.verify import verify_portable, verify_slide
 
 
 @main.command("verify")
@@ -19,11 +19,18 @@ from inkflow.verify import verify_slide
 @click.option(
     "--strict", is_flag=True, help="Treat warnings as errors (exit 1 if any warn)."
 )
+@click.option(
+    "--no-portable",
+    "no_portable",
+    is_flag=True,
+    help="Skip the deck-wide checks of what ties it to this machine.",
+)
 def verify_cmd(
     files: tuple[Path, ...],
     deck_path: Path,
     include_hidden: bool,
     strict: bool,
+    no_portable: bool,
 ) -> None:
     """Check slides for authoring errors before presenting or building.
 
@@ -33,6 +40,12 @@ def verify_cmd(
     from the composed SVG; an overlay paints an opaque full-canvas rect, which would
     hide the slide. Warnings: animation steps are not contiguous from 1, a zone id is
     declared twice after composition, or layout layers are stale (run `inkflow sync`).
+
+    Then, for the whole deck (not with FILES or `--no-portable`), what ties it
+    to this machine, one warning each: a font found only among this computer's
+    fonts, missing, or a stack starting with a generic family; files outside
+    the deck or behind a symlink; pictures from the web; no pinned inkflow, no
+    uv.lock, no LF line-ending rules (`inkflow pack` fixes what it can).
 
     Exits 1 on any error, or on any warning when `--strict` is set. Hidden slides
     (`visible=False`) are skipped unless `--all` is passed.
@@ -67,6 +80,13 @@ def verify_cmd(
             else:
                 has_warn = True
         _print_slide_issues(str(slide.src), issues)
+
+    if not files and not no_portable:
+        deck_file = resolve_deck_path(deck_path)
+        deck_issues = verify_portable(deck_obj, project_dir, deck_file)
+        if deck_issues:
+            has_warn = True
+            _print_slide_issues("deck", deck_issues)
 
     if has_error or (strict and has_warn):
         sys.exit(1)
