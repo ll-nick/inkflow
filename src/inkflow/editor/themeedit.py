@@ -82,7 +82,7 @@ def _check(name: str, value: str) -> str:
     value = value.strip()
     if name in PALETTE_TOKENS:
         ok = bool(_COLOR.match(value))
-    elif name in ("body_font", "heading_font", "mono_font"):
+    elif name in ("body_font", "heading_font", "mono_font", "math_font"):
         ok = bool(_FONT.match(value))
     elif name in TYPOGRAPHY_TOKENS:
         ok = bool(_NUMBER.match(value))

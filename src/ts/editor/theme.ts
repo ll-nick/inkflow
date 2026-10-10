@@ -51,6 +51,7 @@ const FONTS: [string, string, string][] = [
     ["body_font", "Body", "sans-serif"],
     ["heading_font", "Headings", "sans-serif"],
     ["mono_font", "Code", "monospace"],
+    ["math_font", "Maths", "math"],
 ];
 
 let info: ThemeInfo | null = null;
@@ -251,7 +252,7 @@ function render(): void {
         h(
             "p",
             { class: "hint" },
-            "Fonts found in fonts/, the theme or this computer are embedded in the deck.",
+            "Inter, JetBrains Mono, STIX Two Math and Twemoji come with inkflow and look the same everywhere. Fonts found in fonts/, the theme or this computer are embedded in the deck too.",
         ),
         h("h3", {}, "Colours"),
         colorsTable(),

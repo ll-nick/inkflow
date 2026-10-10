@@ -13,7 +13,9 @@
     box-shadow: 0 6px 24px rgb(0 0 0 / 0.3);
     color: var(--subtext);
     font:
-        13px / 1 system-ui,
+        13px / 1 "Inkflow UI",
+        "Inkflow UI Symbols",
+        system-ui,
         sans-serif;
     user-select: none;
     touch-action: none;

@@ -191,6 +191,10 @@ class Browser:
                     max_size=None,
                     ping_interval=None,
                 )
+                # The timeout was for connecting: an idle stretch between two
+                # calls (fonts being subset for the next page) must not close
+                # the connection under the reader.
+                sock.settimeout(None)
                 with conn:
                     yield cls(process, conn)
             finally:

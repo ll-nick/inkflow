@@ -418,14 +418,14 @@ def font_warnings(deck: Deck, project_dir: Path, deck_path: Path) -> list[str]:
     the runner's system fonts in the published deck."""
     if not deck.embed_fonts:
         return []
-    from inkflow.fonts import font_sources
+    from inkflow.fonts import SHIPPED_FONTS_DIR, font_sources
     from inkflow.loaders import load_deck_styles
     from inkflow.pipeline import process_deck
 
     slides = process_deck(deck, project_dir, deck_path)
     styles = load_deck_styles(deck, project_dir)
     theme_fonts = deck.theme.fonts_dir
-    shipped = [project_dir / "fonts", theme_fonts]
+    shipped = [project_dir / "fonts", theme_fonts, SHIPPED_FONTS_DIR]
     local: list[str] = []
     missing: list[str] = []
     for family, path in font_sources(

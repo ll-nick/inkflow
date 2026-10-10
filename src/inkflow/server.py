@@ -54,7 +54,13 @@ from inkflow.editor.model import build_model
 from inkflow.editor.session import EditError, EditorSession, Exporters
 from inkflow.editor.svgops import file_hash
 from inkflow.enums import ColorMode
-from inkflow.fonts import embed_fonts_css
+from inkflow.fonts import (
+    embed_fonts_css,
+    font_mime,
+    shipped_font_file,
+    shipped_font_url,
+    ui_fonts_css,
+)
 from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.logging import Levels, collect_logs, logger, report
 from inkflow.manifest import Deck
@@ -229,7 +235,11 @@ async def rebuild(deck_path: Path, ui: LiveUI, levels: Levels) -> None:
             styles_css = await asyncio.to_thread(load_deck_styles, deck, project_dir)
             if deck.embed_fonts:
                 font_css = await asyncio.to_thread(
-                    functools.partial(embed_fonts_css, styles_css=styles_css),
+                    functools.partial(
+                        embed_fonts_css,
+                        styles_css=styles_css,
+                        font_url=shipped_font_url,
+                    ),
                     slides,
                     project_dir,
                     deck.theme.fonts_dir,
@@ -638,14 +648,24 @@ def favicon_data_uri() -> str:
     return f"data:image/svg+xml;base64,{b64}"
 
 
+@functools.cache
+def _served_ui_fonts() -> str:
+    return ui_fonts_css()
+
+
 def build_html(
     state: State,
     ws_port: int | None,
     edit_commands: EditCommands = NO_EDIT_COMMANDS,
+    ui_fonts: str | None = None,
 ) -> bytes:
+    """The presenter page. ``ui_fonts`` are the interface's ``@font-face``
+    rules: by default loaded from this server (`ui_fonts_css`); a static build
+    passes them subset and inline."""
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("presenter.html").read_text(encoding="utf-8")
     css = pkg.joinpath("bundles", "presenter.css").read_text(encoding="utf-8")
+    css = (_served_ui_fonts() if ui_fonts is None else ui_fonts) + "\n" + css
     js = pkg.joinpath("bundles", "presenter.js").read_text(encoding="utf-8")
     data_theme = "" if state["mode"] == ColorMode.DARK else "light"
     ws_port_js = "null" if ws_port is None else str(ws_port)
@@ -679,6 +699,7 @@ def build_editor_html(state: State, editor: EditorState, ws_port: int) -> bytes:
     pkg = importlib.resources.files("inkflow")
     template = pkg.joinpath("editor.html").read_text(encoding="utf-8")
     css = pkg.joinpath("bundles", "editor.css").read_text(encoding="utf-8")
+    css = _served_ui_fonts() + "\n" + css
     js = pkg.joinpath("bundles", "editor.js").read_text(encoding="utf-8")
     data_theme = "" if state["mode"] == ColorMode.DARK else "light"
     html = (
@@ -895,6 +916,23 @@ def make_http_handler(
                     b"HTTP/1.1 200 OK\r\n"
                     + b"Content-Type: application/json\r\n"
                     + b"Cache-Control: no-store\r\n"
+                    + b"Connection: close\r\n"
+                    + f"Content-Length: {len(body)}\r\n\r\n".encode()
+                    + body
+                )
+                await writer.drain()
+                return
+
+            font = shipped_font_file(request_path)
+            if font is not None:
+                # A font inkflow ships (the deck's and the interface's): the
+                # same bytes for as long as this inkflow is installed.
+                body = await asyncio.to_thread(font.read_bytes)
+                writer.write(
+                    b"HTTP/1.1 200 OK\r\n"
+                    + f"Content-Type: {font_mime(font)}\r\n".encode()
+                    + b"Cache-Control: public, max-age=86400\r\n"
+                    + b"Access-Control-Allow-Origin: *\r\n"
                     + b"Connection: close\r\n"
                     + f"Content-Length: {len(body)}\r\n\r\n".encode()
                     + body

@@ -9,7 +9,9 @@
 body {
     background: #000;
     color: var(--text);
-    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    font-family:
+        "Inkflow UI Mono", "Inkflow UI", "Inkflow UI Symbols",
+        "Inkflow UI Emoji", ui-monospace, monospace;
     height: 100vh;
     display: flex;
     flex-direction: column;
