@@ -32,7 +32,7 @@ from typing import cast
 
 import platformdirs
 
-from inkflow import init, sync
+from inkflow import init, pack, sync
 from inkflow import lfs as lfs_rules
 from inkflow.assets import REFERENCE_PATTERNS, is_local_ref
 from inkflow.editor import gitops, places
@@ -233,10 +233,12 @@ def create_deck(
             _reuse(current, target)
         _set_title(target / "deck.py", title)
         lfs_rules.ensure_attributes(target / ".gitattributes", lfs)
+        pack.ensure_text_rules(target)
     except Exception:
         shutil.rmtree(target, ignore_errors=True)
         raise
     _sync_previews(target / "deck.py")
+    _self_contained(target / "deck.py")
     if git and not in_repo and gitops.available():
         try:
             gitops.init(target, lfs=lfs)
@@ -244,6 +246,20 @@ def create_deck(
             logger.warning(f"could not create a git repository: {exc}")
     remember(target / "deck.py")
     return target / "deck.py"
+
+
+def _self_contained(deck_py: Path) -> None:
+    """The fonts the look names that only this machine has, copied into the
+    new deck's fonts/; uv.lock when uv is installed (best effort, both)."""
+    try:
+        bundled = pack.bundle_fonts_now(_load(deck_py), deck_py.parent)
+        for warning in bundled.warnings:
+            logger.warning(warning)
+    except Exception as exc:
+        logger.warning(f"could not check the new deck's fonts: {exc}")
+    ok, note = pack.lock_new_deck(deck_py.parent)
+    if not ok:
+        logger.info(note)
 
 
 def _set_title(deck_py: Path, title: str) -> None:

@@ -9,7 +9,7 @@ from typing import cast
 
 import click
 
-from inkflow import git_setup, init, publish, sync
+from inkflow import git_setup, init, pack, publish, sync
 from inkflow.cli._common import (
     Project,
     deck_option,
@@ -40,6 +40,26 @@ def _sync_layout_previews(target: Path) -> None:
         logger.warning(f"could not inject layout previews: {exc}")
         return
     report("Synced", "layout previews for editing")
+
+
+def _self_contained(target: Path) -> None:
+    """A new deck starts self-contained: LF line endings for its sources, the
+    fonts its look names that only this machine has in fonts/, and uv.lock
+    when uv is installed (offline: a note, not a failure)."""
+    if pack.ensure_text_rules(target):
+        report("Wrote", ".gitattributes (LF line endings, SVG diff)")
+    try:
+        project = Project.load(target / "deck.py")
+        bundled = pack.bundle_fonts_now(project.deck, target)
+    except Exception as exc:
+        logger.warning(f"could not check the new deck's fonts: {exc}")
+    else:
+        for family in bundled.families:
+            report("Bundled", f"{family} into fonts/")
+        for warning in bundled.warnings:
+            report("Licence", warning, style="yellow")
+    ok, note = pack.lock_new_deck(target)
+    report("Locked" if ok else "Skipped", note, style="green" if ok else "dim")
 
 
 @main.command("init")
@@ -152,6 +172,7 @@ def init_cmd(
     _sync_layout_previews(target)
     if not no_git:
         git_setup.init_project_git(target, verbose=False, lfs=not no_lfs)
+    _self_contained(target)
     result = None
     if pages is not None:
         result = _setup_pages(

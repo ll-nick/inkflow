@@ -609,6 +609,57 @@ def plan_pack(
     return plan
 
 
+# ── New decks start self-contained ──
+
+
+def ensure_text_rules(deck_dir: Path) -> bool:
+    """The LF line-ending rules and the SVG diff driver line in the deck's
+    ``.gitattributes`` (Git LFS rules are ``git_setup.setup_lfs``'s, which
+    honours ``--no-lfs``). True when the file changed."""
+    root = _git_root(deck_dir)
+    lines = _attribute_lines(deck_dir, root)
+    eol = [f"*.{e}" for e in EOL_EXTS if not _covers(lines, f"*.{e}", "eol=lf")]
+    diff = not _covers(lines, "*.svg", "diff=inkscape-svg")
+    if not eol and not diff:
+        return False
+    path = deck_dir / ".gitattributes"
+    current = path.read_text(encoding="utf-8") if path.is_file() else ""
+    blocks: list[str] = []
+    if eol:
+        blocks.append("\n".join([EOL_MARKER, *(f"{p} text eol=lf" for p in eol)]))
+    if diff:
+        blocks.append(DIFF_LINE)
+    text = current.rstrip("\n")
+    text = (text + "\n\n" if text else "") + "\n\n".join(blocks) + "\n"
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
+def bundle_fonts_now(deck: Deck, deck_dir: Path) -> BundlePlan:
+    """Copy the fonts a new deck's look names that only this machine has into
+    its ``fonts/`` (plain copies: a new deck has no editing history)."""
+    report = fontreport.font_report(deck, deck_dir)
+    plan = fontreport.plan_bundle(report, deck_dir)
+    for copy in plan.copies:
+        copy.dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(copy.src, copy.dst)
+    for path, text in plan.texts.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    if plan.readme is not None:
+        (deck_dir / "fonts").mkdir(exist_ok=True)
+        (deck_dir / "fonts" / "README.md").write_text(plan.readme, encoding="utf-8")
+    return plan
+
+
+def lock_new_deck(deck_dir: Path) -> tuple[bool, str]:
+    """``uv lock`` for a new deck when uv is installed; offline (or any other
+    failure) is a note, never an error."""
+    if not uv_available():
+        return False, "uv is not installed: run `uv lock` later to pin versions"
+    return run_uv_lock(deck_dir, timeout=60)
+
+
 def tools_needed() -> list[str]:
     """What a machine needs to build the deck beyond inkflow (for the report)."""
     return [

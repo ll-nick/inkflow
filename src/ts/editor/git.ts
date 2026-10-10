@@ -14,6 +14,14 @@ import { closeDialog, openDialog } from "./dialog";
 import { clear, h, toast } from "./dom";
 import { UNDO_NOTICE, undoNoticeDue, undoNoticeShown } from "./gitnotice";
 import { connected, request } from "./net";
+import {
+    applyPack,
+    commitGate,
+    openPackDialog,
+    PACK_HELP,
+    packCheck,
+} from "./pack";
+import { commitPaths } from "./packtext";
 import { openPublishDialog } from "./publish";
 import { closeMenu, menuItem, showMenu } from "./sorter";
 import { ed, emit, on } from "./state";
@@ -201,6 +209,8 @@ async function openMenu(): Promise<void> {
                 "Compare with another deck…",
                 () => void openComparePicker(),
             ),
+            menuItem("Pack deck…", () => void openPackDialog()),
+            h("div", { class: "menu-note" }, PACK_HELP),
         );
     } else {
         const n = status.changes?.length ?? 0;
@@ -262,6 +272,8 @@ async function openMenu(): Promise<void> {
                 () => discardDialog(),
                 deckChanges.length === 0,
             ),
+            menuItem("Pack deck…", () => void openPackDialog()),
+            h("div", { class: "menu-note" }, PACK_HELP),
             menuItem(
                 "Undo last commit",
                 async () => {
@@ -502,8 +514,7 @@ function commitDialog(ticked?: string[], text?: string): void {
               ),
               h("div", { class: "btn-row" }, name, email),
           );
-    const run = async (push: boolean) => {
-        const paths = checkedPaths(files);
+    const commit = async (paths: string[], push: boolean): Promise<void> => {
         const res = await git("commit", {
             message: message.value,
             paths,
@@ -512,6 +523,26 @@ function commitDialog(ticked?: string[], text?: string): void {
         if (!res) return;
         closeDialog();
         if (push) await git("push");
+    };
+    const run = async (push: boolean) => {
+        const paths = checkedPaths(files);
+        // A deck that depends on this computer asks to be packed first; the
+        // files packing writes go into this same commit.
+        const summary = paths.length ? await packCheck() : null;
+        if (!summary?.needed) {
+            await commit(paths, push);
+            return;
+        }
+        commitGate(
+            summary,
+            async () => {
+                const packed = await applyPack();
+                if (!packed) return;
+                await refreshGit();
+                await commit(commitPaths(paths, packed.gitPaths), push);
+            },
+            () => commit(paths, push),
+        );
     };
     const canPush = !!status.remotes?.length;
     const changed = new Set(changes.map((c) => c.path));

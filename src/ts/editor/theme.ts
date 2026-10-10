@@ -6,7 +6,7 @@
 // dragged; the rebuild then restyles every open window (presenter included).
 
 import { openDialog } from "./dialog";
-import { clear, h } from "./dom";
+import { clear, h, toast } from "./dom";
 import { edit, request } from "./net";
 import { ed, on } from "./state";
 
@@ -53,7 +53,24 @@ const FONTS: [string, string, string][] = [
     ["mono_font", "Code", "monospace"],
 ];
 
+type FontWhere = "project" | "theme" | "machine" | "missing" | "generic";
+
+interface FontFamily {
+    family: string;
+    where: FontWhere;
+    faces: string[];
+    usedBy: string[];
+    files: { path: string; where: FontWhere; face: string }[];
+    licence: { status: string; name: string } | null;
+    message: string;
+}
+
+interface FontReport {
+    families: FontFamily[];
+}
+
 let info: ThemeInfo | null = null;
+let report: FontReport | null = null;
 let content: HTMLElement | null = null;
 
 const cssVar = (name: string) => `--inkflow-${name.replace(/_/g, "-")}`;
@@ -175,10 +192,28 @@ function fontRow(name: string, label: string, generic: string): HTMLElement {
             setToken("typography", name, null);
             return;
         }
-        // A bare family gets a generic fallback, as CSS authors write it.
-        const withFallback =
-            v.includes(",") || v === generic ? v : `${v}, ${generic}`;
-        setToken("typography", name, withFallback);
+        // As `inkflow fonts set` does: a bare family gets a generic fallback,
+        // a generic first is refused, and a font only this computer has is
+        // copied into fonts/ in the same step.
+        void (async () => {
+            const res = await edit({
+                action: "fonts",
+                op: "set",
+                role: name.replace(/_font$/, ""),
+                family: v,
+                label: `Font: ${label}`,
+            });
+            if (!res.ok) {
+                input.value = value;
+                return;
+            }
+            const bundle = res.bundle as { families?: string[] } | undefined;
+            if (bundle?.families?.length) {
+                toast(`Copied ${bundle.families.join(", ")} into fonts/`, "ok");
+            } else if (typeof res.note === "string") {
+                toast(res.note, "info");
+            }
+        })();
     });
     const sample = h("span", { class: "theme-font-sample" }, "Aa Bb 123");
     sample.style.fontFamily = value;
@@ -248,11 +283,7 @@ function render(): void {
         h("h3", {}, "Fonts"),
         list,
         ...FONTS.map(([n, l, g]) => fontRow(n, l, g)),
-        h(
-            "p",
-            { class: "hint" },
-            "Fonts found in fonts/, the theme or this computer are embedded in the deck.",
-        ),
+        fontsReport(),
         h("h3", {}, "Colours"),
         colorsTable(),
         h(
@@ -263,14 +294,110 @@ function render(): void {
     );
 }
 
+// ── Where the fonts come from (inkflow/fontreport.py) ──
+
+const WHERE: Record<FontWhere, string> = {
+    project: "in the deck (fonts/)",
+    theme: "ships with inkflow / the theme",
+    machine: "this computer only",
+    missing: "not installed",
+    generic: "each machine's own",
+};
+
+function fontsReport(): HTMLElement {
+    const families = report?.families ?? [];
+    const box = h("div", { class: "theme-fonts-report" });
+    if (!report) {
+        box.append(
+            h("p", { class: "hint" }, "Checking where the fonts come from…"),
+        );
+        return box;
+    }
+    if (!families.length) {
+        box.append(h("p", { class: "hint" }, "The deck names no font."));
+        return box;
+    }
+    box.append(
+        h(
+            "div",
+            { class: "theme-sub" },
+            "Where each font comes from (on another machine only the deck's and inkflow's fonts are there)",
+        ),
+        ...families.map((f) =>
+            h(
+                "div",
+                {
+                    class: `font-source ${f.where}`,
+                    "data-family": f.family,
+                    title: f.message || f.files.map((x) => x.path).join("\n"),
+                },
+                h("span", { class: "font-family" }, f.family),
+                h("span", { class: `font-where ${f.where}` }, WHERE[f.where]),
+                h("span", { class: "font-faces" }, f.faces.join(", ")),
+                f.message
+                    ? h("span", { class: "font-message hint" }, f.message)
+                    : null,
+            ),
+        ),
+    );
+    const machine = families.filter((f) => f.where === "machine");
+    const bundle = h(
+        "button",
+        {
+            type: "button",
+            class: "pbtn",
+            "data-fonts": "bundle",
+            title: "Copy the fonts only this computer has into the deck's fonts/, with their licences",
+            onclick: () => void bundleFonts(),
+        },
+        "Bundle fonts into the deck",
+    ) as HTMLButtonElement;
+    bundle.disabled = machine.length === 0;
+    box.append(h("div", { class: "btn-row" }, bundle));
+    return box;
+}
+
+async function bundleFonts(): Promise<void> {
+    const plan = await request({ action: "fonts", op: "bundle", dryRun: true });
+    if (!plan.ok) {
+        toast(plan.error ?? "cannot bundle fonts", "error");
+        return;
+    }
+    const b = plan.bundle as {
+        copies: { from: string; to: string }[];
+        families: string[];
+        warnings: string[];
+    };
+    if (!b.copies.length) {
+        toast("No font comes from this computer only", "info");
+        return;
+    }
+    const question = [
+        `Copy ${b.families.join(", ")} into fonts/ (${b.copies.length} file${b.copies.length === 1 ? "" : "s"})?`,
+        ...b.warnings.map((w) => `⚠ ${w}`),
+    ].join("\n\n");
+    if (!confirm(question)) return;
+    const res = await edit({ action: "fonts", op: "bundle" });
+    if (res.ok) {
+        toast(`Copied ${b.families.join(", ")} into fonts/`, "ok");
+        await refresh();
+    }
+}
+
 async function refresh(): Promise<void> {
     const result = await request({ action: "theme-get" });
     if (!result.ok) return;
     info = result.theme as ThemeInfo;
     render();
+    const fonts = await request({ action: "fonts" });
+    if (fonts.ok) {
+        report = fonts.fonts as FontReport;
+        render();
+    }
 }
 
 export async function openTheme(): Promise<void> {
+    report = null;
     content = h(
         "div",
         { class: "theme-body" },

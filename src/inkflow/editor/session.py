@@ -30,6 +30,7 @@ from lxml import etree
 
 from inkflow import animations as animations_module
 from inkflow import drawio, instances, pdf, publish
+from inkflow import pack as deck_pack
 from inkflow import transitions as transitions_module
 from inkflow.animations import Cue
 from inkflow.assets import AssetRoots
@@ -146,7 +147,6 @@ from inkflow.layout import (
 from inkflow.logging import logger
 from inkflow.manifest import Chart, Deck, Image, Inline, Slide, TextBox, Video
 from inkflow.ns import INKFLOW_SHOW_SHAPE
-from inkflow.pack import plan_pack, run_uv_lock
 from inkflow.pipeline import resolve_slide_src, slide_ids
 from inkflow.sizes import PageSize
 from inkflow.svgio import parse_svg_file
@@ -433,7 +433,9 @@ class _Txn:
                 continue
             change.path.parent.mkdir(parents=True, exist_ok=True)
             change.path.write_bytes(change.after)
-        prune = self.project_dir.resolve() if self.prune else None
+        # A step that copied files in removes the folders its undo empties.
+        copied = any(m.copy for m in self.moves)
+        prune = self.project_dir.resolve() if self.prune or copied else None
         if prune is not None:
             gone = [c.path for c in changes if c.after is None]
             _prune_empty([m.src for m in self.moves if not m.copy] + gone, prune)
@@ -2224,7 +2226,7 @@ class EditorSession:
         ``uv lock`` when a lock is missing, its file added to the step."""
         op = msg.get("op") or "check"
         try:
-            plan = plan_pack(
+            plan = deck_pack.plan_pack(
                 deck,
                 self.project_dir,
                 self.deck_path,
@@ -2271,7 +2273,7 @@ class EditorSession:
         if plan.lock_dir is not None:
             lock = plan.lock_dir / "uv.lock"
             before = lock.read_bytes() if lock.is_file() else None
-            ok, lock_note = run_uv_lock(plan.lock_dir)
+            ok, lock_note = deck_pack.run_uv_lock(plan.lock_dir)
             after = lock.read_bytes() if lock.is_file() else None
             inside = lock.resolve().is_relative_to(self.project_dir.resolve())
             if ok and after != before and inside:

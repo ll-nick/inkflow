@@ -2662,9 +2662,9 @@
     for (const { sel, ops } of plans) {
       const src = sourceOf(sel.key);
       if (!src) continue;
-      const list3 = out.get(src.path) ?? [];
-      list3.push(...ops);
-      out.set(src.path, list3);
+      const list4 = out.get(src.path) ?? [];
+      list4.push(...ops);
+      out.set(src.path, list4);
     }
     return out;
   }
@@ -4039,13 +4039,13 @@
     if (p2.edits.length) {
       const byFile = /* @__PURE__ */ new Map();
       for (const e2 of p2.edits) {
-        const list4 = byFile.get(e2.file) ?? [];
-        list4.push(e2);
-        byFile.set(e2.file, list4);
+        const list5 = byFile.get(e2.file) ?? [];
+        list5.push(e2);
+        byFile.set(e2.file, list5);
       }
-      const list3 = h("ul", { class: "rename-list" });
+      const list4 = h("ul", { class: "rename-list" });
       for (const [file, edits] of byFile) {
-        list3.append(
+        list4.append(
           h(
             "li",
             {},
@@ -4072,7 +4072,7 @@
           "details",
           { class: "rename-details" },
           h("summary", {}, "Show the references"),
-          list3
+          list4
         )
       );
     }
@@ -4306,7 +4306,7 @@
     const files2 = res.files ?? [];
     const unused = files2.filter((f2) => !f2.uses);
     const picked = /* @__PURE__ */ new Set();
-    const list3 = h("div", { class: "files-list" });
+    const list4 = h("div", { class: "files-list" });
     const deleteBtn = h(
       "button",
       { type: "button", class: "pbtn", disabled: true },
@@ -4321,7 +4321,7 @@
       const { folder: dir } = splitFileName(f2.path);
       if (dir !== folder) {
         folder = dir;
-        list3.append(h("div", { class: "files-folder" }, `${dir || "."}/`));
+        list4.append(h("div", { class: "files-folder" }, `${dir || "."}/`));
       }
       const check = h("input", {
         type: "checkbox",
@@ -4333,7 +4333,7 @@
         else picked.delete(f2.path);
         sync();
       });
-      list3.append(
+      list4.append(
         h(
           "div",
           { class: `files-row${f2.uses ? "" : " unused"}` },
@@ -4386,7 +4386,7 @@ Undo brings them back.`
         class: "pbtn",
         disabled: !unused.length,
         onclick: () => {
-          for (const row4 of list3.querySelectorAll(
+          for (const row4 of list4.querySelectorAll(
             ".files-row.unused input"
           )) {
             row4.checked = true;
@@ -4400,7 +4400,7 @@ Undo brings them back.`
     const body2 = h(
       "div",
       { class: "files-body" },
-      files2.length ? list3 : h("p", { class: "hint" }, "No files yet."),
+      files2.length ? list4 : h("p", { class: "hint" }, "No files yet."),
       h(
         "div",
         { class: "rename-actions" },
@@ -5519,7 +5519,7 @@ Undo brings them back.`
       autocomplete: "off",
       title: "Type a path: Tab completes, Enter opens, \u2193 goes to the list"
     });
-    const list3 = h("div", { class: "folder-list", role: "listbox" });
+    const list4 = h("div", { class: "folder-list", role: "listbox" });
     const where = h("div", { class: "hint folder-where" });
     const placesRow = h("div", { class: "folder-places" });
     const star = h("button", {
@@ -5536,7 +5536,7 @@ Undo brings them back.`
       },
       "Browse\u2026"
     );
-    const entries = () => [...list3.querySelectorAll("button.folder")].filter(
+    const entries = () => [...list4.querySelectorAll("button.folder")].filter(
       (b2) => !b2.hidden
     );
     async function go(target, opts2 = {}) {
@@ -5579,11 +5579,11 @@ Undo brings them back.`
       return b2;
     }
     function renderList2() {
-      clear(list3);
+      clear(list4);
       const f2 = folder;
       if (!f2) return;
       if (f2.parent && !filter) {
-        list3.append(
+        list4.append(
           entry("\u2191 ..", "up", () => {
             if (f2.parent) void go(f2.parent, { focus: "list" });
           })
@@ -5591,7 +5591,7 @@ Undo brings them back.`
       }
       const dirs = startingWith(f2.dirs, filter);
       for (const name2 of dirs) {
-        list3.append(
+        list4.append(
           entry(`\u{1F4C1} ${name2}`, "dir", () => {
             void go(joinPath(f2.path, name2), { focus: "list" });
           })
@@ -5603,7 +5603,7 @@ Undo brings them back.`
       );
       for (const file of f2.files ?? []) {
         if (!shown2.includes(file.name)) continue;
-        list3.append(
+        list4.append(
           entry(
             `\u{1F39E} ${file.name}`,
             "file",
@@ -5617,7 +5617,7 @@ Undo brings them back.`
         );
       }
       if (!dirs.length && !shown2.length) {
-        list3.append(
+        list4.append(
           h(
             "p",
             { class: "hint folder-empty" },
@@ -5753,7 +5753,7 @@ Undo brings them back.`
         renderList2();
       }
     });
-    list3.addEventListener("keydown", (e2) => {
+    list4.addEventListener("keydown", (e2) => {
       const items = entries();
       const at3 = items.indexOf(document.activeElement);
       if (e2.key === "ArrowDown" || e2.key === "ArrowUp") {
@@ -5825,7 +5825,7 @@ Undo brings them back.`
         star
       ),
       placesRow,
-      list3,
+      list4,
       where
     );
     void go(start);
@@ -6801,8 +6801,8 @@ Undo brings them back.`
     return { path: result.path, rel: result.rel };
   }
   function droppedPath(dt) {
-    const list3 = dt?.getData("text/uri-list") ?? "";
-    const uri = list3.split(/\r?\n/).find((line) => line.startsWith("file://"));
+    const list4 = dt?.getData("text/uri-list") ?? "";
+    const uri = list4.split(/\r?\n/).find((line) => line.startsWith("file://"));
     if (!uri) return null;
     try {
       const url = new URL(uri);
@@ -8564,8 +8564,8 @@ Undo brings them back.`
       const n3 = seen.get(cue.element) ?? 0;
       seen.set(cue.element, n3 + 1);
       try {
-        const list3 = JSON.parse(el2?.getAttribute("data-cues") ?? "[]");
-        const steps = list3.map((c2) => c2.step).sort((a2, b2) => a2 - b2);
+        const list4 = JSON.parse(el2?.getAttribute("data-cues") ?? "[]");
+        const steps = list4.map((c2) => c2.step).sort((a2, b2) => a2 - b2);
         return steps[n3] ?? null;
       } catch {
         return null;
@@ -9137,8 +9137,8 @@ Undo brings them back.`
     }
     return section("Chart", ...rows);
   }
-  function typeInfo(list3, type) {
-    return list3.find((t2) => t2.type === type) ?? null;
+  function typeInfo(list4, type) {
+    return list4.find((t2) => t2.type === type) ?? null;
   }
   function renderSlidePanel() {
     const slide = currentSlide();
@@ -9325,9 +9325,9 @@ Undo brings them back.`
   }
   function animationList(cues, editable, di) {
     const model2 = ed.model;
-    const list3 = h("div", { class: "anim-list" });
+    const list4 = h("div", { class: "anim-list" });
     if (!cues.length)
-      list3.append(h("p", { class: "hint" }, "No animations on this slide."));
+      list4.append(h("p", { class: "hint" }, "No animations on this slide."));
     const steps = cueSteps(cues, slideRoot());
     const replace2 = (i2, type, fields) => void edit({
       action: "anim",
@@ -9439,10 +9439,10 @@ Undo brings them back.`
           )
         )
       );
-      list3.append(item);
+      list4.append(item);
     });
     if (!editable && cues.length) {
-      list3.append(
+      list4.append(
         h(
           "p",
           { class: "hint" },
@@ -9470,7 +9470,7 @@ Undo brings them back.`
     );
     if (!animated && !playing)
       controls.firstChild.disabled = true;
-    return section("Animation order", controls, list3);
+    return section("Animation order", controls, list4);
   }
   function selectById(id) {
     const svg = slideRoot();
@@ -10555,7 +10555,7 @@ Undo brings them back.`
     const shapes2 = diagramShapes(svg);
     if (!shapes2.length) return null;
     const editable = slide.animationsEditable && model2.deckEditable;
-    const list3 = h("div", { class: "diagram-shapes" });
+    const list4 = h("div", { class: "diagram-shapes" });
     const flash = (el2, on2) => setHover(on2 ? el2 : null);
     for (const shape of shapes2) {
       const count = slide.animations.filter(
@@ -10600,7 +10600,7 @@ Undo brings them back.`
         });
         item.append(add);
       }
-      list3.append(item);
+      list4.append(item);
     }
     return section(
       "Shapes",
@@ -10609,7 +10609,7 @@ Undo brings them back.`
         { class: "hint" },
         "Animate the diagram's shapes one by one. To change a shape, edit the diagram in draw.io."
       ),
-      list3
+      list4
     );
   }
   function backgroundRow(current2, commit) {
@@ -10665,12 +10665,12 @@ Undo brings them back.`
     return s2?.id ? `slide:${s2.id}` : null;
   }
   function slideOptions() {
-    const list3 = h("datalist", { id: "slide-link-list" });
+    const list4 = h("datalist", { id: "slide-link-list" });
     for (const s2 of ed.model?.slides ?? []) {
       if (!s2.id) continue;
-      list3.append(h("option", { value: `slide:${s2.id}` }, s2.title ?? s2.id));
+      list4.append(h("option", { value: `slide:${s2.id}` }, s2.title ?? s2.id));
     }
-    return list3;
+    return list4;
   }
   function detailsSection(sel) {
     const title2 = [...sel.el.children].find((c2) => c2.localName === "title")?.textContent ?? "";
@@ -11230,9 +11230,9 @@ Undo brings them back.`
     return path.startsWith(root2) ? path.slice(root2.length + 1) : path;
   }
   function renderResults(error2) {
-    const list3 = el(".find-results");
+    const list4 = el(".find-results");
     const status2 = el(".find-status");
-    clear(list3);
+    clear(list4);
     if (error2) {
       status2.textContent = error2;
       return;
@@ -11250,7 +11250,7 @@ Undo brings them back.`
       const slide = first != null ? ed.model?.slides[first] : null;
       const group2 = slide != null ? `${first + 1} \xB7 ${slide.title ?? slide.id ?? ""}` : fileLabel(hit.file);
       if (group2 !== lastGroup) {
-        list3.append(h("div", { class: "find-group" }, group2));
+        list4.append(h("div", { class: "find-group" }, group2));
         lastGroup = group2;
       }
       const where = hit.kind === "deck" ? "deck.py" : `${fileLabel(hit.file)}${on2.length > 1 ? ` \xB7 ${on2.length} slides` : ""}`;
@@ -11271,7 +11271,7 @@ Undo brings them back.`
         ),
         h("span", { class: "find-where" }, where)
       );
-      list3.append(row4);
+      list4.append(row4);
     });
   }
   function goTo(i2) {
@@ -11907,12 +11907,12 @@ Undo brings them back.`
   function isCheckbox(node) {
     return node.nodeType === Node.ELEMENT_NODE && node.localName === "input" && node.type === "checkbox";
   }
-  function listMarkdown(list3) {
-    const ordered = list3.localName === "ol";
-    const tasks = list3.classList.contains(TASK_LIST);
-    let n3 = parseInt(list3.getAttribute("start") ?? "1", 10) || 1;
+  function listMarkdown(list4) {
+    const ordered = list4.localName === "ol";
+    const tasks = list4.classList.contains(TASK_LIST);
+    let n3 = parseInt(list4.getAttribute("start") ?? "1", 10) || 1;
     const lines = [];
-    for (const li of list3.children) {
+    for (const li of list4.children) {
       if (li.localName !== "li") throw new Unsupported(li.localName);
       const cls = li.getAttribute("class") ?? "";
       if (!plain(li, cls === TASK_ITEM || !cls ? ["class"] : [])) {
@@ -12866,18 +12866,18 @@ ${area2.value.slice(pos)}`;
       document.execCommand("insertUnorderedList");
       li = caretElement(content2)?.closest("li");
     }
-    const list3 = li?.parentElement;
-    if (list3?.localName !== "ul") return;
-    if (list3.classList.contains("contains-task-list")) {
-      list3.classList.remove("contains-task-list");
-      if (!list3.classList.length) list3.removeAttribute("class");
-      for (const item of list3.children) {
+    const list4 = li?.parentElement;
+    if (list4?.localName !== "ul") return;
+    if (list4.classList.contains("contains-task-list")) {
+      list4.classList.remove("contains-task-list");
+      if (!list4.classList.length) list4.removeAttribute("class");
+      for (const item of list4.children) {
         item.classList.remove("task-list-item");
         if (!item.classList.length) item.removeAttribute("class");
         item.querySelector(":scope > input[type=checkbox]")?.remove();
       }
     } else {
-      list3.classList.add("contains-task-list");
+      list4.classList.add("contains-task-list");
       fixChecklists(content2);
     }
     changed(content2);
@@ -15525,6 +15525,278 @@ Decks: new, open, recent` : "Decks";
     document.getElementById("btn-export")?.addEventListener("click", openExport);
   }
 
+  // src/ts/editor/packtext.ts
+  function missingLines(summary2) {
+    return summary2.items.filter((i2) => i2.fixable).map((i2) => i2.message);
+  }
+  function consequences(summary2) {
+    const seen = /* @__PURE__ */ new Set();
+    const out = [];
+    for (const item of summary2.items.filter((i2) => i2.fixable)) {
+      const line = sentence(item.consequence);
+      if (!seen.has(line)) {
+        seen.add(line);
+        out.push(line);
+      }
+    }
+    return out;
+  }
+  function remainingLines(items) {
+    return items.filter((i2) => !i2.fixable).map((i2) => sentence(i2.message));
+  }
+  function withoutPackingTitle(summary2) {
+    const all = consequences(summary2);
+    if (!all.length) return "Commit as it is";
+    const more = all.length > 1 ? ` (and ${all.length - 1} more)` : "";
+    return `Not recommended: ${all[0]}${more}`;
+  }
+  function sentence(text) {
+    const t2 = text.trim();
+    if (!t2) return t2;
+    const first = t2[0].toUpperCase() + t2.slice(1);
+    return /[.!?]$/.test(first) ? first : `${first}.`;
+  }
+  function commitPaths(ticked, packed) {
+    return [.../* @__PURE__ */ new Set([...ticked, ...packed])];
+  }
+
+  // src/ts/editor/pack.ts
+  var PACK_HELP = "Make the deck self-contained: fonts, outside files, lock file, git rules \u2014 so it looks the same on every machine";
+  async function packCheck() {
+    const res = await request({ action: "pack", op: "check" });
+    return res.ok ? res.pack : null;
+  }
+  async function applyPack() {
+    const res = await edit({ action: "pack", op: "apply" });
+    if (!res.ok) return null;
+    const lock = res.lock;
+    if (typeof lock === "string" && !lock.startsWith("uv.lock written")) {
+      toast(lock, "info");
+    }
+    const changes = res.changes ?? [];
+    return {
+      gitPaths: res.gitPaths ?? [],
+      changed: changes.map((c2) => `${c2.change}: ${c2.path}`),
+      remaining: res.remaining ?? []
+    };
+  }
+  function list3(lines, cls = "pack-list") {
+    return h("ul", { class: cls }, ...lines.map((l2) => h("li", {}, l2)));
+  }
+  function commitGate(summary2, packAndCommit, commitAnyway) {
+    const remaining = remainingLines(summary2.items);
+    const busy = (b2) => {
+      for (const btn of box.querySelectorAll("button"))
+        btn.disabled = b2;
+    };
+    const primary = h(
+      "button",
+      {
+        type: "button",
+        class: "pbtn primary",
+        "data-pack": "pack-and-commit",
+        onclick: async () => {
+          busy(true);
+          await packAndCommit();
+          busy(false);
+        }
+      },
+      "Pack and commit"
+    );
+    const box = openDialog(
+      "Commit: pack the deck first?",
+      h(
+        "div",
+        { class: "git-form pack-gate" },
+        h(
+          "p",
+          {},
+          "This deck depends on this computer, so it will not look the same elsewhere:"
+        ),
+        list3(missingLines(summary2)),
+        h(
+          "p",
+          { class: "hint" },
+          "Packing copies what is missing into the deck and adds the files it writes to this commit."
+        ),
+        h(
+          "div",
+          { class: "pack-without" },
+          h(
+            "p",
+            { class: "hint warn" },
+            "Without packing, on other machines:"
+          ),
+          list3(consequences(summary2), "pack-list warn")
+        ),
+        remaining.length ? h(
+          "details",
+          { class: "pack-remaining" },
+          h("summary", {}, "Packing cannot change"),
+          list3(remaining)
+        ) : null,
+        h(
+          "div",
+          { class: "btn-row end" },
+          h(
+            "button",
+            {
+              type: "button",
+              class: "pbtn",
+              "data-pack": "commit-anyway",
+              title: withoutPackingTitle(summary2),
+              onclick: async () => {
+                busy(true);
+                await commitAnyway();
+                busy(false);
+              }
+            },
+            "Commit without packing (not recommended)"
+          ),
+          primary
+        )
+      ),
+      { wide: true }
+    );
+    primary.focus();
+  }
+  async function openPackDialog() {
+    const body2 = h(
+      "div",
+      { class: "git-form pack-dialog" },
+      h("p", { class: "hint" }, "Checking the deck\u2026")
+    );
+    openDialog("Pack deck", body2, { wide: true, hint: PACK_HELP });
+    const res = await request({ action: "pack", op: "plan" });
+    if (!body2.isConnected) return;
+    body2.replaceChildren();
+    if (!res.ok) {
+      body2.append(h("p", { class: "hint warn" }, res.error ?? "cannot pack"));
+      return;
+    }
+    const summary2 = res.pack;
+    const remaining = remainingLines(summary2.items);
+    const copies = summary2.assets?.copies ?? [];
+    const warnings = summary2.fonts?.warnings ?? [];
+    if (!summary2.steps.length) {
+      body2.append(
+        h(
+          "p",
+          {},
+          "Nothing to pack: everything this deck needs is in its folder."
+        )
+      );
+    } else {
+      body2.append(h("p", {}, "Packing will:"), list3(summary2.steps));
+      if (copies.length) {
+        body2.append(
+          h(
+            "details",
+            {},
+            h("summary", {}, `Files copied in (${copies.length})`),
+            list3(copies.map((c2) => `${c2.from} \u2192 ${c2.to}`))
+          )
+        );
+      }
+    }
+    if (warnings.length) {
+      body2.append(
+        h("p", { class: "hint warn" }, "Font licences:"),
+        list3(warnings, "pack-list warn")
+      );
+    }
+    if (remaining.length) {
+      body2.append(
+        h(
+          "p",
+          { class: "hint" },
+          "Still depends on the machine afterwards:"
+        ),
+        list3(remaining)
+      );
+    }
+    const pack = h(
+      "button",
+      {
+        type: "button",
+        class: "pbtn primary",
+        "data-pack": "pack",
+        onclick: async () => {
+          pack.disabled = true;
+          const done = await applyPack();
+          if (!done) {
+            pack.disabled = false;
+            return;
+          }
+          showResult(done);
+        }
+      },
+      "Pack"
+    );
+    pack.disabled = !summary2.steps.length;
+    body2.append(
+      h(
+        "div",
+        { class: "btn-row end" },
+        h(
+          "button",
+          { type: "button", class: "pbtn", onclick: () => closeDialog() },
+          summary2.steps.length ? "Cancel" : "Close"
+        ),
+        pack
+      )
+    );
+    if (summary2.steps.length) pack.focus();
+  }
+  function showResult(done) {
+    const remaining = remainingLines(done.remaining);
+    openDialog(
+      "Deck packed",
+      h(
+        "div",
+        { class: "git-form pack-dialog" },
+        done.changed.length ? h(
+          "div",
+          {},
+          h(
+            "p",
+            {},
+            "Packed (one step: Ctrl+Z takes it back). Commit these files to share them:"
+          ),
+          list3(done.changed)
+        ) : h("p", {}, "Packed: nothing needed changing."),
+        remaining.length ? h(
+          "div",
+          {},
+          h(
+            "p",
+            { class: "hint" },
+            "Still depends on the machine:"
+          ),
+          list3(remaining)
+        ) : h(
+          "p",
+          { class: "hint" },
+          "Nothing else depends on this machine."
+        ),
+        h(
+          "div",
+          { class: "btn-row end" },
+          h(
+            "button",
+            {
+              type: "button",
+              class: "pbtn primary",
+              onclick: () => closeDialog()
+            },
+            "Done"
+          )
+        )
+      ),
+      { wide: true }
+    );
+  }
+
   // src/ts/editor/publishtext.ts
   function defaultHost(info4) {
     return info4.configured?.host ?? info4.suggested ?? "github";
@@ -15637,8 +15909,8 @@ Decks: new, open, recent` : "Decks";
     readme.addEventListener("change", () => update());
     function update() {
       const hostInfo = info4.hosts[host4];
-      const list3 = filesFor(info4, host4, release.checked);
-      const rows = list3.map((f2) => fileRow(fileAction(f2), f2.path));
+      const list4 = filesFor(info4, host4, release.checked);
+      const rows = list4.map((f2) => fileRow(fileAction(f2), f2.path));
       if (readme.checked && info4.readme !== "linked") {
         const missing = info4.readme === "missing";
         rows.push(fileRow(missing ? "new" : "link", "README.md"));
@@ -15650,11 +15922,11 @@ Decks: new, open, recent` : "Decks";
           (w2) => h("p", { class: "hint warn publish-note" }, w2)
         )
       );
-      write.textContent = list3.some((f2) => f2.exists !== "none") ? "Update files" : "Write files";
+      write.textContent = list4.some((f2) => f2.exists !== "none") ? "Update files" : "Write files";
     }
     async function run() {
-      const list3 = filesFor(info4, host4, release.checked);
-      const theirs = list3.filter((f2) => f2.exists === "other");
+      const list4 = filesFor(info4, host4, release.checked);
+      const theirs = list4.filter((f2) => f2.exists === "other");
       if (theirs.length && !confirm(
         `${theirs.map((f2) => f2.path).join(", ")} exists already and was not written by inkflow. Replace it?`
       ))
@@ -15666,7 +15938,7 @@ Decks: new, open, recent` : "Decks";
         host: host4,
         release: release.checked,
         readme: readme.checked,
-        force: list3.some((f2) => f2.exists !== "none")
+        force: list4.some((f2) => f2.exists !== "none")
       });
       write.disabled = false;
       if (!out.ok) return;
@@ -15923,7 +16195,9 @@ Continue?`)) return null;
         menuItem(
           "Compare with another deck\u2026",
           () => void openComparePicker()
-        )
+        ),
+        menuItem("Pack deck\u2026", () => void openPackDialog()),
+        h("div", { class: "menu-note" }, PACK_HELP)
       );
     } else {
       const n3 = status.changes?.length ?? 0;
@@ -15983,6 +16257,8 @@ Continue?`)) return null;
           () => discardDialog(),
           deckChanges.length === 0
         ),
+        menuItem("Pack deck\u2026", () => void openPackDialog()),
+        h("div", { class: "menu-note" }, PACK_HELP),
         menuItem(
           "Undo last commit",
           async () => {
@@ -16153,8 +16429,8 @@ Continue?`)) return null;
       h("code", { class: "git-path" }, change.path)
     );
   }
-  function checkedPaths(list3) {
-    return [...list3.querySelectorAll("input:checked")].map(
+  function checkedPaths(list4) {
+    return [...list4.querySelectorAll("input:checked")].map(
       (b2) => b2.value
     );
   }
@@ -16191,8 +16467,7 @@ Continue?`)) return null;
       ),
       h("div", { class: "btn-row" }, name2, email)
     );
-    const run = async (push) => {
-      const paths = checkedPaths(files2);
+    const commit = async (paths, push) => {
       const res = await git("commit", {
         message: message.value,
         paths,
@@ -16201,6 +16476,24 @@ Continue?`)) return null;
       if (!res) return;
       closeDialog();
       if (push) await git("push");
+    };
+    const run = async (push) => {
+      const paths = checkedPaths(files2);
+      const summary2 = paths.length ? await packCheck() : null;
+      if (!summary2?.needed) {
+        await commit(paths, push);
+        return;
+      }
+      commitGate(
+        summary2,
+        async () => {
+          const packed = await applyPack();
+          if (!packed) return;
+          await refreshGit();
+          await commit(commitPaths(paths, packed.gitPaths), push);
+        },
+        () => commit(paths, push)
+      );
     };
     const canPush = !!status.remotes?.length;
     const changed2 = new Set(changes.map((c2) => c2.path));
@@ -17973,6 +18266,7 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
     ["mono_font", "Code", "monospace"]
   ];
   var info3 = null;
+  var report2 = null;
   var content = null;
   var cssVar = (name2) => `--inkflow-${name2.replace(/_/g, "-")}`;
   function toHex(value) {
@@ -18069,8 +18363,25 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
         setToken("typography", name2, null);
         return;
       }
-      const withFallback = v2.includes(",") || v2 === generic ? v2 : `${v2}, ${generic}`;
-      setToken("typography", name2, withFallback);
+      void (async () => {
+        const res = await edit({
+          action: "fonts",
+          op: "set",
+          role: name2.replace(/_font$/, ""),
+          family: v2,
+          label: `Font: ${label4}`
+        });
+        if (!res.ok) {
+          input.value = value;
+          return;
+        }
+        const bundle = res.bundle;
+        if (bundle?.families?.length) {
+          toast(`Copied ${bundle.families.join(", ")} into fonts/`, "ok");
+        } else if (typeof res.note === "string") {
+          toast(res.note, "info");
+        }
+      })();
     });
     const sample = h("span", { class: "theme-font-sample" }, "Aa Bb 123");
     sample.style.fontFamily = value;
@@ -18122,9 +18433,9 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
       const n3 = parseInt(size4.value, 10);
       void save3({ fontSize: Number.isFinite(n3) ? n3 : null }, "Font size");
     });
-    const list3 = h("datalist", { id: "theme-font-list" });
+    const list4 = h("datalist", { id: "theme-font-list" });
     for (const f2 of ["sans-serif", "serif", "monospace", ...t2.fonts]) {
-      list3.append(h("option", { value: f2 }));
+      list4.append(h("option", { value: f2 }));
     }
     content.append(
       h(
@@ -18134,13 +18445,9 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
         h("label", {}, h("span", {}, "Base font size (px)"), size4)
       ),
       h("h3", {}, "Fonts"),
-      list3,
+      list4,
       ...FONTS.map(([n3, l2, g2]) => fontRow(n3, l2, g2)),
-      h(
-        "p",
-        { class: "hint" },
-        "Fonts found in fonts/, the theme or this computer are embedded in the deck."
-      ),
+      fontsReport(),
       h("h3", {}, "Colours"),
       colorsTable(),
       h(
@@ -18150,13 +18457,98 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
       )
     );
   }
+  var WHERE = {
+    project: "in the deck (fonts/)",
+    theme: "ships with inkflow / the theme",
+    machine: "this computer only",
+    missing: "not installed",
+    generic: "each machine's own"
+  };
+  function fontsReport() {
+    const families = report2?.families ?? [];
+    const box = h("div", { class: "theme-fonts-report" });
+    if (!report2) {
+      box.append(
+        h("p", { class: "hint" }, "Checking where the fonts come from\u2026")
+      );
+      return box;
+    }
+    if (!families.length) {
+      box.append(h("p", { class: "hint" }, "The deck names no font."));
+      return box;
+    }
+    box.append(
+      h(
+        "div",
+        { class: "theme-sub" },
+        "Where each font comes from (on another machine only the deck's and inkflow's fonts are there)"
+      ),
+      ...families.map(
+        (f2) => h(
+          "div",
+          {
+            class: `font-source ${f2.where}`,
+            "data-family": f2.family,
+            title: f2.message || f2.files.map((x2) => x2.path).join("\n")
+          },
+          h("span", { class: "font-family" }, f2.family),
+          h("span", { class: `font-where ${f2.where}` }, WHERE[f2.where]),
+          h("span", { class: "font-faces" }, f2.faces.join(", ")),
+          f2.message ? h("span", { class: "font-message hint" }, f2.message) : null
+        )
+      )
+    );
+    const machine = families.filter((f2) => f2.where === "machine");
+    const bundle = h(
+      "button",
+      {
+        type: "button",
+        class: "pbtn",
+        "data-fonts": "bundle",
+        title: "Copy the fonts only this computer has into the deck's fonts/, with their licences",
+        onclick: () => void bundleFonts()
+      },
+      "Bundle fonts into the deck"
+    );
+    bundle.disabled = machine.length === 0;
+    box.append(h("div", { class: "btn-row" }, bundle));
+    return box;
+  }
+  async function bundleFonts() {
+    const plan = await request({ action: "fonts", op: "bundle", dryRun: true });
+    if (!plan.ok) {
+      toast(plan.error ?? "cannot bundle fonts", "error");
+      return;
+    }
+    const b2 = plan.bundle;
+    if (!b2.copies.length) {
+      toast("No font comes from this computer only", "info");
+      return;
+    }
+    const question = [
+      `Copy ${b2.families.join(", ")} into fonts/ (${b2.copies.length} file${b2.copies.length === 1 ? "" : "s"})?`,
+      ...b2.warnings.map((w2) => `\u26A0 ${w2}`)
+    ].join("\n\n");
+    if (!confirm(question)) return;
+    const res = await edit({ action: "fonts", op: "bundle" });
+    if (res.ok) {
+      toast(`Copied ${b2.families.join(", ")} into fonts/`, "ok");
+      await refresh();
+    }
+  }
   async function refresh() {
     const result = await request({ action: "theme-get" });
     if (!result.ok) return;
     info3 = result.theme;
     render4();
+    const fonts = await request({ action: "fonts" });
+    if (fonts.ok) {
+      report2 = fonts.fonts;
+      render4();
+    }
   }
   async function openTheme() {
+    report2 = null;
     content = h(
       "div",
       { class: "theme-body" },
