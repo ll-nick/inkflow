@@ -316,6 +316,13 @@ paths, an element's own attributes); when you move shapes that way, run
 - Deck-wide colours and fonts: override `--inkflow-*` tokens in the project's
   `styles.css` (the editor's Theme dialog keeps them in one marked
   `/* inkflow:theme */` block; leave that block's markers intact).
+- Fonts: Inter (text), JetBrains Mono (code), STIX Two Math (formulas) and
+  Twemoji (emoji) ship with inkflow and look the same everywhere; text in
+  `sans-serif`/`monospace` (Inkscape's default) shows in them. Another font
+  must be a file in the project's `fonts/` to be portable (named in the
+  `--inkflow-*-font` tokens or a `font-family`).
+- `inkflow build` writes one self-contained `index.html` (pictures, videos and
+  fonts inside); `--assets-folder` keeps the media as files beside it.
 
 ## Working on a branch
 

@@ -128,7 +128,12 @@ src/
     edit.py           launching external programs on source files: INKFLOW_EDIT_CMD*
                                resolution (extension > kind > default) for the presenter's
                                edit menu, and the editor's "Open" catalog (`open_choices`)
-    export.py         static HTML export (inkflow build) and PDF export (inkflow export);
+    export.py         static HTML export (inkflow build: one self-contained index.html by
+                               default, every asset, stylesheet url() and font inlined,
+                               the interface fonts subset to `_interface_text`; a
+                               single file > 50 MB warns naming its largest assets;
+                               `--assets-folder` = `inline_assets=False`, media copied
+                               beside it) and PDF export (inkflow export);
                                `pdf_pages`: each slide's page (the --size override,
                                else the deck's size, else the slide's own: physical
                                width/height, else viewBox px), every distinct size a
@@ -409,6 +414,13 @@ src/
                                own picture a pipeline-only `<rect>` behind it (margin 4%
                                of its shorter side, `pointer-events: none`)
     clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
+    fonts.py          font discovery + embedding (see "Font embedding" below):
+                               `font_index`/`font_sources` (other modules' API),
+                               `SHIPPED_FONTS_DIR`/`is_shipped`, `embed_fonts_css`
+                               (serve; `font_url=shipped_font_url` links shipped files),
+                               `embed_fonts_css_subsetted` (build/export/render),
+                               `ui_fonts_css` (the interface's "Inkflow UI*" faces),
+                               `shipped_font_file` (the `/_inkflow/fonts/` route)
     ink.py            pen ink: `ink_path` (ink/<slide id>.svg or Slide(ink=)),
                                `compose_ink` (the file's strokes as the slide's last
                                `<g class="inkflow-ink">`, stretched if its viewBox differs),
@@ -502,7 +514,8 @@ src/
                                poster-landscape-base with poster-2col/-3col/
                                -landscape-3col/-4col on the A canvas: zones title,
                                authors, affiliations, logos, col-N, references,
-                               contact), icon.svg, showcase/, and
+                               contact), icon.svg, showcase/, fonts/ (the fonts
+                               inkflow ships, licences + README), and
                                styles.css (per-layout zone styling for those layouts,
                                loaded for every deck — keep its rules `.layout-*`-scoped)
     templates/        inkflow init starter files (title.svg, diagram.svg, guide.md,
@@ -690,22 +703,17 @@ Pressing `p` toggles `body.pv-open`, which CSS-transitions the sidebar to 30% wi
 `pv.ts` owns all panel logic (clock, next-preview, notes); it reads directly from `state.slides` so no second WS connection or position sync is needed.
 For second-screen use, open the same URL in two windows and toggle the panel in one.
 
-**Font embedding is automatic and zero-config.**
-After `process_deck()`, `fonts.embed_fonts_css()` (serve) or `fonts.embed_fonts_css_subsetted()`
-(build/export) scans every slide SVG for named `font-family` values, discovers matching font
-files, and injects `@font-face` blocks (base64 data-URI) into the global CSS via `__STYLES__`.
-Generic families (`sans-serif`, `serif`, `monospace`, etc.) are always skipped.
+**Font embedding is automatic and zero-config; the default fonts ship with inkflow.**
+`theme/fonts/` holds Inter (variable, upright + italic), JetBrains Mono (variable), STIX Two Math (OpenType MATH) and Twemoji Mozilla (COLRv0 emoji, drawn by Safari too, unlike COLRv1), ~2 MB of WOFF2 with licences and a README (sources, versions, checksums). `Typography`'s defaults (every theme's) name them first: `"Inter", "Twemoji Mozilla", sans-serif`, `"JetBrains Mono", …, monospace`, and the `math_font` token `"STIX Two Math", math`, which contract.css applies to `math`. contract.css also gives a slide's unstyled text the body font (`svg[id^="inkflow-slide-"]`, never the page's UI font) and maps `font-family="sans-serif|sans|monospace"` *attributes* to the tokens by a rule (any stylesheet rule still wins, as over an attribute); `svg.theme_generic_fonts` (a pipeline step) rewrites the same generics in inline `style`s (Inkscape's default text) in place. A slide's own `@font-face` is lifted out of its `@scope` like `@keyframes`, and its family is not looked up.
 
-Font search order: `<project_dir>/fonts/` → user font dirs → system font dirs (all OS-specific).
-Committing fonts in `fonts/` gives fully reproducible output independent of the host system.
+Search order: `<project>/fonts/` → the active theme's `fonts/` → `SHIPPED_FONTS_DIR` (whatever the theme) → user font dir → system dirs. A variable font is one record over its `wght` range (`weight_range`; "Inter Variable" is indexed as Inter, `_family_key`); `@font-face` rules describe the *file* (weight range, real style; a colour font `1 1000`), deduped per (family, file), so the browser synthesises only what no file has. Specs come from the slides' `font-family` values and from the token declarations in the deck CSS (`_specs_from_tokens`: every family of each list, upright/italic × 400/700; later families are `need="fallback"`, the math token's `need="math"`).
 
-For serve: full font files are embedded; the font index is cached at module level so only the
-first rebuild in a session pays the directory-scan cost. For build/export: fonts are subsetted
-to only the codepoints present in the slides (via `fonttools`), typically 10–30 KB per variant.
-`brotli` is a required dependency, so subsetted fonts are always emitted as WOFF2. If subsetting fails for a given font (for example a corrupt or unreadable file), the full font file is embedded instead.
+Serve (`embed_fonts_css`, index cached per process): shipped files are linked as `/_inkflow/fonts/<file>` (`shipped_font_url`; the server route serves only those files, cacheable), anything else is a full base64 data URI. Build/export/render (`embed_fonts_css_subsetted`): every face is subset (fontTools, WOFF2, all layout features and the name table kept) to the slides' codepoints + printable ASCII + CSS `content` strings; with MathML, plus `_MATH_BASE` (radicals, fences) and every styled form of each letter in a formula (`_math_alphanumerics`: a browser draws `<mi>x</mi>` as U+1D465); a fallback family (emoji) only when the deck has characters the first families lack, the math font only with formulas. Subsets are cached by font content + codepoints in `$INKFLOW_CACHE_DIR` or the user cache dir (`_subset_cached`; tests point it at a session temp dir). If subsetting fails the full file is embedded. The PDF: Chromium writes variable and CFF faces as Type 3 (outlines, text selectable), static TrueType as TrueType; `pdf.html` hides video controls (their 0:00 is a system font).
 
-Unresolvable fonts produce a yellow TUI warning and fall back to system rendering.
-Opt out per-deck: `Deck(embed_fonts=False)`.
+The interface (editor, presenter, ink palette) uses `"Inkflow UI"` (Inter), `"Inkflow UI Mono"` (JetBrains Mono), `"Inkflow UI Symbols"` (STIX) and `"Inkflow UI Emoji"` (Twemoji), names of their own so they never mix with a deck's subset: `server.build_html`/`build_editor_html` add `ui_fonts_css()` (URLs) to the page CSS, a static build passes `ui_fonts_css(text)` subset to the presenter's own text, slide titles and notes.
+
+Unresolvable fonts produce a yellow TUI warning (once per family) and fall back to system rendering.
+Opt out per-deck: `Deck(embed_fonts=False)`. `publish.font_warnings` treats shipped fonts as portable.
 
 **An asset reference resolves against the file it was written in.**
 `assets.py` owns the rule and both halves of it. An `<image href>` resolves against its SVG, a Markdown `![](…)` against its `.md`, an `Image`/`Video`/`Inline` against `deck.py` — what every editor already assumes. The pipeline canonicalises each reference exactly once, while its declaring file is still known (`svg_reader` at each `clean_inkscape_tree` site, `AssetSource.html`/`.ref` for Markdown and zone values), into a path relative to the presentation root. `AssetRoots.locate` is the inverse, and it is the single answer both `server._resolve_asset` and `export._copy_assets` use, so serve and build cannot disagree about what a reference means. On-disk SVGs are never rewritten — only the in-memory tree — so a slide keeps rendering in Inkscape.
@@ -718,12 +726,12 @@ An asset must live under an allowed root: the project dir (canonical prefix `""`
 `editor/filerename.py` finds references where they are written and resolves each against its own file (never by matching a name across the project), then writes the new one in the style it was written: a bare layout name stays a name (`local:` when a `slides/` file would shadow it), a path stays a path relative to its file, a `#page=` stays. SVGs are rewritten by a small tokenizer (only the attribute values change), contents of preview layers are copies and left alone, but their markers are followed through the chain that declared them (`_Chains`: an ancestor's parent is relative to that ancestor). The session applies the plan as one step whose moves are kept without bytes (videos), so undo moves files back and restores the folders; the extension never changes; `styles.css`, `deck.py` and files in hidden folders are refused. `inkflow mv` and `inkflow slide rename-files` are the same action from the CLI.
 
 **PDF figures are a derived asset, converted at build time and never committed.**
-Browsers show no PDF in `<image>`/`<img>`, so `pdf.PdfPages.apply` (a pipeline step after content injection, so SVG pictures, `Image` zones and Markdown images are covered alike) points each PDF reference at its page converted to SVG in `.inkflow/cache/pdf/` (git-ignored, unwatched; named by content hash + page + converter, so a saved PDF converts again and the watcher's rebuild shows it). The cache is a third `AssetRoots` root with the canonical prefix `_pdf/`, reserved like `_theme/`: `serve`, `build` (copied to `out/_pdf/`, not a hidden folder static hosts may refuse), `--inline-assets` and `export` handle a converted page exactly as any picture, with no special case. The PDF reference survives beside it as `data-inkflow-pdf`, which the editor reads instead of the href (`pdfpages.sourceRef`), so nothing it writes back (page change, replace, copy/paste) ever names the cache; moves and crops edit the source SVG, whose href is the PDF. PyMuPDF is optional (`inkflow[pdf]`) and loaded with `importlib` so inkflow stays MIT and type-checks without it; the system tools are the fallback. With no converter the picture becomes a placeholder data URI and the build warns once.
+Browsers show no PDF in `<image>`/`<img>`, so `pdf.PdfPages.apply` (a pipeline step after content injection, so SVG pictures, `Image` zones and Markdown images are covered alike) points each PDF reference at its page converted to SVG in `.inkflow/cache/pdf/` (git-ignored, unwatched; named by content hash + page + converter, so a saved PDF converts again and the watcher's rebuild shows it). The cache is a third `AssetRoots` root with the canonical prefix `_pdf/`, reserved like `_theme/`: `serve`, `build` (inlined; with `--assets-folder` copied to `out/_pdf/`, not a hidden folder static hosts may refuse) and `export` handle a converted page exactly as any picture, with no special case. The PDF reference survives beside it as `data-inkflow-pdf`, which the editor reads instead of the href (`pdfpages.sourceRef`), so nothing it writes back (page change, replace, copy/paste) ever names the cache; moves and crops edit the source SVG, whose href is the PDF. PyMuPDF is optional (`inkflow[pdf]`) and loaded with `importlib` so inkflow stays MIT and type-checks without it; the system tools are the fallback. With no converter the picture becomes a placeholder data URI and the build warns once.
 
 **A deck's size is a canvas plus a page, and the A sizes share one canvas.**
 `Deck(size=)` (`sizes.PageSize`) names both: the user units new slides get and the sheet a PDF page is. A slide's own size stays its `viewBox`; the deck size only decides what is created (blank slides, editor inserts, ink scale, thumbnails' shape, the layouts the gallery offers) and what is printed (`export.pdf_pages` fits each viewBox onto the page, letterboxing another shape, which `verify` warns about). All A sizes share A0's canvas so one poster design and the `poster-*` layouts serve every A sheet, and text scales with the sheet (`base_font`: 1/80 of the short side, 30 pt on A0); `render` measures printed slides in points and dpi against that same sheet size (`print_body_pt`), so the default type scale and the check cannot disagree. `None` keeps the pre-size behaviour exactly (per-slide pages, 16:9 new slides, theme mode and font).
 
-`build --inline-assets` swaps the copy for `_inline_assets`, which rewrites each reference to a `data:` URI through `assets.rewrite_references` — the same `REFERENCE_PATTERNS` the scan uses, so both halves learn a new reference kind at once. It runs *after* `embed_fonts_css_subsetted`, because the subsetter scans these very slide strings for used characters and base64 would pin the whole font. `assets.MIME_TYPES` is the shared table naming what `serve` sends and what the data URI claims; a suffix missing from it is copied out and warned about rather than dropped, so the build can fall short of one file but never loses an asset. Each reference is inlined where it stands, so a shared asset is carried once per use — the reason this is a flag and not the default.
+`build` (the default; `--assets-folder` copies instead) uses `_inline_assets`, which rewrites each reference to a `data:` URI through `assets.rewrite_references` — the same `REFERENCE_PATTERNS` the scan uses, so both halves learn a new reference kind at once. It runs *after* `embed_fonts_css_subsetted`, because the subsetter scans these very slide strings for used characters and base64 would pin the whole font. `assets.MIME_TYPES` is the shared table naming what `serve` sends and what the data URI claims; a suffix missing from it is copied out and warned about rather than dropped, so the build can fall short of one file but never loses an asset. Each reference is inlined where it stands, so a shared asset is carried once per use — the reason `--assets-folder` exists (the Pages CI templates use it, so videos stream). `_inline_css_urls` does the same for `url()` in the deck CSS (resolved from the project root, as the served page resolves it), and `_warn_remote` names web pictures a single file still needs the network for.
 
 **Markdown content injection (`md=`) uses `<foreignObject>`.**
 Markdown is rendered to HTML via `markdown-it-py`.
