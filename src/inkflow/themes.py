@@ -87,6 +87,14 @@ class Palette:
     """Named color: `.inkflow-fill-grey`, `.inkflow-stroke-grey`."""
 
 
+SANS_FONT = '"Inter", "Twemoji Mozilla", sans-serif'
+"""The shipped sans (text and headings), emoji after it for what it lacks."""
+MONO_FONT = '"JetBrains Mono", "Twemoji Mozilla", monospace'
+"""The shipped monospace (code)."""
+MATH_FONT = '"STIX Two Math", math'
+"""The shipped maths font (formulas)."""
+
+
 @dataclass(frozen=True)
 class Typography:
     """A theme's typography tokens. Heading sizes are fixed in the contract.
@@ -94,14 +102,21 @@ class Typography:
     Fields map to CSS custom properties the same way `Palette`'s do, so ``body_font``
     is available as ``--inkflow-body-font``. Font values are ordinary ``font-family``
     values: ship the file in the theme's ``fonts/`` directory to have it embedded.
+
+    The defaults name the fonts inkflow ships (Inter, JetBrains Mono, STIX Two
+    Math, and Twemoji for emoji), so a deck looks the same on every computer;
+    the generic family at the end of each list only matters with
+    ``Deck(embed_fonts=False)``.
     """
 
-    body_font: str = "sans-serif"
+    body_font: str = SANS_FONT
     """Body `font-family`."""
-    heading_font: str = "sans-serif"
+    heading_font: str = SANS_FONT
     """Heading `font-family`."""
-    mono_font: str = "monospace"
+    mono_font: str = MONO_FONT
     """Code `font-family`."""
+    math_font: str = MATH_FONT
+    """`font-family` of formulas (MathML): a font with an OpenType MATH table."""
     line_height: float = 1.4
     """Body line height."""
     heading_weight: int = 600

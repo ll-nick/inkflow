@@ -1,7 +1,8 @@
 # Publishing online
 
 A deck in a GitHub or GitLab repository can put itself online at every push:
-a CI job runs [`inkflow build`](export.md#static-html-inkflow-build) and
+a CI job runs [`inkflow build --assets-folder`](export.md#media-in-a-folder-assets-folder)
+(media as files beside the page, so videos stream) and
 publishes the result with GitHub Pages or GitLab Pages, so the link to the
 slides always shows the last version you pushed. Optionally, every tag
 `v<version>` also makes a release carrying the slides as one self-contained
@@ -72,9 +73,9 @@ git tag v1.0
 git push origin v1.0
 ```
 
-The release carries `<repository>-1.0-slides.html` (`inkflow build
---inline-assets`: the whole deck, pictures and videos included, in one file
-that opens without a server) and `<repository>-1.0-slides.pdf` (`inkflow
+The release carries `<repository>-1.0-slides.html` (`inkflow build`:
+the whole deck, pictures, videos and fonts included, in one file that opens
+without a server) and `<repository>-1.0-slides.pdf` (`inkflow
 export`). For a deck in a folder of a larger repository the folder's name is
 added: `<repository>-<folder>-1.0-slides.html`.
 
@@ -109,11 +110,12 @@ ship the small pointer files in place of your pictures.
 on the runner. The workflow installs `poppler-utils` (`pdftocairo`) when the
 deck's folder has a PDF in git, and only then.
 
-**Fonts.** `inkflow build` embeds the fonts it finds, but a CI runner has none
-of the fonts installed on your computer. `setup-pages` (and the Publish dialog)
-names the fonts the deck uses that only your computer has: copy their files
-into the project's `fonts/` and commit them, or the online deck falls back to
-the runner's fonts. See [Fonts](../design/fonts.md).
+**Fonts.** `inkflow build` embeds the fonts it finds. The ones inkflow ships
+(Inter, JetBrains Mono, STIX Two Math, Twemoji) are there on every runner, but
+a CI runner has none of the fonts installed on your computer. `setup-pages`
+(and the Publish dialog) names the fonts the deck uses that only your computer
+has: copy their files into the project's `fonts/` and commit them, or the
+online deck falls back to the runner's fonts. See [Fonts](../design/fonts.md).
 
 ## Changing it later
 

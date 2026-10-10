@@ -249,7 +249,8 @@
     :is(h1, h2, p) {
     font-size: 3.4em;
     font-weight: 700;
-    line-height: 1.15;
+    /* Inter's glyphs reach 1.21 em: a tighter line spills past the zone. */
+    line-height: 1.2;
     margin: 0;
     color: var(--inkflow-heading);
 }

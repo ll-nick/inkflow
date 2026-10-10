@@ -14,7 +14,15 @@
     --sel: #4f8cff;
     --sel-soft: rgb(79 140 255 / 0.18);
     --guide: #ff4fa3;
-    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* The interface's fonts ship with inkflow (fonts.ui_fonts_css): the same
+     * on every computer. The system's come after, for what none has. */
+    --font-ui:
+        "Inkflow UI", "Inkflow UI Mono", "Inkflow UI Symbols",
+        "Inkflow UI Emoji", system-ui, -apple-system, "Segoe UI", Roboto,
+        sans-serif;
+    --font-ui-mono:
+        "Inkflow UI Mono", "Inkflow UI", "Inkflow UI Symbols",
+        "Inkflow UI Emoji", ui-monospace, monospace;
 }
 
 [data-theme="light"] {
@@ -719,7 +727,7 @@ body.previewing #canvas::after {
 #notes-file {
     text-transform: none;
     letter-spacing: 0;
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-ui-mono);
 }
 
 #notes-input {
@@ -925,7 +933,7 @@ body.previewing #canvas::after {
 }
 
 .hint.media-src {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-ui-mono);
     overflow-wrap: anywhere;
 }
 
@@ -1032,9 +1040,7 @@ body.previewing #canvas::after {
 
 .files code,
 .props-section code {
-    font:
-        12px ui-monospace,
-        monospace;
+    font: 12px var(--font-ui-mono);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1112,9 +1118,7 @@ body.previewing #canvas::after {
     padding: 0;
     cursor: pointer;
     color: var(--blue);
-    font:
-        12px ui-monospace,
-        monospace;
+    font: 12px var(--font-ui-mono);
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -1407,10 +1411,7 @@ foreignObject.rich-editing {
     resize: none;
     padding: 10px 14px;
     background: var(--ui-bg);
-    font:
-        14px / 1.5 ui-monospace,
-        "JetBrains Mono",
-        monospace;
+    font: 14px / 1.5 var(--font-ui-mono);
 }
 
 #context-menu {
@@ -1656,9 +1657,7 @@ foreignObject.rich-editing {
     background: color-mix(in srgb, var(--red) 18%, var(--bg));
     border: 1px solid var(--red);
     border-radius: 8px;
-    font:
-        12px / 1.45 ui-monospace,
-        monospace;
+    font: 12px / 1.45 var(--font-ui-mono);
     white-space: pre-wrap;
 }
 
@@ -1963,7 +1962,7 @@ body.offline #offline-banner {
     border: 1px solid transparent;
     border-radius: 4px;
     color: var(--subtext);
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-ui-mono);
     cursor: pointer;
 }
 
@@ -2150,9 +2149,7 @@ body.offline #offline-banner {
 .rename-row input {
     flex: 1;
     min-width: 0;
-    font:
-        12px ui-monospace,
-        monospace;
+    font: 12px var(--font-ui-mono);
 }
 
 .rename-ext {
@@ -2203,9 +2200,7 @@ body.offline #offline-banner {
 }
 
 .rename-code {
-    font:
-        12px ui-monospace,
-        monospace;
+    font: 12px var(--font-ui-mono);
 }
 
 .rename-details summary {
@@ -2509,9 +2504,7 @@ foreignObject.rich-editing .math-chip.editing {
     background: var(--ui-bg);
     border: 1px solid var(--ui-line);
     border-radius: 5px;
-    font:
-        14px / 1.4 ui-monospace,
-        monospace;
+    font: 14px / 1.4 var(--font-ui-mono);
 }
 
 .formula-row {
@@ -2713,7 +2706,7 @@ foreignObject.rich-editing .math-chip.editing {
 
 .folder-bar .folder-path {
     flex: 1;
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-ui-mono);
 }
 
 .folder-list {
@@ -2749,7 +2742,7 @@ foreignObject.rich-editing .math-chip.editing {
 }
 
 .full-path {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-ui-mono);
     overflow-wrap: anywhere;
 }
 
@@ -2965,7 +2958,7 @@ foreignObject.rich-editing .math-chip.editing {
 }
 
 .video-command {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-ui-mono);
     font-size: 12px;
 }
 

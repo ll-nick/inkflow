@@ -117,7 +117,11 @@
   border: 1px solid var(--overlay);
   box-shadow: 0 6px 24px rgb(0 0 0 / 0.3);
   color: var(--subtext);
-  font: 13px / 1 system-ui, sans-serif;
+  font:
+    13px / 1 "Inkflow UI",
+    "Inkflow UI Symbols",
+    system-ui,
+    sans-serif;
   user-select: none;
   touch-action: none;
 }
@@ -692,11 +696,22 @@ button.cmp-chip:hover {
   --sel-soft: rgb(79 140 255 / 0.18);
   --guide: #ff4fa3;
   --font-ui:
+    "Inkflow UI",
+    "Inkflow UI Mono",
+    "Inkflow UI Symbols",
+    "Inkflow UI Emoji",
     system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
     sans-serif;
+  --font-ui-mono:
+    "Inkflow UI Mono",
+    "Inkflow UI",
+    "Inkflow UI Symbols",
+    "Inkflow UI Emoji",
+    ui-monospace,
+    monospace;
 }
 [data-theme=light] {
   --ui-canvas: color-mix(in srgb, var(--bg) 85%, #8890a0);
@@ -1274,7 +1289,7 @@ body.previewing #canvas::after {
 #notes-file {
   text-transform: none;
   letter-spacing: 0;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-ui-mono);
 }
 #notes-input {
   flex: 1;
@@ -1448,7 +1463,7 @@ body.previewing #canvas::after {
   margin: 6px 0 0;
 }
 .hint.media-src {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-ui-mono);
   overflow-wrap: anywhere;
 }
 .media-poster {
@@ -1539,7 +1554,7 @@ body.previewing #canvas::after {
 }
 .files code,
 .props-section code {
-  font: 12px ui-monospace, monospace;
+  font: 12px var(--font-ui-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1604,7 +1619,7 @@ body.previewing #canvas::after {
   padding: 0;
   cursor: pointer;
   color: var(--blue);
-  font: 12px ui-monospace, monospace;
+  font: 12px var(--font-ui-mono);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -1848,10 +1863,7 @@ foreignObject.rich-editing {
   resize: none;
   padding: 10px 14px;
   background: var(--ui-bg);
-  font:
-    14px / 1.5 ui-monospace,
-    "JetBrains Mono",
-    monospace;
+  font: 14px / 1.5 var(--font-ui-mono);
 }
 #context-menu {
   position: fixed;
@@ -2063,7 +2075,7 @@ foreignObject.rich-editing {
   background: color-mix(in srgb, var(--red) 18%, var(--bg));
   border: 1px solid var(--red);
   border-radius: 8px;
-  font: 12px / 1.45 ui-monospace, monospace;
+  font: 12px / 1.45 var(--font-ui-mono);
   white-space: pre-wrap;
 }
 #build-error.show {
@@ -2321,7 +2333,7 @@ body.offline #offline-banner {
   border: 1px solid transparent;
   border-radius: 4px;
   color: var(--subtext);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-ui-mono);
   cursor: pointer;
 }
 .find-flag.on {
@@ -2472,7 +2484,7 @@ body.offline #offline-banner {
 .rename-row input {
   flex: 1;
   min-width: 0;
-  font: 12px ui-monospace, monospace;
+  font: 12px var(--font-ui-mono);
 }
 .rename-ext {
   flex: none;
@@ -2513,7 +2525,7 @@ body.offline #offline-banner {
   overflow-wrap: anywhere;
 }
 .rename-code {
-  font: 12px ui-monospace, monospace;
+  font: 12px var(--font-ui-mono);
 }
 .rename-details summary {
   cursor: pointer;
@@ -2761,7 +2773,7 @@ foreignObject.rich-editing .math-chip.editing {
   background: var(--ui-bg);
   border: 1px solid var(--ui-line);
   border-radius: 5px;
-  font: 14px / 1.4 ui-monospace, monospace;
+  font: 14px / 1.4 var(--font-ui-mono);
 }
 .formula-row {
   display: flex;
@@ -2937,7 +2949,7 @@ foreignObject.rich-editing .math-chip.editing {
 }
 .folder-bar .folder-path {
   flex: 1;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-ui-mono);
 }
 .folder-list {
   display: flex;
@@ -2968,7 +2980,7 @@ foreignObject.rich-editing .math-chip.editing {
   margin-top: 8px;
 }
 .full-path {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-ui-mono);
   overflow-wrap: anywhere;
 }
 .git-message {
@@ -3143,7 +3155,7 @@ foreignObject.rich-editing .math-chip.editing {
   flex: 1;
 }
 .video-command {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-ui-mono);
   font-size: 12px;
 }
 .video-estimate {

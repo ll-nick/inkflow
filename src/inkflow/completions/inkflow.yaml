@@ -796,11 +796,12 @@ commands:
         - ["$files([\".svg\"])"]
 
   - name: build
-    description: Export a self-contained presentation directory for offline use.
+    description: Export the presentation as one self-contained HTML file.
     flags:
       -d, --deck=: Path to deck.py
       -o, --output=: Output directory
-      --inline-assets: Embed assets as data URIs so the build is one file
+      --assets-folder: Copy images and videos beside index.html instead of inside it
+      --inline-assets: The default now (kept for older scripts)
     completion:
       flag:
         deck: ["$files([\".py\"])"]

@@ -63,6 +63,10 @@ FONT_SUFFIXES = frozenset({".ttf", ".otf", ".woff", ".woff2", ".ttc"})
 
 PORTABLE = frozenset({Where.PROJECT, Where.THEME})
 
+_MAPPED_GENERICS = frozenset({"sans-serif", "sans", "monospace"})
+"""Generic families a slide may name that the build points at the deck's own
+fonts (contract.css for the attribute, svg.theme_generic_fonts inline)."""
+
 ROLES = ("body", "heading", "mono")
 """The theme's font tokens: ``--inkflow-<role>-font``."""
 
@@ -446,12 +450,17 @@ class _Usage:
 @dataclass
 class _Collector:
     found: dict[str, _Usage] = field(default_factory=dict)
+    own: set[str] = field(default_factory=set)
+    """Families a slide defines itself (``@font-face`` in its SVG): they travel
+    inside the slide, nothing to look up."""
 
     def add(self, value: str, face: Face, where: str) -> None:
         first = first_family(value)
         if first is None:
             return
         family, generic = first
+        if family_key(family) in self.own:
+            return
         key = family.lower()
         usage = self.found.get(key)
         if usage is None:
@@ -487,7 +496,10 @@ class _Collector:
                 self.css(el.text, where)
                 continue
             family = el.get("font-family")
-            if family:
+            # contract.css maps a generic attribute to the deck's own fonts
+            # (and svg.theme_generic_fonts an inline style): the token's
+            # family is what is drawn, reported under its role.
+            if family and family.strip().strip("'\"").lower() not in _MAPPED_GENERICS:
                 self.add(
                     family,
                     Face(_weight(el.get("font-weight")), _italic(el.get("font-style"))),
@@ -569,6 +581,16 @@ class _Record:
     family: str
     weight: int
     italic: bool
+    weight_range: tuple[int, int] | None = None
+    """A variable font's weight axis: every weight in it is this one file."""
+
+    def distance(self, weight: int) -> int:
+        """How far this file is from a weight, as the build measures it
+        (``fonts._weight_distance``)."""
+        if self.weight_range is not None:
+            lo, hi = self.weight_range
+            return max(0, lo - weight, weight - hi)
+        return abs(self.weight - weight)
 
 
 def build_index(dirs: FontDirs) -> dict[str, list[_Record]]:
@@ -581,16 +603,30 @@ def build_index(dirs: FontDirs) -> dict[str, list[_Record]]:
                 continue
             record = fonts._read_font_record(path)  # pyright: ignore[reportPrivateUsage]
             if record is not None:
-                index.setdefault(record.family.lower(), []).append(
-                    _Record(path, record.family, record.weight_class, record.is_italic)
+                index.setdefault(family_key(record.family), []).append(
+                    _Record(
+                        path,
+                        record.family,
+                        record.weight_class,
+                        record.is_italic,
+                        record.weight_range,
+                    )
                 )
     return index
 
 
+def family_key(family: str) -> str:
+    """How the build looks a family up: any case, "X Variable" is X."""
+    return fonts._family_key(family)  # pyright: ignore[reportPrivateUsage]
+
+
 def _best(records: list[_Record], face: Face) -> _Record:
+    """The file the build embeds for a face (``fonts._best_match``): the
+    closest weight, a variable font matching every weight on its axis; the
+    project's files win a tie, then the theme's and inkflow's, then this
+    machine's, in the order the build searches them."""
     same = [r for r in records if r.italic == face.italic] or records
-    # The project's own files win a tie, then the theme's, as the build's do.
-    return min(same, key=lambda r: abs(r.weight - face.weight))
+    return min(same, key=lambda r: r.distance(face.weight))
 
 
 # ── The report ──
@@ -637,6 +673,8 @@ def font_report(
     tokens = effective_tokens(styles)
     heading_weight = _heading_weight(styles)
     collector = _Collector()
+    for slide in slides:
+        collector.own |= fonts._self_defined_families(slide["svg"])  # pyright: ignore[reportPrivateUsage]
     tags: set[str] = set()
     for slide in slides:
         label = f"slide {slide['id']}" if slide.get("id") else "a slide"
@@ -673,7 +711,7 @@ def font_report(
             continue
         if (known := system_font(family)) is not None:
             report.system, report.alternative = known
-        records = index.get(key)
+        records = index.get(family_key(key))
         if not records:
             report.where = Where.MISSING
             families.append(report)

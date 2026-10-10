@@ -36,8 +36,10 @@ body {
   background: #000;
   color: var(--text);
   font-family:
-    "JetBrains Mono",
-    "Fira Code",
+    "Inkflow UI Mono",
+    "Inkflow UI",
+    "Inkflow UI Symbols",
+    "Inkflow UI Emoji",
     ui-monospace,
     monospace;
   height: 100vh;
@@ -1310,7 +1312,11 @@ body.laser-mode:not(.camera-armed) #laser-dot {
   border: 1px solid var(--overlay);
   box-shadow: 0 6px 24px rgb(0 0 0 / 0.3);
   color: var(--subtext);
-  font: 13px / 1 system-ui, sans-serif;
+  font:
+    13px / 1 "Inkflow UI",
+    "Inkflow UI Symbols",
+    system-ui,
+    sans-serif;
   user-select: none;
   touch-action: none;
 }

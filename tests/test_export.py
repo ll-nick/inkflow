@@ -204,7 +204,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _ASSET_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "index.html").exists()
         # SVG <image xlink:href> and <image href>, relative to the slide file
@@ -226,7 +226,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _MD_FILE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "slides" / "assets" / "cat.png").exists()
         index = (out_dir / "index.html").read_text(encoding="utf-8")
@@ -244,7 +244,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _NOTES_IMAGE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "assets" / "diagram.png").exists()
         index = (out_dir / "index.html").read_text(encoding="utf-8")
@@ -258,7 +258,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _POSTER_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "media" / "clip.mp4").exists()
         # A video's poster is a local asset too and must be copied.
@@ -269,7 +269,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _REMOTE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "index.html").exists()
         # No stray files copied from URL/data refs.
@@ -292,7 +292,7 @@ class TestEditorRelativeAssetRefs:
         deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "assets" / "pic.png").exists()
         # Nothing written next to the build via a ".." that climbed out.
@@ -321,7 +321,7 @@ class TestEditorRelativeAssetRefs:
 
         out_dir = project / "out"
         with collect_logs(logging.WARNING) as warnings:
-            build_static_html(deck_path, out_dir)
+            build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert any("outside the project" in w.message for w in warnings)
         assert not (out_dir / "outside").exists()
@@ -334,7 +334,7 @@ class TestEditorRelativeAssetRefs:
 
         out_dir = tmp_path / "out"
         with collect_logs(logging.WARNING) as warnings:
-            build_static_html(deck_path, out_dir)
+            build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "index.html").exists()
         assert any("missing.png" in w.message for w in warnings)
@@ -518,7 +518,7 @@ class TestThemeAssets:
         deck_path = _write_deck(project, _THEME_DECK.format(theme_dir=str(theme_dir)))
 
         out_dir = project / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "_theme" / "logo.png").exists()
         index = (out_dir / "index.html").read_text(encoding="utf-8")
@@ -553,7 +553,7 @@ class TestCustomTypeMarker:
             encoding="utf-8",
         )
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
         html = (out_dir / "index.html").read_text(encoding="utf-8")
         # Resolved to the custom type (not the FadeIn fallback): the cue's name is the
         # type slug and its param flows into the data-cues encoding.
@@ -567,7 +567,7 @@ class TestEmptyDeck:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
         deck_path = _write_deck(tmp_path, _EMPTY_DECK)
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
         assert (out_dir / "index.html").exists()
 
     def test_pdf_refuses_empty_deck(self, tmp_path: Path) -> None:

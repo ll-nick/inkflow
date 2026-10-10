@@ -39,9 +39,11 @@ pages:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # Pictures and videos as files beside index.html: the first slide shows at
+  # once and each video streams when its slide needs it.
   script:
     - |
-      __UV_RUN__ inkflow build__DECK_OPT__ --output public
+      __UV_RUN__ inkflow build__DECK_OPT__ --assets-folder --output public
     - uv cache prune --ci
   artifacts:
     paths:

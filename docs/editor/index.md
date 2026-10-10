@@ -814,8 +814,10 @@ is saved. ↺ returns a colour or font to the theme's own.
 
 Colours and fonts are written as one marked block in the project's `styles.css`,
 which overrides the theme without changing it, and the rest of that file is left
-alone. Fonts found in `fonts/`, in the theme or on your computer are embedded in
-the deck, so a build carries them.
+alone. Inter, JetBrains Mono, STIX Two Math and Twemoji come with inkflow and
+look the same everywhere; fonts found in `fonts/`, in the theme or on your computer
+are embedded in the deck too, so a build carries them (see
+[Fonts](../design/fonts.md)).
 
 A font typed into a font field is written as `inkflow fonts set` writes it: a
 bare family gets a generic fallback (`Inter, sans-serif`), a generic family
@@ -848,11 +850,11 @@ the result next to `deck.py` (the path can be changed):
 
 | Format | Like | Result |
 |---|---|---|
-| Web page | `inkflow build` | `build/`, a folder with `index.html` and the deck's media; opens offline |
-| Single HTML file | `inkflow build --inline-assets` | one `.html` file with everything inside, easy to send |
+| HTML file | `inkflow build` | one `.html` file with everything inside (pictures, videos, fonts); opens offline, easy to send |
+| Web page with an assets folder | `inkflow build --assets-folder` | `build/`, `index.html` with the deck's media beside it: for a large deck on a web host |
 | PDF | `inkflow export` | one page per slide (needs Chromium or Chrome) |
 
-Each result can also be downloaded straight from the dialog (the web page as a
+Each result can also be downloaded straight from the dialog (the folder as a
 `.zip`). For a print deck (a poster) the PDF option names the page it prints on
 (*A0 portrait (841 x 1189 mm)*) and offers **3 mm bleed and crop marks** for a
 print shop that asks for them.

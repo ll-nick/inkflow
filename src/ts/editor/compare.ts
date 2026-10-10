@@ -153,7 +153,8 @@ const BASE_CSS = `
     display: block;
     width: 100%;
     height: 100%;
-    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    /* A slide's text that names no font: the deck's body font, as on a slide. */
+    font-family: var(--inkflow-body-font);
 }
 .cmp-root > svg { display: block; width: 100%; height: 100%; }
 `;

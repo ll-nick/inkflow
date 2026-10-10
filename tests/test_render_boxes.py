@@ -176,7 +176,9 @@ def test_boxes_measure_the_rendered_slide(deck: Path) -> None:
     # The text's extent, not the paragraph's full width.
     assert blocks[1].block is not None
     assert blocks[1].box.w < blocks[1].block.w
-    assert all(b.box.y >= 100 for b in blocks)
+    # Glyphs may reach a hair past a line box tighter than the font's own
+    # ascent and descent (Inter's 1.21 em against a 1.2 heading line).
+    assert all(b.box.y >= 99 for b in blocks)
     # Too much text: negative free space.
     side = boxes["zone-side"]
     assert side.free is not None and side.free < 0

@@ -57,7 +57,7 @@ from inkflow.editor.comparesrc import (
     shadow_css,
 )
 from inkflow.editor.transfer import TransferError, export_slides
-from inkflow.fonts import embed_fonts_css
+from inkflow.fonts import embed_fonts_css, shipped_font_url
 from inkflow.ink import ink_path
 from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.logging import logger
@@ -284,6 +284,7 @@ class CompareHub:
                 build.project_dir,
                 build.deck.theme.fonts_dir,
                 styles_css=build.styles,
+                font_url=shipped_font_url,
             )
         elif side.resolved.key == "live":
             fonts = ""  # the editor page has the live deck's fonts already

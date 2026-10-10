@@ -78,8 +78,11 @@ That's the core loop—the rest is there once you need it:
 reusable layouts that inherit from each other like master slides,
 Markdown-filled zones for text-heavy slides,
 a presenter view with speaker notes,
-one-command export to static HTML or PDF,
+one-command export to a single self-contained HTML file or a PDF,
 and more.
+Inkflow ships its fonts (Inter, JetBrains Mono, STIX Two Math for formulas,
+Twemoji for emoji) and embeds every font a deck uses,
+so a deck looks the same on every computer, offline included.
 
 ### An example `deck.py`
 
@@ -235,5 +238,12 @@ Saving a slide reloads the presenter automatically.
 ## Acknowledgements
 
 [Slidev](https://sli.dev) is an excellent presentation tool and a direct inspiration for this project.
+
+Inkflow ships these fonts, each under its own licence (see `src/inkflow/theme/fonts/`):
+[Inter](https://rsms.me/inter/) by Rasmus Andersson and
+[JetBrains Mono](https://www.jetbrains.com/lp/mono/) by JetBrains (both SIL OFL 1.1),
+[STIX Two Math](https://www.stixfonts.org/) by the STIX Fonts Project (SIL OFL 1.1), and
+[Twemoji](https://github.com/twitter/twemoji) by Twitter, Inc and other contributors
+(graphics CC BY 4.0, in [Mozilla's COLR font build](https://github.com/mozilla/twemoji-colr)).
 
 This project was built making heavy use of coding agents and would not have been possible without them.

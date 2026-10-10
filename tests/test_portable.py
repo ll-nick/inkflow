@@ -792,3 +792,32 @@ def test_bundle_and_pack_through_the_server_are_agent_steps(
     served.apply({"action": "undo"}, load_deck(project / "deck.py"))
     served.apply({"action": "undo"}, load_deck(project / "deck.py"))
     assert not (project / "fonts" / "hereface").exists()
+
+
+def test_the_report_resolves_fonts_as_the_build_does(
+    tmp_path: Path, machine: Path
+) -> None:
+    """The shipped variable Inter covers every weight, so a static Inter Bold
+    on this machine is not what the build embeds; a generic attribute is mapped
+    to the deck's own font, and a family a slide defines itself travels inside
+    it: none of these is machine-dependent."""
+    project = tmp_path / "deck"
+    project.mkdir()
+    make_font(machine / "Inter-Bold.ttf", "Inter", weight=700)
+    deck = Deck(slides=[Slide("x")])  # the built-in theme: the shipped fonts
+    slides = [
+        _slide(
+            "<style>@font-face { font-family: 'Logo Sans'; src: url(data:,x) }</style>"
+            + '<text font-family="sans-serif">a</text>'
+            + '<text font-family="Logo Sans">b</text>'
+            + "<foreignObject><div xmlns='http://www.w3.org/1999/xhtml'>"
+            + "<strong>bold</strong></div></foreignObject>"
+        )
+    ]
+    report = font_report(deck, project, slides)
+    inter = report.by_family("Inter")
+    assert inter is not None and inter.where is Where.THEME
+    assert {f.path.name for f in inter.files} == {"InterVariable.woff2"}
+    assert report.by_family("sans-serif") is None
+    assert report.by_family("Logo Sans") is None
+    assert report.problems == []

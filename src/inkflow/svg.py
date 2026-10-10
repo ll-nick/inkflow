@@ -214,3 +214,49 @@ def resolve_links(root: SvgElement) -> SvgElement:
         elif href.startswith(("http:", "https:", "mailto:")) and not a.get("target"):
             a.set("target", "_blank")
     return root
+
+
+# ── Generic font families ─────────────────────────────────────────────────────
+
+_GENERIC_FONT_TOKENS = {
+    "sans-serif": "var(--inkflow-body-font)",
+    "sans": "var(--inkflow-body-font)",
+    "monospace": "var(--inkflow-mono-font)",
+}
+"""A generic family in a slide → the deck's own font. ``Sans`` is Inkscape's
+(fontconfig's) name for the default sans."""
+
+_STYLE_FONT_FAMILY_RE = re.compile(r"(?<![\w-])(font-family\s*:\s*)([^;]+)", re.I)
+
+
+def _themed_family_list(value: str) -> str:
+    parts = [p.strip() for p in value.split(",")]
+    themed = [_GENERIC_FONT_TOKENS.get(p.strip("'\"").lower(), p) for p in parts]
+    if themed == parts:
+        return value
+    return ", ".join(themed)
+
+
+def theme_generic_fonts(root: SvgElement) -> SvgElement:
+    """Point ``font-family: sans-serif`` (or ``monospace``) in an inline
+    ``style`` at the deck's fonts.
+
+    A generic family is whatever sans the computer showing the slide has
+    (DejaVu, Helvetica, Arial…), so the same slide would look different on
+    every machine; the deck's body and code fonts are embedded and the same
+    everywhere. Inkscape writes its default text this way. The attribute form
+    (``font-family="sans-serif"``, as in the built-in layouts) is mapped by
+    contract.css instead, which keeps it below any stylesheet rule as an
+    attribute is; an inline style is already above them, so rewriting it in
+    place changes nothing but the family. The files on disk are untouched.
+    """
+    for el in root.iter():
+        style = el.get("style")
+        if not style or "font-family" not in style:
+            continue
+        themed = _STYLE_FONT_FAMILY_RE.sub(
+            lambda m: m.group(1) + _themed_family_list(m.group(2)), style
+        )
+        if themed != style:
+            el.set("style", themed)
+    return root

@@ -29,7 +29,7 @@ from inkflow.assets import (
 )
 from inkflow.cdp import chromium_said
 from inkflow.enums import ColorMode
-from inkflow.fonts import embed_fonts_css_subsetted
+from inkflow.fonts import embed_fonts_css_subsetted, ui_fonts_css
 from inkflow.loaders import load_deck_scripts, load_deck_styles
 from inkflow.logging import logger
 from inkflow.manifest import Deck
@@ -49,8 +49,16 @@ def asset_roots(deck: Deck, project_dir: Path) -> AssetRoots:
 
 
 def build_static_html(
-    deck_path: Path, out_dir: Path, inline_assets: bool = False
+    deck_path: Path, out_dir: Path, inline_assets: bool = True
 ) -> None:
+    """Write the deck as ``out_dir/index.html``, viewable with no server.
+
+    By default the page is self-contained: every picture, video and font is
+    inside it (data URIs), so it opens offline from anywhere and makes no
+    request at all. ``inline_assets=False`` (``inkflow build
+    --assets-folder``) copies the pictures and videos beside it instead, the
+    better shape for a large deck on a web host; fonts stay inside either way.
+    """
     deck = load_deck(deck_path)
     project_dir = deck_path.parent
     slides = process_deck(deck, project_dir, deck_path)
@@ -67,10 +75,14 @@ def build_static_html(
     # After font subsetting: inlining stuffs base64 into the same slide strings the
     # subsetter scans for used characters, and every one of them would be kept.
     roots = asset_roots(deck, project_dir)
+    inlined: dict[str, int] = {}
     if inline_assets:
-        _inline_assets(slides, roots, out_dir)
+        inlined = _inline_assets(slides, roots, out_dir)
+        styles_css = _inline_css_urls(styles_css, roots, inlined)
+        _warn_remote(slides)
     else:
         copy_assets(slides, roots, out_dir)
+        _copy_css_urls(styles_css, roots, out_dir)
 
     state: State = {
         "slides": slides,
@@ -85,8 +97,125 @@ def build_static_html(
         "title": resolve_deck_title(deck, project_dir),
         "theme_dir": deck.theme.asset_dir(),
     }
+    ui_fonts = ui_fonts_css(_interface_text(state)) if deck.embed_fonts else ""
+    html = build_html(state, ws_port=None, ui_fonts=ui_fonts)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "index.html").write_bytes(build_html(state, ws_port=None))
+    (out_dir / "index.html").write_bytes(html)
+    if inline_assets and len(html) > SINGLE_FILE_WARN_BYTES:
+        _warn_large(len(html), inlined)
+
+
+SINGLE_FILE_WARN_BYTES = 50_000_000
+"""Past this, a single-file build is worth a word: the whole file loads before
+the first slide shows, and some hosts and mail servers refuse it."""
+
+
+def _warn_large(size: int, inlined: dict[str, int]) -> None:
+    biggest = sorted(inlined.items(), key=lambda kv: kv[1], reverse=True)[:3]
+    named = ", ".join(f"{ref} ({n / 1_000_000:.1f} MB)" for ref, n in biggest)
+    logger.warning(
+        f"index.html is {size / 1_000_000:.0f} MB, all of it loaded before the "
+        + "first slide shows"
+        + (f"; the largest assets: {named}" if named else "")
+        + ". `inkflow build --assets-folder` keeps them beside it as files."
+    )
+
+
+_JS_ESCAPE_RE = re.compile(r"\\u\{([0-9a-fA-F]+)\}|\\u([0-9a-fA-F]{4})")
+
+
+def _interface_text(state: State) -> str:
+    """Every character the presenter's interface can show for this deck: its
+    own words (template and bundles, whose non-ASCII text esbuild writes as
+    ``\\u`` escapes), slide titles, the deck title and the speaker notes."""
+    pkg = importlib.resources.files("inkflow")
+    parts = [
+        pkg.joinpath("presenter.html").read_text(encoding="utf-8"),
+        pkg.joinpath("bundles", "presenter.css").read_text(encoding="utf-8"),
+    ]
+    js = pkg.joinpath("bundles", "presenter.js").read_text(encoding="utf-8")
+    parts.append(js)
+    parts += [
+        chr(int(m.group(1) or m.group(2), 16)) for m in _JS_ESCAPE_RE.finditer(js)
+    ]
+    parts.append(state["title"])
+    for slide in state["slides"]:
+        parts.append(slide["title"])
+        parts.append(re.sub(r"<[^>]*>", "", slide["notes"]))
+    return "".join(parts)
+
+
+_CSS_URL_RE = re.compile(r"""url\(\s*(["']?)([^"')]+)\1\s*\)""")
+
+
+def _css_refs(css: str) -> list[str]:
+    """Local files a stylesheet names with ``url()``, relative to the page (the
+    project root, where the served page lives)."""
+    refs: list[str] = []
+    for m in _CSS_URL_RE.finditer(css):
+        ref = m.group(2).strip().split("?", 1)[0].split("#", 1)[0]
+        if ref and is_local_ref(ref) and not ref.startswith(("#", "/")):
+            refs.append(ref)
+    return refs
+
+
+def _inline_css_urls(css: str, roots: AssetRoots, inlined: dict[str, int]) -> str:
+    """The deck's stylesheet with every local ``url()`` (a background picture,
+    a font named by path) as a data URI."""
+    uris: dict[str, str] = {}
+    for ref in set(_css_refs(css)):
+        src = roots.locate(ref)
+        mime = _url_mime(src)
+        if src is None or mime is None or not src.is_file():
+            logger.warning(f"styles: url({ref}) not found, not inlined")
+            continue
+        uris[ref] = _data_uri(src, mime)
+        inlined[ref] = src.stat().st_size
+
+    def substitute(m: re.Match[str]) -> str:
+        ref = m.group(2).strip().split("?", 1)[0].split("#", 1)[0]
+        uri = uris.get(ref)
+        return f'url("{uri}")' if uri is not None else m.group(0)
+
+    return _CSS_URL_RE.sub(substitute, css) if uris else css
+
+
+def _copy_css_urls(css: str, roots: AssetRoots, out_dir: Path) -> None:
+    for ref in set(_css_refs(css)):
+        src = roots.locate(ref)
+        if src is not None and src.is_file():
+            _copy_asset(src, out_dir / ref)
+
+
+_FONT_MIME_TYPES = {
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
+}
+
+
+def _url_mime(src: Path | None) -> str | None:
+    if src is None:
+        return None
+    suffix = src.suffix.lower()
+    return MIME_TYPES.get(suffix) or _FONT_MIME_TYPES.get(suffix)
+
+
+def _warn_remote(slides: list[SlideData]) -> None:
+    """Pictures on the web stay links: the single file needs a network for
+    them. Named once each, so the author can download them into the deck."""
+    remote: dict[str, str] = {}
+    for slide in slides:
+        for pattern in REFERENCE_PATTERNS:
+            for ref in cast(list[str], pattern.findall(slide["svg"] + slide["notes"])):
+                if ref.startswith(("http://", "https://", "//")):
+                    remote.setdefault(ref, slide["id"])
+    for ref, label in remote.items():
+        logger.warning(
+            f"{label}: {ref} is on the web, not in the deck: the page loads it "
+            + "from there and shows nothing offline"
+        )
 
 
 def _local_refs(text: str) -> list[str]:
@@ -164,15 +293,19 @@ def _data_uri(src: Path, mime: str) -> str:
 _INLINE_VIDEO_WARN_BYTES = 20_000_000
 
 
-def _inline_assets(slides: list[SlideData], roots: AssetRoots, out_dir: Path) -> None:
+def _inline_assets(
+    slides: list[SlideData], roots: AssetRoots, out_dir: Path
+) -> dict[str, int]:
     """Replace every asset reference with a data URI, leaving `index.html` alone.
 
     Each reference is inlined where it stands, so an asset several slides share is
-    carried once per use and the output grows accordingly.
+    carried once per use and the output grows accordingly. Returns each inlined
+    asset's size in bytes.
 
     An asset whose suffix names no media type is copied out as usual and reported.
     """
     uris: dict[str, str] = {}
+    sizes: dict[str, int] = {}
     for ref, label in _referenced_assets(slides).items():
         src = roots.locate(ref)
         if src is None:
@@ -194,13 +327,16 @@ def _inline_assets(slides: list[SlideData], roots: AssetRoots, out_dir: Path) ->
             size = src.stat().st_size / 1_000_000
             logger.warning(
                 f"{label}: inlining a {size:.1f} MB video, whose bytes then travel "
-                + f"in index.html and load before the deck renders: {ref}"
+                + f"in index.html and load before the deck renders: {ref} "
+                + "(`inkflow build --assets-folder` keeps it beside index.html)"
             )
         uris[ref] = _data_uri(src, mime)
+        sizes[ref] = src.stat().st_size
 
     for slide in slides:
         slide["svg"] = rewrite_references(slide["svg"], uris.get)
         slide["notes"] = rewrite_references(slide["notes"], uris.get)
+    return sizes
 
 
 # ── export (PDF) ──────────────────────────────────────────────────────────────

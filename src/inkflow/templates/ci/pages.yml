@@ -42,9 +42,12 @@ jobs:
             sudo apt-get install -y -q poppler-utils
           fi
 
+      # Pictures and videos as files beside index.html (not inside it, as a
+      # plain `inkflow build` does): on a web host the first slide shows at
+      # once and each video streams when its slide needs it.
       - name: Build the slides
         run: |
-          __UV_RUN__ inkflow build__DECK_OPT__ --output _site
+          __UV_RUN__ inkflow build__DECK_OPT__ --assets-folder --output _site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,86 +1,133 @@
-# Font embedding
+# Fonts
 
-Inkflow automatically embeds the fonts used in your slides into the presentation HTML.
-This means custom fonts render correctly on any machine — no installation required for viewers.
+A deck looks the same on every computer: inkflow ships its default fonts and
+embeds every font a deck uses into the presentation, so neither you nor your
+audience has to install anything.
 
-## How it works
+## The fonts inkflow ships
 
-When your deck is built or served, Inkflow scans every slide for `font-family` declarations
-(SVG attributes, inline styles, and `<style>` blocks). For each named font it finds, it locates
-the font file on the system and embeds it as a base64-encoded `@font-face` rule in the page CSS.
+| Used for | Font | Licence |
+|---|---|---|
+| Text and headings | [Inter](https://rsms.me/inter/) 4.1, variable (every weight 100–900, upright and italic; Latin, Greek, Cyrillic) | SIL OFL 1.1 |
+| Code | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) 2.304, variable (100–800, upright and italic) | SIL OFL 1.1 |
+| Formulas (MathML) | [STIX Two Math](https://www.stixfonts.org/) 2.13, with the OpenType MATH table browsers lay formulas out with | SIL OFL 1.1 |
+| Emoji | [Twemoji](https://github.com/mozilla/twemoji-colr) 0.7.0 (Mozilla's COLR build: colour emoji in every browser, Safari included; Emoji 14) | CC BY 4.0 (artwork) |
 
-Generic family names (`sans-serif`, `serif`, `monospace`, etc.) are always skipped — they
-resolve to system fonts at render time and don't need embedding.
+They live in the built-in theme's `fonts/` folder of the installed package, with
+their licence files and a README naming each one's source and version. Together
+they add about 2 MB to the package.
+
+The theme's typography names them first, each list ending in a generic family:
 
 ```python
-def main() -> Deck:
-    return Deck()  # embed_fonts=True by default
+Typography(
+    body_font='"Inter", "Twemoji Mozilla", sans-serif',
+    heading_font='"Inter", "Twemoji Mozilla", sans-serif',
+    mono_font='"JetBrains Mono", "Twemoji Mozilla", monospace',
+    math_font='"STIX Two Math", math',
+)
 ```
 
-No configuration needed. Name the font in your SVG editor and it will be embedded.
+These are the defaults of every theme, not just the built-in one, so a theme that
+only changes colours still gets them. The emoji font comes after the text font:
+it draws only the characters the text font has no glyph for.
 
-## Font search order
+**Slides drawn in Inkscape.** `sans-serif` and `monospace`, Inkscape's default
+fonts (and the fonts of the built-in layouts), mean whatever sans or monospace
+the computer showing the slide has. In a slide inkflow reads them as the deck's
+own body and code fonts, so that text looks the same everywhere too: as an
+attribute (`font-family="sans-serif"`, mapped by the stylesheet, so any rule of
+yours still wins) or in a `style` (rewritten in the built slide; the file on disk
+is left alone). Text that names no font at all is in the body font.
 
-Inkflow searches for font files in this order, using the first match found:
+**The interface.** The editor and the presenter's own text (menus, status bar,
+panels, the ink palette) use Inter and JetBrains Mono too, so inkflow itself looks
+the same on Linux, macOS and Windows.
 
-1. **`fonts/`** — a directory next to your `deck.py`
-2. **The active theme's `fonts/`** — fonts bundled inside the theme's package, so a theme can ship the typefaces it declares (see the [Themes guide](themes.md))
-3. User font directory (`~/.local/share/fonts` on Linux, `~/Library/Fonts` on macOS, `%LOCALAPPDATA%\Microsoft\Windows\Fonts` on Windows)
-4. System font directories (`/usr/share/fonts` on Linux, `/Library/Fonts` on macOS, `C:\Windows\Fonts` on Windows)
+**Not covered.** Chinese, Japanese and Korean, Arabic, Hebrew, the Indic scripts
+and other scripts the shipped fonts do not include fall back to the computer's
+fonts, as do emoji newer than Emoji 14. To make such text portable, put a font
+that has it in the project's `fonts/` and name it in the theme (below).
 
-Project fonts win over theme fonts win over the system, so you can always override a
-theme's bundled font by dropping a same-named file in your own `fonts/`.
+## Using other fonts
 
-## Committing fonts with your project
+Name them in the theme's typography (or a `Theme` subclass, or the editor's
+**Theme** dialog), or on an SVG element (`font-family`, as Inkscape writes it):
 
-Place font files in a `fonts/` directory alongside `deck.py` to make the presentation
-fully self-contained and reproducible on any machine:
+```python
+class Talk(Theme):
+    typography = Typography(
+        body_font='"Source Sans 3", "Twemoji Mozilla", sans-serif',
+        heading_font='"Fraunces", serif',
+    )
+```
+
+Inkflow looks for each family it finds, in this order, and uses the first match:
+
+1. **`fonts/`** next to your `deck.py`
+2. **The active theme's `fonts/`**, so a theme package can ship its typefaces (see the [Themes guide](themes.md))
+3. **The fonts inkflow ships** (above)
+4. Your user font directory (`~/.local/share/fonts` on Linux, `~/Library/Fonts` on macOS, `%LOCALAPPDATA%\Microsoft\Windows\Fonts` on Windows)
+5. The system font directories (`/usr/share/fonts`, `/Library/Fonts`, `C:\Windows\Fonts`)
+
+A same-named file in `fonts/` wins over the theme's and inkflow's, so a project can
+always pin its own version. A font found only in 4 or 5 is embedded too, but it is
+on *this* computer only: commit it to `fonts/` so a teammate or a CI runner
+building the deck has it (`inkflow setup-pages` warns about such fonts).
 
 ```
 my-talk/
   deck.py
   fonts/
-    Inter-Regular.ttf
-    Inter-Bold.ttf
+    SourceSans3-Variable.ttf
+    Fraunces-Variable.woff2
   slides/
     title.svg
 ```
 
-Fonts in `fonts/` take precedence over system fonts, so you always get exactly the
-variant you committed regardless of what's installed on the machine running `inkflow`.
+TTF, OTF, WOFF and WOFF2 files are read. A variable font is one file for every
+weight; a family of static files is matched weight by weight (regular, bold,
+italic…). A family a slide defines itself with an `@font-face` in its `<style>`
+is used as it is.
 
 `inkflow fonts` lists where each font the deck uses comes from (`project`,
 `theme`, `machine`, `missing`, `generic`), and `inkflow fonts bundle` copies the
 ones only your computer has into `fonts/`, with their licences: see
 [A deck that looks the same everywhere](../presenting/portable.md).
 
-## Serve vs. build
+## How it is embedded
 
-- **`inkflow serve`** — embeds the full font file for each variant. The font index is built
-  once at startup and cached in memory, so live-reload after saving a slide is not affected.
-- **`inkflow build` / `inkflow export`** — subsets each font to only the glyphs actually
-  present in the slides before embedding. This typically reduces font data from 200–400 KB
-  to 10–30 KB per variant, keeping the exported HTML compact.
+- **`inkflow serve` and the editor** link the shipped fonts from the server
+  (`/_inkflow/fonts/…`, fetched once and cached) and embed any other font whole.
+- **`inkflow build`, `inkflow export` (PDF) and `inkflow render`** subset each
+  font to the characters the deck uses, as WOFF2 data inside the page: typically
+  20–80 KB a face. A subset keeps every OpenType feature (tabular figures in
+  charts, a formula's script sizes) and the font's name table (its copyright and
+  licence). The emoji font is carried only if the deck has emoji, the maths font
+  only if it has formulas, with the forms a browser draws a formula with (the
+  italic 𝑥 of `$x$`, stretched brackets and roots). Subsets are cached in your
+  user cache folder, so rebuilding the same deck is quick.
+- **The PDF** embeds every face: Chromium writes the variable fonts and the
+  maths and emoji fonts as Type 3 fonts (their outlines, text still selectable
+  and searchable), static TrueType fonts as TrueType.
 
 ## Warnings
 
-If a font cannot be found, Inkflow emits a warning in the terminal instead of failing the build.
-The slide still renders using the system's fallback font for that family.
+A font named but found nowhere is reported once, and the browser shows its own
+fallback instead:
 
 ```
  ⚠  font "Söhne" not found in any font directory
 ```
 
-Install the font (or add it to `fonts/`) and rebuild to resolve the warning.
+Add it to `fonts/` and rebuild.
 
 ## Opting out
 
-Set `embed_fonts=False` on the deck to disable embedding entirely:
+`Deck(embed_fonts=False)` embeds no font at all, so every family must be installed
+on the computer showing the deck:
 
 ```python
 def main() -> Deck:
     return Deck(embed_fonts=False)
 ```
-
-This is rarely needed — subsetted fonts are small — but can be useful when the font is already
-available on all target machines or when minimising build time is a priority.

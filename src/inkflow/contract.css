@@ -192,6 +192,30 @@
     color: var(--inkflow-grey);
 }
 
+/* ── Fonts ─────────────────────────────────────────────────────────────────── */
+
+/* A slide's text that names no font is in the deck's body font: the same in
+ * the presenter, the editor and an export, never the page's interface font. */
+svg[id^="inkflow-slide-"] {
+    font-family: var(--inkflow-body-font);
+}
+/* A generic family written as an attribute (the built-in layouts, many SVG
+ * tools) is whatever sans or monospace the computer has; it means the deck's
+ * own fonts, which every machine shows alike. A rule, so any stylesheet rule
+ * still wins as it would over the attribute. Inline styles: svg.py. */
+[font-family="sans-serif" i],
+[font-family="sans" i] {
+    font-family: var(--inkflow-body-font);
+}
+[font-family="monospace" i] {
+    font-family: var(--inkflow-mono-font);
+}
+/* Formulas (MathML) in a font with an OpenType MATH table, not whatever math
+ * font the browser finds. */
+math {
+    font-family: var(--inkflow-math-font);
+}
+
 /* ── foreignObject layout wrapper ────────────────────────────────────────── */
 
 /* --inkflow-valign: start | center | end  (set on #zone-* in layout SVG CSS) */
@@ -340,6 +364,8 @@
     border-radius: 3px;
 }
 .inkflow-content pre {
+    /* Not the browser's own pre { font-family: monospace }. */
+    font-family: var(--inkflow-mono-font);
     overflow: auto;
     background: var(--inkflow-code-bg);
     color: var(--inkflow-code-text);
