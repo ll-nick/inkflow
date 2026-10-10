@@ -226,34 +226,44 @@ def edit(
     help="Output directory (default: build/ next to deck.py)",
 )
 @click.option(
+    "--assets-folder",
+    "assets_folder",
+    is_flag=True,
+    help="Copy images and videos beside index.html instead of inside it.",
+)
+@click.option(
     "--inline-assets",
     "inline_assets",
     is_flag=True,
-    help="Embed images and video as data URIs so the build is index.html alone.",
+    hidden=True,
+    help="What a build does by default now; kept so older scripts still work.",
 )
-def build_cmd(deck_path: Path, output: str | None, inline_assets: bool) -> None:
-    """Export a self-contained presentation directory for offline use.
+def build_cmd(
+    deck_path: Path, output: str | None, assets_folder: bool, inline_assets: bool
+) -> None:
+    """Export the presentation as one self-contained HTML file.
 
-    Produces an `index.html` with every slide inlined and copies any assets the
-    deck references into the output directory. No server is required to view it.
-    Defaults to a `build/` directory next to `deck.py`.
+    Writes `index.html` (in a `build/` directory next to `deck.py` unless
+    `--output` names another) with every slide, picture, video and font inside
+    it: it opens offline in any browser, from a file picker, a chat window or
+    a USB stick, and makes no request to any server. Fonts are subset to the
+    characters the deck uses.
 
-    `--inline-assets` embeds those assets in the HTML instead of copying them, so
-    the whole deck is one file that cannot be separated from its images — worth it
-    when the deck travels through a file picker, a chat window, or a sandboxed
-    browser that only ever hands over the file you point at. The file grows by
-    roughly a third of every asset, counted once per reference rather than once
-    per file, and every byte of it loads before the first slide renders.
+    `--assets-folder` copies the pictures and videos into the output directory
+    next to `index.html` instead, the better shape for a large deck (videos
+    above all) on a web host: the page shows its first slide at once and each
+    file loads when its slide needs it. The two then travel together. A single
+    file larger than 50 MB is reported with its largest assets.
     """
+    del inline_assets  # the default
     resolved = resolve_deck_path(deck_path)
     out_dir = Path(output).resolve() if output else resolved.parent / "build"
     try:
-        build_static_html(resolved, out_dir, inline_assets=inline_assets)
+        build_static_html(resolved, out_dir, inline_assets=not assets_folder)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
     index = out_dir / "index.html"
-    size = f" ({index.stat().st_size / 1_000_000:.1f} MB)" if inline_assets else ""
-    report("Built", f"{index}{size}")
+    report("Built", f"{index} ({index.stat().st_size / 1_000_000:.1f} MB)")
 
 
 @main.command("export")

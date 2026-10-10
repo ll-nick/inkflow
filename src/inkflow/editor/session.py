@@ -427,7 +427,7 @@ def _zone_base(msg: dict[str, object], default: str) -> str:
 
 class HtmlBuilder(Protocol):
     def __call__(
-        self, deck_path: Path, out_dir: Path, inline_assets: bool = False
+        self, deck_path: Path, out_dir: Path, inline_assets: bool = True
     ) -> None: ...
 
 
@@ -3268,13 +3268,13 @@ class EditorSession:
             raise EditError("pick an output inside the project, not the project itself")
         try:
             if fmt == "html":
-                build_static_html(self.deck_path, out)
+                build_static_html(self.deck_path, out, inline_assets=False)
                 result = out
             elif fmt == "single":
                 if out.suffix.lower() != ".html":
                     out = out.with_suffix(".html")
                 with tempfile.TemporaryDirectory() as tmp:
-                    build_static_html(self.deck_path, Path(tmp), inline_assets=True)
+                    build_static_html(self.deck_path, Path(tmp))
                     out.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(Path(tmp) / "index.html", out)
                 result = out

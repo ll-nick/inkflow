@@ -1,6 +1,7 @@
-// The Export dialog: the deck as a web page (a folder), a single HTML file or
-// a PDF, the same builds as `inkflow build` and `inkflow export`. Each result
-// is saved in the project and offered for download.
+// The Export dialog: the deck as a single self-contained HTML file (the
+// default), a web page with its media in a folder, or a PDF, the same builds
+// as `inkflow build` (`--assets-folder`) and `inkflow export`. Each result is
+// saved in the project and offered for download.
 
 import { openDialog } from "./dialog";
 import { h } from "./dom";
@@ -14,16 +15,16 @@ const FORMATS: {
     placeholder: (stem: string) => string;
 }[] = [
     {
-        format: "html",
-        title: "Web page",
-        text: "A folder with index.html and the deck's images and videos. Opens offline in any browser, or upload it to any web host.",
-        placeholder: () => "build",
+        format: "single",
+        title: "HTML file",
+        text: "One file with everything inside: slides, pictures, videos and fonts. Opens offline in any browser, looks the same everywhere, easy to email or share.",
+        placeholder: (stem) => `${stem}.html`,
     },
     {
-        format: "single",
-        title: "Single HTML file",
-        text: "Everything in one file, images included: easy to email or share. Larger than the folder.",
-        placeholder: (stem) => `${stem}.html`,
+        format: "html",
+        title: "Web page with an assets folder",
+        text: "index.html with the pictures and videos as files beside it, for a large deck on a web host: the first slide shows at once and each video loads when needed.",
+        placeholder: () => "build",
     },
     {
         format: "pdf",

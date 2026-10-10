@@ -13980,7 +13980,8 @@ ${area2.value.slice(pos)}`;
     display: block;
     width: 100%;
     height: 100%;
-    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    /* A slide's text that names no font: the deck's body font, as on a slide. */
+    font-family: var(--inkflow-body-font);
 }
 .cmp-root > svg { display: block; width: 100%; height: 100%; }
 `;
@@ -15417,16 +15418,16 @@ Decks: new, open, recent` : "Decks";
   // src/ts/editor/exportdlg.ts
   var FORMATS = [
     {
-      format: "html",
-      title: "Web page",
-      text: "A folder with index.html and the deck's images and videos. Opens offline in any browser, or upload it to any web host.",
-      placeholder: () => "build"
+      format: "single",
+      title: "HTML file",
+      text: "One file with everything inside: slides, pictures, videos and fonts. Opens offline in any browser, looks the same everywhere, easy to email or share.",
+      placeholder: (stem) => `${stem}.html`
     },
     {
-      format: "single",
-      title: "Single HTML file",
-      text: "Everything in one file, images included: easy to email or share. Larger than the folder.",
-      placeholder: (stem) => `${stem}.html`
+      format: "html",
+      title: "Web page with an assets folder",
+      text: "index.html with the pictures and videos as files beside it, for a large deck on a web host: the first slide shows at once and each video loads when needed.",
+      placeholder: () => "build"
     },
     {
       format: "pdf",
@@ -17970,7 +17971,8 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
   var FONTS = [
     ["body_font", "Body", "sans-serif"],
     ["heading_font", "Headings", "sans-serif"],
-    ["mono_font", "Code", "monospace"]
+    ["mono_font", "Code", "monospace"],
+    ["math_font", "Maths", "math"]
   ];
   var info3 = null;
   var content = null;
@@ -18139,7 +18141,7 @@ Remove it anyway? Its uncommitted changes and unmerged commits are lost.`
       h(
         "p",
         { class: "hint" },
-        "Fonts found in fonts/, the theme or this computer are embedded in the deck."
+        "Inter, JetBrains Mono, STIX Two Math and Twemoji come with inkflow and look the same everywhere. Fonts found in fonts/, the theme or this computer are embedded in the deck too."
       ),
       h("h3", {}, "Colours"),
       colorsTable(),

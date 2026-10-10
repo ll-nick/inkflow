@@ -36,7 +36,7 @@ jobs:
 
       - name: Build the slides as a single self-contained file
         run: |
-          __UV_RUN__ inkflow build__DECK_OPT__ --inline-assets --output dist
+          __UV_RUN__ inkflow build__DECK_OPT__ --output dist
 
       # The runner comes with Chrome and Chromium, which inkflow finds. A
       # throwaway machine printing the deck's own pages can do without

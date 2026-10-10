@@ -12,7 +12,7 @@ release-files:
     EXTRA_PACKAGES: chromium
   script:
     - |
-      __UV_RUN__ inkflow build__DECK_OPT__ --inline-assets --output dist
+      __UV_RUN__ inkflow build__DECK_OPT__ --output dist
       __UV_RUN__ inkflow export__DECK_OPT__ --no-sandbox --output dist/slides.pdf
       VERSION="${CI_COMMIT_TAG#v}"
       mkdir -p release
