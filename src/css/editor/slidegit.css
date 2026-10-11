@@ -1,0 +1,217 @@
+/* Slides and git (src/ts/editor/slidegit.ts): VS Code's marks for each
+   slide's changes since the last commit on its row and grid tile, the slide
+   diff, and the commit-slides dialog. */
+
+.git-mark {
+    font-family: var(--font-ui-mono);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.git-mark:empty {
+    display: none;
+}
+
+.git-mark.m-new {
+    color: var(--green);
+}
+
+.git-mark.m-modified {
+    color: var(--yellow);
+}
+
+.git-mark.m-shared {
+    color: var(--blue);
+}
+
+/* In the slide list: under the star, below the slide's number. */
+.sorter-item .git-mark {
+    position: absolute;
+    left: 0;
+    top: 40px;
+    width: 18px;
+    text-align: right;
+}
+
+.grid-caption .git-mark {
+    flex-shrink: 0;
+}
+
+/* A menu entry with a button beside it (deck ▾'s recent decks). */
+.menu-row {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+}
+
+.menu-row .menu-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.menu-side {
+    padding: 0 8px;
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: var(--subtext);
+    cursor: pointer;
+}
+
+.menu-side:hover {
+    background: var(--sel-soft);
+    color: var(--text);
+}
+
+.git-diff {
+    max-height: 60vh;
+    margin: 0;
+    padding: 8px 10px;
+    overflow: auto;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-line);
+    border-radius: 6px;
+    font-family: var(--font-ui-mono);
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre;
+}
+
+.git-diff .d-add {
+    color: var(--green);
+}
+
+.git-diff .d-del {
+    color: var(--red);
+}
+
+.git-diff .d-hunk {
+    color: var(--blue);
+}
+
+.git-diff .d-meta {
+    color: var(--subtext);
+    font-weight: 700;
+}
+
+.git-slides {
+    display: flex;
+    flex-direction: column;
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 4px 6px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-line);
+    border-radius: 6px;
+}
+
+.git-slides .git-mark {
+    min-width: 12px;
+}
+
+.git-slide-num {
+    min-width: 24px;
+    color: var(--subtext);
+    text-align: right;
+}
+
+.git-file .hint {
+    margin-left: auto;
+}
+
+/* Problems (src/ts/editor/problems.ts): a slide's mark, the toolbar
+   button and the list. */
+
+.problem-mark {
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.problem-mark:empty {
+    display: none;
+}
+
+.problem-mark.p-error {
+    color: var(--red);
+}
+
+.problem-mark.p-warn {
+    color: var(--yellow);
+}
+
+.sorter-item .problem-mark {
+    position: absolute;
+    left: 0;
+    top: 56px;
+    width: 18px;
+    text-align: right;
+}
+
+.problems-btn {
+    color: var(--yellow);
+}
+
+.problems-btn.busy {
+    opacity: 0.7;
+}
+
+.problem-count {
+    margin-left: 3px;
+    font-size: 11px;
+}
+
+.problem-body {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.problem-slide {
+    display: block;
+    margin-top: 10px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.problem-slide:hover {
+    color: var(--sel);
+}
+
+.problem-list {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.problem-list li {
+    display: flex;
+    gap: 8px;
+    padding: 2px 0;
+}
+
+.problem-level {
+    min-width: 12px;
+}
+
+.problem-list .p-error .problem-level {
+    color: var(--red);
+}
+
+.problem-list .p-warn .problem-level {
+    color: var(--yellow);
+}
+
+.problem-list .p-hint {
+    color: var(--subtext);
+}
+
+.problem-opt {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}

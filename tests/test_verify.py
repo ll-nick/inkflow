@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import textwrap
 from collections.abc import Sequence
 from pathlib import Path
+
+import pytest
 
 from inkflow import sync
 from inkflow.animations import FadeIn, PlayVideo
@@ -86,6 +89,20 @@ class TestVerifyFiles:
         slide = Slide(str(src), md="slides/01-title.md")
         issues = verify_slide(slide, tmp_path, None, _preview(tmp_path))
         assert not any("markdown not found" in msg for _, msg in issues)
+
+    def test_md_picture_resolves_against_the_md(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        src = _setup(tmp_path)
+        src.write_text(_LAYOUT_SVG, encoding="utf-8")
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "assets" / "pic.png").write_bytes(b"png")
+        md = tmp_path / "slides" / "01-title.md"
+        md.write_text("# Hello\n\n![pic](../assets/pic.png)\n", encoding="utf-8")
+        slide = Slide(str(src), md="slides/01-title.md")
+        with caplog.at_level(logging.WARNING, logger="inkflow"):
+            verify_slide(slide, tmp_path, None, _preview(tmp_path))
+        assert "outside the project" not in caplog.text
 
     def test_missing_notes_path_is_error(self, tmp_path: Path) -> None:
         src = _setup(tmp_path)

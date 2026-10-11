@@ -1,0 +1,100 @@
+/* Hidden panels (src/ts/editor/panels.ts): the slide list (or the slide
+   master's list), the speaker notes, the properties. The canvas takes the
+   room; the panels' sizes are #workspace's --sorter-w, --props-w and
+   --notes-row, which the tabs on the canvas's edges follow. */
+
+body.hide-left #workspace {
+    --sorter-w: 0px;
+}
+
+body.hide-left #sorter,
+body.hide-left #master {
+    display: none;
+}
+
+body.hide-right #workspace {
+    --props-w: 0px;
+}
+
+body.hide-right #props {
+    display: none;
+}
+
+/* A zone's Markdown is edited where the notes are: that still opens. */
+body.hide-bottom:not(.editing-zone) #workspace {
+    --notes-row: 0px;
+}
+
+body.hide-bottom:not(.editing-zone) #notes {
+    display: none;
+}
+
+/* A panel's tab: on the canvas's edge beside the panel, or on the window's
+   edge while the panel is hidden. Under the grid and compare views. */
+.panel-tab {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--ui-line);
+    background: var(--ui-panel);
+    color: var(--subtext);
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.panel-tab:hover,
+.panel-tab:focus-visible {
+    opacity: 1;
+    color: var(--sel);
+    outline: none;
+}
+
+#btn-panel-left {
+    left: var(--sorter-w);
+    top: calc(50% - 22px);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+}
+
+#btn-panel-right {
+    right: var(--props-w);
+    top: calc(50% - 22px);
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+}
+
+/* Beside the notes' own drag grip, not on it. */
+#btn-panel-bottom {
+    right: calc(var(--props-w) + 24px);
+    bottom: var(--notes-row);
+    width: 44px;
+    height: 14px;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+}
+
+/* The arrow points where a click sends the panel: away when it is shown. */
+#btn-panel-left:not(.on) svg,
+#btn-panel-right.on svg {
+    transform: rotate(180deg);
+}
+
+#btn-panel-bottom.on svg {
+    transform: rotate(-90deg);
+}
+
+#btn-panel-bottom:not(.on) svg {
+    transform: rotate(90deg);
+}
+
+/* A layout has no notes; a zone's Markdown editor is not the notes. */
+body.master-mode #btn-panel-bottom,
+body.editing-zone #btn-panel-bottom,
+body.compare-mode .panel-tab {
+    display: none;
+}

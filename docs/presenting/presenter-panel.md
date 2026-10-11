@@ -35,6 +35,8 @@ Press <kbd>p</kbd> again (or click the button again) to close it and return to t
   with buttons to pause and reset it,
   current slide number, and a circular step indicator matching the one in the status bar.
   The elapsed time turns yellow while paused.
+  In a deck with [sections](../authoring/slides.md#sections), the current
+  section and the slide's place in it (`§ Method · 2/5`) show below the strip.
 - **Next:** a preview of the next click — either the same slide with one more step
   revealed, or the first state of the following slide. Shows `END` after the last slide.
 - **Notes:** the rendered speaker notes for the current slide.
@@ -85,7 +87,8 @@ is never listed, since it isn't yours to edit.
 
 By default this copies the file's absolute path to the clipboard.
 With `INKFLOW_EDIT_CMD` set, it launches that command instead
-(`INKFLOW_EDIT_CMD_SVG` overrides it just for SVG files).
+(`INKFLOW_EDIT_CMD_SVG` overrides it just for SVG files, and
+`INKFLOW_EDIT_CMD_<EXT>` or `_IMAGE` / `_TEXT` / `_VIDEO` for other kinds).
 See [CLI reference](../reference/cli.md#editing-from-the-presenter) for details,
 including suggested commands for VS Code, Neovim, and Inkscape.
 

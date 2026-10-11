@@ -14,6 +14,8 @@ from typing import TypeAlias
 
 from lxml import etree
 
+from inkflow.deps import note
+
 # The lxml element type. Its leading underscore is lxml's Cython convention, not a
 # private-API signal: there is no public ``Element`` *class* (``etree.Element`` is a
 # factory function), and the lxml stubs annotate with ``_Element``. Aliasing it here
@@ -51,6 +53,7 @@ def parse_svg_file(path: Path) -> SvgElement:
     A malformed file raises ``ValueError`` naming the path, so callers surface a clean
     message instead of a bare ``XMLSyntaxError`` traceback.
     """
+    note(path)
     try:
         return etree.parse(os.fspath(path), svg_parser()).getroot()
     except etree.XMLSyntaxError as exc:

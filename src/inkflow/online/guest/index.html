@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Inkflow</title>
+<link rel="icon" type="image/svg+xml" href="/_guest/icon.svg">
+<style>
+  :root { color-scheme: light dark; --bg: #f6f6f4; --fg: #222; --muted: #666; --accent: #4361ee; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1d; --fg: #eee; --muted: #aaa; --accent: #8ea2ff; } }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
+  body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #page { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+  #status { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; z-index: 1; background: var(--bg); }
+  #status[hidden] { display: none; }
+  #status.wait { background: color-mix(in srgb, var(--bg) 85%, transparent); }
+  #status div { max-width: 30em; text-align: center; }
+  #status .spin { width: 28px; height: 28px; margin: 0 auto 12px; border-radius: 50%;
+    border: 3px solid color-mix(in srgb, var(--fg) 20%, transparent); border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite; }
+  #status.end .spin { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #status small { display: block; margin-top: 8px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="status" hidden>
+  <div>
+    <div class="spin"></div>
+    <span id="status-text"></span>
+    <small>Shared with inkflow · end-to-end encrypted</small>
+  </div>
+</div>
+<script src="/_guest/boot.js"></script>
+</body>
+</html>

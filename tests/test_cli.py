@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import textwrap
 from importlib.resources import files
 from pathlib import Path
@@ -11,6 +12,7 @@ import yaml
 from click.testing import CliRunner
 
 from inkflow.cli import main
+from inkflow.cli.verify import verify_summary
 
 ROOT = "<root>"
 FlagsByCommand = dict[str, dict[str, bool]]
@@ -106,7 +108,7 @@ class TestDeckOption:
     def test_export_bad_size_exits_1(self, runner: CliRunner) -> None:
         result = runner.invoke(main, ["export", "--size", "huge"])
         assert result.exit_code == 1
-        assert "--size must be WxH" in result.output
+        assert "--size: unknown page size 'huge'" in result.output
 
 
 class TestMissingFile:
@@ -396,7 +398,62 @@ class TestSyncOverlays:
         assert runner.invoke(main, ["sync", "--check"]).exit_code == 1
 
 
+class TestSyncBareSlides:
+    """A slide on no layout and no overlays: `sync` and `verify` must agree."""
+
+    @pytest.mark.usefixtures("project")
+    def test_never_synced_is_neither_written_nor_stale(self, runner: CliRunner) -> None:
+        assert "No parent" not in runner.invoke(main, ["sync"]).output
+        assert 'id="inkflow-preview"' not in Path("slides/01.svg").read_text(
+            encoding="utf-8"
+        )
+        assert "stale" not in runner.invoke(main, ["verify"]).output
+
+    @pytest.mark.usefixtures("project")
+    def test_its_style_block_follows_a_mode_change(self, runner: CliRunner) -> None:
+        # Synced once by name (or by the editor's Open ▾), it carries the block.
+        assert runner.invoke(main, ["sync", "slides/01.svg"]).exit_code == 0
+        Path("deck.py").write_text(
+            _DECK_PY.replace(
+                "from inkflow import Deck", "from inkflow import ColorMode, Deck"
+            ).replace("Deck(slides", "Deck(mode=ColorMode.LIGHT, slides"),
+            encoding="utf-8",
+        )
+        assert "stale" in runner.invoke(main, ["verify"]).output
+        # The sweep refreshes it, after which verify has nothing to say.
+        assert runner.invoke(main, ["sync"]).exit_code == 0
+        assert "stale" not in runner.invoke(main, ["verify"]).output
+        assert runner.invoke(main, ["sync", "--check"]).exit_code == 0
+
+
 class TestVerify:
+    @pytest.mark.usefixtures("project")
+    def test_each_line_names_its_slide_and_a_summary_ends_the_run(
+        self, runner: CliRunner
+    ) -> None:
+        Path("slides/intro.md").write_text("# Intro\n", encoding="utf-8")
+        Path("deck.py").write_text(
+            _DECK_PY.replace(
+                'Slide("slides/01.svg")',
+                'Slide("slides/01.svg"), Slide("content", md="intro.md"),'
+                + ' Slide("content", md="intro.md", visible=False)',
+            ),
+            encoding="utf-8",
+        )
+        result = runner.invoke(main, ["verify", "--no-portable", "--all"])
+        assert result.exit_code == 0, result.output
+        lines = [" ".join(line.split()) for line in result.output.splitlines()]
+        # Number and id; the layout too when the id does not say it; a hidden
+        # slide has no number.
+        assert lines[:3] == ["ok 1 01", "ok 2 intro (content)", "ok - intro (content)"]
+        assert lines[-1] == "no problems in 3 slides"
+
+    def test_the_summary_counts_errors_and_warnings(self) -> None:
+        assert verify_summary(1, 0, 0) == "no problems in 1 slide"
+        assert verify_summary(12, 1, 0) == "1 error in 12 slides"
+        assert verify_summary(12, 2, 3) == "2 errors and 3 warnings in 12 slides"
+        assert verify_summary(12, 0, 1) == "1 warning in 12 slides"
+
     def test_missing_src_exits_1(
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -460,6 +517,37 @@ class TestLayouts:
         assert result.exit_code == 0
         assert "base" in result.output
 
+    def test_plain_is_one_line_per_layout_without_a_table(
+        self, runner: CliRunner
+    ) -> None:
+        result = runner.invoke(main, ["layouts", "--no-deck", "--plain"])
+        assert result.exit_code == 0
+        lines = result.output.splitlines()
+        content = next(line for line in lines if line.startswith("content  "))
+        assert content == (
+            "content  [builtin]  parents: base > numbered > title"
+            + "  zones: content*, title  numbered"
+        )
+        assert not any(ch in result.output for ch in "│╭╰─┃")
+
+    @pytest.mark.usefixtures("project")
+    def test_json_lists_layouts_with_their_use_in_the_deck(
+        self, runner: CliRunner
+    ) -> None:
+        Path("layouts").mkdir()
+        Path("layouts/mine.svg").write_text(_SLIDE_SVG, encoding="utf-8")
+        result = runner.invoke(main, ["layouts", "--json"])
+        assert result.exit_code == 0
+        data = cast("dict[str, list[dict[str, object]]]", json.loads(result.output))
+        assert set(data) == {"layouts", "overlays"}
+        by_name = {(e["source"], e["name"]): e for e in data["layouts"]}
+        content = by_name[("builtin", "content")]
+        assert content["parents"] == ["base", "numbered", "title"]
+        assert content["zones"] == ["content", "title"]
+        assert content["defaultZone"] == "content" and content["numbered"] is True
+        mine = by_name[("local", "mine")]
+        assert mine["parents"] == [] and mine["slides"] == 0
+
 
 class TestInitGit:
     """Git bootstrap on `inkflow init`. Asserts only on git artifacts + deck.py,
@@ -478,6 +566,20 @@ class TestInitGit:
         assert ".venv/" in gitignore
         assert "*.pdf" in gitignore
         assert (root / ".githooks" / "pre-commit").exists()
+
+    def test_gitattributes_send_media_to_lfs_unless_git_only(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(main, ["init", "with-lfs"])
+        assert result.exit_code == 0, result.output
+        attrs = Path("with-lfs", ".gitattributes").read_text(encoding="utf-8")
+        assert "*.svg diff=inkscape-svg" in attrs
+        assert "*.mp4 filter=lfs diff=lfs merge=lfs -text" in attrs
+        result = runner.invoke(main, ["init", "git-only", "--no-lfs"])
+        assert result.exit_code == 0, result.output
+        attrs = Path("git-only", ".gitattributes").read_text(encoding="utf-8")
+        assert "inkflow: lfs off" in attrs and "filter=lfs" not in attrs
 
     def test_no_git_skips_bootstrap(
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -633,3 +735,32 @@ class TestCarapaceSpec:
             ),
         )
         assert self._spec_flags(spec) == self._click_flags(main)
+
+
+class TestBrokenDeck:
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            (
+                "from inkflow import Deck\n\ndef main():\n    return Deck(mode=Nope)\n",
+                "deck.py:4: NameError: name 'Nope' is not defined\n"
+                + "    return Deck(mode=Nope)",
+            ),
+            ("def main(:\n", "deck.py:1: SyntaxError"),
+            ("x = 1\n", "deck.py: AttributeError:"),
+        ],
+    )
+    def test_is_one_error_not_a_traceback(
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        source: str,
+        expected: str,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        Path("deck.py").write_text(source, encoding="utf-8")
+        result = runner.invoke(main, ["verify"])
+        assert result.exit_code == 1
+        assert f"Error: {expected}" in result.output
+        assert "Traceback" not in result.output

@@ -1,0 +1,45 @@
+/* Starred slides (src/ts/editor/stars.ts): the star on a slide's row in the
+   slide list and on its tile in the grid view, and the grid's filter. */
+
+.star-btn {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--subtext);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+}
+
+.star-btn:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--sel);
+    outline-offset: 1px;
+}
+
+.star-btn.on {
+    opacity: 1;
+    color: var(--yellow);
+}
+
+/* In the slide list: under the slide's number. */
+.sorter-item .star-btn {
+    position: absolute;
+    left: 0;
+    top: 20px;
+    width: 18px;
+    text-align: right;
+}
+
+.sorter-item:hover .star-btn,
+.grid-item:hover .star-btn {
+    opacity: 1;
+}
+
+#grid-starred.on,
+#grid-changed.on {
+    background: var(--sel-soft);
+    border-color: var(--sel);
+    color: var(--sel);
+}

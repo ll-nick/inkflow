@@ -1,5 +1,7 @@
 from inkflow import Deck, Image, MediaFit, Slide, transitions
 
+PHOTO = "https://images.unsplash.com/photo-1560237731-890b122a9b6c?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+
 
 def main() -> Deck:
     return Deck(
@@ -41,6 +43,27 @@ def main() -> Deck:
                         fit=MediaFit.COVER,
                     )
                 },
+            ),
+            Slide("agenda", md="agenda"),
+            Slide("three-cols", md="three-cols"),
+            Slide("comparison", md="comparison"),
+            Slide("quad", md="quad"),
+            Slide(
+                "three-cards",
+                md="three-cards",
+                zones={
+                    f"media-{n}": Image(PHOTO, fit=MediaFit.COVER) for n in (1, 2, 3)
+                },
+            ),
+            Slide(
+                "title-media",
+                md="title-media",
+                zones={"media": Image(PHOTO, fit=MediaFit.COVER)},
+            ),
+            Slide(
+                "full-media",
+                md="full-media",
+                zones={"media": Image(PHOTO, fit=MediaFit.COVER)},
             ),
             Slide("end", md="end"),
         ],

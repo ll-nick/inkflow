@@ -21,6 +21,7 @@ dependencies = [
   "click>=8.0",
   "fonttools>=4.63.0",
   "latex2mathml>=3.81.0",
+  "libcst>=1.9.0",
   "lxml>=5.0",
   "markdown-it-py>=3.0",
   "mdit-py-plugins>=0.6.1",
@@ -32,6 +33,15 @@ dependencies = [
   "websockets>=12.0",
 ]
 
+[project.optional-dependencies]
+# PDF figures without system tools. PyMuPDF is AGPL-3.0 (or commercial, by
+# Artifex): optional, so inkflow itself stays MIT (see inkflow/pdf.py).
+pdf = ["pymupdf>=1.24"]
+# Sharing online (inkflow/online): AES-GCM for the end-to-end encryption.
+# Optional: only the host sharing online needs it (and `inkflow relay`, which
+# never decrypts anything, does not).
+online = ["cryptography>=42"]
+
 [project.urls]
 Homepage = "https://ll-nick.github.io/inkflow"
 Repository = "https://github.com/ll-nick/inkflow"
@@ -42,6 +52,7 @@ inkflow = "inkflow.cli:main"
 [dependency-groups]
 dev = [
   "basedpyright>=1.39.5",
+  "cryptography>=42",
   "deptry>=0.25.1",
   "lxml-stubs>=0.5",
   "pytest>=9.0.3",
@@ -64,12 +75,15 @@ fonttools = "fontTools"
 
 [tool.deptry.per_rule_ignores]
 # brotli is never imported directly; fontTools' WOFF2 encoder picks it up at runtime.
-DEP002 = ["brotli"]
+# pymupdf (the optional `pdf` extra) is imported by name in inkflow/pdf.py, so the
+# type checker works without it installed. cryptography (the optional `online`
+# extra) is imported the same way in inkflow/online/crypto.py.
+DEP002 = ["brotli", "cryptography", "pymupdf"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inkflow"]
 artifacts = ["src/inkflow/theme/**", "src/inkflow/templates/**"]
-exclude = ["src/inkflow/theme/showcase/**", "src/inkflow/theme/**/__pycache__/**"]
+exclude = ["src/inkflow/theme/**/__pycache__/**"]
 
 [tool.pyright]
 reportUnusedCallResult = "none"

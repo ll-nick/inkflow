@@ -32,14 +32,19 @@ class LiveUI:
         http_port: int,
         watch_path: Path,
         get_clients: Callable[[], int],
+        scheme: str = "http",
     ) -> None:
         self._live: Live = live
+        self._scheme: str = scheme
+        self._share: list[str] = []
+        self._owner: list[str] = []
         self._http_port: int = http_port
         self._host: str = host
         self._watch_path: Path = watch_path
         self._get_clients: Callable[[], int] = get_clients
         self._phase: str = "idle"
         self._slides: int = 0
+        self._processed: int | None = None
         self._elapsed: float = 0.0
         self._built_at: str = ""
         self._logs: list[LogEntry] = []
@@ -56,7 +61,7 @@ class LiveUI:
 
         content = Group(
             Text.assemble(
-                (f"http://{self._host}:{self._http_port}", "bold"),
+                (f"{self._scheme}://{self._host}:{self._http_port}", "bold"),
                 ("  ·  ", "dim"),
                 (client_str, "dim"),
             ),
@@ -65,10 +70,19 @@ class LiveUI:
                 overflow="ellipsis",
                 no_wrap=True,
             ),
+            *(
+                Text.assemble(("owner  ", "bold"), (link, "bold cyan"), overflow="fold")
+                for link in self._owner[:1]
+            ),
+            *(Text(line, style="dim", overflow="fold") for line in self._owner[1:]),
+            *(Text(line, style="dim", overflow="fold") for line in self._share),
             Text(""),
             Text.assemble(
                 ("o", "bold"),
                 ("  open", "dim"),
+                ("  ·  ", "dim"),
+                ("e", "bold"),
+                ("  edit", "dim"),
                 ("  ·  ", "dim"),
                 ("r", "bold"),
                 ("  rebuild", "dim"),
@@ -95,6 +109,9 @@ class LiveUI:
 
             slide_word = "slide" if self._slides == 1 else "slides"
             summary = f" ✓  built {self._slides} {slide_word} in {self._elapsed:.2f}s"
+            # A rebuild processes the slides a change touched and keeps the rest.
+            if self._processed is not None and self._processed < self._slides:
+                summary += f" ({self._processed} changed)"
             parts.append(
                 Text.assemble(
                     (summary, "bold green"),
@@ -122,16 +139,33 @@ class LiveUI:
         self._live.update(self._renderable())
         self._live.refresh()
 
+    def set_share(self, lines: list[str]) -> None:
+        """The share links (and SSH recipe) under the address; none when the
+        server is not shared."""
+        self._share = lines
+        self.refresh()
+
+    def set_owner(self, lines: list[str]) -> None:
+        """In SSH mode, the owner link (shown bold) and the tunnel to open
+        it through; none otherwise."""
+        self._owner = lines
+        self.refresh()
+
     def set_building(self) -> None:
         self._phase = "building"
         self._logs = []
         self.refresh()
 
     def set_ok(
-        self, slides: int, elapsed: float, logs: list[LogEntry] | None = None
+        self,
+        slides: int,
+        elapsed: float,
+        logs: list[LogEntry] | None = None,
+        processed: int | None = None,
     ) -> None:
         self._phase = "ok"
         self._slides = slides
+        self._processed = processed
         self._elapsed = elapsed
         self._built_at = datetime.now().strftime("%H:%M:%S")
         self._logs = logs or []

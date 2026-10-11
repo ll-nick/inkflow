@@ -64,6 +64,9 @@ That's the core loop—the rest is there once you need it:
 reusable layouts that inherit from each other like master slides,
 Markdown-filled zones for text-heavy slides,
 a presenter view with speaker notes,
+a [visual editor](editor/index.md) that writes those same files,
+[charts from data](authoring/charts.md) and [PDF figures](authoring/pdf-figures.md),
+[drawing with a pen](presenting/ink.md) while you present,
 one-command export to static HTML or PDF,
 and more.
 Start with [Authoring slides](authoring/slides.md), or read [Concepts](concepts.md) for the full picture.

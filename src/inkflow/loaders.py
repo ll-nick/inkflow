@@ -4,6 +4,7 @@ import importlib.resources
 from dataclasses import dataclass
 from pathlib import Path
 
+from inkflow.deps import note
 from inkflow.manifest import Content, Deck, Inline
 from inkflow.markdown import markdown_to_html
 from inkflow.themes import Builtin, Theme
@@ -98,7 +99,19 @@ def load_md(md: Content, project_dir: Path) -> LoadedText | None:
     if isinstance(md, Inline):
         return LoadedText(str(md), None)
     path = resolve_content_src(str(md), project_dir)
+    note(path)
+    if not Path(str(md)).is_absolute():
+        # As written too: a link on the way that is pointed elsewhere.
+        note(project_dir / str(md))
     return LoadedText(path.read_text(encoding="utf-8"), path)
+
+
+def notes_path(notes: Content, project_dir: Path) -> Path | None:
+    """The file a Content notes field names (None: no notes, or inline)."""
+    if not notes or isinstance(notes, Inline):
+        return None
+    resolved = Path(str(notes))
+    return resolved if resolved.is_absolute() else project_dir / resolved
 
 
 def load_notes(notes: Content, project_dir: Path) -> LoadedText:
@@ -110,9 +123,9 @@ def load_notes(notes: Content, project_dir: Path) -> LoadedText:
         return LoadedText("", None)
     if isinstance(notes, Inline):
         return LoadedText(markdown_to_html(str(notes)), None)
-    resolved = Path(str(notes))
-    if not resolved.is_absolute():
-        resolved = project_dir / resolved
+    resolved = notes_path(notes, project_dir)
+    assert resolved is not None
+    note(resolved)
     return LoadedText(markdown_to_html(resolved.read_text(encoding="utf-8")), resolved)
 
 
@@ -125,4 +138,5 @@ def load_style(style: Content, project_dir: Path) -> str:
     resolved = Path(str(style))
     if not resolved.is_absolute():
         resolved = project_dir / resolved
+    note(resolved)
     return resolved.read_text(encoding="utf-8")

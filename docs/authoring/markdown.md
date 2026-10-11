@@ -94,6 +94,59 @@ which beats the built-in default (`left`, `top`, `0`):
 From `deck.py`, pass `align`, `valign` and `padding` to
 [`TextBox`](../reference/manifest.md#inkflow.manifest.TextBox) instead.
 
+## Text size and shrinking to fit
+
+Two more parameters set how large a zone's text is and what happens when it
+does not fit:
+
+```markdown
+::content size=80%::
+
+Everything in this zone is 80 % of its usual size: headings, code, tables
+and formulas with it.
+
+::notes-box fit=none::
+
+This zone keeps its size even when the text runs past the box.
+```
+
+| Parameter | Values | Controls |
+|---|---|---|
+| `size` | a percentage (`80%`) or a factor (`0.8`), 25 % to 300 % | The zone's text size, relative to its usual size |
+| `fit` | `shrink` (the default), `none` | Shrink the text when it overflows the box, or never |
+
+**Every text zone shrinks its text to fit, by default.** When a zone's text
+runs past its box, the slide shows it smaller, just enough to fit: in the
+presenter, the editor, the static build, the PDF export and `inkflow render`
+alike. Nothing is written to your files; only `size` and `fit` are.
+
+Shrinking stops at a floor: a third of the zone's own size, or the smallest
+text `inkflow render --check` calls readable (1/80 of the slide's height on a
+screen; on a printed deck, 0.6 of the sheet's body size), whichever is larger.
+Text that still does not fit at the floor stays there and overflows; the
+editor marks the box *Doesn't fit*, and `inkflow render --check` reports it.
+
+The same two settings are CSS custom properties, so they have the three layers
+alignment has. The slide's own text wins (a marker parameter, or
+`TextBox(size=0.8, fit=False)` in `deck.py`), then the zone shape's own style
+(`style="--inkflow-font-scale:0.8"` on the rect: a text box the editor drew,
+or a layout's zone for every slide built on it), then the layout's CSS:
+
+```css
+#zone-content { --inkflow-font-scale: 0.9; }
+#zone-caption { --inkflow-fit: none; }
+```
+
+To turn shrinking off for a whole deck, set the token in the project's
+`styles.css`:
+
+```css
+:root { --inkflow-fit: none; }
+```
+
+`--inkflow-fit: shrink` on a zone, or `fit=shrink` on its marker, turns it back
+on there.
+
 ## Revealing content in steps
 
 `::step::` and `::steps::` split a zone into chunks that appear on successive keypresses.
@@ -149,6 +202,9 @@ Local files are copied into the output of
 [`inkflow build` and `inkflow export`](../presenting/export.md).
 Remote `https://` and `data:` URIs are left alone.
 
+A PDF works too, `![Results](../figures/results.pdf#page=2)`:
+see [PDF figures](pdf-figures.md).
+
 ## Linking to another slide
 
 A link with the `slide:` scheme jumps to the slide with that `id`:
@@ -171,6 +227,24 @@ Slide("diagram", md="architecture", id="overview")
 IDs must be unique across the deck.
 Collisions get `-2`, `-3` appended.
 A link to an id that does not exist is left inert.
+
+The same scheme works on drawn objects: wrap one in an SVG link,
+`<a href="slide:overview">…</a>` (the visual editor's **Link** field does this),
+and clicking it in the presentation jumps there. A web link on an object opens in
+a new tab, so the presentation stays where it is.
+
+## Coloured words
+
+To colour a few words with the theme's palette, wrap them in a span with an
+`inkflow-color-<name>` class (any token: `accent`, `text-muted`, `red`, `orange`,
+`yellow`, `green`, `teal`, `blue`, `purple`, `pink`, `grey`, …):
+
+```markdown
+Revenue is <span class="inkflow-color-green">up 12%</span> this quarter.
+```
+
+The colour follows dark and light mode. The visual editor's text colour button
+writes exactly this.
 
 ## Speaker notes
 

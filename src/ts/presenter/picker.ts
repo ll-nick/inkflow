@@ -1,4 +1,5 @@
 import { escapeHtml } from "../shared/escape";
+import { sectionRuns } from "../shared/sections";
 import { renderPv } from "./pv";
 import { state } from "./state";
 import { maxStep } from "./status";
@@ -20,9 +21,23 @@ export function closePicker(): void {
     picker.classList.remove("visible");
 }
 
+/** Whether every character of `q` appears in `text`, in order. */
+function fuzzy(text: string, q: string): boolean {
+    let ti = 0;
+    for (let qi = 0; qi < q.length; qi++) {
+        ti = text.indexOf(q[qi], ti);
+        if (ti === -1) return false;
+        ti++;
+    }
+    return true;
+}
+
 export function filterPicker(query: string): void {
     const q = query.trim();
     let matches: number[];
+    // Sections whose name matches come first: picking one jumps to its first
+    // slide. Each is the index of its row in `matches`.
+    const sectionRows = new Map<number, string>();
     if (q === "") {
         matches = state.slides.map((_, i) => i);
     } else if (/^\d+$/.test(q)) {
@@ -32,27 +47,42 @@ export function filterPicker(query: string): void {
         }, []);
     } else {
         const lq = q.toLowerCase();
-        matches = state.slides.reduce((acc: number[], s, i) => {
-            const title = (s.title || "").toLowerCase();
-            let ti = 0;
-            for (let qi = 0; qi < lq.length; qi++) {
-                ti = title.indexOf(lq[qi], ti);
-                if (ti === -1) return acc;
-                ti++;
+        matches = [];
+        for (const run of sectionRuns(state.slides)) {
+            if (run.section && fuzzy(run.section.name.toLowerCase(), lq)) {
+                sectionRows.set(matches.length, run.section.name);
+                matches.push(run.start);
             }
-            acc.push(i);
-            return acc;
-        }, []);
+        }
+        state.slides.forEach((s, i) => {
+            if (fuzzy((s.title || "").toLowerCase(), lq)) matches.push(i);
+        });
     }
     state._pickerMatches = matches;
     state._pickerActive = 0;
     pickerList.innerHTML = matches
-        .map(
-            (idx, pos) =>
-                `<div role="option" data-pos="${pos}" class="${pos === 0 ? "active" : ""}">` +
+        .map((idx, pos) => {
+            const active = pos === 0 ? " active" : "";
+            const section = sectionRows.get(pos);
+            if (section != null) {
+                return (
+                    `<div role="option" data-pos="${pos}" class="pk-section-row${active}">` +
+                    `<span class="pk-num">§</span>` +
+                    `<span class="pk-title">${escapeHtml(section)}</span>` +
+                    `<span class="pk-section">section · ${idx + 1}</span></div>`
+                );
+            }
+            const name = state.slides[idx].section?.name;
+            return (
+                `<div role="option" data-pos="${pos}" class="${active.trim()}">` +
                 `<span class="pk-num">${idx + 1}</span>` +
-                `<span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span></div>`,
-        )
+                `<span class="pk-title">${escapeHtml(state.slides[idx].title || "")}</span>` +
+                (name
+                    ? `<span class="pk-section">${escapeHtml(name)}</span>`
+                    : "") +
+                "</div>"
+            );
+        })
         .join("");
     const active = pickerList.querySelector('[role="option"].active');
     if (active) active.scrollIntoView({ block: "nearest" });

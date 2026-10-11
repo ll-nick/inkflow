@@ -90,6 +90,22 @@ body.pv-open #pv-resize-handle {
     color: var(--yellow);
 }
 
+/* The section being presented, under the strip. */
+#pv-section {
+    flex-shrink: 0;
+    margin-top: -0.25rem;
+    padding: 0 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--subtext);
+    font-size: 0.85rem;
+}
+
+#pv-slide-info {
+    white-space: nowrap;
+}
+
 #pv-slide-info .slide-current {
     color: var(--text);
 }

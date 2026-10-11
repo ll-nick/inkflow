@@ -6,7 +6,7 @@
   <title>__TITLE__</title>
   <!-- The SVG swaps its own ink via an internal prefers-color-scheme rule. -->
   <link rel="icon" type="image/svg+xml" href="__FAVICON__">
-  <style>/* __STYLES__ */</style>
+  <style id="deck-styles">/* __STYLES__ */</style>
   <style>/* __CSS__ */</style>
 </head>
 <body>
@@ -58,8 +58,11 @@
         <tr><td>g</td><td>Slide picker</td></tr>
         <tr><td>o</td><td>Slide overview</td></tr>
         <tr><td>e</td><td>Edit source</td></tr>
+        <tr><td>E</td><td>Back to the editor</td></tr>
         <tr class="kb-group"><td colspan="2">Present</td></tr>
         <tr><td>.</td><td>Laser pointer</td></tr>
+        <tr><td>i</td><td>Ink: draw on the slide with a pen</td></tr>
+        <tr><td>Ctrl + z</td><td>Undo the last stroke (in ink mode)</td></tr>
         <tr><td>Ctrl + scroll</td><td>Zoom · Ctrl + drag to pan</td></tr>
         <tr><td>+ − 0</td><td>Zoom in / out / reset</td></tr>
         <tr><td>b</td><td>Blackout</td></tr>
@@ -164,6 +167,7 @@
         <span class="hud-sep"></span>
         <span id="pv-step-ring"></span>
       </div>
+      <div id="pv-section" hidden></div>
       <section id="pv-next">
         <div class="pv-label">NEXT</div>
         <div id="pv-next-inner"></div>
@@ -213,6 +217,12 @@
       <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
         <rect x="1" y="2" width="14" height="10" rx="1.5"/>
         <path d="M5.5 15h5M8 12v3"/>
+      </svg>
+    </button>
+    <button type="button" class="hud-btn" id="btn-ink" aria-pressed="false" data-tooltip="Ink: draw with a pen (i)" aria-label="Ink">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+        <path d="M9.5 2.5 12 5l-6 6-3 .8.8-3Z"/>
+        <path d="M2 14.5c2-1.2 3.5-.2 5 .2s3 .2 4.5-1 2.5-.8 3 0"/>
       </svg>
     </button>
     <span class="hud-sep"></span>
@@ -265,6 +275,13 @@
       </svg>
     </button>
     <span class="hud-sep"></span>
+    <button type="button" class="hud-btn" id="btn-to-editor" data-tooltip="Back to the editor (E)" aria-label="Back to the editor">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">
+        <rect x="1.5" y="2.5" width="13" height="9" rx="1"/>
+        <path d="M4.5 14h7M6 6.5h4M6 8.5h2.5"/>
+        <path d="M3.5 5h1"/>
+      </svg>
+    </button>
     <span class="edit-wrap">
       <button type="button" class="hud-btn" id="btn-edit" aria-haspopup="true" aria-expanded="false" data-tooltip="Edit source file (e)" aria-label="Edit source file">
         <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none">

@@ -4,6 +4,7 @@ import {
     editMenuSetActive,
     toggleMenu as toggleEditMenu,
 } from "./edit";
+import { inkActive, inkKey, toggleInk } from "./ink";
 import { toggleLaser } from "./laser";
 import {
     advance,
@@ -17,6 +18,7 @@ import {
 import {
     closeOverview,
     overviewCommit,
+    overviewMoveVertical,
     overviewSetActive,
     toggleOverview,
 } from "./overview";
@@ -24,6 +26,7 @@ import { openPicker } from "./picker";
 import { togglePv } from "./pv";
 import { state } from "./state";
 import { cycleSyncMode } from "./syncmenu";
+import { backToEditor } from "./toeditor";
 import {
     hideCurtain,
     hideLogs,
@@ -36,7 +39,7 @@ import {
     toggleTheme,
 } from "./ui";
 import { openSyncedWindow } from "./windowsync";
-import { keyZoom, smoothResetCamera } from "./zoom";
+import { keyZoom, multiTouch, smoothResetCamera } from "./zoom";
 
 // ── Stage click and status bar buttons ──
 const stageEl = document.getElementById("stage")!;
@@ -67,6 +70,18 @@ document
     .getElementById("btn-overview")!
     .addEventListener("click", toggleOverview);
 document.getElementById("btn-presenter")!.addEventListener("click", togglePv);
+document.getElementById("btn-ink")!.addEventListener("click", switchInk);
+
+// Ink and the laser both draw with the pointer: one at a time.
+function switchInk(): void {
+    if (!inkActive() && state._laserMode) toggleLaser();
+    toggleInk();
+}
+
+function switchLaser(): void {
+    if (!state._laserMode && inkActive()) toggleInk();
+    toggleLaser();
+}
 document.getElementById("mhud-theme")!.addEventListener("click", toggleTheme);
 document
     .getElementById("mhud-fullscreen")!
@@ -101,7 +116,8 @@ document
     );
 
     stageEl.addEventListener("touchend", (e) => {
-        if (e.changedTouches.length !== 1) return;
+        // A pinch (or a finger left over from one) is no swipe.
+        if (e.changedTouches.length !== 1 || multiTouch()) return;
         const dx = e.changedTouches[0].clientX - startX;
         const dy = e.changedTouches[0].clientY - startY;
         if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy)) {
@@ -135,9 +151,11 @@ const KEYBINDINGS: Record<
     g: { action: openPicker, preventDefault: true },
     o: { action: toggleOverview, preventDefault: true },
     e: { action: toggleEditMenu },
+    E: { action: backToEditor },
     f: { action: toggleFullscreen },
     b: { action: () => toggleCurtain("black") },
-    ".": { action: toggleLaser },
+    ".": { action: switchLaser },
+    i: { action: switchInk },
     w: { action: () => toggleCurtain("white") },
     "+": { action: () => keyZoom("in") },
     "=": { action: () => keyZoom("in") },
@@ -217,12 +235,12 @@ document.addEventListener("keydown", (e) => {
         }
         if (e.key === "ArrowDown" || e.key === "j") {
             e.preventDefault();
-            overviewSetActive(state._overviewActive + state._overviewCols);
+            overviewMoveVertical(1);
             return;
         }
         if (e.key === "ArrowUp" || e.key === "k") {
             e.preventDefault();
-            overviewSetActive(state._overviewActive - state._overviewCols);
+            overviewMoveVertical(-1);
             return;
         }
         if (e.key === "Enter") {
@@ -250,6 +268,9 @@ document.addEventListener("keydown", (e) => {
         hideLogs();
         return;
     }
+
+    // Ink mode's own keys (Ctrl+Z, Escape) come before the bindings.
+    if (inkKey(e)) return;
 
     const binding = KEYBINDINGS[e.key];
     if (binding) {

@@ -14,6 +14,7 @@ from typing import ClassVar
 __all__ = [
     "Align",
     "AnimationKind",
+    "ChartKind",
     "ColorMode",
     "Direction",
     "Easing",
@@ -177,6 +178,23 @@ _MEDIA_ALIGN_POSITIONS: dict[MediaAlign, tuple[int, int]] = {
     MediaAlign.BOTTOM_LEFT: (0, 100),
     MediaAlign.BOTTOM_RIGHT: (100, 100),
 }
+
+
+class ChartKind(_KebabStrEnum):
+    """What a ``Chart`` draws its data as."""
+
+    BAR = auto()
+    """Bars per category, side by side for several series (``stacked`` piles
+    them; ``horizontal`` lays them along the y axis)."""
+    LINE = auto()
+    """A line per series through the categories."""
+    AREA = auto()
+    """A line per series with the area under it filled (``stacked`` piles them)."""
+    SCATTER = auto()
+    """A dot per row: ``x`` and each ``y`` column must be numbers."""
+    PIE = auto()
+    """One slice per category, sized by the first ``y`` column (``donut`` cuts
+    out the middle)."""
 
 
 class ColorMode(StrEnum):

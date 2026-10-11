@@ -1,5 +1,5 @@
 import { state } from "./state";
-import { isCameraGesture } from "./zoom";
+import { isCameraGesture, onTouchCancel } from "./zoom";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const stageWrap = document.getElementById("stage-wrap") as HTMLElement;
@@ -79,6 +79,20 @@ function finalizeDraw(): void {
     currentPath = null;
     currentPoints = [];
 }
+
+// A second finger made the touch a pinch: the trail it began never was.
+function abortDraw(): void {
+    if (!isDrawing) return;
+    isDrawing = false;
+    if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+    }
+    currentPath?.remove();
+    currentPath = null;
+    currentPoints = [];
+}
+onTouchCancel(abortDraw);
 
 export function toggleLaser(): void {
     state._laserMode = !state._laserMode;

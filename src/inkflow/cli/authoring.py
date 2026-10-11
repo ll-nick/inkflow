@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import click
 from lxml import etree as _etree
 from rich import box as rich_box
 from rich.table import Table
 
-from inkflow import ns, sync
+from inkflow import drawio, ns, sync
 from inkflow.clean import clean_inkscape_svg
 from inkflow.cli._common import (
     Project,
@@ -22,23 +24,29 @@ from inkflow.cli._common import (
     resolve_targets,
     targets_or_deck_slides,
 )
+from inkflow.editor.master import layout_entries, overlay_entries
 from inkflow.label2id import promote_labels_to_ids
 from inkflow.layout import (
     AssetKind,
     PreviewLayers,
     are_preview_layers_current,
     chain_layers,
+    copy_of,
     create_slide,
+    deck_copy,
     discover_layouts,
     discover_overlays,
     inject_preview_layers,
+    label_of,
     layout_zones,
     resolve_chain,
     resolve_parent_path,
     strip_parent,
 )
 from inkflow.logging import console, logger, report
+from inkflow.manifest import Deck
 from inkflow.pipeline import resolve_slide_src
+from inkflow.sizes import PageSize
 from inkflow.svg import with_namespaces
 from inkflow.svgio import parse_svg_file
 from inkflow.themes import Theme
@@ -76,6 +84,13 @@ def clean(
     errors = False
     for target in targets:
         try:
+            data = target.path.read_bytes()
+            if drawio.is_drawio_path(target.path) or drawio.is_drawio_svg(data):
+                # draw.io's own file is never rewritten; as git's textconv
+                # (--stdout) it shows the diagram's source, readable in a diff.
+                if to_stdout:
+                    sys.stdout.write(drawio.textconv(data))
+                continue
             cleaned = clean_inkscape_svg(target.path, keep_preview=True)
             if check:
                 if cleaned != target.path.read_text(encoding="utf-8"):
@@ -318,15 +333,19 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
 
     OUTPUT is the path for the new SVG file. With `-p`/`--parent`, the slide is
     wired to that layout (bare name, 'local:foo', 'theme:foo', 'builtin:foo', or a
-    relative path) and given preview layers. Without it, a blank slide is created.
+    relative path) and given preview layers. Without it, a blank slide is created
+    at the deck's size (`Deck(size=...)`, 16:9 without one or without a deck).
     """
+    project_dir: Path | None = None
+    theme = None
+    canvas = PageSize.WIDESCREEN.canvas
     if parent is not None and not no_deck:
         project = Project.load(deck_path)
-        project_dir: Path | None = project.dir
+        project_dir = project.dir
         theme = project.theme
-    else:
-        project_dir = None
-        theme = None
+        canvas = project.deck.effective_size.canvas
+    elif not no_deck and deck_path.exists():
+        canvas = Project.load(deck_path).deck.effective_size.canvas
 
     output_path = output.resolve()
     if output_path.exists():
@@ -334,7 +353,7 @@ def add_slide(output: Path, parent: str | None, deck_path: Path, no_deck: bool) 
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        create_slide(parent, output_path, project_dir, theme)
+        create_slide(parent, output_path, project_dir, theme, canvas)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -417,11 +436,8 @@ def sync_cmd(
             plan = sync.plan_preview(target.path, ctx)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
-        # A file with no layers only gains the preview style block, which is worth
-        # writing when it was named explicitly but not when sweeping the whole deck.
-        # An overlay file is the exception: it is swept precisely to get that block,
-        # and it legitimately has no layers until it names a backdrop.
-        if plan.is_bare and not plan.is_overlay and not (files or no_deck):
+        # A file named explicitly is always written; a sweep follows `swept`.
+        if not (files or no_deck or plan.swept(target.path)):
             continue
         label = _sync_label(target.label, plan)
         if check:
@@ -450,23 +466,53 @@ class _LayoutRow:
     zones: list[str]
     numbered: bool
     default_zone: str
+    slides: int | None = None
+    """Slides built directly on it (None: no deck to count)."""
+    note: str = ""
+    """The deck's copy of a theme's, replaced by such a copy, a typed name."""
 
 
 def _asset_rows(
     kind: AssetKind,
     project_dir: Path | None,
     theme: Theme | None,
+    deck: Deck | None = None,
 ) -> dict[str, list[_LayoutRow]]:
-    """Group discovered layouts or overlays by source, with their chains and zones."""
+    """Group discovered layouts or overlays by source, with their chains and
+    zones, and (with a deck) how many slides use each and which the deck has
+    its own copy of."""
     discover = discover_layouts if kind is AssetKind.LAYOUT else discover_overlays
+    found = discover(project_dir, theme)
+    uses: dict[Path, int] = {}
+    if deck is not None and project_dir is not None:
+        if kind is AssetKind.LAYOUT:
+            for entry in layout_entries(deck, project_dir).values():
+                uses[entry.path.resolve()] = len(entry.slides)
+        else:
+            for overlay in overlay_entries(deck, project_dir):
+                if overlay.path is not None:
+                    uses[overlay.path.resolve()] = len(overlay.slides)
+    local = {p.stem: p for label, p in found if label == "local"}
     groups: dict[str, list[_LayoutRow]] = {}
-    for source_label, path in discover(project_dir, theme):
+    for source_label, path in found:
         try:
             chain = resolve_chain(path, project_dir, theme, kind)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
         parent_str = " → ".join(p.stem for p in chain) if chain else "—"
         info = layout_zones(path, project_dir, theme, kind)
+        notes: list[str] = []
+        if source_label == "local":
+            if marked := copy_of(path):
+                notes.append(f"the deck's copy of {marked}")
+            if typed := label_of(path):
+                notes.append(f"“{typed}”")
+        elif path.stem in local:
+            replaced = deck_copy(path, project_dir, theme, kind) is not None
+            notes.append(
+                "replaced by the deck's copy" if replaced else "shadowed by the deck's"
+            )
+        known = (deck is not None and source_label == "local") or path.stem not in local
         groups.setdefault(source_label, []).append(
             _LayoutRow(
                 path.stem,
@@ -474,16 +520,68 @@ def _asset_rows(
                 info.zones,
                 info.numbered,
                 info.default_zone,
+                uses.get(path.resolve(), 0) if deck is not None and known else None,
+                ", ".join(notes),
             )
         )
     return groups
 
 
+def _rows_json(groups: dict[str, list[_LayoutRow]]) -> list[dict[str, object]]:
+    return [
+        {
+            "name": row.name,
+            "source": source,
+            "parents": [] if row.parent == "—" else row.parent.split(" → "),
+            "zones": row.zones,
+            "defaultZone": row.default_zone or None,
+            "numbered": row.numbered,
+            "slides": row.slides,
+            "note": row.note or None,
+        }
+        for source, _, _ in _SOURCE_STYLES
+        for row in groups.get(source, [])
+    ]
+
+
+def _plain_rows(groups: dict[str, list[_LayoutRow]]) -> list[str]:
+    """One line per layout, nothing drawn around it: name, where it is from,
+    its parents (nearest last), its zones (the default one starred), then
+    what else there is to say."""
+    lines: list[str] = []
+    for entry in _rows_json(groups):
+        zones = [
+            f"{zone}*" if zone == entry["defaultZone"] else zone
+            for zone in cast("list[str]", entry["zones"])
+        ]
+        parts = [
+            str(entry["name"]),
+            f"[{entry['source']}]",
+            "parents: " + (" > ".join(cast("list[str]", entry["parents"])) or "-"),
+            "zones: " + (", ".join(zones) or "-"),
+        ]
+        if entry["numbered"]:
+            parts.append("numbered")
+        if entry["slides"] is not None:
+            parts.append(f"slides: {entry['slides']}")
+        if entry["note"]:
+            parts.append(f"note: {entry['note']}")
+        lines.append("  ".join(parts))
+    return lines
+
+
 @main.command("layouts")
 @deck_option
 @no_deck_option
-def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
-    """List available layouts and overlays with their zones and parent chain.
+@click.option(
+    "--plain",
+    is_flag=True,
+    help="One line per layout on stdout, no table: for a narrow terminal or a"
+    + " program reading it.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Print the list as JSON.")
+def layouts_cmd(deck_path: Path, no_deck: bool, plain: bool, as_json: bool) -> None:
+    """List available layouts and overlays with their zones, parent chain and use.
 
     Discovers both from three sources — built-in, theme, then project-local — and
     prints a table per source with each entry's parent chain and zone names. The
@@ -491,15 +589,40 @@ def layouts_cmd(deck_path: Path, no_deck: bool) -> None:
     (a `zone-slide-number` or `zone-slide-total`). Layouts compose behind a slide,
     overlays on top of it, and the two are separate namespaces. The overlay section
     is omitted when no overlays exist. Pass `--no-deck` to list only the built-ins.
+
+    With a deck, SLIDES counts the slides built directly on each, and NOTE
+    marks the deck's own copies of theme layouts (`inkflow layout copy`), the
+    theme layouts they replace, and a template's typed name.
+
+    `--plain` prints the same as one line per layout (`name  [source]
+    parents: …  zones: …`, the default zone starred), and `--json` as
+    `{"layouts": [...], "overlays": [...]}`; both go to stdout.
     """
 
     project = load_project_or_none(deck_path, no_deck)
     project_dir = project.dir if project else None
     theme = project.theme if project else None
 
-    _print_asset_tables(_asset_rows(AssetKind.LAYOUT, project_dir, theme))
+    deck = project.deck if project else None
+    layout_groups = _asset_rows(AssetKind.LAYOUT, project_dir, theme, deck)
+    overlay_groups = _asset_rows(AssetKind.OVERLAY, project_dir, theme, deck)
+    if as_json:
+        data = {
+            "layouts": _rows_json(layout_groups),
+            "overlays": _rows_json(overlay_groups),
+        }
+        indent = 1 if sys.stdout.isatty() else None
+        click.echo(json.dumps(data, indent=indent, ensure_ascii=False))
+        return
+    if plain:
+        lines = _plain_rows(layout_groups)
+        if overlay_groups:
+            lines += ["", "overlays (composited on top):"]
+            lines += _plain_rows(overlay_groups)
+        click.echo("\n".join(lines))
+        return
+    _print_asset_tables(layout_groups)
 
-    overlay_groups = _asset_rows(AssetKind.OVERLAY, project_dir, theme)
     if overlay_groups:
         console.print()
         console.print("[bold]OVERLAYS[/bold] [dim](composited on top)[/dim]")
@@ -535,6 +658,12 @@ def _print_asset_tables(groups: dict[str, list[_LayoutRow]]) -> None:
         table.add_column("PARENT", style="dim", min_width=14)
         table.add_column("ZONES", min_width=20)
         table.add_column("#", justify="center", min_width=1)
+        counted = any(row.slides is not None for row in rows)
+        noted = any(row.note for row in rows)
+        if counted:
+            table.add_column("SLIDES", justify="right")
+        if noted:
+            table.add_column("NOTE", style="dim")
 
         for row in rows:
             zone_parts = [
@@ -544,11 +673,16 @@ def _print_asset_tables(groups: dict[str, list[_LayoutRow]]) -> None:
                 for z in row.zones
             ]
             zones_cell = ", ".join(zone_parts) if zone_parts else "[dim]—[/dim]"
-            table.add_row(
+            cells = [
                 row.name,
                 row.parent,
                 zones_cell,
                 f"[{color}]✓[/{color}]" if row.numbered else "",
-            )
+            ]
+            if counted:
+                cells.append("" if row.slides is None else str(row.slides))
+            if noted:
+                cells.append(row.note)
+            table.add_row(*cells)
 
         console.print(table)

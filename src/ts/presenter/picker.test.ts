@@ -79,3 +79,39 @@ describe("picker title escaping (F-018)", () => {
         expect(list.querySelector(".pk-title")?.textContent).toBe(evil);
     });
 });
+
+describe("sections", () => {
+    const slide = (title: string, section?: string, index = 0) => ({
+        id: title,
+        svg: "<svg/>",
+        title,
+        notes: "",
+        editableFiles: [],
+        section: section ? { name: section, index } : undefined,
+    });
+
+    test("a matching section comes first and jumps to its first slide", () => {
+        state.slides = [
+            slide("Intro"),
+            slide("Setup", "Method"),
+            slide("Data", "Method"),
+            slide("Plots", "Results", 1),
+        ];
+        filterPicker("meth");
+        expect(state._pickerMatches).toEqual([1]);
+        const list = document.getElementById("picker-list")!;
+        const row = list.querySelector('[role="option"]')!;
+        expect(row.classList.contains("pk-section-row")).toBe(true);
+        expect(row.querySelector(".pk-title")?.textContent).toBe("Method");
+    });
+
+    test("each slide shows its section", () => {
+        state.slides = [slide("Intro"), slide("Plots", "Results <b>", 1)];
+        filterPicker("");
+        const list = document.getElementById("picker-list")!;
+        const names = [...list.querySelectorAll(".pk-section")].map(
+            (el) => el.textContent,
+        );
+        expect(names).toEqual(["Results <b>"]);
+    });
+});

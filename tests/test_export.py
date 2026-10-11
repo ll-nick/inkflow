@@ -13,9 +13,9 @@ from click.testing import CliRunner
 from inkflow.cli import main
 from inkflow.export import (
     _INLINE_VIDEO_WARN_BYTES,
-    _find_chromium,
     build_pdf,
     build_static_html,
+    find_chromium,
 )
 from inkflow.logging import collect_logs
 
@@ -204,7 +204,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _ASSET_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "index.html").exists()
         # SVG <image xlink:href> and <image href>, relative to the slide file
@@ -226,7 +226,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _MD_FILE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "slides" / "assets" / "cat.png").exists()
         index = (out_dir / "index.html").read_text(encoding="utf-8")
@@ -244,7 +244,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _NOTES_IMAGE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "assets" / "diagram.png").exists()
         index = (out_dir / "index.html").read_text(encoding="utf-8")
@@ -258,7 +258,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _POSTER_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "media" / "clip.mp4").exists()
         # A video's poster is a local asset too and must be copied.
@@ -269,7 +269,7 @@ class TestBuildCopiesAssets:
         deck_path = _write_deck(tmp_path, _REMOTE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "index.html").exists()
         # No stray files copied from URL/data refs.
@@ -292,7 +292,7 @@ class TestEditorRelativeAssetRefs:
         deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
 
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "assets" / "pic.png").exists()
         # Nothing written next to the build via a ".." that climbed out.
@@ -321,7 +321,7 @@ class TestEditorRelativeAssetRefs:
 
         out_dir = project / "out"
         with collect_logs(logging.WARNING) as warnings:
-            build_static_html(deck_path, out_dir)
+            build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert any("outside the project" in w.message for w in warnings)
         assert not (out_dir / "outside").exists()
@@ -334,7 +334,7 @@ class TestEditorRelativeAssetRefs:
 
         out_dir = tmp_path / "out"
         with collect_logs(logging.WARNING) as warnings:
-            build_static_html(deck_path, out_dir)
+            build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "index.html").exists()
         assert any("missing.png" in w.message for w in warnings)
@@ -518,7 +518,7 @@ class TestThemeAssets:
         deck_path = _write_deck(project, _THEME_DECK.format(theme_dir=str(theme_dir)))
 
         out_dir = project / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
 
         assert (out_dir / "_theme" / "logo.png").exists()
         index = (out_dir / "index.html").read_text(encoding="utf-8")
@@ -553,7 +553,7 @@ class TestCustomTypeMarker:
             encoding="utf-8",
         )
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
         html = (out_dir / "index.html").read_text(encoding="utf-8")
         # Resolved to the custom type (not the FadeIn fallback): the cue's name is the
         # type slug and its param flows into the data-cues encoding.
@@ -567,7 +567,7 @@ class TestEmptyDeck:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
         deck_path = _write_deck(tmp_path, _EMPTY_DECK)
         out_dir = tmp_path / "out"
-        build_static_html(deck_path, out_dir)
+        build_static_html(deck_path, out_dir, inline_assets=False)
         assert (out_dir / "index.html").exists()
 
     def test_pdf_refuses_empty_deck(self, tmp_path: Path) -> None:
@@ -583,7 +583,7 @@ class TestEmptyDeck:
 
 
 class TestBuildPdf:
-    @pytest.mark.skipif(_find_chromium() is None, reason="chromium not available")
+    @pytest.mark.skipif(find_chromium() is None, reason="chromium not available")
     def test_produces_pdf_file(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
         deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
@@ -591,6 +591,78 @@ class TestBuildPdf:
         build_pdf(deck_path, out, no_sandbox=True)
         assert out.exists()
         assert out.stat().st_size > 0
+
+
+# A stand-in for a confined Chromium (snap, Flatpak): it cannot see the
+# exporter's temporary directory, so it only gets the page over the network.
+# It "prints" the page and every image it references into the output file.
+_FAKE_CHROMIUM = """\
+#!{python}
+import re, sys, urllib.request
+args = sys.argv[1:]
+url = args[-1]
+if not url.startswith("http://127.0.0.1:"):
+    print("ERROR: cannot open " + url, file=sys.stderr)
+    sys.exit(1)
+page = urllib.request.urlopen(url).read()
+base = url.rsplit("/", 1)[0]
+assets = b"".join(
+    urllib.request.urlopen(base + "/" + ref.decode()).read()
+    for ref in re.findall(rb'href="([^"]+[.]png)"', page)
+)
+mode = {mode!r}
+out = next(a.split("=", 1)[1] for a in args if a.startswith("--print-to-pdf="))
+if mode == "silent":
+    sys.exit(0)
+if mode == "fail":
+    print("[123:ERROR:sandbox] No usable sandbox!", file=sys.stderr)
+    sys.exit(1)
+open(out, "wb").write(b"%PDF-1.4\\n" + page + assets)
+"""
+
+
+def _fake_chromium(tmp_path: Path, mode: str = "ok") -> str:
+    import sys
+
+    exe = tmp_path / f"fake-chromium-{mode}"
+    exe.write_text(_FAKE_CHROMIUM.format(python=sys.executable, mode=mode))
+    exe.chmod(0o755)
+    return str(exe)
+
+
+class TestPdfThroughConfinedBrowser:
+    def test_page_and_assets_reach_a_browser_that_cannot_see_tmp(
+        self, tmp_path: Path
+    ) -> None:
+        _write_slide(tmp_path, _ASSET_SLIDE_SVG)
+        (tmp_path / "slides" / "assets").mkdir()
+        (tmp_path / "slides" / "assets" / "pic.png").write_bytes(b"PIC-ONE")
+        (tmp_path / "slides" / "assets" / "pic2.png").write_bytes(b"PIC-TWO")
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+        out = tmp_path / "out" / "deck.pdf"
+        build_pdf(deck_path, out, chromium=_fake_chromium(tmp_path))
+        data = out.read_bytes()
+        assert data.startswith(b"%PDF")
+        assert b"zone-content" in data  # the slide itself, not an error page
+        assert b"PIC-ONE" in data and b"PIC-TWO" in data
+
+    def test_what_chromium_said_is_reported(self, tmp_path: Path) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+        with pytest.raises(RuntimeError, match="No usable sandbox"):
+            build_pdf(
+                deck_path, tmp_path / "o.pdf", chromium=_fake_chromium(tmp_path, "fail")
+            )
+
+    def test_no_file_written_is_an_error_not_a_stale_success(
+        self, tmp_path: Path
+    ) -> None:
+        _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
+        deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
+        out = tmp_path / "o.pdf"
+        out.write_bytes(b"%PDF from an earlier export")
+        with pytest.raises(RuntimeError, match="did not write"):
+            build_pdf(deck_path, out, chromium=_fake_chromium(tmp_path, "silent"))
 
 
 _MALFORMED_SVG = "<svg><rect></svg>"

@@ -1,0 +1,50 @@
+# Publishes the slides with GitLab Pages at every push to the default branch.
+# Made by `inkflow setup-pages gitlab`; run it again with --force to update it.
+
+stages:
+  - build
+  - deploy
+
+# What every inkflow job shares: an image with uv, the uv cache, and the
+# deck's Git LFS files and PDF converter when it needs them.
+.inkflow:
+  image: __UV_IMAGE__
+  variables:
+    UV_LINK_MODE: copy
+    UV_CACHE_DIR: .uv-cache
+  cache:
+    key:
+      files:
+        - __UV_LOCK__
+    paths:
+      - .uv-cache
+  before_script:
+    - |
+      git config --global --add safe.directory "$CI_PROJECT_DIR"
+      packages="${EXTRA_PACKAGES:-}"
+      # Git LFS when the repository keeps files in it (the slides need the
+      # files, not pointers to them), poppler when the deck has PDF figures.
+      if git grep -q "filter=lfs" -- '*.gitattributes'; then packages="$packages git-lfs"; fi
+      if git ls-files -- __PDF_GLOB__ | grep -q .; then packages="$packages poppler-utils"; fi
+      if [ -n "$packages" ]; then
+        apt-get update -qq
+        apt-get install -y -qq $packages
+      fi
+      if command -v git-lfs >/dev/null; then git lfs install --local && git lfs pull; fi
+
+# A job named `pages` publishing `public/`: what every GitLab version
+# understands (newer ones also take `pages: true` on a job of any name).
+pages:
+  extends: .inkflow
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # Pictures and videos as files beside index.html: the first slide shows at
+  # once and each video streams when its slide needs it.
+  script:
+    - |
+      __UV_RUN__ inkflow build__DECK_OPT__ --assets-folder --output public
+    - uv cache prune --ci
+  artifacts:
+    paths:
+      - public

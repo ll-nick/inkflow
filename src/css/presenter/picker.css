@@ -71,6 +71,31 @@
     opacity: 0.75;
 }
 
+/* The section a slide is in; a section's own row jumps to its first slide. */
+.pk-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pk-section {
+    flex-shrink: 0;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--subtext);
+    font-size: 0.72rem;
+}
+#picker-list .pk-section-row .pk-title {
+    font-weight: 600;
+}
+#picker-list [role="option"].active .pk-section {
+    color: var(--bg);
+    opacity: 0.75;
+}
+
 #picker-hint {
     border-top: 1px solid var(--overlay);
     color: var(--subtext);

@@ -1,0 +1,23 @@
+# inkflow's relay on Cloudflare, for working on it from this repository:
+#   cd relay/cloudflare && pnpm install --ignore-workspace && pnpm exec wrangler dev
+# `inkflow relay deploy cloudflare` deploys the same Worker from the installed
+# package (src/inkflow/online/cloudflare/worker.js, bundled from src/worker.ts)
+# with a configuration of its own, which requires an access token.
+name = "inkflow-relay"
+main = "src/worker.ts"
+compatibility_date = "2025-09-01"
+
+[assets]
+# The guest page a share link opens (static: no Worker invocation).
+directory = "../../src/inkflow/online/guest"
+not_found_handling = "single-page-application"
+run_worker_first = ["/_relay/*"]
+
+# One Durable Object per room. The free plan has SQLite-backed ones only.
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]

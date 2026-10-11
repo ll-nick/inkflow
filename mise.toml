@@ -43,6 +43,13 @@ depends = ["install-js"]
 run = [
   "pnpm exec esbuild src/ts/presenter/main.ts --bundle --outfile=src/inkflow/bundles/presenter.js",
   "pnpm exec esbuild src/css/presenter/index.css --bundle --outfile=src/inkflow/bundles/presenter.css",
+  "pnpm exec esbuild src/ts/editor/main.ts --bundle --outfile=src/inkflow/bundles/editor.js",
+  "pnpm exec esbuild src/css/editor/index.css --bundle --outfile=src/inkflow/bundles/editor.css",
+  "pnpm exec esbuild src/ts/render/main.ts --bundle --outfile=src/inkflow/bundles/render.js",
+  "pnpm exec esbuild src/ts/fit/main.ts --bundle --outfile=src/inkflow/bundles/fit.js",
+  "pnpm exec esbuild src/ts/guest/boot.ts --bundle --outfile=src/inkflow/online/guest/_guest/boot.js",
+  "pnpm exec esbuild src/ts/guest/sw.ts --bundle --outfile=src/inkflow/online/guest/_guest/sw.js",
+  "pnpm exec esbuild relay/cloudflare/src/worker.ts --bundle --format=esm --external:cloudflare:workers --outfile=src/inkflow/online/cloudflare/worker.js",
 ]
 
 [tasks.docs]

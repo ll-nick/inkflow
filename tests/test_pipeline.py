@@ -657,6 +657,9 @@ class TestSlideId:
         slide = Slide("cover")
         assert _infer_slide_id(slide) == "cover"
 
+    def test_deduplicate_ids_skips_numbers_already_taken(self) -> None:
+        assert _deduplicate_ids(["a", "a-2", "a"]) == ["a", "a-2", "a-3"]
+
     def test_deduplicate_ids_no_collision(self) -> None:
         assert _deduplicate_ids(["a", "b", "c"]) == ["a", "b", "c"]
 

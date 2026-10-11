@@ -1,0 +1,29 @@
+/* Ink mode (presenter/ink.ts): the palette floats over the top of the stage,
+   and the stage takes pen input instead of panning or selecting text. */
+
+.ink-palette {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    max-width: calc(100% - 20px);
+    overflow-x: auto;
+}
+
+body.ink-mode #stage-wrap {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: crosshair;
+}
+
+/* Ink lies on top of the slide but never takes a click from what is under
+   it (a link, a video's controls): only the pen draws or erases there. */
+#stage .inkflow-ink,
+#stage .inkflow-live-ink {
+    pointer-events: none;
+}
+
+#btn-ink.active {
+    color: var(--accent);
+}

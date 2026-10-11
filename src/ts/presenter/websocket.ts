@@ -1,10 +1,16 @@
+import { applyDeckStyles } from "../shared/deck-styles";
+import { clientKey, storedName } from "../shared/identity";
+import { applyPatch, sameItems } from "../shared/patch";
 import type {
+    InkMessage,
     NavMessage,
     SyncMode,
     SyncPosition,
     TransitionData,
     WsMessage,
 } from "../shared/types";
+import { openSocket, SENT_AWAY } from "../shared/wsurl";
+import { applyIncomingInk, inkSaveResult, requestInk } from "./ink";
 import { renderPv, renderPvNext, updatePvInfo } from "./pv";
 import { state } from "./state";
 import {
@@ -12,6 +18,7 @@ import {
     applyCurrentStepInstant,
     maxStep,
     snapStepRun,
+    updateStatus,
 } from "./status";
 import { CUT, loadSlide, snapInflight } from "./transitions";
 import { hideError, showError, showLogs, showNotify } from "./ui";
@@ -50,6 +57,53 @@ export function loadSyncMode(): void {
     if (isSyncMode(stored)) state.syncMode = stored;
 }
 
+function storedSyncMode(): boolean {
+    try {
+        return isSyncMode(sessionStorage.getItem(SYNC_MODE_KEY));
+    } catch (_) {
+        return false;
+    }
+}
+
+// Who the server says this page is (its "welcome"): a view link follows the
+// presenter (it may still look around alone, in solo mode) and has no editor.
+let role = "owner";
+
+function welcome(msg: { role?: unknown }): void {
+    role = String(msg.role ?? "owner");
+    if (role !== "viewer") return;
+    for (const id of ["btn-to-editor", "btn-edit"]) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+    }
+    if (!storedSyncMode() && state.syncMode !== "follow") {
+        state.syncMode = "follow";
+        requestSync();
+    }
+}
+
+// This page's slide, for the others' list of who is where (sent when it
+// changes; nothing about the page is stored).
+let presenceSent = -1;
+
+function sendPresence(force = false): void {
+    const ws = state.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!force && presenceSent === state.slideIndex) return;
+    presenceSent = state.slideIndex;
+    ws.send(
+        JSON.stringify({
+            type: "presence",
+            page: "presenter",
+            key: clientKey(),
+            ...(storedName() ? { name: storedName() } : {}),
+            slide: state.slideIndex,
+        }),
+    );
+}
+
+window.setInterval(() => sendPresence(), 1000);
+
 // Behavioural core of a mode change: update state, persist, and (when entering a
 // receiving mode) catch up to the presenter's current position immediately instead
 // of waiting for their next navigation. The status-bar widget wraps this with the
@@ -68,7 +122,9 @@ export function applySyncMode(mode: SyncMode): void {
 // (build; windowsync.ts). Exactly one is ever active — see initWindowSync.
 // targetOrigin is "*": a window-link peer can be a file:// window carrying an
 // opaque origin, which a stricter target could never reliably match.
-function postToPeer(msg: NavMessage | { type: "sync-request" }): void {
+function postToPeer(
+    msg: NavMessage | InkMessage | { type: "sync-request" },
+): void {
     if (state.ws && state.ws.readyState === WebSocket.OPEN) {
         state.ws.send(JSON.stringify(msg));
     } else if (state.windowLink && !state.windowLink.closed) {
@@ -93,6 +149,20 @@ export function sendNav(transition?: TransitionData | null): void {
         step: state.step,
         ...(transition ? { transition } : {}),
     });
+}
+
+// Ink drawn here, for the other windows: sent under the same sync mode as
+// the position, so a "present" window draws for the room and a "follow"
+// window only watches. A request for the others' ink is an answer this
+// window wants, so it goes when this window receives.
+export function sendInk(msg: InkMessage): void {
+    if (msg.op === "request" ? !receives() : !sends()) return;
+    postToPeer(msg);
+}
+
+// A peer's ink, applied when this window receives.
+export function applyPeerInk(msg: InkMessage): void {
+    if (msg.op === "request" ? sends() : receives()) applyIncomingInk(msg);
 }
 
 // Tell other connected screens to snap their in-flight transition to its end,
@@ -171,7 +241,9 @@ export function applyIncomingPosition(msg: SyncPosition): void {
 // yanks the others.
 export function connectWS(wsPort: number | null, authoritative: boolean): void {
     if (!wsPort) return;
-    state.ws = new WebSocket(`ws://localhost:${wsPort}`);
+    // The page's own address: a LAN link or an SSH tunnel reaches the same
+    // server the page came from.
+    state.ws = openSocket();
 
     // Set in onopen (which fires before any message): true only while this
     // connection still owes the server's stale connect-time push a discard.
@@ -182,7 +254,13 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
         wsDot.dataset.tooltip = "Connected";
         const assert = authoritative && sends();
         firstPositionPending = assert;
-        if (assert) sendNav();
+        if (assert && role !== "viewer") sendNav();
+        requestInk();
+        sendPresence(true);
+        // Rebuilds as what changed: the slides this page holds come by key.
+        state.ws?.send(
+            JSON.stringify({ type: "hello", role: "presenter", patch: true }),
+        );
     };
 
     state.ws.onmessage = (ev) => {
@@ -193,10 +271,25 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
             return;
         }
         if (msg.type === "update") {
-            state.slides = msg.slides;
+            const slides = applyPatch(state.slides, msg.slides);
+            if (!slides) {
+                // A build this page missed: everything again.
+                state.ws?.send(JSON.stringify({ type: "resync" }));
+                return;
+            }
+            // A new stylesheet or colour mode lays text out anew (its fit).
+            const restyled = msg.styles !== undefined || msg.mode !== undefined;
+            const shown = restyled ? null : state.slides[state.slideIndex];
+            const unchanged = !restyled && sameItems(slides, state.slides);
+            applyDeckStyles(msg);
+            state.slides = slides;
             state.transitions = msg.transitions;
             hideError();
             showLogs(msg.logs ?? []);
+            // No slide changed (the list a page is sent on connecting, a
+            // build of a file no slide shows): the slide stays as it is,
+            // mid-step and all.
+            if (unchanged) return;
             if (overviewEl.classList.contains("visible")) {
                 overviewEl.classList.remove("visible");
                 overviewGridEl.innerHTML = "";
@@ -206,12 +299,20 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
                 Math.max(0, state.slides.length - 1),
             );
             state.step = Math.min(state.step, maxStep());
-            loadSlide(null, CUT);
+            // Another slide's change leaves the one on screen alone too.
+            if (state.slides[state.slideIndex] !== shown) loadSlide(null, CUT);
+            else updateStatus(); // the slide count may have changed
             renderPv();
         } else if (msg.type === "error") {
             showError(msg.message);
+        } else if (msg.type === "ink") {
+            applyPeerInk(msg);
+        } else if (msg.type === "edit-result") {
+            inkSaveResult(msg);
         } else if (msg.type === "notify") {
             showNotify(msg.message, msg.style);
+        } else if (msg.type === "welcome") {
+            welcome(msg);
         } else if (msg.type === "position") {
             // Discard exactly the stale connect-time push so an authoritative window
             // keeps its own position; later updates apply normally. Mirrors the
@@ -225,10 +326,19 @@ export function connectWS(wsPort: number | null, authoritative: boolean): void {
         }
     };
 
-    state.ws.onclose = () => {
+    state.ws.onclose = (ev) => {
         wsDot.className = "";
         wsDot.dataset.tooltip = "Disconnected";
         state.ws = null;
+        if (ev.code === SENT_AWAY) {
+            // The owner stopped sharing, made new links or disconnected
+            // this page: reconnecting would only be refused.
+            showNotify(
+                `Disconnected: ${ev.reason || "the link stopped working"}`,
+                "red",
+            );
+            return;
+        }
         // A reconnecting live window re-asserts its position rather than being
         // adopted by a possibly-stale server.
         setTimeout(() => connectWS(wsPort, true), 2000);

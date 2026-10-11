@@ -9,7 +9,9 @@
 body {
     background: #000;
     color: var(--text);
-    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    font-family:
+        "Inkflow UI Mono", "Inkflow UI", "Inkflow UI Symbols",
+        "Inkflow UI Emoji", ui-monospace, monospace;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -31,6 +33,9 @@ body {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+    /* Pinch and swipes on the stage are the presenter's (zoom.ts,
+       keyboard.ts), not the browser's page zoom or scroll. */
+    touch-action: none;
 }
 
 #stage {

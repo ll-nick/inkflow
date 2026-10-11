@@ -24,8 +24,11 @@ class TestTokenDataclasses:
 
     def test_typography_defaults(self) -> None:
         t = Typography()
-        assert t.body_font == "sans-serif"
-        assert t.mono_font == "monospace"
+        # The fonts inkflow ships, a generic family last.
+        assert t.body_font == '"Inter", "Twemoji Mozilla", sans-serif'
+        assert t.heading_font == t.body_font
+        assert t.mono_font == '"JetBrains Mono", "Twemoji Mozilla", monospace'
+        assert t.math_font == '"STIX Two Math", math'
         assert t.line_height == 1.4
         assert t.heading_weight == 600
 
@@ -36,7 +39,8 @@ class TestRenderTokensCss:
         assert css.startswith(":root {")
         assert ':root[data-theme="light"]' in css
         assert "--inkflow-bg:" in css
-        assert "--inkflow-body-font: sans-serif;" in css
+        assert '--inkflow-body-font: "Inter", "Twemoji Mozilla", sans-serif;' in css
+        assert '--inkflow-math-font: "STIX Two Math", math;' in css
         assert "None" not in css  # no sentinel leaks into the CSS
 
     def test_partial_dark_override_keeps_floor(self) -> None:

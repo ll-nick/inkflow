@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkflow="urn:inkflow" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" inkflow:parent="./poster-landscape-base" inkflow:default-zone="col-1" viewBox="0 0 4494 3179" width="4494" height="3179"><g inkscape:groupmode="layer" inkscape:label="__inkflow:layout:poster-landscape-base__" sodipodi:insensitive="true" inkflow:layout-src="./poster-landscape-base" inkflow:layout-hash="21b4ee63"><defs/><rect width="4494" height="3179" class="inkflow-fill-bg poster-paper"/>
+  <rect id="zone-title" x="120" y="90" width="3674" height="270"/>
+  <rect id="zone-authors" x="120" y="365" width="3674" height="80"/>
+  <rect id="zone-affiliations" x="120" y="450" width="3674" height="90"/>
+  <rect id="zone-logos" x="3854" y="100" width="520" height="440"/>
+  <rect id="poster-rule" x="120" y="575" width="4254" height="10" class="inkflow-fill-accent"/>
+  <rect id="poster-footer-rule" x="120" y="2849" width="4254" height="4" class="inkflow-fill-border"/>
+  <rect id="zone-references" x="120" y="2889" width="3654" height="170"/>
+  <rect id="zone-contact" x="3854" y="2889" width="520" height="170"/>
+</g><defs><style id="inkflow-preview">.inkflow-fill-bg { fill: #eff1f5; }
+.inkflow-stroke-bg { stroke: #eff1f5; }
+.inkflow-fill-surface { fill: #ccd0da; }
+.inkflow-stroke-surface { stroke: #ccd0da; }
+.inkflow-fill-border { fill: #acb0be; }
+.inkflow-stroke-border { stroke: #acb0be; }
+.inkflow-fill-text { fill: #4c4f69; }
+.inkflow-stroke-text { stroke: #4c4f69; }
+.inkflow-fill-text-muted { fill: #6c6f85; }
+.inkflow-stroke-text-muted { stroke: #6c6f85; }
+.inkflow-fill-accent { fill: #8839ef; }
+.inkflow-stroke-accent { stroke: #8839ef; }
+.inkflow-fill-accent-fg { fill: #eff1f5; }
+.inkflow-stroke-accent-fg { stroke: #eff1f5; }
+.inkflow-fill-code-bg { fill: #e6e9ef; }
+.inkflow-stroke-code-bg { stroke: #e6e9ef; }
+.inkflow-fill-code-text { fill: #4c4f69; }
+.inkflow-stroke-code-text { stroke: #4c4f69; }
+.inkflow-fill-red { fill: #d20f39; }
+.inkflow-stroke-red { stroke: #d20f39; }
+.inkflow-fill-orange { fill: #fe640b; }
+.inkflow-stroke-orange { stroke: #fe640b; }
+.inkflow-fill-yellow { fill: #df8e1d; }
+.inkflow-stroke-yellow { stroke: #df8e1d; }
+.inkflow-fill-green { fill: #40a02b; }
+.inkflow-stroke-green { stroke: #40a02b; }
+.inkflow-fill-teal { fill: #179299; }
+.inkflow-stroke-teal { stroke: #179299; }
+.inkflow-fill-blue { fill: #1e66f5; }
+.inkflow-stroke-blue { stroke: #1e66f5; }
+.inkflow-fill-purple { fill: #8839ef; }
+.inkflow-stroke-purple { stroke: #8839ef; }
+.inkflow-fill-pink { fill: #ea76cb; }
+.inkflow-stroke-pink { stroke: #ea76cb; }
+.inkflow-fill-grey { fill: #9ca0b0; }
+.inkflow-stroke-grey { stroke: #9ca0b0; }
+#zone-title, #zone-authors, #zone-affiliations, #zone-logos, #zone-references, #zone-contact, #zone-col-1, #zone-col-2, #zone-col-3, #zone-col-4 { fill: #808080; fill-opacity: 0.08; stroke: #808080; stroke-opacity: 0.7; stroke-width: 2; stroke-dasharray: 12 8; }</style></defs><rect id="zone-col-1" x="120" y="645" width="988.5" height="2144"/>
+  <rect id="zone-col-2" x="1208.5" y="645" width="988.5" height="2144"/>
+  <rect id="zone-col-3" x="2297" y="645" width="988.5" height="2144"/>
+  <rect id="zone-col-4" x="3385.5" y="645" width="988.5" height="2144"/>
+</svg>

@@ -1,0 +1,11 @@
+# Cloudflare static assets: headers for the guest page (inkflow relay
+# deploy cloudflare). The Python relay (inkflow relay) sends the same.
+/*
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
+  Cache-Control: no-cache
+
+/_guest/sw.js
+  Service-Worker-Allowed: /

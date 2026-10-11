@@ -1,0 +1,297 @@
+/* The slide master (src/ts/editor/master.ts): its list takes the slide
+   list's place; the canvas draws the layout's ancestors and overlays faded. */
+
+#master {
+    grid-area: sorter;
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--ui-panel);
+    border-right: 1px solid var(--ui-line);
+}
+
+body.master-mode #master {
+    display: flex;
+}
+
+body.master-mode #sorter,
+body.master-mode #notes {
+    display: none;
+}
+
+/* A wider list, and the canvas down to the bottom: a layout has no notes. */
+body.master-mode #workspace {
+    --sorter-w: 250px;
+    --props-w: 300px;
+    grid-template-areas:
+        "sorter canvas props"
+        "sorter canvas props";
+}
+
+#btn-layout {
+    white-space: nowrap;
+}
+
+body.master-mode #canvas {
+    box-shadow: inset 0 0 0 3px
+        color-mix(in srgb, var(--yellow) 70%, transparent);
+}
+
+.master-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--ui-line);
+    background: color-mix(in srgb, var(--yellow) 14%, var(--ui-panel));
+}
+
+.master-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 6px 12px;
+}
+
+.master-group {
+    margin: 12px 4px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--subtext);
+}
+
+.master-row {
+    position: relative;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 4px 4px calc(4px + var(--depth, 0) * 12px);
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+}
+
+.master-row:hover,
+.master-row:focus-visible {
+    background: var(--sel-soft);
+}
+
+.master-row.active {
+    background: var(--sel-soft);
+    box-shadow: inset 0 0 0 2px var(--sel);
+}
+
+.master-thumb {
+    flex: none;
+    width: 64px;
+    aspect-ratio: var(--deck-ar, 16 / 9);
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--ui-canvas);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+    pointer-events: none;
+}
+
+.master-thumb svg {
+    display: block;
+}
+
+.overlay-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--subtext);
+    background:
+        repeating-conic-gradient(
+            color-mix(in srgb, var(--ui-canvas) 70%, var(--surface)) 0 25%,
+            var(--ui-canvas) 0 50%
+        )
+        0 0 / 10px 10px;
+}
+
+.master-text {
+    min-width: 0;
+    flex: 1;
+}
+
+.master-title {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.master-sub {
+    font-size: 10px;
+    color: var(--subtext);
+    line-height: 1.5;
+}
+
+.master-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 0 5px;
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--subtext);
+    white-space: nowrap;
+}
+
+.master-badge.copy {
+    background: color-mix(in srgb, var(--yellow) 30%, var(--surface));
+    color: var(--text);
+}
+
+.master-badge.own {
+    background: color-mix(in srgb, var(--sel) 30%, var(--surface));
+    color: var(--text);
+}
+
+.master-more {
+    flex: none;
+    visibility: hidden;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--subtext);
+    cursor: pointer;
+}
+
+.master-row:hover .master-more,
+.master-row.active .master-more {
+    visibility: visible;
+}
+
+.master-more:hover {
+    background: var(--surface);
+}
+
+.master-add {
+    display: block;
+    width: calc(100% - 8px);
+    margin: 4px;
+    height: 28px;
+    border: 1px dashed var(--overlay);
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--subtext);
+    font-size: 12px;
+}
+
+.master-add:hover {
+    border-color: var(--sel);
+    color: var(--sel);
+}
+
+.master-note {
+    margin: 2px 6px;
+    font-size: 10px;
+    color: var(--subtext);
+}
+
+/* The layouts behind and the overlays on top of the one being edited. */
+#slide-host .master-context {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* "Save as layout…" and "Edit its layout" under the slide's layout. */
+.prop-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 8px 92px;
+}
+
+.master-panel {
+    padding: 10px 12px;
+}
+
+.master-panel h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+}
+
+.master-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    font-size: 12px;
+}
+
+.master-field select {
+    flex: 1;
+    min-width: 0;
+}
+
+.master-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.master-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: min(420px, 80vw);
+}
+
+.master-form > label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+}
+
+.master-form .check {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+    font-size: 12px;
+}
+
+.master-form .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Placeholders: the add dialog and the panel's Placeholder section
+   (placeholders.ts). */
+.placeholder-form .placeholder-kinds {
+    display: flex;
+    gap: 16px;
+}
+
+.placeholder-form .placeholder-kinds .check:has(input:disabled) {
+    opacity: 0.5;
+}
+
+.placeholder-form .hint {
+    margin: 0;
+}
+
+.placeholder-zone {
+    font-family: var(--font-ui-mono);
+}
+
+.props-section .placeholder-note {
+    margin: 2px 0 8px;
+    overflow-wrap: anywhere;
+}
+
+.props-section .prop-value {
+    font-size: 12px;
+}

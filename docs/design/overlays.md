@@ -102,6 +102,23 @@ class Corporate(Theme):
 
 A deck opts out with `Deck(overlays=[])`, a slide with `Slide(overlays=[])`.
 
+## Creating one
+
+```bash
+inkflow overlay new logo             # on every slide
+inkflow overlay new badge --slide 3   # on slide 3 only
+```
+
+creates `overlays/logo.svg` at the deck's size (`Deck(size=...)`, a poster's
+A canvas included; without one, the background layout's) and adds
+`Overlay("logo")` to `Deck(overlays=[...])` after the overlays the deck
+already gets (its theme's included, which a deck's own list would otherwise
+replace). The editor's [slide master](../editor/index.md#slide-master) does the
+same with **New overlay** under *All slides*, then draws into it: a logo, footer
+text, anything the toolbar inserts. A theme's overlay is copied into
+`overlays/` on its first edit, like a theme's layout
+([copy-on-write](layouts.md#changing-a-themes-layout-the-decks-own-copy)).
+
 ## Drawing one
 
 An overlay file previews differently from a slide,

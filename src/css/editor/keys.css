@@ -1,0 +1,143 @@
+/* The Keyboard shortcuts dialog (keys.ts). */
+
+.keys-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.keys-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.keys-search {
+    flex: 1;
+}
+
+.keys-note {
+    min-height: 1.3em;
+    margin: 0;
+    color: var(--subtext);
+    font-size: 12px;
+}
+
+.keys-note.error {
+    color: var(--red);
+}
+
+.keys-list {
+    max-height: min(60vh, 560px);
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.keys-group {
+    margin: 12px 0 4px;
+    color: var(--subtext);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.keys-group:first-child {
+    margin-top: 0;
+}
+
+.keys-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 30px;
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.keys-row:hover {
+    background: var(--sel-soft);
+}
+
+.keys-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.keys-row kbd,
+.keys-press {
+    padding: 1px 6px;
+    border: 1px solid var(--ui-line);
+    border-radius: 4px;
+    font: 12px var(--font-ui-mono);
+    white-space: nowrap;
+}
+
+.keys-set,
+.keys-fixed {
+    display: inline-flex;
+    gap: 4px;
+    justify-content: flex-end;
+    min-width: 120px;
+}
+
+.keys-set {
+    padding: 3px 4px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.keys-set:hover,
+.keys-set:focus-visible {
+    border-color: var(--ui-line);
+}
+
+.keys-set.own kbd {
+    border-color: var(--sel);
+}
+
+.keys-set.live {
+    border-color: var(--sel);
+    background: var(--sel-soft);
+}
+
+.keys-press {
+    border-style: dashed;
+    color: var(--subtext);
+}
+
+.keys-fixed {
+    padding: 3px 5px;
+    color: var(--subtext);
+}
+
+.keys-none {
+    color: var(--subtext);
+    font-size: 12px;
+    font-style: italic;
+}
+
+.keys-reset,
+.keys-reset-gap {
+    width: 22px;
+    flex: none;
+}
+
+.keys-reset {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--subtext);
+    cursor: pointer;
+}
+
+.keys-reset:hover {
+    color: var(--text);
+}
+
+.keys-row.fixed .keys-fixed {
+    margin-right: 30px;
+}

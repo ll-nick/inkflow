@@ -1,0 +1,229 @@
+/* Paper: a quiet white theme, set like a good document.
+ *
+ * Loaded only for decks on Paper, after the built-in layouts' styling
+ * (theme/styles.css), so these rules restyle the built-in layouts without
+ * touching the default theme. The colours are the theme's tokens
+ * (builtin_themes/__init__.py); this file holds what tokens cannot say:
+ * hairline rules instead of colour bars, quiet slide numbers, document-like
+ * tables. Decorative shapes of a built-in layout are matched by their exact
+ * geometry, so a shape drawn on a slide is never caught by these rules. */
+
+/* Text ---------------------------------------------------------------------- */
+
+.inkflow-content :is(h1, h2) {
+    letter-spacing: -0.01em;
+}
+.inkflow-content strong {
+    font-weight: 600;
+    color: var(--inkflow-heading);
+}
+.inkflow-content a {
+    text-decoration-thickness: 0.06em;
+    text-underline-offset: 0.18em;
+}
+.inkflow-content blockquote {
+    border-left-width: 2px;
+}
+.inkflow-content code {
+    border-radius: 0.2em;
+}
+.inkflow-content pre,
+.inkflow-codeblock pre.highlight {
+    border-radius: 6px;
+    padding: 0.7em 0.9em;
+}
+
+/* Tables: rules above and below the header and at the foot, no grid. */
+.inkflow-content th,
+.inkflow-content td {
+    border: none;
+    border-bottom: 1px solid var(--inkflow-border);
+    padding: 0.35em 0.9em;
+}
+.inkflow-content th {
+    background: none;
+    font-weight: 600;
+    border-top: 2px solid var(--inkflow-heading);
+    border-bottom: 1px solid var(--inkflow-heading);
+}
+.inkflow-content tr:last-child td {
+    border-bottom: 2px solid var(--inkflow-heading);
+}
+
+/* Slide titles: near-black, over a hairline -------------------------------- */
+
+.layout-base #zone-title .inkflow-content h1 {
+    color: var(--inkflow-heading);
+}
+/* full-media's title sits on a photo under a dark fade: keep it white. */
+.layout-full-media #zone-title .inkflow-content :is(h1, h2, p) {
+    color: #fff;
+}
+:is(.layout-title, .layout-media-left, .layout-media-right) #zone-title {
+    --inkflow-valign: end;
+}
+:is(.layout-title, .layout-media-left, .layout-media-right)
+    #zone-title
+    .inkflow-wrapper {
+    border-bottom: 2px solid var(--inkflow-border);
+    padding-bottom: 14px;
+}
+:is(.layout-title, .layout-media-left, .layout-media-right)
+    #zone-title
+    .inkflow-content
+    :is(h1, h2, p) {
+    font-size: 1.55em;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Slide numbers: the number alone, small and grey. */
+.layout-numbered #zone-slide-number {
+    fill: var(--inkflow-text-muted);
+    font-size: 26px;
+    /* flush with the content's right edge (x = 1840) */
+    transform: translateX(28px);
+}
+.layout-numbered :is(#zone-slide-total, #zone-slide-total + text) {
+    display: none;
+}
+/* Under media-left/-right's picture the number is covered: leave it out. */
+.layout-media-right:has(#zone-media) #zone-slide-number {
+    display: none;
+}
+
+/* Cover -------------------------------------------------------------------- */
+
+.layout-cover #zone-title .inkflow-content h1 {
+    font-size: 2.6em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+.layout-cover #zone-subtitle .inkflow-content,
+.layout-cover #zone-subtitle .inkflow-content h2 {
+    font-style: normal;
+    font-weight: 400;
+    font-size: 1.2em;
+}
+/* Over a picture: white, with a soft shadow to lift it off any photo. */
+.layout-cover:where(:has(#zone-media))
+    :is(#zone-title, #zone-subtitle)
+    .inkflow-content,
+.layout-cover:where(:has(#zone-media))
+    :is(#zone-title, #zone-subtitle)
+    .inkflow-content
+    :is(h1, h2, p) {
+    color: #fff;
+    text-shadow: 0 2px 16px rgb(0 0 0 / 0.5);
+}
+
+/* Section and end: left-set like a chapter opening, no colour bar ---------- */
+
+:is(.layout-section, .layout-end) rect.inkflow-fill-accent[y="0"][height="8"] {
+    display: none;
+}
+:is(.layout-section, .layout-end) :is(#zone-title, #zone-subtitle) {
+    --inkflow-align: left;
+}
+:is(.layout-section, .layout-end) #zone-title .inkflow-content h1 {
+    font-size: 3em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--inkflow-heading);
+}
+:is(.layout-section, .layout-end) #zone-title .inkflow-wrapper {
+    border-bottom: 2px solid var(--inkflow-border);
+    padding-bottom: 18px;
+}
+:is(.layout-section, .layout-end) #zone-subtitle .inkflow-wrapper {
+    padding-top: 6px;
+}
+:is(.layout-section, .layout-end) #zone-subtitle .inkflow-content,
+:is(.layout-section, .layout-end) #zone-subtitle .inkflow-content :is(h2, p) {
+    color: var(--inkflow-text-muted);
+    font-size: 1.15em;
+    font-weight: 400;
+}
+
+/* Fact: the figure in the accent, a hairline under it. */
+.layout-fact rect.inkflow-fill-accent[y="624"][height="3"] {
+    fill: var(--inkflow-border);
+}
+.layout-fact #zone-fact .inkflow-content h1 {
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+.layout-fact #zone-caption .inkflow-content {
+    font-size: 1em;
+}
+
+/* Quote: a hairline instead of the accent bar. */
+.layout-quote rect.inkflow-fill-accent[x="100"][width="4"] {
+    fill: var(--inkflow-border);
+}
+.layout-quote #zone-quote .inkflow-content blockquote {
+    font-size: 1.5em;
+    line-height: 1.45;
+    color: var(--inkflow-heading);
+}
+
+/* Agenda: the title's hairline is rule enough. */
+.layout-agenda rect.inkflow-fill-accent[y="196"][height="4"] {
+    display: none;
+}
+.layout-agenda #zone-content .inkflow-content ol > li {
+    border-bottom: 1px solid var(--inkflow-border);
+    padding-bottom: 0.35em;
+}
+.layout-agenda #zone-content .inkflow-content ol > li::before {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Comparison: column heads in black over a hairline. */
+.layout-comparison rect.inkflow-fill-accent[y="318"][height="3"] {
+    fill: var(--inkflow-border);
+}
+.layout-comparison #zone-left-title .inkflow-content :is(h1, h2, h3, p),
+.layout-comparison #zone-right-title .inkflow-content :is(h1, h2, h3, p) {
+    color: var(--inkflow-heading);
+}
+
+/* Cards: paper-white with a hairline edge, small radius. */
+.layout-three-cards rect.inkflow-fill-surface[rx="18"] {
+    fill: var(--inkflow-bg);
+    stroke: var(--inkflow-border);
+    stroke-width: 2px;
+    rx: 8px;
+}
+.layout-three-cards :is(#zone-media-1, #zone-media-2, #zone-media-3) img {
+    border-radius: 8px 8px 0 0;
+}
+.layout-three-cards
+    :is(#zone-card-1, #zone-card-2, #zone-card-3)
+    .inkflow-content
+    :is(h2, h3) {
+    color: var(--inkflow-heading);
+}
+
+/* Poster: a hairline header rule, section heads in black. ------------------ */
+
+:is(.layout-poster-base, .layout-poster-landscape-base) #poster-rule {
+    fill: var(--inkflow-heading);
+    height: 4px;
+}
+:is(.layout-poster-base, .layout-poster-landscape-base)
+    #zone-title
+    .inkflow-content
+    :is(h1, h2, p) {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+:is(.layout-poster-base, .layout-poster-landscape-base)
+    :is(#zone-col-1, #zone-col-2, #zone-col-3, #zone-col-4)
+    .inkflow-content
+    h2 {
+    color: var(--inkflow-heading);
+    font-weight: 600;
+    border-bottom: 0.04em solid var(--inkflow-border);
+}

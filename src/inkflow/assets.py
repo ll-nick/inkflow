@@ -15,6 +15,11 @@ theme's asset directory, so a theme can ship its own branding. Anything else is
 unreachable. Symlink the directory into the project to bring it back inside;
 the containment check collapses ``..`` without resolving symlinks precisely
 so that works.
+
+A third root holds what the build derives rather than what an author wrote:
+PDF pages converted to SVG (inkflow/pdf.py). They are cached in the project's
+``.inkflow/`` but named ``_pdf/…``, so a static build does not copy them into
+a hidden folder, which some hosts refuse to serve.
 """
 
 from __future__ import annotations
@@ -27,11 +32,18 @@ from pathlib import Path
 
 from inkflow import ns
 from inkflow.clean import clean_inkscape_tree
+from inkflow.editor.context import CONTEXT_DIR
 from inkflow.logging import logger
 from inkflow.svgio import SvgElement
 
 THEME_PREFIX = "_theme/"
 """Canonical-ref namespace for assets that live in the theme rather than the project."""
+
+PDF_PREFIX = "_pdf/"
+"""Canonical-ref namespace for PDF pages converted to SVG (see inkflow/pdf.py)."""
+
+PDF_CACHE = Path(CONTEXT_DIR, "cache", "pdf")
+"""Where converted PDF pages live, relative to the project."""
 
 # HTML <img>/<video> (markdown- and Media-injected) and SVG <image>. Both the
 # scan in export.py and the rewrite below go through these, so a new reference
@@ -98,13 +110,19 @@ class AssetRoots:
     project_dir: Path
     theme_dir: Path | None = None
 
+    @property
+    def pdf_cache(self) -> Path:
+        return _absolute(self.project_dir / PDF_CACHE)
+
     def canonicalize(self, absolute: Path) -> str | None:
         """Canonical ref for an absolute path, or ``None`` if it escapes every root.
 
         The project is checked first, so a theme that lives *inside* the project
         stays part of the project tree the build mirrors rather than picking up a
-        namespace of its own.
+        namespace of its own. The PDF cache, inside the project, comes before it.
         """
+        if absolute.is_relative_to(self.pdf_cache):
+            return PDF_PREFIX + absolute.relative_to(self.pdf_cache).as_posix()
         project = _absolute(self.project_dir)
         if absolute.is_relative_to(project):
             return absolute.relative_to(project).as_posix()
@@ -120,12 +138,14 @@ class AssetRoots:
         The inverse of `canonicalize`, and the single answer to "what file does
         this reference mean" for both the HTTP server and the copy step.
 
-        The theme is checked first because the project's prefix is empty and so
-        matches everything. That reserves ``_theme/`` at the project root: a
-        project file there is shadowed by the theme while one is active.
+        The theme and the PDF cache are checked first because the project's
+        prefix is empty and so matches everything. That reserves ``_theme/`` and
+        ``_pdf/`` at the project root: a project file there is shadowed.
         """
         if self.theme_dir is not None and ref.startswith(THEME_PREFIX):
             root, rest = _absolute(self.theme_dir), ref[len(THEME_PREFIX) :]
+        elif ref.startswith(PDF_PREFIX):
+            root, rest = self.pdf_cache, ref[len(PDF_PREFIX) :]
         else:
             root, rest = _absolute(self.project_dir), ref
         candidate = _absolute(root / rest)
@@ -194,7 +214,11 @@ def _label(path: Path, project_dir: Path) -> str:
     return str(path)
 
 
-def read_resolved_svg(path: Path, roots: AssetRoots) -> SvgElement:
+def read_resolved_svg(
+    path: Path,
+    roots: AssetRoots,
+    before_clean: Callable[[SvgElement], None] | None = None,
+) -> SvgElement:
     """Parse an SVG and canonicalise its references against its own directory.
 
     Every SVG the presentation pipeline composes is read through this, because
@@ -202,4 +226,5 @@ def read_resolved_svg(path: Path, roots: AssetRoots) -> SvgElement:
     came from. Authoring paths (preview injection, `verify`) read the file plainly
     with `clean_inkscape_tree` instead, so the author's own paths survive.
     """
-    return AssetSource.for_file(roots, path).svg(clean_inkscape_tree(path))
+    root = clean_inkscape_tree(path, before_clean=before_clean)
+    return AssetSource.for_file(roots, path).svg(root)

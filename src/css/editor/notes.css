@@ -1,0 +1,158 @@
+/* The speaker notes panel's own controls (src/ts/editor/notes.ts): its top
+   edge that drags, Write / Preview, and the notes as read. The panel itself
+   (#notes, its heading and text field) is laid out in index.css. */
+
+/* The top edge: drag it to give the notes more of the window. */
+#notes-resize {
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    margin: 0;
+    border: none;
+    z-index: 3;
+    cursor: ns-resize;
+    touch-action: none;
+    background:
+        linear-gradient(var(--ui-line), var(--ui-line)) center / 36px 3px
+        no-repeat;
+}
+
+#notes-resize:hover,
+#notes-resize:focus-visible,
+body.notes-resizing #notes-resize {
+    outline: none;
+    background-image: linear-gradient(var(--sel), var(--sel));
+}
+
+body.notes-resizing {
+    cursor: ns-resize;
+    user-select: none;
+}
+
+.notes-view {
+    display: flex;
+    border: 1px solid var(--ui-line);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.notes-view button {
+    border: none;
+    background: transparent;
+    color: var(--subtext);
+    padding: 2px 9px;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+}
+
+.notes-view button:focus-visible {
+    outline: 2px solid var(--sel);
+    outline-offset: -2px;
+}
+
+.notes-view button.on {
+    background: var(--ui-line);
+    color: var(--text);
+}
+
+/* The notes read: the HTML the presenter panel shows (pv.css's rules). */
+#notes-preview {
+    flex: 1;
+    min-height: 0;
+    padding: 4px 12px 10px;
+    font: 13px / 1.5 var(--font-ui);
+    overflow-y: auto;
+    outline: none;
+    user-select: text;
+    cursor: text;
+}
+
+#notes-input[hidden],
+#notes-preview[hidden] {
+    display: none;
+}
+
+#notes-preview p,
+#notes-preview ul,
+#notes-preview ol,
+#notes-preview blockquote,
+#notes-preview table,
+#notes-preview pre {
+    margin: 0 0 0.6em;
+}
+
+#notes-preview h1,
+#notes-preview h2,
+#notes-preview h3,
+#notes-preview h4 {
+    margin: 0.5em 0 0.3em;
+    font-size: 1em;
+    font-weight: 700;
+}
+
+#notes-preview ul,
+#notes-preview ol {
+    padding-left: 1.5em;
+}
+
+#notes-preview li {
+    margin-bottom: 0.15em;
+}
+
+#notes-preview a {
+    color: var(--sel);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+#notes-preview code {
+    padding: 0.05em 0.35em;
+    border-radius: 3px;
+    background: var(--ui-line);
+    font-family: var(--font-ui-mono);
+    font-size: 0.92em;
+}
+
+#notes-preview pre {
+    padding: 0.5em 0.7em;
+    border: 1px solid var(--ui-line);
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+#notes-preview blockquote {
+    padding-left: 0.8em;
+    border-left: 3px solid var(--ui-line);
+    color: var(--subtext);
+}
+
+#notes-preview img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0.4em 0;
+    border-radius: 4px;
+}
+
+#notes-preview th,
+#notes-preview td {
+    padding: 2px 8px;
+    border: 1px solid var(--ui-line);
+}
+
+#notes-preview pre code {
+    padding: 0;
+    background: transparent;
+}
+
+#notes-preview .notes-empty {
+    color: var(--subtext);
+}
+
+#notes-preview > :last-child {
+    margin-bottom: 0;
+}

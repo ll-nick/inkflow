@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 import importlib.resources
+import re
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -17,15 +19,24 @@ from inkflow.clean import (
     is_preview_layer,
     strip_preview_layers,
 )
+from inkflow.deps import note, settled, stamp
 from inkflow.ns import (
+    INKFLOW_COPY_OF,
     INKFLOW_DEFAULT_ZONE,
+    INKFLOW_LABEL,
     INKFLOW_LAYOUT_HASH,
     INKFLOW_LAYOUT_SRC,
     INKFLOW_OVERLAY_HASH,
     INKFLOW_OVERLAY_SRC,
     INKFLOW_PARENT,
 )
-from inkflow.svg import compose_with_ancestors, ensure_defs, with_namespaces
+from inkflow.sizes import PageSize, same_aspect
+from inkflow.svg import (
+    canvas_size,
+    compose_with_ancestors,
+    ensure_defs,
+    with_namespaces,
+)
 from inkflow.svgio import SvgElement, parse_svg_file
 
 if TYPE_CHECKING:
@@ -60,6 +71,7 @@ class AssetKind(StrEnum):
 # ── Built-in theme ───────────────────────────────────────────────────────────
 
 
+@functools.cache
 def builtin_theme_dir() -> Path:
     return Path(str(importlib.resources.files("inkflow").joinpath("theme")))
 
@@ -67,8 +79,27 @@ def builtin_theme_dir() -> Path:
 # ── Parent attribute ──────────────────────────────────────────────────────────
 
 
+_ROOT_CACHE: dict[str, tuple[object, dict[str, str]]] = {}
+
+
+def _root_attributes(path: Path) -> dict[str, str]:
+    """The attributes of an SVG file's root, remembered while the file is the
+    same: a chain is resolved for every slide of every build, and parsing a
+    slide to read one attribute off its root was a third of a warm build."""
+    note(path)
+    key = str(path)
+    now = stamp(key)
+    cached = _ROOT_CACHE.get(key)
+    if cached is not None and cached[0] == now:
+        return cached[1]
+    attributes = {str(k): str(v) for k, v in parse_svg_file(path).attrib.items()}
+    if settled(now):
+        _ROOT_CACHE[key] = (now, attributes)
+    return attributes
+
+
 def _read_parent_attr(svg_path: Path) -> str | None:
-    return parse_svg_file(svg_path).get(INKFLOW_PARENT)
+    return _root_attributes(svg_path).get(INKFLOW_PARENT)
 
 
 # ── Path resolution ───────────────────────────────────────────────────────────
@@ -80,6 +111,7 @@ def resolve_parent_path(
     project_root: Path | None,
     theme: Theme | None,
     kind: AssetKind = AssetKind.LAYOUT,
+    follow_copies: bool = True,
 ) -> Path:
     """Resolve an inkflow:parent string to an absolute Path.
 
@@ -102,10 +134,20 @@ def resolve_parent_path(
       Levels are skipped when project_root or theme is None.
     Multi-part relative path (has /, no prefix):
       Relative to base_dir.
+
+    Whatever the form, a theme's (or the built-in) file the project has its
+    own copy of resolves to that copy (`deck_copy`), so the theme's own chains
+    (``./base`` in the built-in ``numbered``) go through the deck's copy too.
+    ``follow_copies=False`` names the theme's file itself.
     """
 
     def _with_svg(p: Path) -> Path:
         return p if p.suffix else p.with_suffix(".svg")
+
+    def _ours(p: Path) -> Path:
+        if not follow_copies:
+            return p
+        return deck_copy(p, project_root, theme, kind) or p
 
     if parent_str.startswith("local:"):
         name = parent_str[len("local:") :]
@@ -115,6 +157,7 @@ def resolve_parent_path(
                 + "Use --deck to point to a project."
             )
         resolved = _with_svg(project_root / kind / name)
+        note(resolved)
         if not resolved.exists():
             raise ValueError(f"local:{name} not found at {resolved}")
         return resolved
@@ -124,28 +167,33 @@ def resolve_parent_path(
         if theme is None:
             raise ValueError(f"theme:{name} requires Deck(theme=...) to be set.")
         resolved = _with_svg(theme.asset_dir() / kind / name)
+        note(resolved)
         if not resolved.exists():
             raise ValueError(f"theme:{name} not found at {resolved}")
-        return resolved
+        return _ours(resolved)
 
     if parent_str.startswith("builtin:"):
         name = parent_str[len("builtin:") :]
         resolved = _with_svg(builtin_theme_dir() / kind / name)
+        note(resolved)
         if not resolved.exists():
             raise ValueError(
                 f"builtin:{name} not found — no built-in {kind.singular} named '{name}'"
             )
-        return resolved
+        return _ours(resolved)
 
     if parent_str.startswith(("./", "../")):
-        return _with_svg((base_dir / parent_str).resolve())
+        # As written too: a link on the way that is pointed elsewhere.
+        note(_with_svg(base_dir / parent_str))
+        return _ours(_with_svg((base_dir / parent_str).resolve()))
 
     if Path(parent_str).is_absolute():
-        return _with_svg(Path(parent_str))
+        return _ours(_with_svg(Path(parent_str)))
 
     # Multi-part relative path (has /) — relative to base_dir
     if "/" in parent_str:
-        return _with_svg((base_dir / parent_str).resolve())
+        note(_with_svg(base_dir / parent_str))
+        return _ours(_with_svg((base_dir / parent_str).resolve()))
 
     # Bare single-part name — three-level search; levels skipped when context is absent
     name = parent_str
@@ -157,13 +205,100 @@ def resolve_parent_path(
     candidates.append(_with_svg(builtin_theme_dir() / kind / name))
 
     for candidate in candidates:
+        # Each one looked at is a dependency: a file that appears earlier in
+        # the search later (a project layout of the theme's name) wins then.
+        note(candidate)
         if candidate.exists():
-            return candidate
+            return _ours(candidate)
 
     searched = "\n".join(f"  {c}" for c in candidates)
     raise ValueError(
         f"{kind.singular.capitalize()} '{name}' not found. Searched:\n{searched}"
     )
+
+
+# ── The deck's own copies of theme files ─────────────────────────────────────
+
+
+@functools.lru_cache(maxsize=64)
+def _theme_folder(assets: Path, kind: AssetKind) -> Path:
+    """A theme's layouts (or overlays) folder, resolved once: every reference
+    of every slide asks whether it lands in one, and a theme's folder does
+    not move while inkflow runs."""
+    return (assets / kind).resolve()
+
+
+def _theme_dirs(theme: Theme | None, kind: AssetKind) -> list[tuple[str, Path]]:
+    """The folders of theme files a project may copy, with their prefix."""
+    dirs = [("builtin", _theme_folder(builtin_theme_dir(), kind))]
+    if theme is not None:
+        dirs.append(("theme", _theme_folder(theme.asset_dir(), kind)))
+    return dirs
+
+
+def theme_ref(
+    path: Path, theme: Theme | None, kind: AssetKind = AssetKind.LAYOUT
+) -> str | None:
+    """``builtin:<name>`` or ``theme:<name>`` for a file of the built-in theme
+    or the deck's theme; None for any other file (the project's own)."""
+    folder = path.resolve().parent
+    for prefix, directory in _theme_dirs(theme, kind):
+        if folder == directory:
+            return f"{prefix}:{path.stem}"
+    return None
+
+
+def copy_of(path: Path) -> str | None:
+    """The `inkflow:copy-of` of a project file (cached by its stat)."""
+    note(path)
+    if stamp(path) is None:
+        return None
+    try:
+        return _root_attributes(path).get(INKFLOW_COPY_OF)
+    except Exception:
+        return None
+
+
+def label_of(path: Path) -> str | None:
+    """A layout's display name (``inkflow:label``), if it has one."""
+    try:
+        return parse_svg_file(path).get(INKFLOW_LABEL)
+    except Exception:
+        return None
+
+
+def deck_copy(
+    path: Path,
+    project_root: Path | None,
+    theme: Theme | None,
+    kind: AssetKind = AssetKind.LAYOUT,
+) -> Path | None:
+    """The project's own copy standing in for the theme's file ``path``.
+
+    A copy is ``<project>/<kind>/<same name>.svg`` carrying `inkflow:copy-of`
+    that names ``path`` (``builtin:agenda``): what the editor's slide master
+    writes when a theme's layout is edited. Only marked copies stand in, so a
+    project layout that merely shares a name with a theme's (an own
+    ``title.svg`` drawn as a title slide) never slips into the theme's chains.
+    """
+    if project_root is None:
+        return None
+    ref = theme_ref(path, theme, kind)
+    if ref is None:
+        return None
+    candidate = project_root / kind / path.name
+    if candidate.resolve() == path.resolve():
+        return None
+    declared = copy_of(candidate)
+    if declared is None or not declared.startswith(("builtin:", "theme:")):
+        return None
+    try:
+        named = resolve_parent_path(
+            declared, candidate.parent, project_root, theme, kind, False
+        )
+    except ValueError:
+        return None
+    return candidate if named.resolve() == path.resolve() else None
 
 
 # ── Chain resolution ──────────────────────────────────────────────────────────
@@ -195,9 +330,18 @@ def resolve_chain(
         parent_path = resolve_parent_path(
             parent_str, current.parent, project_root, theme, kind
         )
-        if parent_path in visited:
-            raise ValueError(f"Circular inkflow:parent chain detected at {parent_path}")
-        visited.add(parent_path)
+        if parent_path.resolve() in visited:
+            # The deck's copy of a theme layout built on that same layout (or
+            # on one built on it) goes on to the theme's own file.
+            plain = resolve_parent_path(
+                parent_str, current.parent, project_root, theme, kind, False
+            )
+            if plain.resolve() in visited:
+                raise ValueError(
+                    f"Circular inkflow:parent chain detected at {parent_path}"
+                )
+            parent_path = plain
+        visited.add(parent_path.resolve())
         chain.insert(0, parent_path)
         current = parent_path
 
@@ -324,6 +468,52 @@ def _layers_match(
     return True
 
 
+_ZONE_SHAPES = {"rect", "ellipse", "circle", "path", "polygon"}
+_CSS_ID = re.compile(r"^[A-Za-z_][\w-]*$")
+
+
+def zone_placeholder_css(root: SvgElement) -> str:
+    """Paint the file's unstyled zone shapes as faint dashed outlines.
+
+    A zone shape is a placeholder the pipeline fills with content, so it
+    carries no fill of its own, and an SVG shape without a fill is painted
+    black: in Inkscape a layout's title and content zones would cover the
+    slide. Zone shapes that are styled (a drawn text box) keep their look.
+    """
+    ids: list[str] = []
+    for el in root.iter(*(f"{{{ns.SVG}}}{tag}" for tag in _ZONE_SHAPES)):
+        zone_id = el.get("id") or ""
+        if not zone_id.startswith("zone-") or not _CSS_ID.match(zone_id):
+            continue
+        styled = (
+            el.get("fill") is not None
+            or "fill:" in (el.get("style") or "").replace(" ", "")
+            or "inkflow-fill-" in (el.get("class") or "")
+        )
+        if not styled and zone_id not in ids:
+            ids.append(zone_id)
+    if not ids:
+        return ""
+    selector = ", ".join(f"#{i}" for i in ids)
+    return (
+        f"{selector} {{ fill: #808080; fill-opacity: 0.08; stroke: #808080; "
+        + "stroke-opacity: 0.7; stroke-width: 2; stroke-dasharray: 12 8; }"
+    )
+
+
+def _preview_css(root: SvgElement, layers: PreviewLayers) -> str:
+    """The theme's colours plus the zone placeholders (none without a theme)."""
+    if not layers.preview_css:
+        return ""
+    return "\n".join(filter(None, [layers.preview_css, zone_placeholder_css(root)]))
+
+
+def has_preview_style(svg_path: Path) -> bool:
+    """Whether the file carries the preview ``<style>`` block ``sync`` writes."""
+    root = parse_svg_file(svg_path)
+    return root.find(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]') is not None
+
+
 def are_preview_layers_current(svg_path: Path, layers: PreviewLayers) -> bool:
     """Return True if svg_path already carries exactly these layers and style."""
     root = parse_svg_file(svg_path)
@@ -332,11 +522,9 @@ def are_preview_layers_current(svg_path: Path, layers: PreviewLayers) -> bool:
     if not _layers_match(root, layers.flat_overlays(), _OVERLAY):
         return False
     if layers.preview_css:
+        css = _preview_css(root, layers)
         style_el = root.find(f'.//{{{ns.SVG}}}style[@id="inkflow-preview"]')
-        if (
-            style_el is None
-            or (style_el.text or "").strip() != layers.preview_css.strip()
-        ):
+        if style_el is None or (style_el.text or "").strip() != css.strip():
             return False
     return True
 
@@ -380,19 +568,22 @@ def create_slide(
     output_path: Path,
     project_dir: Path | None,
     theme: Theme | None,
+    canvas: tuple[float, float] = (1920, 1080),
 ) -> None:
     """Create a minimal slide SVG, optionally wired to a layout parent.
 
     With ``parent_str`` set, resolves the parent, records ``inkflow:parent``, and
-    injects ancestor layout layers for editor preview. With ``parent_str`` None,
-    writes a blank slide carrying no parent.
+    injects ancestor layout layers for editor preview; the slide takes the
+    parent's size. With ``parent_str`` None, writes a blank slide of ``canvas``
+    (the deck's `PageSize.canvas`) carrying no parent.
 
     Raises ValueError if a given parent string cannot be resolved.
     """
+    w, h = (f"{v:g}" for v in canvas)
     if parent_str is None:
         blank = (
             f'<svg xmlns="{ns.SVG}"\n'
-            f'     viewBox="0 0 1920 1080" width="1920" height="1080">\n'
+            f'     viewBox="0 0 {w} {h}" width="{w}" height="{h}">\n'
             f"</svg>\n"
         )
         output_path.write_text(blank, encoding="utf-8")
@@ -400,7 +591,7 @@ def create_slide(
 
     parent_abs = resolve_parent_path(parent_str, output_path.parent, project_dir, theme)
 
-    view_box, width, height = "0 0 1920 1080", "1920", "1080"
+    view_box, width, height = f"0 0 {w} {h}", w, h
     if parent_abs.exists():
         root = parse_svg_file(parent_abs)
         view_box = root.get("viewBox", view_box)
@@ -441,17 +632,17 @@ def _update_preview_style(
     style_el.text = preview_css
 
 
-def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
-    """Inject preview layers as locked Inkscape layers into svg_path in place.
+def preview_layers_text(svg_path: Path, layers: PreviewLayers) -> str | None:
+    """svg_path with its preview layers injected as locked Inkscape layers.
 
     Ancestors are inserted below the file's own content and overlays appended
     above it, so the Inkscape layer stack matches runtime paint order. Also writes
     a ``<style id="inkflow-preview">`` block when ``preview_css`` is provided, so
     Inkscape renders semantic classes with the correct colors.
-    Returns True if the file was modified, False if already up to date.
+    Returns the file's new text, or None when it is already up to date.
     """
     if are_preview_layers_current(svg_path, layers):
-        return False
+        return None
 
     root = parse_svg_file(svg_path)
     overlay_layers = layers.flat_overlays()
@@ -465,7 +656,7 @@ def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
     for layer in overlay_layers:
         root.append(_build_layer_group(layer, hashes, _OVERLAY))
 
-    _update_preview_style(root, layers.preview_css)
+    _update_preview_style(root, _preview_css(root, layers))
 
     # inkflow among them: the marker attributes are the first use of that namespace
     # in a file with no inkflow:parent (an overlay), and without the declaration they
@@ -474,10 +665,18 @@ def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
         root,
         {"inkflow": ns.INKFLOW, "inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI},
     )
-    svg_path.write_text(
-        etree.tostring(out, encoding="unicode", xml_declaration=False),
-        encoding="utf-8",
-    )
+    return etree.tostring(out, encoding="unicode", xml_declaration=False) + "\n"
+
+
+def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
+    """Inject preview layers into svg_path in place (see ``preview_layers_text``).
+
+    Returns True if the file was modified, False if already up to date.
+    """
+    text = preview_layers_text(svg_path, layers)
+    if text is None:
+        return False
+    svg_path.write_text(text, encoding="utf-8")
     return True
 
 
@@ -520,14 +719,17 @@ def discover_assets(
     Order: builtin → theme → local.
     """
     sources: list[tuple[str, Path]] = []
+    seen: set[Path] = set()
 
     for label, base in (
         ("builtin", builtin_theme_dir()),
         ("theme", theme.asset_dir() if theme is not None else None),
         ("local", project_dir),
     ):
-        if base is None:
+        # The built-in theme's asset dir is the built-in dir: list it once.
+        if base is None or base.resolve() in seen:
             continue
+        seen.add(base.resolve())
         directory = base / kind
         if directory.is_dir():
             sources.extend((label, p) for p in sorted(directory.glob("*.svg")))
@@ -541,6 +743,33 @@ def discover_layouts(
 ) -> list[tuple[str, Path]]:
     """Return (source_label, path) pairs from every available layout directory."""
     return discover_assets(AssetKind.LAYOUT, project_dir, theme)
+
+
+def layout_canvas(path: Path) -> tuple[float, float] | None:
+    """A layout's drawing size (`svg.canvas_size`), or ``None`` if unreadable."""
+    try:
+        return canvas_size(parse_svg_file(path))
+    except Exception:
+        return None
+
+
+def layouts_for(
+    layouts: list[tuple[str, Path]], size: PageSize
+) -> list[tuple[str, Path]]:
+    """The layouts to offer a deck of ``size``: the built-in ones drawn in its
+    shape (a poster deck gets the poster layouts, a 16:9 deck the 16:9 ones)
+    and every layout of the project's and the theme's own, whatever its shape.
+    When no built-in layout has its shape (a letter-sized deck), all are."""
+    builtin = [entry for entry in layouts if entry[0] == "builtin"]
+    fitting = {
+        path
+        for _, path in builtin
+        if (canvas := layout_canvas(path)) is not None
+        and same_aspect(canvas, size.canvas)
+    }
+    if not fitting:
+        return layouts
+    return [e for e in layouts if e[0] != "builtin" or e[1] in fitting]
 
 
 def discover_overlays(

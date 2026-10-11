@@ -1,0 +1,13 @@
+/* The inkflow example look: the logo in the footer overlay (overlays/footer.svg).
+ * White on a dark background, near-black on light. */
+.inkflow-demo-logo-mark {
+    fill: #ffffff;
+}
+[data-theme="light"] .inkflow-demo-logo-mark {
+    fill: #1e1e2e;
+}
+
+/* "flow" in brand blue: --inkflow-blue follows dark and light mode. */
+.inkflow-demo-logo-flow {
+    fill: var(--inkflow-blue);
+}

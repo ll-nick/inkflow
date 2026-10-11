@@ -1,8 +1,10 @@
-import type { NavMessage } from "../shared/types";
+import type { InkMessage, NavMessage } from "../shared/types";
+import { requestInk } from "./ink";
 import { state } from "./state";
 import { showNotify } from "./ui";
 import {
     applyIncomingPosition,
+    applyPeerInk,
     currentNavMessage,
     requestSync,
 } from "./websocket";
@@ -53,6 +55,16 @@ function isSyncRequest(data: unknown): boolean {
     );
 }
 
+/** Ink drawn in the peer window (presenter/ink.ts checks every field). */
+function isInkPayload(data: unknown): data is InkMessage {
+    return (
+        typeof data === "object" &&
+        data !== null &&
+        (data as { type?: unknown }).type === "ink" &&
+        typeof (data as { op?: unknown }).op === "string"
+    );
+}
+
 let linkHandler: ((e: MessageEvent) => void) | undefined;
 let linkPoll: ReturnType<typeof setInterval> | undefined;
 
@@ -76,12 +88,16 @@ function attachLink(win: Window, requestCatchUp = false): void {
             return;
         }
         if (isSyncPayload(e.data)) applyIncomingPosition(e.data);
+        else if (isInkPayload(e.data)) applyPeerInk(e.data);
     };
     window.addEventListener("message", linkHandler);
     linkPoll = setInterval(() => {
         if (win.closed) detachLink();
     }, POLL_INTERVAL_MS);
-    if (requestCatchUp) requestSync();
+    if (requestCatchUp) {
+        requestSync();
+        requestInk();
+    }
 }
 
 function detachLink(): void {

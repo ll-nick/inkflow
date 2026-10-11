@@ -4,6 +4,7 @@ import type { TransitionData } from "../shared/types";
 import { formatViewBox, parseViewBox } from "../shared/viewbox";
 import { MorphTransition } from "./morph";
 import { ProgressDriver } from "./progress-driver";
+import { slideLeaving, slideMounted } from "./slidehooks";
 import { state } from "./state";
 import {
     applyCurrentStep,
@@ -137,6 +138,7 @@ export function snapInflight(): void {
         ? state.slides[state.slideIndex].svg
         : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
     fitSlideToStage(stage.firstElementChild);
+    slideMounted();
     applyCurrentStepInstant();
     updateStatus();
 }
@@ -521,6 +523,8 @@ function loadSlideBody(
     // A step run in flight (mid-chain when a slide change is triggered) is landed on its
     // destination before we capture and replace the outgoing slide.
     settleStepRun();
+    // So is anything else in progress on it (a stroke being drawn).
+    slideLeaving();
 
     const params: TransitionData =
         transition ?? state.transitions[state.slideIndex] ?? CUT;
@@ -553,6 +557,9 @@ function loadSlideBody(
             ? state.slides[state.slideIndex].svg
             : '<p style="color:var(--accent);padding:2rem">No slides.</p>';
         fitSlideToStage(stage.firstElementChild);
+        // Before a transition takes the new slide into its layer, so what
+        // is put into it (the slide's ink) travels in with it.
+        slideMounted();
         initialLand();
     };
 
@@ -602,7 +609,10 @@ function loadSlideBody(
                 // went through swap(), so run the same settle sequence here to
                 // re-apply the step and sync the status bar + URL with the
                 // destination slide.
-                if (!newCtrl.signal.aborted) settleContent();
+                if (!newCtrl.signal.aborted) {
+                    slideMounted();
+                    settleContent();
+                }
                 settle(true);
             })
             .catch((error) => {

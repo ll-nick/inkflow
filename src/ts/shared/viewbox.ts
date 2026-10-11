@@ -1,7 +1,8 @@
 // Parsing/formatting for an SVG `viewBox` attribute — shared by every module that
 // reads or writes one (the zoom camera, the overview grid, the presenter-panel
-// preview, and the fade-transition backdrop). All theme layouts share one canvas
-// size, so `1920 1080` is the fallback when an attribute is missing or malformed.
+// preview, and the fade-transition backdrop). The fallback, when an attribute is
+// missing or malformed, is the deck's canvas: 1920 x 1080 unless the page knows
+// the deck's size (`setDeckCanvas`, from the editor model's `deckSize`).
 
 export interface ViewBox {
     x: number;
@@ -10,11 +11,21 @@ export interface ViewBox {
     h: number;
 }
 
-const DEFAULT_VIEWBOX = "0 0 1920 1080";
+let deckCanvas = { w: 1920, h: 1080 };
+
+/** The deck's canvas (`Deck(size=)`), which a slide without a usable viewBox
+ * is taken to have. */
+export function setDeckCanvas(w: number, h: number): void {
+    if (w > 0 && h > 0) deckCanvas = { w, h };
+}
+
+export function getDeckCanvas(): { w: number; h: number } {
+    return { ...deckCanvas };
+}
 
 export function parseViewBox(
     attr: string | null,
-    fallback = DEFAULT_VIEWBOX,
+    fallback = `0 0 ${deckCanvas.w} ${deckCanvas.h}`,
 ): ViewBox {
     const parts = (attr ?? "")
         .trim()

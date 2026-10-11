@@ -353,7 +353,7 @@ def test_embed_fonts_css_subsetted_fallback_on_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_path = tmp_path / "Inter.ttf"
-    fake_path.write_bytes(b"FULL_FONT")
+    fake_path.write_bytes(b"UNREADABLE_FONT")
     fake_record = _FontRecord(
         path=fake_path, family="Inter", weight_class=400, is_italic=False
     )
