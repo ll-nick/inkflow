@@ -251,3 +251,9 @@ body {
 :root[data-theme="light"] [data-inkflow-theme="dark"] {
     display: none;
 }
+
+body.is-fullscreen.cursor-idle,
+body.is-fullscreen.cursor-idle *,
+body.is-fullscreen.cursor-idle #stage-wrap {
+    cursor: none;
+}

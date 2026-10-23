@@ -211,9 +211,21 @@
       _fsHideTimer = void 0;
     }, 600);
   }
+  var CURSOR_IDLE_MS = 2e3;
+  var _cursorIdleTimer;
+  function wakeCursor() {
+    document.body.classList.remove("cursor-idle");
+    clearTimeout(_cursorIdleTimer);
+    _cursorIdleTimer = void 0;
+    if (!document.body.classList.contains("is-fullscreen")) return;
+    _cursorIdleTimer = setTimeout(() => {
+      document.body.classList.add("cursor-idle");
+    }, CURSOR_IDLE_MS);
+  }
   function handleFullscreenChange() {
     const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
     document.body.classList.toggle("is-fullscreen", isFS);
+    wakeCursor();
     if (!isFS) {
       statusBarEl.classList.remove("fs-visible");
       clearTimeout(_fsHideTimer);
@@ -223,6 +235,7 @@
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
   document.addEventListener("mousemove", (e) => {
+    wakeCursor();
     if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
     const inZone = e.clientX < window.innerWidth * 0.2 && e.clientY > window.innerHeight * 0.9;
     if (inZone) showFsBar();

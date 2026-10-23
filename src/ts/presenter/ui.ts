@@ -266,9 +266,23 @@ function scheduleFsHide(): void {
     }, 600);
 }
 
+const CURSOR_IDLE_MS = 2000;
+let _cursorIdleTimer: ReturnType<typeof setTimeout> | undefined;
+
+function wakeCursor(): void {
+    document.body.classList.remove("cursor-idle");
+    clearTimeout(_cursorIdleTimer);
+    _cursorIdleTimer = undefined;
+    if (!document.body.classList.contains("is-fullscreen")) return;
+    _cursorIdleTimer = setTimeout(() => {
+        document.body.classList.add("cursor-idle");
+    }, CURSOR_IDLE_MS);
+}
+
 function handleFullscreenChange(): void {
     const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
     document.body.classList.toggle("is-fullscreen", isFS);
+    wakeCursor();
     if (!isFS) {
         statusBarEl.classList.remove("fs-visible");
         clearTimeout(_fsHideTimer);
@@ -281,6 +295,7 @@ document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
 // Hot zone: bottom-left corner, 20% wide × 10% tall
 document.addEventListener("mousemove", (e) => {
+    wakeCursor();
     if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
     const inZone =
         e.clientX < window.innerWidth * 0.2 &&
