@@ -258,12 +258,14 @@ function showFsBar(): void {
     clearTimeout(_fsHideTimer);
     _fsHideTimer = undefined;
 }
+function hideFsBar(): void {
+    statusBarEl.classList.remove("fs-visible");
+    clearTimeout(_fsHideTimer);
+    _fsHideTimer = undefined;
+}
 function scheduleFsHide(): void {
     if (_fsHideTimer) return;
-    _fsHideTimer = setTimeout(() => {
-        statusBarEl.classList.remove("fs-visible");
-        _fsHideTimer = undefined;
-    }, 600);
+    _fsHideTimer = setTimeout(hideFsBar, 600);
 }
 
 const CURSOR_IDLE_MS = 2000;
@@ -276,6 +278,7 @@ function wakeCursor(): void {
     if (!document.body.classList.contains("is-fullscreen")) return;
     _cursorIdleTimer = setTimeout(() => {
         document.body.classList.add("cursor-idle");
+        hideFsBar();
     }, CURSOR_IDLE_MS);
 }
 
@@ -283,11 +286,7 @@ function handleFullscreenChange(): void {
     const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
     document.body.classList.toggle("is-fullscreen", isFS);
     wakeCursor();
-    if (!isFS) {
-        statusBarEl.classList.remove("fs-visible");
-        clearTimeout(_fsHideTimer);
-        _fsHideTimer = undefined;
-    }
+    if (!isFS) hideFsBar();
 }
 
 document.addEventListener("fullscreenchange", handleFullscreenChange);

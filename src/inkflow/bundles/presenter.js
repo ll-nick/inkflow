@@ -204,12 +204,14 @@
     clearTimeout(_fsHideTimer);
     _fsHideTimer = void 0;
   }
+  function hideFsBar() {
+    statusBarEl.classList.remove("fs-visible");
+    clearTimeout(_fsHideTimer);
+    _fsHideTimer = void 0;
+  }
   function scheduleFsHide() {
     if (_fsHideTimer) return;
-    _fsHideTimer = setTimeout(() => {
-      statusBarEl.classList.remove("fs-visible");
-      _fsHideTimer = void 0;
-    }, 600);
+    _fsHideTimer = setTimeout(hideFsBar, 600);
   }
   var CURSOR_IDLE_MS = 2e3;
   var _cursorIdleTimer;
@@ -220,17 +222,14 @@
     if (!document.body.classList.contains("is-fullscreen")) return;
     _cursorIdleTimer = setTimeout(() => {
       document.body.classList.add("cursor-idle");
+      hideFsBar();
     }, CURSOR_IDLE_MS);
   }
   function handleFullscreenChange() {
     const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
     document.body.classList.toggle("is-fullscreen", isFS);
     wakeCursor();
-    if (!isFS) {
-      statusBarEl.classList.remove("fs-visible");
-      clearTimeout(_fsHideTimer);
-      _fsHideTimer = void 0;
-    }
+    if (!isFS) hideFsBar();
   }
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
