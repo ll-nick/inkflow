@@ -258,22 +258,35 @@ function showFsBar(): void {
     clearTimeout(_fsHideTimer);
     _fsHideTimer = undefined;
 }
+function hideFsBar(): void {
+    statusBarEl.classList.remove("fs-visible");
+    clearTimeout(_fsHideTimer);
+    _fsHideTimer = undefined;
+}
 function scheduleFsHide(): void {
     if (_fsHideTimer) return;
-    _fsHideTimer = setTimeout(() => {
-        statusBarEl.classList.remove("fs-visible");
-        _fsHideTimer = undefined;
-    }, 600);
+    _fsHideTimer = setTimeout(hideFsBar, 600);
+}
+
+const CURSOR_IDLE_MS = 2000;
+let _cursorIdleTimer: ReturnType<typeof setTimeout> | undefined;
+
+function wakeCursor(): void {
+    document.body.classList.remove("cursor-idle");
+    clearTimeout(_cursorIdleTimer);
+    _cursorIdleTimer = undefined;
+    if (!document.body.classList.contains("is-fullscreen")) return;
+    _cursorIdleTimer = setTimeout(() => {
+        document.body.classList.add("cursor-idle");
+        hideFsBar();
+    }, CURSOR_IDLE_MS);
 }
 
 function handleFullscreenChange(): void {
     const isFS = !!(document.fullscreenElement || _doc.webkitFullscreenElement);
     document.body.classList.toggle("is-fullscreen", isFS);
-    if (!isFS) {
-        statusBarEl.classList.remove("fs-visible");
-        clearTimeout(_fsHideTimer);
-        _fsHideTimer = undefined;
-    }
+    wakeCursor();
+    if (!isFS) hideFsBar();
 }
 
 document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -281,6 +294,7 @@ document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
 // Hot zone: bottom-left corner, 20% wide × 10% tall
 document.addEventListener("mousemove", (e) => {
+    wakeCursor();
     if (!document.fullscreenElement && !_doc.webkitFullscreenElement) return;
     const inZone =
         e.clientX < window.innerWidth * 0.2 &&
