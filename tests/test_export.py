@@ -4,17 +4,16 @@ from __future__ import annotations
 import base64
 import logging
 import os
-import sys
 import textwrap
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
+from inkflow.chromium import find_chromium
 from inkflow.cli import main
 from inkflow.export import (
     _INLINE_VIDEO_WARN_BYTES,
-    _find_chromium,
     build_pdf,
     build_static_html,
 )
@@ -584,7 +583,7 @@ class TestEmptyDeck:
 
 
 class TestBuildPdf:
-    @pytest.mark.skipif(_find_chromium() is None, reason="chromium not available")
+    @pytest.mark.skipif(find_chromium() is None, reason="chromium not available")
     def test_produces_pdf_file(self, tmp_path: Path) -> None:
         _write_slide(tmp_path, _PLAIN_SLIDE_SVG)
         deck_path = _write_deck(tmp_path, _ONE_SLIDE_DECK)
@@ -592,56 +591,6 @@ class TestBuildPdf:
         build_pdf(deck_path, out, no_sandbox=True)
         assert out.exists()
         assert out.stat().st_size > 0
-
-
-def _fake_executable(directory: Path, name: str) -> Path:
-    directory.mkdir(parents=True, exist_ok=True)
-    exe = directory / name
-    exe.write_text("#!/bin/sh\n")
-    exe.chmod(0o755)
-    return exe
-
-
-# shutil.which only finds extensionless files on Windows if PATHEXT allows it,
-# and flatpak/snap do not exist there anyway.
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX executables only")
-class TestFindChromium:
-    @pytest.fixture(autouse=True)
-    def _empty_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("PATH", str(tmp_path / "empty-path"))
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
-        monkeypatch.setattr("inkflow.export._SNAP_BIN_DIR", tmp_path / "snap-bin")
-        monkeypatch.setattr(
-            "inkflow.export._SYSTEM_FLATPAK_EXPORT_DIR", tmp_path / "system-flatpak"
-        )
-
-    def test_finds_system_flatpak(self, tmp_path: Path) -> None:
-        exe = _fake_executable(tmp_path / "system-flatpak", "com.google.Chrome")
-        assert _find_chromium() == str(exe)
-
-    def test_finds_user_flatpak(self, tmp_path: Path) -> None:
-        exe = _fake_executable(
-            tmp_path / "data" / "flatpak" / "exports" / "bin", "org.chromium.Chromium"
-        )
-        assert _find_chromium() == str(exe)
-
-    def test_finds_snap_outside_path(self, tmp_path: Path) -> None:
-        exe = _fake_executable(tmp_path / "snap-bin", "chromium")
-        assert _find_chromium() == str(exe)
-
-    def test_path_wins_over_flatpak(self, tmp_path: Path) -> None:
-        _fake_executable(
-            tmp_path / "data" / "flatpak" / "exports" / "bin", "org.chromium.Chromium"
-        )
-        exe = _fake_executable(tmp_path / "empty-path", "chromium")
-        assert _find_chromium() == str(exe)
-
-    def test_ignores_non_executable_export(self, tmp_path: Path) -> None:
-        exe = _fake_executable(
-            tmp_path / "data" / "flatpak" / "exports" / "bin", "com.google.Chrome"
-        )
-        exe.chmod(0o644)
-        assert _find_chromium() is None
 
 
 _MALFORMED_SVG = "<svg><rect></svg>"

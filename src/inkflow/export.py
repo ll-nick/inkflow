@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import base64
 import importlib.resources
-import os
 import re
 import shutil
-import subprocess
 import tempfile
 from html import escape as escape_html
 from pathlib import Path
@@ -18,6 +16,7 @@ from inkflow.assets import (
     is_local_ref,
     rewrite_references,
 )
+from inkflow.chromium import find_chromium, print_to_pdf, serve_directory
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
@@ -205,7 +204,7 @@ def build_pdf(
     no_sandbox: bool = False,
     size: tuple[int, int] | None = None,
 ) -> None:
-    exe = chromium or _find_chromium()
+    exe = chromium or find_chromium()
     if exe is None:
         raise RuntimeError(
             "Chromium not found. Install chromium or google-chrome,"
@@ -246,63 +245,8 @@ def build_pdf(
         )
         html_path = Path(tmp) / "slides.html"
         html_path.write_text(html, encoding="utf-8")
-        cmd = [
-            exe,
-            "--headless",
-            "--disable-gpu",
-            "--print-to-pdf-no-header",
-            f"--print-to-pdf={output.resolve()}",
-            html_path.as_uri(),
-        ]
-        if no_sandbox:
-            cmd.insert(1, "--no-sandbox")
-        subprocess.run(cmd, check=True)
+        with serve_directory(Path(tmp)) as base_url:
+            pdf = print_to_pdf(exe, f"{base_url}/slides.html", no_sandbox)
 
-
-_CHROMIUM_NAMES = (
-    "chrome",
-    "chromium",
-    "chromium-browser",
-    "google-chrome",
-    "google-chrome-stable",
-    "msedge",  # Chromium-based Edge, ships with Windows
-)
-
-# Flatpak launchers are named by app id and live outside PATH by default.
-_FLATPAK_CHROMIUM_APP_IDS = (
-    "org.chromium.Chromium",
-    "com.google.Chrome",
-    "io.github.ungoogled_software.ungoogled_chromium",
-    "com.brave.Browser",
-    "com.microsoft.Edge",
-)
-
-# Snap's bin dir is added to PATH by a login-shell profile script, so a
-# non-login shell (or an IDE task runner) can miss it.
-_SNAP_BIN_DIR = Path("/snap/bin")
-
-_SYSTEM_FLATPAK_EXPORT_DIR = Path("/var/lib/flatpak/exports/bin")
-
-
-def _flatpak_export_dirs() -> list[Path]:
-    user_data_home = os.environ.get("XDG_DATA_HOME") or str(
-        Path.home() / ".local" / "share"
-    )
-    return [
-        Path(user_data_home) / "flatpak" / "exports" / "bin",
-        _SYSTEM_FLATPAK_EXPORT_DIR,
-    ]
-
-
-def _find_chromium() -> str | None:
-    for name in _CHROMIUM_NAMES:
-        if found := shutil.which(name):
-            return found
-    for name in _CHROMIUM_NAMES:
-        if found := shutil.which(name, path=_SNAP_BIN_DIR):
-            return found
-    for export_dir in _flatpak_export_dirs():
-        for app_id in _FLATPAK_CHROMIUM_APP_IDS:
-            if found := shutil.which(app_id, path=export_dir):
-                return found
-    return None
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(pdf)
