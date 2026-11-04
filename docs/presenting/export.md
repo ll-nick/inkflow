@@ -82,7 +82,9 @@ inkflow export --output my-talk.pdf
 
 ### Chromium path
 
-Inkflow auto-detects `chromium`, `chromium-browser`, and `google-chrome` on `PATH`.
+Inkflow auto-detects Chrome, Chromium, and Edge on `PATH`,
+in `/snap/bin`,
+and Flatpak installs of Chromium, Chrome, ungoogled-chromium, Brave, and Edge.
 If your binary is elsewhere:
 
 ```bash

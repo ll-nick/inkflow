@@ -89,6 +89,11 @@ src/
                                assembly (parsed markdown -> per-zone TextBox/Media)
     server.py         HTTP server, WebSocket server, file watcher, build pipeline
     export.py         static HTML export (inkflow build) and PDF export (inkflow export)
+    chromium.py       headless Chromium for PDF export: `find_chromium` (PATH, /snap/bin,
+                               flatpak export dirs), `serve_directory` (loopback HTTP),
+                               and `print_to_pdf` (DevTools protocol, PDF returned in the
+                               reply). No file crosses to the browser, so a flatpak/snap
+                               sandbox with its own /tmp still works
     assets.py         asset reference resolution. `AssetRoots` holds the allowed roots
                                (project dir, theme asset dir) and converts between an
                                absolute path and a canonical ref both ways; `AssetSource`

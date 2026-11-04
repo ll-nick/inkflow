@@ -4,7 +4,6 @@ import base64
 import importlib.resources
 import re
 import shutil
-import subprocess
 import tempfile
 from html import escape as escape_html
 from pathlib import Path
@@ -17,6 +16,7 @@ from inkflow.assets import (
     is_local_ref,
     rewrite_references,
 )
+from inkflow.chromium import find_chromium, print_to_pdf, serve_directory
 from inkflow.enums import ColorMode
 from inkflow.fonts import embed_fonts_css_subsetted
 from inkflow.loaders import load_deck_scripts, load_deck_styles
@@ -204,7 +204,7 @@ def build_pdf(
     no_sandbox: bool = False,
     size: tuple[int, int] | None = None,
 ) -> None:
-    exe = chromium or _find_chromium()
+    exe = chromium or find_chromium()
     if exe is None:
         raise RuntimeError(
             "Chromium not found. Install chromium or google-chrome,"
@@ -245,28 +245,8 @@ def build_pdf(
         )
         html_path = Path(tmp) / "slides.html"
         html_path.write_text(html, encoding="utf-8")
-        cmd = [
-            exe,
-            "--headless",
-            "--disable-gpu",
-            "--print-to-pdf-no-header",
-            f"--print-to-pdf={output.resolve()}",
-            html_path.as_uri(),
-        ]
-        if no_sandbox:
-            cmd.insert(1, "--no-sandbox")
-        subprocess.run(cmd, check=True)
+        with serve_directory(Path(tmp)) as base_url:
+            pdf = print_to_pdf(exe, f"{base_url}/slides.html", no_sandbox)
 
-
-def _find_chromium() -> str | None:
-    for name in (
-        "chrome",
-        "chromium",
-        "chromium-browser",
-        "google-chrome",
-        "google-chrome-stable",
-        "msedge",  # Chromium-based Edge, ships with Windows
-    ):
-        if found := shutil.which(name):
-            return found
-    return None
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(pdf)
