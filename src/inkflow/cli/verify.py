@@ -9,7 +9,7 @@ from inkflow.cli._common import Project, deck_option, main
 from inkflow.enums import ColorMode
 from inkflow.logging import console
 from inkflow.pipeline import resolve_slide_src
-from inkflow.verify import verify_slide
+from inkflow.verify import verify_slide, written_at
 
 
 @main.command("verify")
@@ -27,7 +27,8 @@ def verify_cmd(
 ) -> None:
     """Check slides for authoring errors before presenting or building.
 
-    Runs per-slide checks and prints an `ok` / `error` / `warn` line for each.
+    Runs per-slide checks and prints an `ok` / `error` / `warn` line for each,
+    labelled with where the slide is written in deck.py.
     Errors: the SVG source, `.md`, notes file, or `Media.src` is missing; a zone id
     (from `zones` keys or `::zone::` markers) or an animation element id is absent
     from the composed SVG; an overlay paints an opaque full-canvas rect, which would
@@ -66,7 +67,7 @@ def verify_cmd(
                 has_error = True
             else:
                 has_warn = True
-        _print_slide_issues(str(slide.src), issues)
+        _print_slide_issues(slide.src + written_at(slide, project_dir), issues)
 
     if has_error or (strict and has_warn):
         sys.exit(1)

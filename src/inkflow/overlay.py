@@ -11,11 +11,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from inkflow.provenance import SourceTracked
+
 __all__ = ["Overlay"]
 
 
 @dataclass
-class Overlay:
+class Overlay(SourceTracked):
     """An SVG composited on top of the finished slide.
 
     ```python

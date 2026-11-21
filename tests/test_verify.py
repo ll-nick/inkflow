@@ -3,11 +3,13 @@ from __future__ import annotations
 import textwrap
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 from inkflow import sync
 from inkflow.animations import FadeIn, Frame, PlayVideo
 from inkflow.manifest import Deck, Image, Slide, Video
 from inkflow.overlay import Overlay
+from inkflow.provenance import source_location
 from inkflow.sync import PreviewContext
 from inkflow.verify import verify_slide
 
@@ -183,7 +185,34 @@ class TestVerifyAnimations:
         src = _setup(tmp_path)
         slide = Slide(str(src), animations=[Frame("nonexistent")])
         issues = verify_slide(slide, tmp_path, None, _preview(tmp_path))
-        assert ("error", "frame target #nonexistent not found in SVG") in issues
+        assert any(
+            level == "error" and msg.startswith("frame target #nonexistent not found")
+            for level, msg in issues
+        )
+
+    def test_cue_issue_cites_where_the_cue_was_written(self, tmp_path: Path) -> None:
+        src = _setup(tmp_path)
+        cue = FadeIn("nonexistent")
+        location = source_location(cue)
+        assert location is not None
+        issues = verify_slide(
+            Slide(str(src), animations=[cue]), tmp_path, None, _preview(tmp_path)
+        )
+        expected_suffix = f"({Path(__file__).as_posix()}:{location.line})"
+        assert any(msg.endswith(expected_suffix) for _, msg in issues)
+
+    def test_location_is_relative_inside_the_project(self, tmp_path: Path) -> None:
+        deck_file = tmp_path / "deck.py"
+        deck_file.write_text(
+            "from inkflow.animations import FadeIn\n\nCUE = FadeIn('nonexistent')\n"
+        )
+        namespace: dict[str, object] = {}
+        exec(compile(deck_file.read_text(), str(deck_file), "exec"), namespace)
+        slide = Slide(
+            str(_setup(tmp_path)), animations=[cast("FadeIn", namespace["CUE"])]
+        )
+        issues = verify_slide(slide, tmp_path, None, _preview(tmp_path))
+        assert any(msg.endswith(" (deck.py:3)") for _, msg in issues)
 
     def test_frame_on_present_target_or_full_slide_no_error(
         self, tmp_path: Path

@@ -36,6 +36,7 @@ from inkflow.enums import (
     Slugged,
     Trigger,
 )
+from inkflow.provenance import SourceTracked
 
 __all__ = [
     "Animation",
@@ -61,7 +62,7 @@ __all__ = [
 
 
 @dataclass
-class Cue:
+class Cue(SourceTracked):
     """Base for anything on a slide's step timeline.
 
     Carries just the target ``element`` and the ``trigger`` that decides its step.

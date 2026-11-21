@@ -14,6 +14,7 @@ from inkflow.enums import (
     VAlign,
 )
 from inkflow.overlay import Overlay
+from inkflow.provenance import SourceTracked
 from inkflow.themes import Builtin, Theme
 from inkflow.transitions import Transition
 
@@ -52,7 +53,7 @@ verbatim. ``None`` means "nothing". Used by ``Slide.md``, ``Slide.notes``,
 
 
 @dataclass
-class TextBox:
+class TextBox(SourceTracked):
     """Explicit text content and alignment for a named zone in an SVG slide.
 
     Pass it as a value in a slide's ``zones`` dict to inject HTML into that zone
@@ -75,7 +76,7 @@ class TextBox:
 
 
 @dataclass
-class _MediaBase:
+class _MediaBase(SourceTracked):
     """Shared geometry/placement fields for `Image` and `Video`.
 
     Private: this exists only so the two concrete media types don't repeat the
@@ -161,7 +162,7 @@ alignment and padding control; an ``Image`` or ``Video`` injects media.
 
 
 @dataclass
-class Slide:
+class Slide(SourceTracked):
     """A single slide.
 
     ``src`` is a reference to an SVG file. Any SVG can define named zones, and
@@ -223,7 +224,7 @@ class Slide:
 
 
 @dataclass
-class Deck:
+class Deck(SourceTracked):
     """The top-level presentation container.
 
     Define a ``main() -> Deck`` function in ``deck.py``; inkflow calls it at serve
