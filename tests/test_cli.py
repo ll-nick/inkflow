@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import textwrap
 from importlib.resources import files
 from pathlib import Path
@@ -394,6 +395,24 @@ class TestSyncOverlays:
             _OVERLAY_SVG.replace("footer", "footer2"), encoding="utf-8"
         )
         assert runner.invoke(main, ["sync", "--check"]).exit_code == 1
+
+
+class TestDeckShow:
+    @pytest.mark.usefixtures("project")
+    def test_table_lists_each_slide(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["deck", "show"])
+        assert result.exit_code == 0
+        assert "slides/01.svg" in result.output
+        assert "literal" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_json_goes_to_stdout(self, runner: CliRunner) -> None:
+        result = runner.invoke(main, ["deck", "show", "--json"])
+        assert result.exit_code == 0
+        document = cast("dict[str, object]", json.loads(result.stdout))
+        assert document["api"] == "v0"
+        slides = cast("list[dict[str, object]]", document["slides"])
+        assert [slide["src"] for slide in slides] == ["slides/01.svg"]
 
 
 class TestVerify:

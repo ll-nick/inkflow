@@ -174,6 +174,18 @@ commands:
       flag:
         mode: ["dark", "light"]
 
+  - name: deck
+    description: Inspect the deck as a whole.
+    commands:
+      - name: show
+        description: Describe every slide, its zones, cues and how editable it is.
+        flags:
+          -d, --deck=: Path to deck.py
+          --json: Print the outline as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+
   - name: verify
     description: Check slides for authoring errors before presenting or building.
     flags:
