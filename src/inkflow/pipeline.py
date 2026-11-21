@@ -88,7 +88,12 @@ def _deduplicate_ids(raw_ids: list[str]) -> list[str]:
     return result
 
 
-def _infer_slide_title(
+def slide_ids(visible_slides: Sequence[Slide]) -> list[str]:
+    """The presenter's id for each visible slide, deduplicated in deck order."""
+    return _deduplicate_ids([_infer_slide_id(slide) for slide in visible_slides])
+
+
+def infer_slide_title(
     slide: Slide, slide_id: str, parsed: ParsedMarkdown | None
 ) -> str:
     if slide.title:
@@ -745,14 +750,13 @@ def process_deck(deck: Deck, project_dir: Path, deck_path: Path) -> list[SlideDa
         mode=deck.effective_mode,
         total_slides=len(visible_slides),
     )
-    raw_ids = [_infer_slide_id(s) for s in visible_slides]
-    slide_ids = _deduplicate_ids(raw_ids)
+    ids = slide_ids(visible_slides)
     results: list[SlideData] = []
-    for i, (slide, slide_id) in enumerate(zip(visible_slides, slide_ids, strict=True)):
+    for i, (slide, slide_id) in enumerate(zip(visible_slides, ids, strict=True)):
         logger.debug(f"processing slide {i + 1}/{len(visible_slides)}: {slide_id}")
         md = load_md(slide.md, project_dir)
         parsed = parse_markdown_zones(md.text) if md is not None else None
-        title = _infer_slide_title(slide, slide_id, parsed)
+        title = infer_slide_title(slide, slide_id, parsed)
         loaded_notes = load_notes(slide.notes, project_dir)
         explicit_notes = _source_for(assets, loaded_notes.path).html(loaded_notes.text)
         md_source = _source_for(assets, md.path if md is not None else None)

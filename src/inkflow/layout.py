@@ -33,9 +33,15 @@ if TYPE_CHECKING:
 
 # ── Zone routing constants ────────────────────────────────────────────────────
 
-_FIXED_ROUTING_ZONES: frozenset[str] = frozenset(
-    {"zone-slide-number", "zone-slide-total", "zone-title", "zone-subtitle"}
+SLIDE_NUMBER_ZONE_IDS: frozenset[str] = frozenset(
+    {"zone-slide-number", "zone-slide-total"}
 )
+"""Zones the pipeline fills itself with the slide's number and the deck's total."""
+
+_FIXED_ROUTING_ZONES: frozenset[str] = SLIDE_NUMBER_ZONE_IDS | {
+    "zone-title",
+    "zone-subtitle",
+}
 
 
 # ── Asset kinds ───────────────────────────────────────────────────────────────
@@ -576,11 +582,9 @@ def layout_zones(
         if eid and eid.startswith("zone-"):
             all_zone_ids.add(eid)
 
-    numbered = bool({"zone-slide-number", "zone-slide-total"} & all_zone_ids)
+    numbered = bool(SLIDE_NUMBER_ZONE_IDS & all_zone_ids)
     content_zones = sorted(
-        z[len("zone-") :]
-        for z in all_zone_ids
-        if z not in {"zone-slide-number", "zone-slide-total"}
+        z[len("zone-") :] for z in all_zone_ids - SLIDE_NUMBER_ZONE_IDS
     )
     return LayoutInfo(
         zones=content_zones,
