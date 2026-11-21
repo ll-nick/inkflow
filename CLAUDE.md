@@ -82,6 +82,14 @@ src/
                                `themes` and `manifest` reference it, same as `Transition`
     markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
                                HTML->well-formed-XML normalization (no inkflow-specific grammar)
+    provenance.py     `SourceTracked` mixin (on Deck, Slide, Overlay, TextBox, media, Cue,
+                               Transition) records each instance's constructor call site
+                               as a `SourceLocation` (file, line, column span) in a plain
+                               attribute, not a dataclass field, so it never reaches
+                               equality, repr or `dataclasses.fields()`; serializers must
+                               therefore iterate `fields()`, never `vars()`.
+                               `source_location(obj)` reads it; `verify` cites it.
+                               Groundwork for editing deck.py (plans/primitives.md)
     steps.py          `StepResolver` — the trigger-resolution rule (ON_CLICK/WITH_PREVIOUS/
                                Trigger.at) shared by pipeline.py (the animations=[...] list)
                                and zones.py (markdown reveals)
