@@ -6,6 +6,7 @@ import site
 import sysconfig
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from dataclasses import fields as dataclass_fields
 from functools import cache
 from pathlib import Path
 from typing import NamedTuple, TypedDict, cast
@@ -154,10 +155,12 @@ def resolve_overlay_chains(
 # ── Animation / transition serialization ──────────────────────────────────────
 
 
-def _set_fields(obj: object) -> dict[str, object]:
+def _set_fields(obj: Animation | Transition) -> dict[str, object]:
     """Dataclass fields whose value is not None (None means 'defer to the default')."""
-    fields = cast("dict[str, object]", vars(obj))
-    return {k: v for k, v in fields.items() if v is not None}
+    values: dict[str, object] = {
+        f.name: getattr(obj, f.name) for f in dataclass_fields(obj)
+    }
+    return {k: v for k, v in values.items() if v is not None}
 
 
 def resolve_steps(cues: list[Cue], base: int = 0) -> list[tuple[Cue, int]]:
@@ -243,9 +246,7 @@ def _cue_entry(anim: Animation, step: int, offset: float) -> dict[str, object]:
     ``var(--anim-<key>)``.
     """
     fields: dict[str, object] = {
-        k: v
-        for k, v in cast("dict[str, object]", vars(anim)).items()
-        if k not in ("element", "trigger") and v is not None
+        k: v for k, v in _set_fields(anim).items() if k not in ("element", "trigger")
     }
     # element.animate() options (durations in seconds; the engine scales to ms).
     opts: dict[str, object] = {
