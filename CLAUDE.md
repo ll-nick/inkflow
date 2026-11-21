@@ -80,6 +80,18 @@ src/
                                synced ancestor does not read as stale forever
     overlay.py        the `Overlay` DSL type (src only). Its own module because both
                                `themes` and `manifest` reference it, same as `Transition`
+    deck_source.py    reads deck.py with stdlib `ast` to map each evaluated slide to
+                               its element in the `slides=[...]` list (`locate_slides` ->
+                               `SlideSource`) and classify it as an `Editability`: literal /
+                               opaque / block / none. Literal `Slide(...)` elements are
+                               anchors matched by exact span against provenance (ast and
+                               `co_positions` share units: 1-based lines, UTF-8 byte
+                               columns); slides between anchors are attributed by counting
+    outline.py        `build_outline` -> `DeckOutline`, the typed model behind
+                               `inkflow deck show`; `to_json()` is the read half of the ops
+                               API, versioned as `API_VERSION` ("v0"). Values are reported
+                               as written (`None` = inherits); layouts outside the project
+                               are named `builtin:x`/`theme:x`, never by install path
     markdown.py       markdown-it-py rendering only: code-fence highlighting, LaTeX math,
                                HTML->well-formed-XML normalization (no inkflow-specific grammar)
     provenance.py     `SourceTracked` mixin (on Deck, Slide, Overlay, TextBox, media, Cue,
@@ -89,7 +101,7 @@ src/
                                equality, repr or `dataclasses.fields()`; serializers must
                                therefore iterate `fields()`, never `vars()`.
                                `source_location(obj)` reads it; `verify` cites it.
-                               Groundwork for editing deck.py (plans/primitives.md)
+                               Groundwork for editing deck.py
     steps.py          `StepResolver` — the trigger-resolution rule (ON_CLICK/WITH_PREVIOUS/
                                Trigger.at) shared by pipeline.py (the animations=[...] list)
                                and zones.py (markdown reveals)
@@ -107,7 +119,8 @@ src/
                                commands are grouped by area: project.py (init, setup-git,
                                completion), present.py (serve, build, export), authoring.py
                                (clean, label2id, add, parent group, sync, layouts), color.py (colorize,
-                               palette), verify.py. Submodules register on `main` by import.
+                               palette), deck.py (`deck` group: show), verify.py.
+                               Submodules register on `main` by import.
     clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
     label2id.py       `inkflow label2id`: promote each element's inkscape:label to its
                                SVG id (Inkscape convenience for Morph/animation targets).
