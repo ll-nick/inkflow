@@ -16,6 +16,7 @@ from inkflow.layout import (
 from inkflow.loaders import load_md, resolve_content_src
 from inkflow.manifest import Inline, Media, Slide, Video
 from inkflow.pipeline import resolve_overlay_chains, resolve_slide_src
+from inkflow.provenance import source_location
 from inkflow.svg import (
     compose_overlays,
     compose_with_ancestors,
@@ -110,29 +111,39 @@ def _check_zones(slide: Slide, project_dir: Path, zone_ids: set[str]) -> list[Is
     return issues
 
 
-def _check_animations(slide: Slide, all_ids: set[str]) -> list[Issue]:
+def written_at(obj: object, project_dir: Path) -> str:
+    """`` (deck.py:57)`` for an object whose construction site is known, else ``""``."""
+    location = source_location(obj)
+    return f" ({location.describe(project_dir)})" if location is not None else ""
+
+
+def _check_animations(
+    slide: Slide, all_ids: set[str], project_dir: Path
+) -> list[Issue]:
     issues: list[Issue] = []
     for cue in slide.animations:
+        at = written_at(cue, project_dir)
         if isinstance(cue, PlayVideo):
             zone_id = f"zone-{cue.element}"
             if zone_id not in all_ids:
                 issues.append(
-                    ("error", f"PlayVideo target #{zone_id} not found in SVG")
+                    ("error", f"PlayVideo target #{zone_id} not found in SVG{at}")
                 )
             target = slide.zones.get(cue.element)
             if isinstance(target, Video) and target.autoplay:
                 msg = (
-                    f"video in zone {cue.element}: autoplay overridden by PlayVideo cue"
+                    f"video in zone {cue.element}: "
+                    + f"autoplay overridden by PlayVideo cue{at}"
                 )
                 issues.append(("warn", msg))
         elif isinstance(cue, Frame):
             if cue.element != FrameTarget.FULL_SLIDE and cue.element not in all_ids:
                 issues.append(
-                    ("error", f"frame target #{cue.element} not found in SVG")
+                    ("error", f"frame target #{cue.element} not found in SVG{at}")
                 )
         elif isinstance(cue, Animation) and cue.element not in all_ids:
             issues.append(
-                ("error", f"animation element #{cue.element} not found in SVG")
+                ("error", f"animation element #{cue.element} not found in SVG{at}")
             )
     return issues
 
@@ -277,7 +288,7 @@ def verify_slide(
 
     issues += _check_media(slide, project_dir)
     issues += _check_zones(slide, project_dir, zone_ids)
-    issues += _check_animations(slide, all_ids)
+    issues += _check_animations(slide, all_ids, project_dir)
     issues += _check_default_zone(slide, project_dir, zone_ids, default_zone)
     issues += _check_overlays(overlay_chains)
     issues += [
