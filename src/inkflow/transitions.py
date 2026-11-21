@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from inkflow.enums import Direction, Easing, Slugged
+from inkflow.provenance import SourceTracked
 
 __all__ = [
     "Cover",
@@ -37,7 +38,7 @@ __all__ = [
 
 
 @dataclass
-class Transition(Slugged):
+class Transition(SourceTracked, Slugged):
     """Data-only base for every transition type.
 
     Concrete types subclass this. Every field is serialized into the transition
