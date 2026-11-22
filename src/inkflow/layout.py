@@ -180,6 +180,8 @@ def resolve_chain(
     project_root: Path | None,
     theme: Theme | None,
     kind: AssetKind = AssetKind.LAYOUT,
+    *,
+    root: SvgElement | None = None,
 ) -> list[Path]:
     """Return the ancestor chain for svg_path, root-first, excluding svg_path itself.
 
@@ -188,16 +190,17 @@ def resolve_chain(
     (project_root for local:, theme for theme:) that is not available.
 
     ``kind`` is the namespace bare-name parents resolve in: an overlay inherits from
-    another overlay, never from a layout.
+    another overlay, never from a layout. ``root`` is svg_path's content when it
+    differs from the file on disk (an edit not yet written).
     """
     chain: list[Path] = []
     current = svg_path.resolve()
     visited: set[Path] = {current}
+    parent_str = (
+        root.get(INKFLOW_PARENT) if root is not None else _read_parent_attr(current)
+    )
 
-    while True:
-        parent_str = _read_parent_attr(current)
-        if parent_str is None:
-            break
+    while parent_str is not None:
         parent_path = resolve_parent_path(
             parent_str, current.parent, project_root, theme, kind
         )
@@ -206,6 +209,7 @@ def resolve_chain(
         visited.add(parent_path)
         chain.insert(0, parent_path)
         current = parent_path
+        parent_str = _read_parent_attr(current)
 
     return chain
 
@@ -292,18 +296,22 @@ def _layer_hashes(layers: Sequence[PreviewLayer]) -> dict[str, str]:
     return hashes
 
 
-def chain_layers(svg_path: Path, chain: list[Path]) -> list[PreviewLayer]:
+def chain_layers(
+    svg_path: Path, chain: list[Path], *, root: SvgElement | None = None
+) -> list[PreviewLayer]:
     """Pair each ancestor with the inkflow:parent value that named it.
 
     The ref for chain[i] is the inkflow:parent value on its child — chain[i+1]
-    for all but the last entry, svg_path for the last.
+    for all but the last entry, svg_path for the last. ``root`` is svg_path's
+    content when it differs from the file on disk.
     """
     if not chain:
         return []
-    children = [*chain[1:], svg_path]
+    refs = [_read_parent_attr(child) for child in chain[1:]]
+    own = root.get(INKFLOW_PARENT) if root is not None else _read_parent_attr(svg_path)
     return [
-        PreviewLayer(path, _read_parent_attr(child) or "")
-        for path, child in zip(chain, children, strict=True)
+        PreviewLayer(path, ref or "")
+        for path, ref in zip(chain, [*refs, own], strict=True)
     ]
 
 
@@ -332,7 +340,11 @@ def _layers_match(
 
 def are_preview_layers_current(svg_path: Path, layers: PreviewLayers) -> bool:
     """Return True if svg_path already carries exactly these layers and style."""
-    root = parse_svg_file(svg_path)
+    return has_preview_layers(parse_svg_file(svg_path), layers)
+
+
+def has_preview_layers(root: SvgElement, layers: PreviewLayers) -> bool:
+    """Return True if the tree already carries exactly these layers and style."""
     if not _layers_match(root, layers.behind, _BEHIND):
         return False
     if not _layers_match(root, layers.flat_overlays(), _OVERLAY):
@@ -448,18 +460,31 @@ def _update_preview_style(
 
 
 def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
-    """Inject preview layers as locked Inkscape layers into svg_path in place.
+    """Inject preview layers into svg_path in place (see `with_preview_layers`).
+
+    Returns True if the file was modified, False if already up to date.
+    """
+    root = parse_svg_file(svg_path)
+    if has_preview_layers(root, layers):
+        return False
+    svg_path.write_text(
+        etree.tostring(
+            with_preview_layers(root, layers), encoding="unicode", xml_declaration=False
+        ),
+        encoding="utf-8",
+    )
+    return True
+
+
+def with_preview_layers(root: SvgElement, layers: PreviewLayers) -> SvgElement:
+    """Return the tree carrying exactly these preview layers as locked Inkscape layers.
 
     Ancestors are inserted below the file's own content and overlays appended
     above it, so the Inkscape layer stack matches runtime paint order. Also writes
     a ``<style id="inkflow-preview">`` block when ``preview_css`` is provided, so
-    Inkscape renders semantic classes with the correct colors.
-    Returns True if the file was modified, False if already up to date.
+    Inkscape renders semantic classes with the correct colors. ``root`` is modified,
+    and may be replaced by a new root declaring the editor namespaces.
     """
-    if are_preview_layers_current(svg_path, layers):
-        return False
-
-    root = parse_svg_file(svg_path)
     overlay_layers = layers.flat_overlays()
     hashes = _layer_hashes([*layers.behind, *overlay_layers])
 
@@ -476,15 +501,10 @@ def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
     # inkflow among them: the marker attributes are the first use of that namespace
     # in a file with no inkflow:parent (an overlay), and without the declaration they
     # serialize under a generated ns0-style prefix that is unreadable in an editor.
-    out = with_namespaces(
+    return with_namespaces(
         root,
         {"inkflow": ns.INKFLOW, "inkscape": ns.INKSCAPE, "sodipodi": ns.SODIPODI},
     )
-    svg_path.write_text(
-        etree.tostring(out, encoding="unicode", xml_declaration=False),
-        encoding="utf-8",
-    )
-    return True
 
 
 # ── Layout discovery and inspection ──────────────────────────────────────────

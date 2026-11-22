@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import click
-from lxml import etree as _etree
 from rich import box as rich_box
 from rich.table import Table
 
@@ -22,24 +21,22 @@ from inkflow.cli._common import (
     resolve_targets,
     targets_or_deck_slides,
 )
+from inkflow.cli.op_commands import command_group
 from inkflow.label2id import promote_labels_to_ids
 from inkflow.layout import (
     AssetKind,
-    PreviewLayers,
     are_preview_layers_current,
-    chain_layers,
     create_slide,
     discover_layouts,
     discover_overlays,
     inject_preview_layers,
     layout_zones,
     resolve_chain,
-    resolve_parent_path,
     strip_parent,
 )
 from inkflow.logging import console, logger, report
+from inkflow.ops import parent as parent_ops
 from inkflow.pipeline import resolve_slide_src
-from inkflow.svg import with_namespaces
 from inkflow.svgio import parse_svg_file
 from inkflow.themes import Theme
 
@@ -190,9 +187,7 @@ def label2id(
         sys.exit(1)
 
 
-@main.group()
-def parent() -> None:
-    """Manage slide layout parents."""
+parent = command_group(parent_ops.GROUP)
 
 
 @parent.command("get")
@@ -221,54 +216,6 @@ def parent_get(files: tuple[Path, ...], deck_path: Path) -> None:
         value = root.get(ns.INKFLOW_PARENT)
         shown = value if value is not None else "(no parent)"
         click.echo(f"{target.label}: {shown}" if multi else shown)
-
-
-@parent.command("set")
-@click.argument("file", type=click.Path(path_type=Path))
-@click.argument("parent_str", metavar="PARENT")
-@deck_option
-@no_deck_option
-def parent_set(file: Path, parent_str: str, deck_path: Path, no_deck: bool) -> None:
-    """Set the inkflow:parent of a slide SVG and refresh its layout layers.
-
-    PARENT is a layout name or inkflow:parent string:
-    bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
-    or a relative path.
-    """
-
-    (target,) = resolve_targets([file])
-    svg_path = target.path
-
-    project = load_project_or_none(deck_path, no_deck)
-    project_dir = project.dir if project else None
-    theme = project.theme if project else None
-
-    try:
-        resolve_parent_path(parent_str, svg_path, project_dir, theme)
-    except ValueError as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    root = parse_svg_file(svg_path)
-    old_parent = root.get(ns.INKFLOW_PARENT)
-
-    root = with_namespaces(root, {"inkflow": ns.INKFLOW})
-    root.set(ns.INKFLOW_PARENT, parent_str)
-    svg_path.write_text(
-        _etree.tostring(root, encoding="unicode", xml_declaration=False),
-        encoding="utf-8",
-    )
-
-    if old_parent is not None:
-        report("Set", f"{svg_path.name}: parent {old_parent!r} → {parent_str!r}")
-    else:
-        report("Set", f"{svg_path.name}: parent {parent_str!r}")
-
-    chain = resolve_chain(svg_path, project_dir, theme)
-    if chain:
-        inject_preview_layers(
-            svg_path, PreviewLayers(behind=chain_layers(svg_path, chain))
-        )
-        report("Injected", svg_path.name)
 
 
 @parent.command("strip")
