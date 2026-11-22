@@ -60,3 +60,15 @@ def parse_svg_file(path: Path) -> SvgElement:
 def serialize_svg(root: SvgElement) -> str:
     """Serialize an element tree back to an SVG string."""
     return etree.tostring(root, encoding="unicode")
+
+
+def serialize_svg_for(root: SvgElement, path: Path) -> str:
+    """Serialize ``root`` as the new content of ``path``, keeping its final newline.
+
+    lxml drops the final newline; keeping it spares an unchanged file a rewrite
+    (and a one-line diff).
+    """
+    content = serialize_svg(root)
+    if path.exists() and path.read_bytes().endswith(b"\n"):
+        content += "\n"
+    return content
