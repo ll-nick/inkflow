@@ -80,6 +80,7 @@ commands:
         description: Print the inkflow:parent value of slide SVGs.
         flags:
           -d, --deck=: Path to deck.py (used only when FILES is omitted)
+          --json: Print the result as JSON
         completion:
           flag:
             deck: ["$files([\".py\"])"]
@@ -92,6 +93,7 @@ commands:
           -d, --deck=: Path to deck.py
           --no-deck: Operate without a deck.py
           -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
           --json: Print what changed as JSON
         completion:
           flag:
@@ -103,9 +105,13 @@ commands:
       - name: strip
         description: Remove inkflow:parent and injected layout layers from slide SVGs.
         flags:
-          -y, --yes: Skip confirmation prompt
-          -d, --deck=: Path to deck.py
+          -d, --deck=: Path to deck.py (used only when FILES is omitted)
+          -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
+          --json: Print what changed as JSON
         completion:
+          flag:
+            deck: ["$files([\".py\"])"]
           positionalany:
             - "$files([\".svg\"])"
 
