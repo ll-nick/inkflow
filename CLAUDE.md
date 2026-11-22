@@ -71,7 +71,8 @@ src/
     layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer
                                writing. `AssetKind` (layouts/overlays) selects the searched
                                subdir, so `resolve_parent_path`/`resolve_chain` serve both
-                               namespaces with one grammar. `inject_preview_layers` /
+                               namespaces with one grammar. `inject_preview_layers` (file wrapper
+                               over the pure tree op `with_preview_layers`) /
                                `are_preview_layers_current` take a `PreviewLayers`
                                (`behind` + `overlays` + css), each layer a
                                `PreviewLayer(path, ref)` — refs come from the caller since
@@ -114,11 +115,26 @@ src/
                                absolute path and a canonical ref both ways; `AssetSource`
                                resolves the refs written in one file; `svg_reader` is the
                                composition reader that canonicalises each SVG as it is read
+    ops/              deck edits behind every surface. An op takes a typed request
+                               dataclass + `OpContext` (deck, project dir; both None for
+                               --no-deck) and returns a `ChangeSet` of
+                               `FileEdit(path, before_hash, new_content)` without touching
+                               disk; `ChangeSet.apply` is the only writer (hash check,
+                               staged then atomic rename). `registry.py`: an op module
+                               declares `GROUP = register_group("noun", help)` and decorates
+                               each op with `@register(GROUP, "verb", Request,
+                               deck=DeckUse.X)`; the name `noun.verb` is derived from the
+                               two. `cli/op_commands.py` generates the
+                               click command from it (field without default → argument,
+                               with default → option, bool → flag; plus -n/--dry-run and
+                               --json, an `OpResult` with "api": "v0"). Ops so far: `parent.set`
     cli/              CLI package (entry point inkflow.cli:main). _common.py holds the
                                `main` group, shared options, and the Project/Target helpers;
                                commands are grouped by area: project.py (init, setup-git,
                                completion), present.py (serve, build, export), authoring.py
-                               (clean, label2id, add, parent group, sync, layouts), color.py (colorize,
+                               (clean, label2id, add, parent get/strip, sync, layouts), op_commands.py
+                               (commands generated from the op registry; `command_group` is
+                               the shared noun group hand-written commands attach to), color.py (colorize,
                                palette), deck.py (`deck` group: show), verify.py.
                                Submodules register on `main` by import.
     clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
