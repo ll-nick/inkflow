@@ -68,7 +68,7 @@ src/
     pipeline.py       animation annotation + layout inlining
     content.py        TextBox / Image / Video injection into zone rects, with alignment
                                support; Video emits data-* playback attrs (driven by video.ts)
-    layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer
+    layout.py         layout chain resolution and Inkscape preview layer
                                writing. `AssetKind` (layouts/overlays) selects the searched
                                subdir, so `resolve_parent_path`/`resolve_chain` serve both
                                namespaces with one grammar. `inject_preview_layers` (file wrapper

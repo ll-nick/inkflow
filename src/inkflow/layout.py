@@ -214,26 +214,6 @@ def resolve_chain(
     return chain
 
 
-# ── Layout layer stripping ────────────────────────────────────────────────────
-
-
-def strip_parent(svg_path: Path) -> bool:
-    """Remove inkflow:parent and injected preview layers from svg_path in place.
-
-    Returns True if the file had an inkflow:parent attribute.
-    """
-    root = parse_svg_file(svg_path)
-    had_parent = INKFLOW_PARENT in root.attrib
-    if had_parent:
-        del root.attrib[INKFLOW_PARENT]
-    strip_preview_layers(root)
-    svg_path.write_text(
-        etree.tostring(root, encoding="unicode", xml_declaration=False),
-        encoding="utf-8",
-    )
-    return had_parent
-
-
 # ── Preview layers ────────────────────────────────────────────────────────────
 
 
