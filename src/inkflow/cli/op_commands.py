@@ -1,25 +1,46 @@
 """Click commands generated from the op registry.
 
 A request field without a default becomes a positional argument, one with a
-default a ``--kebab-case`` option (a flag for ``bool``). Every op command also gets
-``--dry-run`` and ``--json``, plus the deck options its `DeckUse` calls for.
+default a ``--kebab-case`` option (a flag for ``bool``); a ``tuple[X, ...]`` field
+is a variadic argument, required unless it defaults to ``()``. Every command gets
+``--json`` and the deck options its `DeckUse` calls for; writes also get
+``--dry-run`` and ``--check``. A read op prints its output's ``render()`` on stdout.
 """
 
 from __future__ import annotations
 
 import json
 import types
+from collections.abc import Callable, Sequence
 from dataclasses import MISSING, Field, fields
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, cast, get_args, get_origin, get_type_hints
+from typing import (
+    TYPE_CHECKING,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 import click
 
-from inkflow.cli._common import Project, deck_option, main, no_deck_option
+from inkflow.cli._common import (
+    Project,
+    deck_option,
+    main,
+    no_deck_option,
+    output_console,
+)
 from inkflow.logging import report
-from inkflow.ops import ChangeSet, DeckUse, OpContext, OpError, OpResult, registered_ops
-from inkflow.ops.registry import FIELD_HELP_KEY, FieldHelp, OpGroup, RegisteredOp
+from inkflow.ops import ChangeSet, DeckUse, OpContext, OpError, OpResult
+from inkflow.ops.registry import (
+    FIELD_HELP_KEY,
+    FieldHelp,
+    OpGroup,
+    RegisteredOp,
+    registered_ops,
+)
 from inkflow.outline import API_VERSION
 
 if TYPE_CHECKING:
@@ -33,7 +54,7 @@ _CLICK_TYPES: dict[type, click.ParamType[object]] = {
     Path: click.Path(path_type=Path),
 }
 
-_RESERVED = frozenset({"deck_path", "no_deck", "dry_run", "as_json"})
+_RESERVED = frozenset({"deck_path", "no_deck", "dry_run", "check", "as_json"})
 
 
 @cache
@@ -54,6 +75,21 @@ def _without_none(annotation: object) -> object:
     return annotation
 
 
+def _variadic_item(annotation: object) -> object | None:
+    """``X`` for ``tuple[X, ...]``, else None."""
+    if get_origin(annotation) is tuple:
+        args = cast(tuple[object, ...], get_args(annotation))
+        if len(args) == 2 and args[1] is Ellipsis:
+            return args[0]
+    return None
+
+
+def _click_type(field: Field[object], base: object) -> click.ParamType[object]:
+    if not isinstance(base, type) or base not in _CLICK_TYPES:
+        raise TypeError(f"request field {field.name!r}: no CLI mapping for {base!r}")
+    return _CLICK_TYPES[base]
+
+
 def _field_param(field: Field[object], annotation: object) -> click.Parameter:
     if field.name in _RESERVED:
         raise TypeError(f"request field {field.name!r} clashes with a common option")
@@ -71,9 +107,18 @@ def _field_param(field: Field[object], annotation: object) -> click.Parameter:
         return click.Option(
             [option, field.name], is_flag=True, default=default, help=help_text
         )
-    if not isinstance(base, type) or base not in _CLICK_TYPES:
-        raise TypeError(f"request field {field.name!r}: no CLI mapping for {base!r}")
-    click_type = _CLICK_TYPES[base]
+    item = _variadic_item(base)
+    if item is not None:
+        if has_default and default != ():
+            raise TypeError(f"request field {field.name!r}: only () can be a default")
+        return click.Argument(
+            [field.name],
+            type=_click_type(field, item),
+            nargs=-1,
+            required=not has_default,
+            metavar=metavar,
+        )
+    click_type = _click_type(field, base)
     if not has_default:
         return click.Argument([field.name], type=click_type, metavar=metavar)
     return click.Option(
@@ -87,11 +132,34 @@ def _field_param(field: Field[object], annotation: object) -> click.Parameter:
 
 def _request_params(request_type: type[DataclassInstance]) -> list[click.Parameter]:
     hints: dict[str, object] = get_type_hints(request_type)
-    return [_field_param(field, hints[field.name]) for field in fields(request_type)]
+    params = [_field_param(field, hints[field.name]) for field in fields(request_type)]
+    variadic = [
+        p.name for p in params if isinstance(p, click.Argument) and p.nargs == -1
+    ]
+    if len(variadic) > 1:
+        raise TypeError(f"{request_type.__name__}: more than one variadic field")
+    return params
 
 
-def _context(op: RegisteredOp, deck_path: Path, no_deck: bool) -> OpContext:
-    if no_deck and op.deck is DeckUse.OPTIONAL:
+def _names_files(op: RegisteredOp, values: dict[str, object]) -> bool:
+    """Whether the request names its files, which spares a SWEEP_ONLY op the deck."""
+    hints: dict[str, object] = get_type_hints(op.request_type)
+    swept = [
+        field.name
+        for field in fields(op.request_type)
+        if _variadic_item(hints[field.name]) is Path
+    ]
+    if len(swept) != 1:
+        raise TypeError(f"{op.name}: SWEEP_ONLY needs exactly one tuple[Path, ...]")
+    return bool(cast(Sequence[Path], values[swept[0]]))
+
+
+def _context(
+    op: RegisteredOp, deck_path: Path, no_deck: bool, values: dict[str, object]
+) -> OpContext:
+    if op.deck is DeckUse.OPTIONAL and no_deck:
+        return OpContext(None, None)
+    if op.deck is DeckUse.SWEEP_ONLY and _names_files(op, values):
         return OpContext(None, None)
     project = Project.load(deck_path)
     return OpContext(project.deck, project.dir)
@@ -104,20 +172,42 @@ def _report(changes: ChangeSet, context: OpContext, *, dry_run: bool) -> None:
     report("Planned" if dry_run else "Applied", changes.summary)
     for edit in changes.edits:
         verb = "Would write" if dry_run else "Wrote"
-        report(verb, context.label(edit.path), style="yellow" if dry_run else "dim")
+        label = context.label(edit.path)
+        shown = f"{label}: {edit.detail}" if edit.detail else label
+        report(verb, shown, style="yellow" if dry_run else "dim")
 
 
-def _command(op: RegisteredOp) -> click.Command:
+def _json_option(text: str) -> Callable[[click.Command], click.Command]:
+    return click.option(
+        "--json",
+        "as_json",
+        is_flag=True,
+        help=f"Print {text} as JSON (API {API_VERSION}) on stdout.",
+    )
+
+
+def _with_deck_options(op: RegisteredOp, command: click.Command) -> click.Command:
+    command = deck_option(command)
+    if op.deck is DeckUse.OPTIONAL:
+        command = no_deck_option(command)
+    return command
+
+
+def _write_command(op: RegisteredOp) -> click.Command:
     def callback(
         deck_path: Path,
         dry_run: bool,
+        check: bool,
         as_json: bool,
         no_deck: bool = False,
         **values: object,
     ) -> None:
-        context = _context(op, deck_path, no_deck)
+        dry_run = dry_run or check
+        context = _context(op, deck_path, no_deck, values)
         try:
             changes = op.run_with(values, context)
+            if not isinstance(changes, ChangeSet):
+                raise TypeError(f"write op {op.name!r} returned {changes!r}")
             if not dry_run:
                 changes.apply()
         except OpError as exc:
@@ -127,6 +217,8 @@ def _command(op: RegisteredOp) -> click.Command:
             click.echo(json.dumps(result.to_json(), indent=2))
         else:
             _report(changes, context, dry_run=dry_run)
+        if check and changes.changed:
+            raise click.exceptions.Exit(1)
 
     command = click.Command(
         op.verb,
@@ -134,9 +226,7 @@ def _command(op: RegisteredOp) -> click.Command:
         params=_request_params(op.request_type),
         help=op.help,
     )
-    command = deck_option(command)
-    if op.deck is DeckUse.OPTIONAL:
-        command = no_deck_option(command)
+    command = _with_deck_options(op, command)
     command = click.option(
         "-n",
         "--dry-run",
@@ -144,13 +234,44 @@ def _command(op: RegisteredOp) -> click.Command:
         is_flag=True,
         help="Show what would change without writing.",
     )(command)
-    return click.option(
-        "--json",
-        "as_json",
+    command = click.option(
+        "--check",
+        "check",
         is_flag=True,
-        help=f"Print what changed as JSON (API {API_VERSION}) on stdout.",
+        help="Exit 1 if anything would change, without writing (implies --dry-run).",
     )(command)
+    return _json_option("what changed")(command)
+
+
+def _read_command(op: RegisteredOp) -> click.Command:
+    def callback(
+        deck_path: Path, as_json: bool, no_deck: bool = False, **values: object
+    ) -> None:
+        context = _context(op, deck_path, no_deck, values)
+        try:
+            output = op.run_with(values, context)
+        except OpError as exc:
+            raise click.ClickException(str(exc)) from exc
+        if isinstance(output, ChangeSet):
+            raise TypeError(f"read op {op.name!r} returned a ChangeSet")
+        if as_json:
+            payload = {"api": API_VERSION, "op": op.name, **output.to_json()}
+            click.echo(json.dumps(payload, indent=2))
+            return
+        output_console.print(
+            output.render(), markup=False, highlight=False, soft_wrap=True
+        )
+
+    command = click.Command(
+        op.verb,
+        callback=callback,
+        params=_request_params(op.request_type),
+        help=op.help,
+    )
+    command = _with_deck_options(op, command)
+    return _json_option("the result")(command)
 
 
 for _op in registered_ops():
-    command_group(_op.group).add_command(_command(_op))
+    build_command = _write_command if _op.writes else _read_command
+    command_group(_op.group).add_command(build_command(_op))

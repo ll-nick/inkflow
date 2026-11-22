@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import click
+from rich.console import Console
 
 from inkflow import logging as inkflow_logging
 from inkflow import sync
@@ -14,6 +15,10 @@ from inkflow.server import load_deck
 from inkflow.themes import Theme
 
 _level_choice = click.Choice(inkflow_logging.LEVEL_NAMES)
+
+# What a command exists to produce (a read op's rendering), tables included, so it
+# can be piped and redirected; status lines and diagnostics use the stderr console.
+output_console = Console()
 
 
 @click.group()
