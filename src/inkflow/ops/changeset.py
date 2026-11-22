@@ -44,6 +44,8 @@ class FileEdit:
     path: Path
     before_hash: str | None
     new_content: str
+    detail: str = ""
+    """What changes in this file, for ops that touch several (empty: say nothing)."""
 
     @property
     def after_hash(self) -> str:
@@ -62,16 +64,22 @@ class ChangeSet:
     edits: tuple[FileEdit, ...] = ()
 
     @classmethod
-    def from_contents(cls, summary: str, contents: Mapping[Path, str]) -> ChangeSet:
+    def from_contents(
+        cls,
+        summary: str,
+        contents: Mapping[Path, str],
+        details: Mapping[Path, str] | None = None,
+    ) -> ChangeSet:
         """Pin each file's current hash, dropping files whose content would not change.
 
         Dropping them keeps a no-op from rewriting files (and from bumping their
         mtime, which a running server would rebuild on).
         """
+        details = details or {}
         edits: list[FileEdit] = []
         for path, content in contents.items():
             before = file_hash(path)
-            edit = FileEdit(path, before, content)
+            edit = FileEdit(path, before, content, details.get(path, ""))
             if before != edit.after_hash:
                 edits.append(edit)
         return cls(summary, tuple(edits))
