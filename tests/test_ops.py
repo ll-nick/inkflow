@@ -153,13 +153,62 @@ class TestParentSet:
                 f'<svg xmlns:inkflow="{ns.INKFLOW}" inkflow:parent="./s.svg" ',
             ),
         )
-        with pytest.raises(OpError, match="own ancestor"):
+        with pytest.raises(OpError, match="Circular"):
             parent.set(ParentSetRequest(slide, "./layout.svg"), _NO_DECK)
 
     def test_missing_file(self, tmp_path: Path) -> None:
         request = ParentSetRequest(tmp_path / "ghost.svg", "builtin:base")
         with pytest.raises(OpError, match="file not found"):
             parent.set(request, _NO_DECK)
+
+
+_OVERLAY_DECK = textwrap.dedent("""\
+    from inkflow import Deck, Overlay, Slide
+
+    def main():
+        return Deck(slides=[Slide("slides/01.svg")], overlays=[Overlay("footer")])
+""")
+
+_FOOTER_SVG = textwrap.dedent("""\
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+      <text id="footer" x="80" y="1050">chrome</text>
+    </svg>
+""")
+
+
+class TestParentSetKeepsSync:
+    """`parent set` leaves a file as `sync` would, overlays and styles included."""
+
+    @pytest.fixture
+    def runner(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CliRunner:
+        monkeypatch.chdir(tmp_path)
+        _write(tmp_path / "deck.py", _OVERLAY_DECK)
+        _write(tmp_path / "overlays" / "footer.svg", _FOOTER_SVG)
+        _write(tmp_path / "slides" / "01.svg")
+        runner = CliRunner()
+        set_parent = ["parent", "set", "slides/01.svg", "builtin:content"]
+        assert runner.invoke(main, set_parent).exit_code == 0
+        assert runner.invoke(main, ["sync"]).exit_code == 0
+        return runner
+
+    def test_same_parent_writes_nothing(self, runner: CliRunner) -> None:
+        before = Path("slides/01.svg").read_bytes()
+        result = runner.invoke(
+            main, ["parent", "set", "slides/01.svg", "builtin:content"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Unchanged" in result.output
+        assert Path("slides/01.svg").read_bytes() == before
+
+    def test_new_parent_stays_in_sync(self, runner: CliRunner) -> None:
+        result = runner.invoke(
+            main, ["parent", "set", "slides/01.svg", "builtin:title"]
+        )
+        assert result.exit_code == 0, result.output
+        assert 'inkflow:overlay-src="footer"' in Path("slides/01.svg").read_text(
+            encoding="utf-8"
+        )
+        assert runner.invoke(main, ["sync", "--check"]).exit_code == 0
 
 
 class TestParentSetCli:

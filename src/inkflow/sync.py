@@ -35,7 +35,7 @@ from inkflow.manifest import Deck, Slide
 from inkflow.ns import INKFLOW_PREVIEW, INKFLOW_PREVIEW_OVERLAYS
 from inkflow.overlay import Overlay
 from inkflow.pipeline import resolve_overlay_chains, resolve_slide_src
-from inkflow.svgio import parse_svg_file
+from inkflow.svgio import SvgElement, parse_svg_file
 
 if TYPE_CHECKING:
     from inkflow.themes import Theme
@@ -161,9 +161,9 @@ def _overlay_layers(
     ]
 
 
-def _attribute_overlays(path: Path) -> list[Overlay] | None:
+def _attribute_overlays(root: SvgElement) -> list[Overlay] | None:
     """Rule 1: the ``inkflow:preview-overlays`` attribute, or None when absent."""
-    declared = parse_svg_file(path).get(INKFLOW_PREVIEW_OVERLAYS)
+    declared = root.get(INKFLOW_PREVIEW_OVERLAYS)
     if declared is None:
         return None
     return [Overlay(name) for name in declared.split()]
@@ -192,7 +192,7 @@ def _unanimous_overlays(
 
 
 def resolve_overlay_preview(
-    path: Path, ctx: PreviewContext
+    path: Path, ctx: PreviewContext, root: SvgElement | None = None
 ) -> tuple[list[list[PreviewLayer]], PreviewRule]:
     """Decide which overlays ``path`` previews, and which rule decided it.
 
@@ -201,7 +201,7 @@ def resolve_overlay_preview(
     how much room to leave, and a preview showing chrome a slide will not have makes
     you leave extra room, while the opposite causes overlap.
     """
-    declared = _attribute_overlays(path)
+    declared = _attribute_overlays(root if root is not None else parse_svg_file(path))
     if declared is not None:
         return _overlay_layers(declared, path.parent, ctx), PreviewRule.ATTRIBUTE
     if ctx.deck is None or ctx.project_dir is None:
@@ -219,7 +219,9 @@ def resolve_overlay_preview(
     )
 
 
-def _backdrop_layers(path: Path, ctx: PreviewContext) -> list[PreviewLayer]:
+def _backdrop_layers(
+    path: Path, ctx: PreviewContext, root: SvgElement
+) -> list[PreviewLayer]:
     """What ``inkflow:preview`` names, drawn behind an overlay file being authored.
 
     Purely a reference so the overlay is not drawn on a checkerboard. Naming a
@@ -231,7 +233,7 @@ def _backdrop_layers(path: Path, ctx: PreviewContext) -> list[PreviewLayer]:
     theme's ``base`` would preview chrome against a canvas of the wrong size in a
     background colour the deck never paints.
     """
-    ref = parse_svg_file(path).get(INKFLOW_PREVIEW)
+    ref = root.get(INKFLOW_PREVIEW)
     if not ref:
         return []
     try:
@@ -259,21 +261,27 @@ class PreviewPlan(NamedTuple):
         return not self.layers.behind and not self.layers.overlays
 
 
-def plan_preview(path: Path, ctx: PreviewContext) -> PreviewPlan:
+def plan_preview(
+    path: Path, ctx: PreviewContext, root: SvgElement | None = None
+) -> PreviewPlan:
     """Resolve everything to inject into one file, and the overlay rule that fired.
 
     The single answer to "what does this file preview", shared by the ``sync``
-    write path, ``sync --check`` and ``verify``, so the three cannot disagree about
-    whether a file is up to date.
+    write path, ``sync --check``, ``verify`` and the ops that edit a file's
+    attributes, so none of them can disagree about whether a file is up to date.
+    ``root`` is the file's content when it differs from disk (an edit not yet
+    written); its attributes then decide the plan.
     """
+    if root is None:
+        root = parse_svg_file(path)
     is_overlay = is_overlay_file(path, ctx)
     kind = AssetKind.OVERLAY if is_overlay else AssetKind.LAYOUT
-    chain = resolve_chain(path, ctx.project_dir, ctx.theme, kind)
-    behind = chain_layers(path, chain)
-    backdrop_layers = _backdrop_layers(path, ctx) if is_overlay else []
+    chain = resolve_chain(path, ctx.project_dir, ctx.theme, kind, root=root)
+    behind = chain_layers(path, chain, root=root)
+    backdrop_layers = _backdrop_layers(path, ctx, root) if is_overlay else []
     behind = [*backdrop_layers, *behind]
 
-    overlays, rule = resolve_overlay_preview(path, ctx)
+    overlays, rule = resolve_overlay_preview(path, ctx, root)
     return PreviewPlan(
         layers=PreviewLayers(behind, overlays, ctx.preview_css),
         rule=rule,

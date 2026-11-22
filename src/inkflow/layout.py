@@ -180,6 +180,8 @@ def resolve_chain(
     project_root: Path | None,
     theme: Theme | None,
     kind: AssetKind = AssetKind.LAYOUT,
+    *,
+    root: SvgElement | None = None,
 ) -> list[Path]:
     """Return the ancestor chain for svg_path, root-first, excluding svg_path itself.
 
@@ -188,16 +190,17 @@ def resolve_chain(
     (project_root for local:, theme for theme:) that is not available.
 
     ``kind`` is the namespace bare-name parents resolve in: an overlay inherits from
-    another overlay, never from a layout.
+    another overlay, never from a layout. ``root`` is svg_path's content when it
+    differs from the file on disk (an edit not yet written).
     """
     chain: list[Path] = []
     current = svg_path.resolve()
     visited: set[Path] = {current}
+    parent_str = (
+        root.get(INKFLOW_PARENT) if root is not None else _read_parent_attr(current)
+    )
 
-    while True:
-        parent_str = _read_parent_attr(current)
-        if parent_str is None:
-            break
+    while parent_str is not None:
         parent_path = resolve_parent_path(
             parent_str, current.parent, project_root, theme, kind
         )
@@ -206,6 +209,7 @@ def resolve_chain(
         visited.add(parent_path)
         chain.insert(0, parent_path)
         current = parent_path
+        parent_str = _read_parent_attr(current)
 
     return chain
 
@@ -292,18 +296,22 @@ def _layer_hashes(layers: Sequence[PreviewLayer]) -> dict[str, str]:
     return hashes
 
 
-def chain_layers(svg_path: Path, chain: list[Path]) -> list[PreviewLayer]:
+def chain_layers(
+    svg_path: Path, chain: list[Path], *, root: SvgElement | None = None
+) -> list[PreviewLayer]:
     """Pair each ancestor with the inkflow:parent value that named it.
 
     The ref for chain[i] is the inkflow:parent value on its child — chain[i+1]
-    for all but the last entry, svg_path for the last.
+    for all but the last entry, svg_path for the last. ``root`` is svg_path's
+    content when it differs from the file on disk.
     """
     if not chain:
         return []
-    children = [*chain[1:], svg_path]
+    refs = [_read_parent_attr(child) for child in chain[1:]]
+    own = root.get(INKFLOW_PARENT) if root is not None else _read_parent_attr(svg_path)
     return [
-        PreviewLayer(path, _read_parent_attr(child) or "")
-        for path, child in zip(chain, children, strict=True)
+        PreviewLayer(path, ref or "")
+        for path, ref in zip(chain, [*refs, own], strict=True)
     ]
 
 
