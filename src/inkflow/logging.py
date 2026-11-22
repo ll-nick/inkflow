@@ -13,8 +13,8 @@ baseline.
 Records from the libraries inkflow depends on are folded into the same sinks, so a
 dependency cannot print past them (see ``_adopt_foreign_records``).
 
-Diagnostics go to stderr; machine-readable command output stays on stdout and is not
-routed here.
+Diagnostics go to stderr; what a command exists to produce (its result, in human or
+JSON form) stays on stdout and is not routed here.
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ logger.propagate = False
 # handler. It does nothing; the managed handlers below do the real work.
 logger.addHandler(logging.NullHandler())
 
-# The single shared Rich console for all human-facing CLI output. On stderr so that
-# stdout is reserved for machine-consumable command output.
+# The shared Rich console for status lines and diagnostics: how a command went, not
+# what it produced. On stderr so that stdout carries only the command's result.
 console = Console(stderr=True)
 
 # Width of the right-aligned status verb column (cargo-style).

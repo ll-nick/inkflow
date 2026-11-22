@@ -68,7 +68,7 @@ src/
     pipeline.py       animation annotation + layout inlining
     content.py        TextBox / Image / Video injection into zone rects, with alignment
                                support; Video emits data-* playback attrs (driven by video.ts)
-    layout.py         parent inject/set/strip: layout chain resolution and Inkscape layer
+    layout.py         layout chain resolution and Inkscape preview layer
                                writing. `AssetKind` (layouts/overlays) selects the searched
                                subdir, so `resolve_parent_path`/`resolve_chain` serve both
                                namespaces with one grammar. `inject_preview_layers` (file wrapper
@@ -115,24 +115,42 @@ src/
                                absolute path and a canonical ref both ways; `AssetSource`
                                resolves the refs written in one file; `svg_reader` is the
                                composition reader that canonicalises each SVG as it is read
-    ops/              deck edits behind every surface. An op takes a typed request
-                               dataclass + `OpContext` (deck, project dir; both None for
-                               --no-deck) and returns a `ChangeSet` of
-                               `FileEdit(path, before_hash, new_content)` without touching
-                               disk; `ChangeSet.apply` is the only writer (hash check,
-                               staged then atomic rename). `registry.py`: an op module
-                               declares `GROUP = register_group("noun", help)` and decorates
-                               each op with `@register(GROUP, "verb", Request,
-                               deck=DeckUse.X)`; the name `noun.verb` is derived from the
-                               two. `cli/op_commands.py` generates the
-                               click command from it (field without default → argument,
-                               with default → option, bool → flag; plus -n/--dry-run and
-                               --json, an `OpResult` with "api": "v0"). Ops so far: `parent.set`
+    ops/              deck edits and reads behind every surface. An op takes a typed
+                               request dataclass + `OpContext` (deck, project dir; both None
+                               for --no-deck). A write op returns a `ChangeSet` of
+                               `FileEdit(path, before_hash, new_content, detail)` without
+                               touching disk; `ChangeSet.apply` is the only writer (hash
+                               check, staged then atomic rename). An SVG op builds it with
+                               `ChangeSet.from_svgs`, which drops a file whose document is
+                               unchanged (canonical XML, `svgio.svg_matches_file`): no
+                               serializer reproduces an editor's markup, so comparing text
+                               would rewrite files a no-op never touched. A read op returns an
+                               `OpOutput`: a model with `to_json()` and `render()` (the human
+                               form, returned as a Rich renderable, never printed).
+                               `registry.py`: an op module declares
+                               `GROUP = register_group("noun", help)` and decorates each op
+                               with `@register(GROUP, "verb", Request, Output,
+                               deck=DeckUse.X)`; `Output` is `ChangeSet` for a write or the
+                               read op's model (`Op.writes`), passed explicitly since a
+                               return annotation need not resolve at runtime. The name
+                               `noun.verb` is derived from group + verb.
+                               `DeckUse.SWEEP_ONLY` loads the deck only when no files are
+                               named; `OpContext.target_files` is the shared "no FILES
+                               sweeps the deck" rule (`sync.project_files`).
+                               `cli/op_commands.py` generates the click command (field
+                               without default → argument, with default → option, bool →
+                               flag, `tuple[X, ...]` → variadic argument; writes add
+                               -n/--dry-run, --check, and --json emitting an `OpResult` with
+                               "api": "v0"; a read op prints `render()` through
+                               `cli._common.output_console`, or `{api, op, ...}` with
+                               --json). A command's result goes to stdout in either form;
+                               only status lines and diagnostics use the stderr `console`.
+                               Ops so far: `parent.set`, `parent.strip`, `parent.get`
     cli/              CLI package (entry point inkflow.cli:main). _common.py holds the
                                `main` group, shared options, and the Project/Target helpers;
                                commands are grouped by area: project.py (init, setup-git,
                                completion), present.py (serve, build, export), authoring.py
-                               (clean, label2id, add, parent get/strip, sync, layouts), op_commands.py
+                               (clean, label2id, add, sync, layouts), op_commands.py
                                (commands generated from the op registry; `command_group` is
                                the shared noun group hand-written commands attach to), color.py (colorize,
                                palette), deck.py (`deck` group: show), verify.py.

@@ -123,6 +123,23 @@ def overlay_files(
     return frozenset(files)
 
 
+def project_files(deck_obj: Deck, project_dir: Path, theme: Theme | None) -> list[Path]:
+    """Every project-local SVG the deck uses: what a file command sweeps by default.
+
+    Each slide's base SVG and its layout ancestors, then the project's overlay files
+    (which no slide *is* backed by, yet still want a backdrop and preview styles).
+    Built-in and theme layouts, and anything referenced by a path outside the
+    project, are left out: they are not the project's to rewrite unless named.
+    """
+    backing = slides_by_file(deck_obj, project_dir, theme)
+    overlays = overlay_files(deck_obj, project_dir, theme)
+    found: dict[Path, None] = {}
+    for resolved in [*backing, *sorted(overlays)]:
+        if resolved.is_relative_to(project_dir):
+            found[resolved] = None
+    return list(found)
+
+
 def build_context(
     deck_obj: Deck | None,
     project_dir: Path | None,

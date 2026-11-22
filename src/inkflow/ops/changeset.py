@@ -10,6 +10,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from inkflow.svgio import SvgElement, serialize_svg_for, svg_matches_file
+
 __all__ = ["ChangeSet", "ConflictError", "FileEdit", "OpError", "file_hash"]
 
 
@@ -44,6 +46,8 @@ class FileEdit:
     path: Path
     before_hash: str | None
     new_content: str
+    detail: str = ""
+    """What changes in this file, for ops that touch several (empty: say nothing)."""
 
     @property
     def after_hash(self) -> str:
@@ -62,19 +66,44 @@ class ChangeSet:
     edits: tuple[FileEdit, ...] = ()
 
     @classmethod
-    def from_contents(cls, summary: str, contents: Mapping[Path, str]) -> ChangeSet:
+    def from_contents(
+        cls,
+        summary: str,
+        contents: Mapping[Path, str],
+        details: Mapping[Path, str] | None = None,
+    ) -> ChangeSet:
         """Pin each file's current hash, dropping files whose content would not change.
 
         Dropping them keeps a no-op from rewriting files (and from bumping their
         mtime, which a running server would rebuild on).
         """
+        details = details or {}
         edits: list[FileEdit] = []
         for path, content in contents.items():
             before = file_hash(path)
-            edit = FileEdit(path, before, content)
+            edit = FileEdit(path, before, content, details.get(path, ""))
             if before != edit.after_hash:
                 edits.append(edit)
         return cls(summary, tuple(edits))
+
+    @classmethod
+    def from_svgs(
+        cls,
+        summary: str,
+        documents: Mapping[Path, SvgElement],
+        details: Mapping[Path, str] | None = None,
+    ) -> ChangeSet:
+        """Like `from_contents` for SVG trees, dropping each one already on disk.
+
+        Whether a file changes is decided on the document, not on its serialized
+        text (see ``svg_matches_file``), so a no-op never reformats a file.
+        """
+        changed = {
+            path: serialize_svg_for(root, path)
+            for path, root in documents.items()
+            if not svg_matches_file(root, path)
+        }
+        return cls.from_contents(summary, changed, details)
 
     @property
     def changed(self) -> bool:

@@ -250,7 +250,7 @@ class TestParentGet:
     def test_single_file_bare_value(self, runner: CliRunner) -> None:
         result = runner.invoke(main, ["parent", "get", "slides/01.svg"])
         assert result.exit_code == 0
-        assert result.output.strip() == "(no parent)"
+        assert result.output.strip() == "slides/01.svg: (no parent)"
 
     @pytest.mark.usefixtures("project")
     def test_multiple_files_prefixed(self, runner: CliRunner) -> None:
@@ -456,7 +456,7 @@ class TestParentMutation:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
-        result = runner.invoke(main, ["parent", "strip", "-y", "s.svg"])
+        result = runner.invoke(main, ["parent", "strip", "s.svg"])
         assert result.exit_code == 0
         assert "inkflow:parent" not in Path("s.svg").read_text(encoding="utf-8")
 

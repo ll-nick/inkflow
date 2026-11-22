@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import click
+from rich.console import Console
 
 from inkflow import logging as inkflow_logging
 from inkflow import sync
@@ -14,6 +15,10 @@ from inkflow.server import load_deck
 from inkflow.themes import Theme
 
 _level_choice = click.Choice(inkflow_logging.LEVEL_NAMES)
+
+# What a command exists to produce (a read op's rendering), tables included, so it
+# can be piped and redirected; status lines and diagnostics use the stderr console.
+output_console = Console()
 
 
 @click.group()
@@ -119,27 +124,12 @@ class Project:
         return self.deck.theme
 
     def slide_targets(self) -> list[Target]:
-        """Every project-local SVG the deck resolves to, deduplicated.
-
-        For each slide this collects its base SVG plus every ancestor in its layout
-        chain, then adds the project's overlay files (which no slide *is* backed by,
-        yet still want a backdrop and preview styles), and keeps only files inside
-        the project directory. Built-in and theme layouts, and anything referenced by
-        a path outside the project, are left out of the default sweep — name them
-        explicitly to touch them.
-        """
+        """Every project-local SVG the deck uses (see ``sync.project_files``)."""
         try:
-            backing = sync.slides_by_file(self.deck, self.dir, self.theme)
-            overlays = sync.overlay_files(self.deck, self.dir, self.theme)
+            paths = sync.project_files(self.deck, self.dir, self.theme)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
-
-        seen: dict[Path, Target] = {}
-        for resolved in [*backing, *sorted(overlays)]:
-            if resolved in seen or not resolved.is_relative_to(self.dir):
-                continue
-            seen[resolved] = Target(resolved, resolved.relative_to(self.dir).as_posix())
-        return list(seen.values())
+        return [Target(path, path.relative_to(self.dir).as_posix()) for path in paths]
 
     def preview_context(self, dark_mode: bool) -> sync.PreviewContext:
         """The per-run data every preview plan for this project derives from."""

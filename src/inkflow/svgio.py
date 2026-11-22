@@ -60,3 +60,28 @@ def parse_svg_file(path: Path) -> SvgElement:
 def serialize_svg(root: SvgElement) -> str:
     """Serialize an element tree back to an SVG string."""
     return etree.tostring(root, encoding="unicode")
+
+
+def _canonical(root: SvgElement) -> bytes:
+    return etree.tostring(root, method="c14n2", with_comments=True)
+
+
+def svg_matches_file(root: SvgElement, path: Path) -> bool:
+    """Whether ``root`` is the document already in ``path``, up to how it is written.
+
+    Serializing never reproduces an editor's markup exactly (attribute quoting and
+    line breaks, ``<g></g>`` against ``<g/>``), so comparing text would report an
+    edit that changes nothing as a rewrite of the whole file.
+    """
+    return path.exists() and _canonical(root) == _canonical(parse_svg_file(path))
+
+
+def serialize_svg_for(root: SvgElement, path: Path) -> str:
+    """Serialize ``root`` as the new content of ``path``, keeping its final newline.
+
+    lxml drops the final newline; keeping it spares an edit a diff on the last line.
+    """
+    content = serialize_svg(root)
+    if path.exists() and path.read_bytes().endswith(b"\n"):
+        content += "\n"
+    return content

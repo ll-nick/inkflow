@@ -8,7 +8,7 @@ import click
 from rich import box as rich_box
 from rich.table import Table
 
-from inkflow import ns, sync
+from inkflow import sync
 from inkflow.clean import clean_inkscape_svg
 from inkflow.cli._common import (
     Project,
@@ -21,7 +21,6 @@ from inkflow.cli._common import (
     resolve_targets,
     targets_or_deck_slides,
 )
-from inkflow.cli.op_commands import command_group
 from inkflow.label2id import promote_labels_to_ids
 from inkflow.layout import (
     AssetKind,
@@ -32,12 +31,8 @@ from inkflow.layout import (
     inject_preview_layers,
     layout_zones,
     resolve_chain,
-    strip_parent,
 )
 from inkflow.logging import console, logger, report
-from inkflow.ops import parent as parent_ops
-from inkflow.pipeline import resolve_slide_src
-from inkflow.svgio import parse_svg_file
 from inkflow.themes import Theme
 
 
@@ -185,68 +180,6 @@ def label2id(
 
     if errors or (check and dirty):
         sys.exit(1)
-
-
-parent = command_group(parent_ops.GROUP)
-
-
-@parent.command("get")
-@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
-@deck_option
-def parent_get(files: tuple[Path, ...], deck_path: Path) -> None:
-    """Print the inkflow:parent value of slide SVGs.
-
-    With FILES, prints each file's parent (a bare value for a single file, else
-    one 'file: parent' line each). With FILES omitted, lists every slide in the
-    deck alongside its parent.
-    """
-    if not files:
-        project = Project.load(deck_path)
-        for slide in project.deck.slides:
-            svg_path = resolve_slide_src(slide.src, project.dir, project.theme)
-            root = parse_svg_file(svg_path)
-            value = root.get(ns.INKFLOW_PARENT) or "(no parent)"
-            click.echo(f"{slide.src!s:<45} {value}")
-        return
-
-    targets = resolve_targets(files)
-    multi = len(targets) > 1
-    for target in targets:
-        root = parse_svg_file(target.path)
-        value = root.get(ns.INKFLOW_PARENT)
-        shown = value if value is not None else "(no parent)"
-        click.echo(f"{target.label}: {shown}" if multi else shown)
-
-
-@parent.command("strip")
-@click.argument("files", nargs=-1, type=click.Path(path_type=Path))
-@click.option(
-    "-y", "--yes", "confirmed", is_flag=True, help="Skip confirmation prompt."
-)
-@deck_option
-def parent_strip(files: tuple[Path, ...], confirmed: bool, deck_path: Path) -> None:
-    """Remove inkflow:parent and injected layout layers from slide SVG(s).
-
-    If FILES is omitted, strips every project-local SVG the deck uses
-    (each slide and its local layout ancestors).
-    """
-    if files:
-        targets = resolve_targets(files)
-    else:
-        targets = Project.load(deck_path).slide_targets()
-
-    if not confirmed:
-        n = len(targets)
-        click.confirm(
-            f"Remove inkflow:parent and injected layers from {n} file(s)?",
-            abort=True,
-        )
-    for target in targets:
-        had_parent = strip_parent(target.path)
-        if had_parent:
-            report("Stripped", target.label)
-        else:
-            report("No parent", target.label, style="dim")
 
 
 @main.command("add")

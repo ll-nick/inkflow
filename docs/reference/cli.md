@@ -12,7 +12,8 @@ for the top-level list, or `inkflow COMMAND --help` for any single command.
 ## Output and diagnostics
 
 Status lines, warnings, and errors print to stderr; machine-readable output (the
-`palette` and `completion` scripts, `parent get` values, and `clean --stdout`)
+`palette` and `completion` scripts, what read commands like `parent get` report,
+`--json` reports, and `clean --stdout`)
 stays on stdout so it can be redirected cleanly.
 
 Diagnostics flow through three independent sinks, each with its own level

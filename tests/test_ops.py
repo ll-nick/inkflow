@@ -16,10 +16,20 @@ from click.testing import CliRunner
 from inkflow import ns
 from inkflow.cli import main
 from inkflow.cli.op_commands import _request_params
-from inkflow.ops import ChangeSet, ConflictError, OpContext, OpError, parent
+from inkflow.ops import ChangeSet, ConflictError, DeckUse, OpContext, OpError, parent
 from inkflow.ops.changeset import file_hash
-from inkflow.ops.parent import ParentSetRequest
-from inkflow.ops.registry import described
+from inkflow.ops.parent import (
+    FileParent,
+    ParentGetRequest,
+    ParentSetRequest,
+    ParentStripRequest,
+)
+from inkflow.ops.registry import (
+    described,
+    register,
+    register_group,
+    registered_ops,
+)
 from inkflow.svgio import parse_svg_file
 
 _SLIDE_SVG = textwrap.dedent("""\
@@ -28,13 +38,37 @@ _SLIDE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+_INKSCAPE_PROLOG = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+    "<!-- Created with Inkscape (http://www.inkscape.org/) -->\n\n"
+)
+# _SLIDE_SVG as Inkscape saves it: declaration, comment, its own attribute layout.
+_INKSCAPE_SLIDE_SVG = _INKSCAPE_PROLOG + textwrap.dedent("""\
+    <svg
+       xmlns="http://www.w3.org/2000/svg"
+       viewBox='0 0 1920 1080'>
+      <rect
+         id="box"
+         x="0"
+         y="0"
+         width="10"
+         height="10" />
+    </svg>
+""")
+
 _NO_DECK = OpContext(None, None)
+
+
+def _write_inkscape(path: Path, newline: str = "\n") -> Path:
+    path.write_bytes(_INKSCAPE_SLIDE_SVG.replace("\n", newline).encode())
+    return path
 
 
 class _EditJson(TypedDict):
     path: str
     before_hash: str | None
     after_hash: str
+    detail: str
 
 
 class _ResultJson(TypedDict):
@@ -43,6 +77,17 @@ class _ResultJson(TypedDict):
     applied: bool
     summary: str
     edits: list[_EditJson]
+
+
+class _FileParentJson(TypedDict):
+    path: str
+    parent: str | None
+
+
+class _ParentGetJson(TypedDict):
+    api: str
+    op: str
+    files: list[_FileParentJson]
 
 
 def _write(path: Path, content: str = _SLIDE_SVG) -> Path:
@@ -130,6 +175,21 @@ class TestParentSet:
     def test_same_parent_again_is_a_no_op(self, tmp_path: Path) -> None:
         slide = _write(tmp_path / "s.svg")
         parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK).apply()
+        again = parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK)
+        assert not again.changed
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    def test_same_parent_again_on_inkscape_file_is_a_no_op(
+        self, tmp_path: Path, newline: str
+    ) -> None:
+        slide = _write(tmp_path / "s.svg")
+        parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK).apply()
+        # Saved again by Inkscape: same document, its own markup.
+        text = slide.read_text(encoding="utf-8")
+        resaved = _INKSCAPE_PROLOG + text.replace("/>", " />").replace(
+            " id=", "\n   id="
+        )
+        slide.write_bytes(resaved.replace("\n", newline).encode())
         again = parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK)
         assert not again.changed
 
@@ -247,6 +307,165 @@ class TestParentSetCli:
         assert slide.read_text(encoding="utf-8") == _SLIDE_SVG
 
 
+def _parented(path: Path, value: str = "builtin:content") -> Path:
+    _write(path)
+    parent.set(ParentSetRequest(path, value), _NO_DECK).apply()
+    return path
+
+
+class TestParentStrip:
+    def test_removes_parent_and_layers(self, tmp_path: Path) -> None:
+        slide = _parented(tmp_path / "s.svg")
+        changes = parent.strip(ParentStripRequest((slide,)), _NO_DECK)
+        (edit,) = changes.edits
+        assert edit.detail == "parent 'builtin:content' removed"
+        changes.apply()
+        text = slide.read_text(encoding="utf-8")
+        assert "inkflow:parent" not in text
+        assert "inkflow:layout-src" not in text
+        assert text.endswith("\n")
+
+    def test_plain_file_is_left_alone(self, tmp_path: Path) -> None:
+        slide = _write(tmp_path / "s.svg")
+        changes = parent.strip(ParentStripRequest((slide,)), _NO_DECK)
+        assert not changes.changed
+        assert changes.summary == "nothing to strip in 1 file(s)"
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    def test_inkscape_file_without_parent_is_left_alone(
+        self, tmp_path: Path, newline: str
+    ) -> None:
+        slide = _write_inkscape(tmp_path / "s.svg", newline)
+        assert not parent.strip(ParentStripRequest((slide,)), _NO_DECK).changed
+
+    def test_reports_only_files_that_change(self, tmp_path: Path) -> None:
+        plain = _write(tmp_path / "plain.svg")
+        slide = _parented(tmp_path / "s.svg")
+        changes = parent.strip(ParentStripRequest((plain, slide)), _NO_DECK)
+        assert [edit.path for edit in changes.edits] == [slide]
+        assert changes.summary == "stripped 1 of 2 file(s)"
+
+    def test_missing_file_aborts_everything(self, tmp_path: Path) -> None:
+        slide = _parented(tmp_path / "s.svg")
+        request = ParentStripRequest((slide, tmp_path / "ghost.svg"))
+        with pytest.raises(OpError, match="file not found"):
+            parent.strip(request, _NO_DECK)
+
+    def test_no_files_without_a_deck(self) -> None:
+        with pytest.raises(OpError, match="no deck to sweep"):
+            parent.strip(ParentStripRequest(), _NO_DECK)
+
+
+class TestParentGet:
+    def test_reports_each_file(self, tmp_path: Path) -> None:
+        plain = _write(tmp_path / "plain.svg")
+        slide = _parented(tmp_path / "s.svg")
+        result = parent.get(ParentGetRequest((plain, slide)), _NO_DECK)
+        assert result.files == [
+            FileParent(plain.as_posix(), None),
+            FileParent(slide.as_posix(), "builtin:content"),
+        ]
+
+    def test_renders_one_line_per_file(self, tmp_path: Path) -> None:
+        plain = _write(tmp_path / "plain.svg")
+        slide = _parented(tmp_path / "s.svg")
+        result = parent.get(ParentGetRequest((plain, slide)), _NO_DECK)
+        assert result.render().plain.splitlines() == [
+            f"{plain.as_posix()}: (no parent)",
+            f"{slide.as_posix()}: builtin:content",
+        ]
+
+    def test_same_file_twice_is_reported_once(self, tmp_path: Path) -> None:
+        slide = _write(tmp_path / "s.svg")
+        result = parent.get(ParentGetRequest((slide, slide)), _NO_DECK)
+        assert len(result.files) == 1
+
+
+_TWO_SLIDE_DECK = textwrap.dedent("""\
+    from inkflow import Deck, Slide
+
+    def main():
+        return Deck(slides=[Slide("slides/01.svg"), Slide("slides/02.svg")])
+""")
+
+
+class TestFileOpsCli:
+    @pytest.fixture
+    def project(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        monkeypatch.chdir(tmp_path)
+        _write(tmp_path / "deck.py", _TWO_SLIDE_DECK)
+        _parented(tmp_path / "slides" / "01.svg")
+        _write(tmp_path / "slides" / "02.svg")
+        return tmp_path
+
+    def test_strip_sweeps_the_deck(self, project: Path) -> None:
+        result = CliRunner().invoke(main, ["parent", "strip"])
+        assert result.exit_code == 0, result.output
+        assert "slides/01.svg: parent 'builtin:content' removed" in result.output
+        assert "slides/02.svg" not in result.output
+        text = (project / "slides" / "01.svg").read_text(encoding="utf-8")
+        assert "inkflow:parent" not in text
+
+    def test_strip_named_files_needs_no_deck(self, project: Path) -> None:
+        (project / "deck.py").unlink()
+        result = CliRunner().invoke(main, ["parent", "strip", "slides/01.svg"])
+        assert result.exit_code == 0, result.output
+
+    def test_check_reports_without_writing(self, project: Path) -> None:
+        before = (project / "slides" / "01.svg").read_bytes()
+        result = CliRunner().invoke(main, ["parent", "strip", "--check"])
+        assert result.exit_code == 1
+        assert "Would write" in result.output
+        assert (project / "slides" / "01.svg").read_bytes() == before
+
+    @pytest.mark.usefixtures("project")
+    def test_check_passes_when_nothing_would_change(self) -> None:
+        result = CliRunner().invoke(
+            main, ["parent", "strip", "--check", "slides/02.svg"]
+        )
+        assert result.exit_code == 0, result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_get_sweeps_the_deck(self) -> None:
+        result = CliRunner().invoke(main, ["parent", "get"])
+        assert result.exit_code == 0, result.output
+        assert "slides/01.svg: builtin:content" in result.output
+        assert "slides/02.svg: (no parent)" in result.output
+
+    @pytest.mark.usefixtures("project")
+    def test_get_json(self) -> None:
+        result = CliRunner().invoke(main, ["parent", "get", "--json"])
+        assert result.exit_code == 0, result.output
+        report = cast(_ParentGetJson, json.loads(result.stdout))
+        assert report["api"] == "v0"
+        assert report["op"] == "parent.get"
+        assert report["files"] == [
+            {"path": "slides/01.svg", "parent": "builtin:content"},
+            {"path": "slides/02.svg", "parent": None},
+        ]
+
+
+class TestRegister:
+    def test_kind_follows_the_output_type(self) -> None:
+        kinds = {op.name: op.writes for op in registered_ops()}
+        assert kinds["parent.set"] is True
+        assert kinds["parent.get"] is False
+
+    def test_output_without_to_json_is_refused(self) -> None:
+        group = register_group("test-bad-output", "")
+        with pytest.raises(TypeError, match="has no to_json"):
+            register(group, "run", ParentGetRequest, str, deck=DeckUse.OPTIONAL)  # pyright: ignore[reportArgumentType]
+
+    def test_read_output_needs_render(self) -> None:
+        class JsonOnly:
+            def to_json(self) -> dict[str, object]:
+                return {}
+
+        group = register_group("test-no-render", "")
+        with pytest.raises(TypeError, match="has no render"):
+            register(group, "run", ParentGetRequest, JsonOnly, deck=DeckUse.OPTIONAL)  # pyright: ignore[reportArgumentType]
+
+
 @dataclass(frozen=True)
 class _Request:
     target: Path
@@ -281,6 +500,31 @@ class TestRequestParams:
 
         with pytest.raises(TypeError, match="no CLI mapping"):
             _request_params(Unmapped)
+
+    def test_tuple_is_variadic(self) -> None:
+        @dataclass(frozen=True)
+        class Variadic:
+            required: tuple[Path, ...]
+
+        @dataclass(frozen=True)
+        class Optional:
+            files: tuple[str, ...] = ()
+
+        (required,) = _request_params(Variadic)
+        assert isinstance(required, click.Argument)
+        assert (required.nargs, required.required) == (-1, True)
+        (optional,) = _request_params(Optional)
+        assert isinstance(optional, click.Argument)
+        assert (optional.nargs, optional.required) == (-1, False)
+
+    def test_two_variadics_are_refused(self) -> None:
+        @dataclass(frozen=True)
+        class Two:
+            first: tuple[Path, ...]
+            second: tuple[Path, ...]
+
+        with pytest.raises(TypeError, match="more than one variadic"):
+            _request_params(Two)
 
     def test_reserved_name_is_refused(self) -> None:
         @dataclass(frozen=True)
