@@ -25,7 +25,7 @@ from inkflow.ops.registry import (
     register_group,
 )
 from inkflow.svg import with_namespaces
-from inkflow.svgio import SvgElement, parse_svg_file, serialize_svg_for
+from inkflow.svgio import SvgElement, parse_svg_file
 
 __all__ = [
     "GROUP",
@@ -109,26 +109,27 @@ def strip(request: ParentStripRequest, context: OpContext) -> ChangeSet:
     If FILES is omitted, strips every project-local SVG the deck uses
     (each slide and its local layout ancestors). Use --dry-run to preview.
     """
-    contents: dict[Path, str] = {}
+    paths = context.target_files(request.files)
+    documents: dict[Path, SvgElement] = {}
     details: dict[Path, str] = {}
-    for path in context.target_files(request.files):
+    for path in paths:
         root = _read(path)
         old_parent = root.get(ns.INKFLOW_PARENT)
         if old_parent is not None:
             del root.attrib[ns.INKFLOW_PARENT]
         strip_preview_layers(root)
-        contents[path] = serialize_svg_for(root, path)
+        documents[path] = root
         details[path] = (
             "preview layers removed"
             if old_parent is None
             else f"parent {old_parent!r} removed"
         )
-    changes = ChangeSet.from_contents("", contents, details)
+    changes = ChangeSet.from_svgs("", documents, details)
     count = len(changes.edits)
     summary = (
-        f"stripped {count} of {len(contents)} file(s)"
+        f"stripped {count} of {len(paths)} file(s)"
         if count
-        else f"nothing to strip in {len(contents)} file(s)"
+        else f"nothing to strip in {len(paths)} file(s)"
     )
     return ChangeSet(summary, changes.edits)
 
@@ -184,6 +185,4 @@ def set(request: ParentSetRequest, context: OpContext) -> ChangeSet:
         summary = f"{label}: parent {request.parent!r}"
     else:
         summary = f"{label}: parent {old_parent!r} → {request.parent!r}"
-    return ChangeSet.from_contents(
-        summary, {svg_path: serialize_svg_for(root, svg_path)}
-    )
+    return ChangeSet.from_svgs(summary, {svg_path: root})

@@ -120,7 +120,11 @@ src/
                                for --no-deck). A write op returns a `ChangeSet` of
                                `FileEdit(path, before_hash, new_content, detail)` without
                                touching disk; `ChangeSet.apply` is the only writer (hash
-                               check, staged then atomic rename). A read op returns an
+                               check, staged then atomic rename). An SVG op builds it with
+                               `ChangeSet.from_svgs`, which drops a file whose document is
+                               unchanged (canonical XML, `svgio.svg_matches_file`): no
+                               serializer reproduces an editor's markup, so comparing text
+                               would rewrite files a no-op never touched. A read op returns an
                                `OpOutput`: a model with `to_json()` and `render()` (the human
                                form, returned as a Rich renderable, never printed).
                                `registry.py`: an op module declares

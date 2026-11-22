@@ -5,7 +5,12 @@ from pathlib import Path
 import pytest
 from lxml import etree
 
-from inkflow.svgio import parse_svg, parse_svg_file, serialize_svg
+from inkflow.svgio import (
+    parse_svg,
+    parse_svg_file,
+    serialize_svg,
+    svg_matches_file,
+)
 
 # An SVG whose text references an entity declared as an external SYSTEM file. With the
 # default parser this raises XMLSyntaxError (crashing the rebuild); the hardened parser
@@ -55,3 +60,44 @@ class TestParseFile:
         p.write_text("<svg><rect></svg>")
         with pytest.raises(ValueError, match=r"broken\.svg"):
             parse_svg_file(p)
+
+
+_INKSCAPE_PROLOG = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+    "<!-- Created with Inkscape (http://www.inkscape.org/) -->\n\n"
+)
+_BODY = '<svg xmlns="http://www.w3.org/2000/svg">\n  <rect id="a"/>\n</svg>'
+# How Inkscape writes markup that lxml writes as _BODY.
+_INKSCAPE_BODY = (
+    "<svg\n   xmlns=\"http://www.w3.org/2000/svg\">\n  <rect\n     id='a' />\n</svg>"
+)
+
+
+class TestMatchesFile:
+    @pytest.mark.parametrize("body", [_BODY, _INKSCAPE_BODY])
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    def test_unedited_document_matches_however_written(
+        self, tmp_path: Path, body: str, newline: str
+    ) -> None:
+        path = tmp_path / "s.svg"
+        path.write_bytes(
+            (_INKSCAPE_PROLOG + body + "\n").replace("\n", newline).encode()
+        )
+        assert svg_matches_file(parse_svg_file(path), path)
+
+    def test_edit_does_not_match(self, tmp_path: Path) -> None:
+        path = tmp_path / "s.svg"
+        path.write_text(_INKSCAPE_BODY, encoding="utf-8")
+        root = parse_svg_file(path)
+        root[0].set("id", "b")
+        assert not svg_matches_file(root, path)
+
+    def test_comment_edit_does_not_match(self, tmp_path: Path) -> None:
+        path = tmp_path / "s.svg"
+        path.write_text(_BODY, encoding="utf-8")
+        root = parse_svg_file(path)
+        root.append(etree.Comment("note"))
+        assert not svg_matches_file(root, path)
+
+    def test_missing_file_does_not_match(self, tmp_path: Path) -> None:
+        assert not svg_matches_file(parse_svg(_BODY), tmp_path / "new.svg")

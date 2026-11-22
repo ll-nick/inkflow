@@ -38,7 +38,30 @@ _SLIDE_SVG = textwrap.dedent("""\
     </svg>
 """)
 
+_INKSCAPE_PROLOG = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+    "<!-- Created with Inkscape (http://www.inkscape.org/) -->\n\n"
+)
+# _SLIDE_SVG as Inkscape saves it: declaration, comment, its own attribute layout.
+_INKSCAPE_SLIDE_SVG = _INKSCAPE_PROLOG + textwrap.dedent("""\
+    <svg
+       xmlns="http://www.w3.org/2000/svg"
+       viewBox='0 0 1920 1080'>
+      <rect
+         id="box"
+         x="0"
+         y="0"
+         width="10"
+         height="10" />
+    </svg>
+""")
+
 _NO_DECK = OpContext(None, None)
+
+
+def _write_inkscape(path: Path, newline: str = "\n") -> Path:
+    path.write_bytes(_INKSCAPE_SLIDE_SVG.replace("\n", newline).encode())
+    return path
 
 
 class _EditJson(TypedDict):
@@ -152,6 +175,21 @@ class TestParentSet:
     def test_same_parent_again_is_a_no_op(self, tmp_path: Path) -> None:
         slide = _write(tmp_path / "s.svg")
         parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK).apply()
+        again = parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK)
+        assert not again.changed
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    def test_same_parent_again_on_inkscape_file_is_a_no_op(
+        self, tmp_path: Path, newline: str
+    ) -> None:
+        slide = _write(tmp_path / "s.svg")
+        parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK).apply()
+        # Saved again by Inkscape: same document, its own markup.
+        text = slide.read_text(encoding="utf-8")
+        resaved = _INKSCAPE_PROLOG + text.replace("/>", " />").replace(
+            " id=", "\n   id="
+        )
+        slide.write_bytes(resaved.replace("\n", newline).encode())
         again = parent.set(ParentSetRequest(slide, "builtin:content"), _NO_DECK)
         assert not again.changed
 
@@ -292,6 +330,13 @@ class TestParentStrip:
         changes = parent.strip(ParentStripRequest((slide,)), _NO_DECK)
         assert not changes.changed
         assert changes.summary == "nothing to strip in 1 file(s)"
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    def test_inkscape_file_without_parent_is_left_alone(
+        self, tmp_path: Path, newline: str
+    ) -> None:
+        slide = _write_inkscape(tmp_path / "s.svg", newline)
+        assert not parent.strip(ParentStripRequest((slide,)), _NO_DECK).changed
 
     def test_reports_only_files_that_change(self, tmp_path: Path) -> None:
         plain = _write(tmp_path / "plain.svg")
