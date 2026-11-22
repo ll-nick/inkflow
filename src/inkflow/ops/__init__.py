@@ -1,8 +1,9 @@
-"""Deck edits and queries with one implementation behind every surface.
+"""Deck edits and reads with one implementation behind every surface.
 
-An op takes a typed request and an `OpContext` and returns a `ChangeSet` without
-touching the disk; `ChangeSet.apply` is the only writer. Each op module registers
-its ops on import, and the CLI commands are generated from that registry.
+An op takes a typed request and an `OpContext`. A write op returns a `ChangeSet`
+without touching the disk (`ChangeSet.apply` is the only writer); a read op returns
+an `OpOutput`. Each op module registers its ops on import, and the CLI commands
+are generated from that registry.
 """
 
 from __future__ import annotations

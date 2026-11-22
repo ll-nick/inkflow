@@ -31,7 +31,7 @@ class ParentSetRequest:
     parent: str
 
 
-@register(GROUP, "set", ParentSetRequest, deck=DeckUse.OPTIONAL)
+@register(GROUP, "set", ParentSetRequest, ChangeSet, deck=DeckUse.OPTIONAL)
 def set(request: ParentSetRequest, context: OpContext) -> ChangeSet:
     """Set the inkflow:parent of a slide SVG and refresh its preview layers.
 

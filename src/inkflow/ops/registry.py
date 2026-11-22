@@ -2,19 +2,22 @@
 
 Each surface is generated from these entries, so the surfaces
 cannot drift from the implementation or from each other.
+An op registered with `ChangeSet` as its output type writes; any other op reads,
+returning an `OpOutput`, and changes nothing, so it gets no ``--dry-run``/``--check``.
 """
 
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Generic, Protocol, TypeAlias, TypeVar, cast
 
+from inkflow import sync
 from inkflow.manifest import Deck
-from inkflow.ops.changeset import ChangeSet
+from inkflow.ops.changeset import ChangeSet, OpError
 from inkflow.outline import API_VERSION
 from inkflow.themes import Theme
 
@@ -24,6 +27,7 @@ __all__ = [
     "Op",
     "OpContext",
     "OpGroup",
+    "OpOutput",
     "OpResult",
     "RegisteredOp",
     "described",
@@ -34,8 +38,10 @@ __all__ = [
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
+    from rich.console import RenderableType
 
 RequestT = TypeVar("RequestT", bound="DataclassInstance")
+OutputT = TypeVar("OutputT", bound="ChangeSet | OpOutput")
 
 FIELD_HELP_KEY = "inkflow.ops.help"
 
@@ -59,6 +65,9 @@ class DeckUse(Enum):
     REQUIRED = "required"
     OPTIONAL = "optional"
     """Runs without one too (theme authoring), with fewer parents resolvable."""
+    SWEEP_ONLY = "sweep-only"
+    """Only to find the files when the request names none, so naming files works
+    outside a project."""
 
 
 @dataclass(frozen=True)
@@ -87,9 +96,35 @@ class OpContext:
             return resolved.relative_to(base).as_posix()
         return resolved.as_posix()
 
+    def target_files(self, files: Sequence[Path]) -> list[Path]:
+        """The named files, resolved, or every project-local SVG the deck uses."""
+        if files:
+            resolved = [file.resolve() for file in files]
+            for path in resolved:
+                if not path.exists():
+                    raise OpError(f"file not found: {path}")
+            return list(dict.fromkeys(resolved))
+        if self.deck is None or self.project_dir is None:
+            raise OpError("name the files to act on: there is no deck to sweep")
+        try:
+            return sync.project_files(self.deck, self.project_dir, self.theme)
+        except ValueError as exc:
+            raise OpError(str(exc)) from exc
 
-OpFunction: TypeAlias = Callable[[RequestT, OpContext], ChangeSet]
-"""An op's implementation: ``(request, context) -> ChangeSet``."""
+
+class OpOutput(Protocol):
+    """What a read op returns: a model every surface can serialize or show.
+
+    ``render`` is the human form, returned rather than printed so the op stays
+    free of I/O and each surface decides where (and whether) it goes.
+    """
+
+    def to_json(self) -> dict[str, object]: ...
+    def render(self) -> RenderableType: ...
+
+
+OpFunction: TypeAlias = Callable[[RequestT, OpContext], OutputT]
+"""An op's implementation: ``(request, context) -> ChangeSet | OpOutput``."""
 
 
 @dataclass(frozen=True)
@@ -97,6 +132,7 @@ class EditOutline:
     path: str
     before_hash: str | None
     after_hash: str
+    detail: str
 
 
 @dataclass(frozen=True)
@@ -114,7 +150,9 @@ class OpResult:
         cls, op: str, changes: ChangeSet, context: OpContext, *, applied: bool
     ) -> OpResult:
         edits = [
-            EditOutline(context.label(edit.path), edit.before_hash, edit.after_hash)
+            EditOutline(
+                context.label(edit.path), edit.before_hash, edit.after_hash, edit.detail
+            )
             for edit in changes.edits
         ]
         return cls(op, applied and changes.changed, changes.summary, edits)
@@ -132,14 +170,20 @@ class OpGroup:
 
 
 @dataclass(frozen=True)
-class Op(Generic[RequestT]):
+class Op(Generic[RequestT, OutputT]):
     """One op: its group and verb, request type and implementation."""
 
     group: OpGroup
     verb: str
     request_type: type[RequestT]
-    run: OpFunction[RequestT]
+    output_type: type[OutputT]
+    run: OpFunction[RequestT, OutputT]
     deck: DeckUse
+
+    @property
+    def writes(self) -> bool:
+        """True for an op that returns a `ChangeSet`, False for a read op."""
+        return issubclass(self.output_type, ChangeSet)
 
     @property
     def name(self) -> str:
@@ -150,7 +194,7 @@ class Op(Generic[RequestT]):
     def help(self) -> str:
         return inspect.getdoc(self.run) or ""
 
-    def run_with(self, values: Mapping[str, object], context: OpContext) -> ChangeSet:
+    def run_with(self, values: Mapping[str, object], context: OpContext) -> OutputT:
         """Build the request from field values a surface parsed, and run the op."""
         # The request type is a dataclass whose fields the surface enumerated, so its
         # constructor takes exactly these keywords.
@@ -166,6 +210,8 @@ class RegisteredOp(Protocol):
     @property
     def request_type(self) -> type[DataclassInstance]: ...
     @property
+    def output_type(self) -> type[ChangeSet | OpOutput]: ...
+    @property
     def deck(self) -> DeckUse: ...
     @property
     def group(self) -> OpGroup: ...
@@ -173,9 +219,13 @@ class RegisteredOp(Protocol):
     def verb(self) -> str: ...
     @property
     def help(self) -> str: ...
+    @property
+    def writes(self) -> bool: ...
+    @property
+    def run(self) -> Callable[..., ChangeSet | OpOutput]: ...
     def run_with(
         self, values: Mapping[str, object], context: OpContext
-    ) -> ChangeSet: ...
+    ) -> ChangeSet | OpOutput: ...
 
 
 _OPS: dict[str, RegisteredOp] = {}
@@ -191,12 +241,28 @@ def register_group(name: str, help: str) -> OpGroup:
 
 
 def register(
-    group: OpGroup, verb: str, request_type: type[RequestT], *, deck: DeckUse
-) -> Callable[[OpFunction[RequestT]], OpFunction[RequestT]]:
-    """Register the decorated function as ``group.verb``, taking ``request_type``."""
+    group: OpGroup,
+    verb: str,
+    request_type: type[RequestT],
+    output_type: type[OutputT],
+    *,
+    deck: DeckUse,
+) -> Callable[[OpFunction[RequestT, OutputT]], OpFunction[RequestT, OutputT]]:
+    """Register the decorated function as the op ``group.verb``.
 
-    def decorate(run: OpFunction[RequestT]) -> OpFunction[RequestT]:
-        op = Op(group, verb, request_type, run, deck)
+    ``output_type`` is `ChangeSet` for a write op, or the `OpOutput` model a read op
+    returns. It is passed rather than read off the function's return annotation,
+    which need not resolve at runtime (``TYPE_CHECKING`` imports, unannotated code).
+    """
+    if not issubclass(output_type, ChangeSet):
+        for method in ("to_json", "render"):
+            if not callable(getattr(output_type, method, None)):
+                raise TypeError(
+                    f"op {group.name}.{verb}: {output_type!r} has no {method}()"
+                )
+
+    def decorate(run: OpFunction[RequestT, OutputT]) -> OpFunction[RequestT, OutputT]:
+        op = Op(group, verb, request_type, output_type, run, deck)
         if op.name in _OPS:
             raise ValueError(f"op {op.name!r} registered twice")
         _OPS[op.name] = op
