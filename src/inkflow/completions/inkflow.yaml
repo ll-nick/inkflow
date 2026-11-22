@@ -91,7 +91,11 @@ commands:
         flags:
           -d, --deck=: Path to deck.py
           --no-deck: Operate without a deck.py
+          -n, --dry-run: Show what would change without writing
+          --json: Print what changed as JSON
         completion:
+          flag:
+            deck: ["$files([\".py\"])"]
           positional:
             - ["$files([\".svg\"])"]
             - []
