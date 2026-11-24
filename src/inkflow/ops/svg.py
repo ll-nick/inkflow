@@ -12,7 +12,7 @@ from inkflow.enums import ColorMode
 from inkflow.label2id import promote_labels_to_ids
 from inkflow.layout import has_preview_layers, with_preview_layers
 from inkflow.logging import logger
-from inkflow.ops.changeset import ChangeSet, OpError
+from inkflow.ops.changeset import ChangeSet, OpError, read_svg
 from inkflow.ops.parent import preview_context, resolve_parent_file, with_parent
 from inkflow.ops.registry import (
     DeckUse,
@@ -21,7 +21,7 @@ from inkflow.ops.registry import (
     register,
     register_group,
 )
-from inkflow.svgio import SvgElement, parse_svg, parse_svg_file, svg_matches_file
+from inkflow.svgio import SvgElement, parse_svg, svg_matches_file
 
 __all__ = [
     "GROUP",
@@ -46,13 +46,6 @@ _FILES_HELP = described("SVG files (default: every project-local SVG the deck us
 _MODE_HELP = described(
     "Color mode for the preview colors (default: the deck's; dark without a deck)."
 )
-
-
-def _read(path: Path) -> SvgElement:
-    try:
-        return parse_svg_file(path)
-    except ValueError as exc:
-        raise OpError(str(exc)) from exc
 
 
 def _cleaned_tree(path: Path) -> SvgElement:
@@ -250,7 +243,7 @@ def sync(request: SvgSyncRequest, context: OpContext) -> ChangeSet:
     documents: dict[Path, SvgElement] = {}
     details: dict[Path, str] = {}
     for path in paths:
-        root = _read(path)
+        root = read_svg(path)
         try:
             plan = preview_sync.plan_preview(path, preview, root)
         except ValueError as exc:
@@ -298,7 +291,7 @@ def colorize(request: SvgColorizeRequest, context: OpContext) -> ChangeSet:
     paths = context.target_files(request.files)
     documents: dict[Path, SvgElement] = {}
     for path in paths:
-        root = _read(path)
+        root = read_svg(path)
         if colors.colorize_tree(root, hex_map):
             documents[path] = root
     changes = ChangeSet.from_svgs("", documents)
@@ -335,7 +328,7 @@ def new(request: SvgNewRequest, context: OpContext) -> ChangeSet:
     root = parse_svg(f'<svg xmlns="{ns.SVG}" {attributes}>\n</svg>')
     if request.parent is not None:
         preview = preview_context(context)
-        layout = _read(resolve_parent_file(request.parent, path, context, preview))
+        layout = read_svg(resolve_parent_file(request.parent, path, context, preview))
         for key, value in _CANVAS.items():
             root.set(key, layout.get(key, value))
         root = with_parent(root, path, request.parent, preview)

@@ -225,8 +225,9 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
         else:
             report(attr_result.capitalize(), ".gitattributes")
 
-    files_changed = FileStatus.CREATED in (hook_status, attr_result) or (
-        FileStatus.UPDATED in (hook_status, attr_result)
+    files_changed = (
+        hook_status is not FileStatus.UNCHANGED
+        or attr_result is not FileStatus.UNCHANGED
     )
     if files_changed or hooks_set or textconv_set:
         report("Configured", "git hooks and SVG diff driver")

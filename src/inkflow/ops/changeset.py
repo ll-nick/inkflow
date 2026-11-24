@@ -10,9 +10,21 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from inkflow.svgio import SvgElement, serialize_svg_for, svg_matches_file
+from inkflow.svgio import (
+    SvgElement,
+    parse_svg_file,
+    serialize_svg_for,
+    svg_matches_file,
+)
 
-__all__ = ["ChangeSet", "ConflictError", "FileEdit", "OpError", "file_hash"]
+__all__ = [
+    "ChangeSet",
+    "ConflictError",
+    "FileEdit",
+    "OpError",
+    "file_hash",
+    "read_svg",
+]
 
 
 class OpError(Exception):
@@ -26,6 +38,14 @@ class ConflictError(OpError):
         self.paths: list[Path] = paths
         listed = ", ".join(str(path) for path in paths)
         super().__init__(f"changed on disk since the edit was planned: {listed}")
+
+
+def read_svg(path: Path) -> SvgElement:
+    """Parse ``path``, reporting a malformed file as an `OpError`."""
+    try:
+        return parse_svg_file(path)
+    except ValueError as exc:
+        raise OpError(str(exc)) from exc
 
 
 def file_hash(path: Path) -> str | None:

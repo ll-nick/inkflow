@@ -15,7 +15,7 @@ from inkflow.layout import (
     resolve_parent_path,
     with_preview_layers,
 )
-from inkflow.ops.changeset import ChangeSet, OpError
+from inkflow.ops.changeset import ChangeSet, OpError, read_svg
 from inkflow.ops.registry import (
     DeckUse,
     OpContext,
@@ -24,7 +24,7 @@ from inkflow.ops.registry import (
     register_group,
 )
 from inkflow.svg import with_namespaces
-from inkflow.svgio import SvgElement, parse_svg_file
+from inkflow.svgio import SvgElement
 
 __all__ = [
     "GROUP",
@@ -44,13 +44,6 @@ __all__ = [
 GROUP = register_group("parent", "Manage slide layout parents.")
 
 _FILES_HELP = described("SVG files (default: every project-local SVG the deck uses).")
-
-
-def _read(path: Path) -> SvgElement:
-    try:
-        return parse_svg_file(path)
-    except ValueError as exc:
-        raise OpError(str(exc)) from exc
 
 
 @dataclass(frozen=True)
@@ -93,7 +86,7 @@ def get(request: ParentGetRequest, context: OpContext) -> ParentGetResult:
     """
     return ParentGetResult(
         [
-            FileParent(context.label(path), _read(path).get(ns.INKFLOW_PARENT))
+            FileParent(context.label(path), read_svg(path).get(ns.INKFLOW_PARENT))
             for path in context.target_files(request.files)
         ]
     )
@@ -115,7 +108,7 @@ def strip(request: ParentStripRequest, context: OpContext) -> ChangeSet:
     documents: dict[Path, SvgElement] = {}
     details: dict[Path, str] = {}
     for path in paths:
-        root = _read(path)
+        root = read_svg(path)
         old_parent = root.get(ns.INKFLOW_PARENT)
         if old_parent is not None:
             del root.attrib[ns.INKFLOW_PARENT]
@@ -205,7 +198,7 @@ def set(request: ParentSetRequest, context: OpContext) -> ChangeSet:
         raise OpError(f"file not found: {svg_path}")
     preview = preview_context(context)
     resolve_parent_file(request.parent, svg_path, context, preview)
-    root = _read(svg_path)
+    root = read_svg(svg_path)
     old_parent = root.get(ns.INKFLOW_PARENT)
     root = with_parent(root, svg_path, request.parent, preview)
 
