@@ -1,4 +1,4 @@
-"""Reusable preview-sync logic shared by the ``sync`` command, ``verify`` and ``init``.
+"""Preview-sync logic shared by ``svg sync``, ``parent set``, ``verify`` and ``init``.
 
 Injecting ancestor layout layers, the overlays a file will actually get at runtime,
 and a theme-colored preview ``<style>`` into a slide SVG makes editors (Inkscape)
@@ -14,7 +14,7 @@ holds that rule, and ``PreviewRule`` names which branch fired so the command can
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -26,7 +26,6 @@ from inkflow.layout import (
     PreviewLayer,
     PreviewLayers,
     chain_layers,
-    inject_preview_layers,
     resolve_chain,
     resolve_parent_path,
 )
@@ -305,13 +304,3 @@ def plan_preview(
         is_overlay=is_overlay,
         backdrop=backdrop_layers[-1] if backdrop_layers else None,
     )
-
-
-def sync_slides(paths: Iterable[Path], ctx: PreviewContext) -> None:
-    """Inject preview layers + theme preview styles into each SVG.
-
-    Parentless files still receive the preview style block (empty chain). Raises
-    ``ValueError`` if any file's parent chain cannot be resolved.
-    """
-    for path in paths:
-        inject_preview_layers(path, plan_preview(path, ctx).layers)

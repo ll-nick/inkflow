@@ -15,14 +15,15 @@ from inkflow.layout import (
     PreviewLayers,
     are_preview_layers_current,
     chain_layers,
-    create_slide,
     discover_layouts,
     discover_overlays,
-    inject_preview_layers,
+    has_preview_layers,
     layout_zones,
     resolve_chain,
     resolve_parent_path,
+    with_preview_layers,
 )
+from inkflow.svgio import parse_svg_file, serialize_svg
 from inkflow.themes import Theme
 
 _SIMPLE_SVG = textwrap.dedent("""\
@@ -158,6 +159,15 @@ class TestResolveChain:
 
 
 # ── inject_preview_layers / are_preview_layers_current ───────────────────────
+
+
+def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
+    """Write the layers into the file; False when it already carries them."""
+    root = parse_svg_file(svg_path)
+    if has_preview_layers(root, layers):
+        return False
+    svg_path.write_text(serialize_svg(with_preview_layers(root, layers)), "utf-8")
+    return True
 
 
 def _behind(slide: Path, chain: list[Path]) -> PreviewLayers:
@@ -402,33 +412,6 @@ class TestLayoutZones:
         layout = _write_svg(tmp_path / "layout.svg", _NO_ZONE_SVG)
         info = layout_zones(layout, tmp_path, None)
         assert info.default_zone == ""
-
-
-# ── create_slide ──────────────────────────────────────────────────────────────
-
-
-class TestCreateSlide:
-    def test_blank_slide_has_no_parent(self, tmp_path: Path) -> None:
-        out = tmp_path / "blank.svg"
-        create_slide(None, out, tmp_path, None)
-        svg = out.read_text(encoding="utf-8")
-        assert "inkflow:parent" not in svg
-        assert 'viewBox="0 0 1920 1080"' in svg
-
-    def test_blank_slide_needs_no_project_dir(self, tmp_path: Path) -> None:
-        out = tmp_path / "blank.svg"
-        create_slide(None, out, None, None)
-        assert out.exists()
-
-    def test_parented_slide_records_parent(self, tmp_path: Path) -> None:
-        _write_svg(tmp_path / "base.svg")
-        out = tmp_path / "child.svg"
-        create_slide("base", out, tmp_path, None)
-        assert 'inkflow:parent="base"' in out.read_text(encoding="utf-8")
-
-    def test_unresolvable_parent_raises(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError):
-            create_slide("local:missing", tmp_path / "child.svg", tmp_path, None)
 
 
 # ── Overlay namespace ─────────────────────────────────────────────────────────

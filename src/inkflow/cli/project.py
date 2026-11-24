@@ -8,9 +8,10 @@ from pathlib import Path
 
 import click
 
-from inkflow import git_setup, init, sync
-from inkflow.cli._common import Project, main, resolve_dark_mode
+from inkflow import git_setup, init
+from inkflow.cli._common import Project, main
 from inkflow.logging import console, logger, report
+from inkflow.ops import OpContext, svg
 
 
 def _sync_layout_previews(target: Path) -> None:
@@ -22,11 +23,11 @@ def _sync_layout_previews(target: Path) -> None:
     """
     try:
         project = Project.load(target / "deck.py")
-        dark_mode = resolve_dark_mode(None, project.deck, False)
-        sync.sync_slides(
-            [t.path for t in project.slide_targets()],
-            project.preview_context(dark_mode),
-        )
+        context = OpContext(project.deck, project.dir)
+        # Named rather than swept: a sweep skips parentless slides, and the
+        # starter title slide is one that still wants the preview colors.
+        files = tuple(context.target_files(()))
+        svg.sync(svg.SvgSyncRequest(files), context).apply()
     except Exception as exc:
         logger.warning(f"could not inject layout previews: {exc}")
         return

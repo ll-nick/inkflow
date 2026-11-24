@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -88,25 +87,6 @@ def resolve_deck_path(deck_path: Path) -> Path:
 
 
 @dataclass(frozen=True)
-class Target:
-    """A file to operate on: its resolved path plus the label shown to the user."""
-
-    path: Path
-    label: str
-
-
-def resolve_targets(files: Iterable[Path]) -> list[Target]:
-    """Resolve each file, raising on the first that does not exist (exit 1)."""
-    targets: list[Target] = []
-    for file in files:
-        resolved = file.resolve()
-        if not resolved.exists():
-            raise click.ClickException(f"file not found: {resolved}")
-        targets.append(Target(resolved, file.as_posix()))
-    return targets
-
-
-@dataclass(frozen=True)
 class Project:
     """A loaded deck together with the directory paths resolve against."""
 
@@ -122,40 +102,12 @@ class Project:
     def theme(self) -> Theme:
         return self.deck.theme
 
-    def slide_targets(self) -> list[Target]:
-        """Every project-local SVG the deck uses (see ``sync.project_files``)."""
-        try:
-            paths = sync.project_files(self.deck, self.dir, self.theme)
-        except ValueError as exc:
-            raise click.ClickException(str(exc)) from exc
-        return [Target(path, path.relative_to(self.dir).as_posix()) for path in paths]
-
     def preview_context(self, dark_mode: bool) -> sync.PreviewContext:
         """The per-run data every preview plan for this project derives from."""
         try:
             return sync.build_context(self.deck, self.dir, self.theme, dark_mode)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
-
-
-def load_project_or_none(deck_path: Path, no_deck: bool) -> Project | None:
-    return None if no_deck else Project.load(deck_path)
-
-
-def targets_or_deck_slides(
-    files: tuple[Path, ...], project: Project | None
-) -> list[Target]:
-    """Explicit FILES if given, else every project-local SVG the deck uses.
-
-    The fallback covers each slide's base SVG plus its local layout ancestors
-    (see ``Project.slide_targets``). Raises if FILES is omitted with no deck to
-    fall back on (``--no-deck``).
-    """
-    if files:
-        return resolve_targets(files)
-    if project is None:
-        raise click.UsageError("FILES required with --no-deck")
-    return project.slide_targets()
 
 
 deck_option = click.option(

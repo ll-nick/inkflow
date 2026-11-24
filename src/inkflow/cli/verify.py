@@ -33,7 +33,8 @@ def verify_cmd(
     (from `zones` keys or `::zone::` markers) or an animation element id is absent
     from the composed SVG; an overlay paints an opaque full-canvas rect, which would
     hide the slide. Warnings: animation steps are not contiguous from 1, a zone id is
-    declared twice after composition, or layout layers are stale (run `inkflow sync`).
+    declared twice after composition, or layout layers are stale
+    (run `inkflow svg sync`).
 
     Exits 1 on any error, or on any warning when `--strict` is set. Hidden slides
     (`visible=False`) are skipped unless `--all` is passed.
@@ -56,7 +57,7 @@ def verify_cmd(
 
     # effective_mode, not mode: a deck that defers to its theme has mode=None, which
     # would silently build the light preview here and disagree with the dark one
-    # `inkflow sync` wrote, reporting every slide as stale.
+    # `inkflow svg sync` wrote, reporting every slide as stale.
     preview = project.preview_context(deck_obj.effective_mode == ColorMode.DARK)
 
     has_error = has_warn = False

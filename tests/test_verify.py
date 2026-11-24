@@ -5,9 +5,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
-from inkflow import sync
 from inkflow.animations import FadeIn, Frame, PlayVideo
 from inkflow.manifest import Deck, Image, Slide, Video
+from inkflow.ops import OpContext, svg
 from inkflow.overlay import Overlay
 from inkflow.provenance import source_location
 from inkflow.sync import PreviewContext
@@ -388,7 +388,8 @@ class TestVerifySyncCheck:
         (overlays / "footer.svg").write_text(_OVERLAY_SVG, encoding="utf-8")
         slide = Slide("slides/01-title.svg", overlays=[Overlay("footer")])
         preview = _preview(tmp_path)
-        sync.sync_slides([slide_path], preview)
+        request = svg.SvgSyncRequest((slide_path,))
+        svg.sync(request, OpContext(preview.deck, tmp_path)).apply()
         assert not any(
             "stale" in msg for _, msg in verify_slide(slide, tmp_path, None, preview)
         )

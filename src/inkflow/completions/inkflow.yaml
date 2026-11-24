@@ -38,32 +38,6 @@ commands:
       flag:
         deck: ["$files([\".py\"])"]
 
-  - name: clean
-    description: Strip Inkscape editor metadata from SVG files.
-    flags:
-      -d, --deck=: Path to deck.py (used only when FILES is omitted)
-      --stdout: Write to stdout instead of modifying files in place
-      --check: Exit non-zero if any file would be modified
-    completion:
-      flag:
-        deck: ["$files([\".py\"])"]
-      positionalany:
-        - "$files([\".svg\"])"
-
-  - name: label2id
-    description: Promote each element's inkscape:label to its SVG id.
-    flags:
-      -d, --deck=: Path to deck.py (used only when FILES is omitted)
-      --all-tags: Also rename non-shape elements (tspan, stop, gradients, …)
-      --refs, --no-refs: Rewrite url(#id) / href='#id' references to renamed ids
-      -n, --dry-run: Show what would change without writing
-      --check: Exit non-zero if any file would change, without writing
-    completion:
-      flag:
-        deck: ["$files([\".py\"])"]
-      positionalany:
-        - "$files([\".svg\"])"
-
   - name: completion
     description: Print shell completion script for SHELL.
     completion:
@@ -115,17 +89,119 @@ commands:
           positionalany:
             - "$files([\".svg\"])"
 
-  - name: add
-    description: Create a new slide SVG, optionally wired to a layout parent.
-    flags:
-      -p, --parent=: Layout name or inkflow:parent string (blank slide if omitted)
-      -d, --deck=: Path to deck.py
-      --no-deck: Operate without a deck.py
-    completion:
-      flag:
-        deck: ["$files([\".py\"])"]
-      positional:
-        - ["$files([\".svg\"])"]
+  - name: svg
+    description: Maintain slide, layout and overlay SVG files.
+    commands:
+      - name: clean
+        description: Strip Inkscape editor metadata from SVG files.
+        flags:
+          -d, --deck=: Path to deck.py (used only when FILES is omitted)
+          -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
+          --json: Print what changed as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+          positionalany:
+            - "$files([\".svg\"])"
+
+      - name: cleaned
+        description: Print an SVG as svg clean would write it, leaving it untouched.
+        flags:
+          --json: Print the result as JSON
+        completion:
+          positional:
+            - ["$files([\".svg\"])"]
+
+      - name: label2id
+        description: Promote each element's inkscape:label to its SVG id.
+        flags:
+          -d, --deck=: Path to deck.py (used only when FILES is omitted)
+          --all-tags: Also rename non-shape elements (tspan, stop, gradients, …)
+          --refs, --no-refs: Rewrite url(#id) / href='#id' references to renamed ids
+          -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
+          --json: Print what changed as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+          positionalany:
+            - "$files([\".svg\"])"
+
+      - name: sync
+        description: Refresh layout layers, overlay layers and preview styles in slide SVGs.
+        flags:
+          -d, --deck=: Path to deck.py
+          --no-deck: Operate without a deck.py
+          --mode=: Color mode for preview colors
+          -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
+          --json: Print what changed as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+            mode: ["dark", "light"]
+          positionalany:
+            - "$files([\".svg\"])"
+
+      - name: colorize
+        description: Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
+        flags:
+          -d, --deck=: Path to deck.py
+          --no-deck: Operate without a deck.py
+          --mode=: Color mode whose tokens are matched
+          -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
+          --json: Print what changed as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+            mode: ["dark", "light"]
+          positionalany:
+            - "$files([\".svg\"])"
+
+      - name: new
+        description: Create a new slide SVG, optionally built on a layout parent.
+        flags:
+          --parent=: Layout name or inkflow:parent string (blank slide if omitted)
+          -d, --deck=: Path to deck.py
+          --no-deck: Operate without a deck.py
+          -n, --dry-run: Show what would change without writing
+          --check: Exit 1 if anything would change, without writing
+          --json: Print what changed as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+          positional:
+            - ["$files([\".svg\"])"]
+
+  - name: theme
+    description: Inspect the active theme.
+    commands:
+      - name: palette
+        description: Print an Inkscape GPL color palette for the active theme.
+        flags:
+          -d, --deck=: Path to deck.py
+          --no-deck: Operate without a deck.py
+          --mode=: Color mode
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
+            mode: ["dark", "light"]
+
+  - name: layout
+    description: Inspect layouts and overlays.
+    commands:
+      - name: list
+        description: List available layouts and overlays with their zones and parent chain.
+        flags:
+          -d, --deck=: Path to deck.py
+          --no-deck: Operate without a deck.py
+          --json: Print the result as JSON
+        completion:
+          flag:
+            deck: ["$files([\".py\"])"]
 
   - name: build
     description: Export a self-contained presentation directory for offline use.
@@ -149,41 +225,6 @@ commands:
       flag:
         deck: ["$files([\".py\"])"]
 
-  - name: sync
-    description: Refresh layout layers and preview styles in slide SVGs.
-    flags:
-      --check: Report stale files without rewriting
-      -d, --deck=: Path to deck.py
-      --no-deck: Operate without a deck.py
-      --mode=: Color mode for preview style
-    completion:
-      flag:
-        mode: ["dark", "light"]
-      positionalany:
-        - "$files([\".svg\"])"
-
-  - name: colorize
-    description: Replace hardcoded theme hex colors in SVG files with semantic CSS classes.
-    flags:
-      -d, --deck=: Path to deck.py
-      --no-deck: Operate without a deck.py
-      --mode=: Color mode for preview style
-    completion:
-      flag:
-        mode: ["dark", "light"]
-      positionalany:
-        - "$files([\".svg\"])"
-
-  - name: palette
-    description: Generate an Inkscape GPL color palette for the active theme.
-    flags:
-      -d, --deck=: Path to deck.py
-      --no-deck: Operate without a deck.py
-      --mode=: Color mode for preview style
-    completion:
-      flag:
-        mode: ["dark", "light"]
-
   - name: deck
     description: Inspect the deck as a whole.
     commands:
@@ -205,9 +246,3 @@ commands:
     completion:
       positionalany:
         - "$files([\".svg\"])"
-
-  - name: layouts
-    description: List available layouts with their zones.
-    flags:
-      -d, --deck=: Path to deck.py
-      --no-deck: Operate without a deck.py

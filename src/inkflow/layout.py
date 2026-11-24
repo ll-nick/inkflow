@@ -373,56 +373,6 @@ def _build_layer_group(
     return g
 
 
-def create_slide(
-    parent_str: str | None,
-    output_path: Path,
-    project_dir: Path | None,
-    theme: Theme | None,
-) -> None:
-    """Create a minimal slide SVG, optionally wired to a layout parent.
-
-    With ``parent_str`` set, resolves the parent, records ``inkflow:parent``, and
-    injects ancestor layout layers for editor preview. With ``parent_str`` None,
-    writes a blank slide carrying no parent.
-
-    Raises ValueError if a given parent string cannot be resolved.
-    """
-    if parent_str is None:
-        blank = (
-            f'<svg xmlns="{ns.SVG}"\n'
-            f'     viewBox="0 0 1920 1080" width="1920" height="1080">\n'
-            f"</svg>\n"
-        )
-        output_path.write_text(blank, encoding="utf-8")
-        return
-
-    parent_abs = resolve_parent_path(parent_str, output_path.parent, project_dir, theme)
-
-    view_box, width, height = "0 0 1920 1080", "1920", "1080"
-    if parent_abs.exists():
-        root = parse_svg_file(parent_abs)
-        view_box = root.get("viewBox", view_box)
-        width = root.get("width", width)
-        height = root.get("height", height)
-
-    svg_content = (
-        f'<svg xmlns="{ns.SVG}"\n'
-        f'     xmlns:inkflow="{ns.INKFLOW}"\n'
-        f'     inkflow:parent="{parent_str}"\n'
-        f'     viewBox="{view_box}" width="{width}" height="{height}">\n'
-        f"</svg>\n"
-    )
-    output_path.write_text(svg_content, encoding="utf-8")
-
-    # Layout layers only: the new slide is not in deck.py yet, so there is nothing
-    # to resolve overlays from. `inkflow sync` adds the chrome once it is.
-    chain = resolve_chain(output_path, project_dir, theme)
-    if chain:
-        inject_preview_layers(
-            output_path, PreviewLayers(behind=chain_layers(output_path, chain))
-        )
-
-
 def _update_preview_style(
     root: SvgElement,
     preview_css: str,
@@ -437,23 +387,6 @@ def _update_preview_style(
     style_el = etree.SubElement(defs, f"{{{ns.SVG}}}style")
     style_el.set("id", "inkflow-preview")
     style_el.text = preview_css
-
-
-def inject_preview_layers(svg_path: Path, layers: PreviewLayers) -> bool:
-    """Inject preview layers into svg_path in place (see `with_preview_layers`).
-
-    Returns True if the file was modified, False if already up to date.
-    """
-    root = parse_svg_file(svg_path)
-    if has_preview_layers(root, layers):
-        return False
-    svg_path.write_text(
-        etree.tostring(
-            with_preview_layers(root, layers), encoding="unicode", xml_declaration=False
-        ),
-        encoding="utf-8",
-    )
-    return True
 
 
 def with_preview_layers(root: SvgElement, layers: PreviewLayers) -> SvgElement:

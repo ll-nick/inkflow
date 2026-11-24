@@ -113,13 +113,13 @@ class TestDeckOption:
 class TestMissingFile:
     @pytest.mark.usefixtures("project")
     def test_clean_missing_file(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["clean", "ghost.svg"])
+        result = runner.invoke(main, ["svg", "clean", "ghost.svg"])
         assert result.exit_code == 1
         assert "file not found" in result.output
 
     @pytest.mark.usefixtures("project")
     def test_colorize_missing_file(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["colorize", "ghost.svg"])
+        result = runner.invoke(main, ["svg", "colorize", "ghost.svg"])
         assert result.exit_code == 1
         assert "file not found" in result.output
 
@@ -137,7 +137,7 @@ class TestMissingFile:
 
     @pytest.mark.usefixtures("project")
     def test_sync_missing_file(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["sync", "ghost.svg"])
+        result = runner.invoke(main, ["svg", "sync", "ghost.svg"])
         assert result.exit_code == 1
         assert "file not found" in result.output
 
@@ -147,7 +147,7 @@ class TestMissingFile:
         # because validation happens up front.
         Path("dirty.svg").write_text(_DIRTY_SVG, encoding="utf-8")
         before = Path("dirty.svg").read_text(encoding="utf-8")
-        result = runner.invoke(main, ["clean", "dirty.svg", "ghost.svg"])
+        result = runner.invoke(main, ["svg", "clean", "dirty.svg", "ghost.svg"])
         assert result.exit_code == 1
         assert Path("dirty.svg").read_text(encoding="utf-8") == before
 
@@ -156,29 +156,29 @@ class TestDeckFallback:
     @pytest.mark.usefixtures("project")
     def test_clean_no_files_uses_deck(self, runner: CliRunner) -> None:
         Path("slides/01.svg").write_text(_DIRTY_SVG, encoding="utf-8")
-        result = runner.invoke(main, ["clean"])
+        result = runner.invoke(main, ["svg", "clean"])
         assert result.exit_code == 0
-        assert "Cleaned" in result.output
+        assert "Wrote  slides/01.svg" in result.output
         # The deck slide was rewritten clean (no inkscape metadata left).
         assert "inkscape:" not in Path("slides/01.svg").read_text(encoding="utf-8")
 
     @pytest.mark.usefixtures("project")
     def test_clean_check_no_files_clean_deck_exits_0(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["clean", "--check"])
+        result = runner.invoke(main, ["svg", "clean", "--check"])
         assert result.exit_code == 0
 
     @pytest.mark.usefixtures("project")
     def test_colorize_no_files_uses_deck(self, runner: CliRunner) -> None:
         # No hex to remap, so it reports the deck slide with no changes.
-        result = runner.invoke(main, ["colorize"])
+        result = runner.invoke(main, ["svg", "colorize"])
         assert result.exit_code == 0
-        assert "01.svg" in result.output
+        assert "in 1 file(s)" in result.output
 
     @pytest.mark.usefixtures("project")
     def test_colorize_no_deck_no_files_errors(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["colorize", "--no-deck"])
-        assert result.exit_code == 2
-        assert "FILES required" in result.output
+        result = runner.invoke(main, ["svg", "colorize", "--no-deck"])
+        assert result.exit_code == 1
+        assert "name the files" in result.output
 
     def test_sweep_includes_local_layout_once(
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -203,7 +203,7 @@ class TestDeckFallback:
         layouts.mkdir()
         (layouts / "card.svg").write_text(_PARENTED_SVG, encoding="utf-8")
 
-        result = runner.invoke(main, ["clean"])
+        result = runner.invoke(main, ["parent", "get"])
         assert result.exit_code == 0
         # The reused local layout appears exactly once in the sweep.
         assert result.output.count("layouts/card.svg") == 1
@@ -214,7 +214,9 @@ class TestDeckFallback:
 class TestAdd:
     @pytest.mark.usefixtures("project")
     def test_parented_slide(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["add", "slides/new.svg", "-p", "builtin:base"])
+        result = runner.invoke(
+            main, ["svg", "new", "slides/new.svg", "--parent", "builtin:base"]
+        )
         assert result.exit_code == 0
         assert 'Slide("slides/new.svg")' in result.output
         svg = Path("slides/new.svg").read_text(encoding="utf-8")
@@ -222,14 +224,14 @@ class TestAdd:
 
     @pytest.mark.usefixtures("project")
     def test_blank_slide_has_no_parent(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["add", "slides/blank.svg"])
+        result = runner.invoke(main, ["svg", "new", "slides/blank.svg"])
         assert result.exit_code == 0
         svg = Path("slides/blank.svg").read_text(encoding="utf-8")
         assert "inkflow:parent" not in svg
 
     @pytest.mark.usefixtures("project")
     def test_existing_output_rejected(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["add", "slides/01.svg"])
+        result = runner.invoke(main, ["svg", "new", "slides/01.svg"])
         assert result.exit_code == 1
         assert "already exists" in result.output
 
@@ -238,7 +240,7 @@ class TestAdd:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(
-            main, ["add", "wired.svg", "-p", "builtin:base", "--no-deck"]
+            main, ["svg", "new", "wired.svg", "--parent", "builtin:base", "--no-deck"]
         )
         assert result.exit_code == 0
         svg = Path("wired.svg").read_text(encoding="utf-8")
@@ -308,29 +310,49 @@ class TestCleanModes:
     @pytest.mark.usefixtures("project")
     def test_check_dirty_exits_1_untouched(self, runner: CliRunner) -> None:
         Path("dirty.svg").write_text(_DIRTY_SVG, encoding="utf-8")
-        result = runner.invoke(main, ["clean", "--check", "dirty.svg"])
+        result = runner.invoke(main, ["svg", "clean", "--check", "dirty.svg"])
         assert result.exit_code == 1
         assert Path("dirty.svg").read_text(encoding="utf-8") == _DIRTY_SVG
 
     @pytest.mark.usefixtures("project")
     def test_check_clean_exits_0(self, runner: CliRunner) -> None:
         Path("clean.svg").write_text(_SLIDE_SVG, encoding="utf-8")
-        result = runner.invoke(main, ["clean", "--check", "clean.svg"])
+        result = runner.invoke(main, ["svg", "clean", "--check", "clean.svg"])
         assert result.exit_code == 0
 
     @pytest.mark.usefixtures("project")
-    def test_check_and_stdout_mutually_exclusive(self, runner: CliRunner) -> None:
-        Path("x.svg").write_text(_DIRTY_SVG, encoding="utf-8")
-        result = runner.invoke(main, ["clean", "--check", "--stdout", "x.svg"])
-        assert result.exit_code == 2
-
-    @pytest.mark.usefixtures("project")
-    def test_stdout_leaves_file_untouched(self, runner: CliRunner) -> None:
+    def test_cleaned_prints_without_writing(self, runner: CliRunner) -> None:
         Path("dirty.svg").write_text(_DIRTY_SVG, encoding="utf-8")
-        result = runner.invoke(main, ["clean", "--stdout", "dirty.svg"])
+        result = runner.invoke(main, ["svg", "cleaned", "dirty.svg"])
         assert result.exit_code == 0
-        assert "inkscape:" not in result.output
+        assert "inkscape:" not in result.stdout
+        assert '<rect id="box"' in result.stdout
         assert Path("dirty.svg").read_text(encoding="utf-8") == _DIRTY_SVG
+
+    def test_cleaned_reserializes_a_clean_file(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Both sides of a git diff must come out formatted alike. `svg clean`
+        # leaves a file that holds no metadata as it is, single quotes and all,
+        # so the diff driver cannot just print the file.
+        # Outside any project: git runs the diff driver from the repo root.
+        monkeypatch.chdir(tmp_path)
+        quoted = "<svg xmlns='http://www.w3.org/2000/svg'><rect id='box'/></svg>"
+        Path("quoted.svg").write_text(quoted, encoding="utf-8")
+        assert runner.invoke(main, ["svg", "clean", "quoted.svg"]).exit_code == 0
+        assert Path("quoted.svg").read_text(encoding="utf-8") == quoted
+        dirty = quoted.replace(
+            "<svg ",
+            '<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" '
+            + 'inkscape:version="1.3" ',
+        )
+        Path("dirty.svg").write_text(dirty, encoding="utf-8")
+        printed = [
+            runner.invoke(main, ["svg", "cleaned", name]).stdout
+            for name in ("quoted.svg", "dirty.svg")
+        ]
+        assert printed[0] == printed[1]
+        assert '<rect id="box"/>' in printed[0]
 
 
 class TestSyncCheck:
@@ -339,11 +361,11 @@ class TestSyncCheck:
     ) -> None:
         monkeypatch.chdir(tmp_path)
         Path("s.svg").write_text(_PARENTED_SVG, encoding="utf-8")
-        stale = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
+        stale = runner.invoke(main, ["svg", "sync", "--check", "--no-deck", "s.svg"])
         assert stale.exit_code == 1
-        written = runner.invoke(main, ["sync", "--no-deck", "s.svg"])
+        written = runner.invoke(main, ["svg", "sync", "--no-deck", "s.svg"])
         assert written.exit_code == 0
-        fresh = runner.invoke(main, ["sync", "--check", "--no-deck", "s.svg"])
+        fresh = runner.invoke(main, ["svg", "sync", "--check", "--no-deck", "s.svg"])
         assert fresh.exit_code == 0
 
 
@@ -358,7 +380,7 @@ class TestSyncOverlays:
         self, runner: CliRunner
     ) -> None:
         self._overlay_project()
-        result = runner.invoke(main, ["sync"])
+        result = runner.invoke(main, ["svg", "sync"])
         assert result.exit_code == 0
         assert "overlays/footer.svg" in result.output
         assert "overlay file, no backdrop" in result.output
@@ -381,20 +403,20 @@ class TestSyncOverlays:
             ),
             encoding="utf-8",
         )
-        result = runner.invoke(main, ["sync"])
+        result = runner.invoke(main, ["svg", "sync"])
         assert "backdrop: ../slides/01.svg" in result.output
         assert "layout-src" in Path("overlays/footer.svg").read_text(encoding="utf-8")
 
     @pytest.mark.usefixtures("project")
     def test_check_is_clean_right_after_sync(self, runner: CliRunner) -> None:
         self._overlay_project()
-        assert runner.invoke(main, ["sync"]).exit_code == 0
-        assert runner.invoke(main, ["sync", "--check"]).exit_code == 0
+        assert runner.invoke(main, ["svg", "sync"]).exit_code == 0
+        assert runner.invoke(main, ["svg", "sync", "--check"]).exit_code == 0
         assert runner.invoke(main, ["verify"]).exit_code == 0
         Path("overlays/footer.svg").write_text(
             _OVERLAY_SVG.replace("footer", "footer2"), encoding="utf-8"
         )
-        assert runner.invoke(main, ["sync", "--check"]).exit_code == 1
+        assert runner.invoke(main, ["svg", "sync", "--check"]).exit_code == 1
 
 
 class TestDeckShow:
@@ -463,19 +485,19 @@ class TestParentMutation:
 
 class TestPalette:
     def test_no_deck_writes_gpl_to_stdout(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["palette", "--no-deck"])
+        result = runner.invoke(main, ["theme", "palette", "--no-deck"])
         assert result.exit_code == 0
         assert result.output.startswith("GIMP Palette")
 
     @pytest.mark.parametrize("flag", ["--install", "--output"])
     def test_removed_flags_rejected(self, runner: CliRunner, flag: str) -> None:
-        result = runner.invoke(main, ["palette", "--no-deck", flag])
+        result = runner.invoke(main, ["theme", "palette", "--no-deck", flag])
         assert result.exit_code == 2
 
 
 class TestLayouts:
     def test_no_deck_lists_builtin(self, runner: CliRunner) -> None:
-        result = runner.invoke(main, ["layouts", "--no-deck"])
+        result = runner.invoke(main, ["layout", "list", "--no-deck"])
         assert result.exit_code == 0
         assert "base" in result.output
 
@@ -556,6 +578,9 @@ class TestInitScaffold:
         diagram = Path("my-talk/slides/diagram.svg").read_text(encoding="utf-8")
         assert "inkflow:layout-src" in diagram
         assert "inkflow-preview" in diagram
+        # Parentless, but painted with theme classes Inkscape cannot resolve.
+        title = Path("my-talk/slides/title.svg").read_text(encoding="utf-8")
+        assert "inkflow-preview" in title
 
     def test_scaffolded_deck_builds(
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
