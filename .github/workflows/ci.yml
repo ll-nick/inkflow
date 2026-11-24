@@ -48,7 +48,7 @@ jobs:
         run: |
           svgs="$(git ls-files '*.svg')"
           if [ -n "$svgs" ]; then
-            echo "$svgs" | xargs uv run inkflow clean --check
+            echo "$svgs" | xargs uv run inkflow svg clean --check
           fi
 
       - name: Build demo deck

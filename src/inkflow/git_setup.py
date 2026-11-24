@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from enum import StrEnum
 from pathlib import Path
 from typing import cast
 
@@ -26,16 +27,18 @@ env/
 .DS_Store
 """
 
-HOOK_SCRIPT = """\
+HOOK_MARKER = "# Installed by: inkflow setup-git"
+
+HOOK_SCRIPT = f"""\
 #!/usr/bin/env bash
 # Strip Inkscape editor metadata from staged SVG files before committing.
-# Installed by: inkflow setup-git
+{HOOK_MARKER}
 
 set -e
 
 mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM \\
   | grep -E '\\.svg$' || true)
-[ ${#staged[@]} -eq 0 ] && exit 0
+[ ${{#staged[@]}} -eq 0 ] && exit 0
 
 if [ -x ".venv/bin/inkflow" ]; then
     INKFLOW=".venv/bin/inkflow"
@@ -49,9 +52,9 @@ else
 fi
 
 echo "[inkflow] cleaning staged SVGs..."
-"$INKFLOW" clean "${staged[@]}"
+"$INKFLOW" svg clean "${{staged[@]}}"
 
-git add "${staged[@]}"
+git add "${{staged[@]}}"
 """
 
 
@@ -86,15 +89,15 @@ def detect_git_root(directory: Path) -> Path | None:
 def resolve_textconv(root: Path) -> str:
     """Return the textconv command for the local git config.
 
-    Returns a command that will run inkflow clean --stdout.
+    Returns a command that will run inkflow svg cleaned.
     Prefers a local .venv/bin/inkflow if it exists,
     otherwise falls back to global inkflow.
     """
     venv_bin = venv_executable(root / ".venv", "inkflow")
     if venv_bin.exists():
-        return f"{venv_bin.relative_to(root).as_posix()} clean --stdout"
+        return f"{venv_bin.relative_to(root).as_posix()} svg cleaned"
     if shutil.which("inkflow"):
-        return "inkflow clean --stdout"
+        return "inkflow svg cleaned"
     raise RuntimeError(
         f"inkflow not found — no {venv_bin.relative_to(root).as_posix()} in repo root "
         + "and inkflow is not on PATH. "
@@ -102,15 +105,31 @@ def resolve_textconv(root: Path) -> str:
     )
 
 
-def ensure_hook(hooks_dir: Path) -> bool:
-    """Write pre-commit hook if absent. Returns True if created."""
+class FileStatus(StrEnum):
+    CREATED = "created"
+    UPDATED = "updated"
+    UNCHANGED = "unchanged"
+
+
+def ensure_hook(hooks_dir: Path) -> FileStatus:
+    """Write the pre-commit hook, replacing one an older setup-git installed.
+
+    A hook without the marker is the user's own and is left alone. One with it is
+    rewritten, so re-running setup-git is all a clone needs when the commands the
+    hook calls are renamed.
+    """
     hooks_dir.mkdir(exist_ok=True)
     hook = hooks_dir / "pre-commit"
-    created = not hook.exists()
-    if created:
+    if not hook.exists():
+        status = FileStatus.CREATED
+    else:
+        current = hook.read_text(encoding="utf-8")
+        ours = HOOK_MARKER in current and current != HOOK_SCRIPT
+        status = FileStatus.UPDATED if ours else FileStatus.UNCHANGED
+    if status is not FileStatus.UNCHANGED:
         hook.write_text(HOOK_SCRIPT, encoding="utf-8", newline="\n")
     hook.chmod(hook.stat().st_mode | 0o111)  # chmod +x
-    return created
+    return status
 
 
 def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> bool:
@@ -141,19 +160,19 @@ def run_git_config(key: str, value: str, *, cwd: Path | None = None) -> bool:
     return True
 
 
-def ensure_gitattributes(root: Path) -> str:
-    """Add SVG diff attribute if missing. Returns 'created', 'updated', or 'ok'."""
+def ensure_gitattributes(root: Path) -> FileStatus:
+    """Add the SVG diff attribute if missing."""
     attr_line = "*.svg diff=inkscape-svg\n"
     gitattributes = root / ".gitattributes"
     if not gitattributes.exists():
         gitattributes.write_text(attr_line, encoding="utf-8")
-        return "created"
+        return FileStatus.CREATED
     content = gitattributes.read_text(encoding="utf-8")
     if "diff=inkscape-svg" in content:
-        return "ok"
+        return FileStatus.UNCHANGED
     sep = "" if content.endswith("\n") else "\n"
     gitattributes.write_text(content + sep + attr_line, encoding="utf-8")
-    return "updated"
+    return FileStatus.UPDATED
 
 
 def _report_config(changed: bool, detail: str) -> None:
@@ -177,9 +196,9 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
             raise
         return
 
-    hook_created = ensure_hook(root / ".githooks")
-    if hook_created:
-        report("Created", ".githooks/pre-commit")
+    hook_status = ensure_hook(root / ".githooks")
+    if hook_status is not FileStatus.UNCHANGED:
+        report(hook_status.capitalize(), ".githooks/pre-commit")
     elif verbose:
         report("Unchanged", ".githooks/pre-commit", style="dim")
 
@@ -201,12 +220,15 @@ def run_git_setup(root: Path, *, verbose: bool) -> None:
 
     attr_result = ensure_gitattributes(root)
     if verbose:
-        if attr_result == "ok":
+        if attr_result is FileStatus.UNCHANGED:
             report("Unchanged", ".gitattributes", style="dim")
         else:
             report(attr_result.capitalize(), ".gitattributes")
 
-    if hook_created or hooks_set or textconv_set or attr_result != "ok":
+    files_changed = FileStatus.CREATED in (hook_status, attr_result) or (
+        FileStatus.UPDATED in (hook_status, attr_result)
+    )
+    if files_changed or hooks_set or textconv_set:
         report("Configured", "git hooks and SVG diff driver")
     else:
         report("Up to date", "git hooks and SVG diff driver", style="dim")
