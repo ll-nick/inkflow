@@ -9,7 +9,6 @@ from rich.text import Text
 
 from inkflow import ns, sync
 from inkflow.clean import strip_preview_layers
-from inkflow.enums import ColorMode
 from inkflow.layout import (
     AssetKind,
     has_preview_layers,
@@ -35,8 +34,11 @@ __all__ = [
     "ParentSetRequest",
     "ParentStripRequest",
     "get",
+    "preview_context",
+    "resolve_parent_file",
     "set",
     "strip",
+    "with_parent",
 ]
 
 GROUP = register_group("parent", "Manage slide layout parents.")
@@ -134,6 +136,52 @@ def strip(request: ParentStripRequest, context: OpContext) -> ChangeSet:
     return ChangeSet(summary, changes.edits)
 
 
+def preview_context(context: OpContext) -> sync.PreviewContext:
+    """The preview data `with_parent` plans from, in the deck's color mode."""
+    try:
+        return sync.build_context(
+            context.deck, context.project_dir, context.theme, context.dark_mode()
+        )
+    except ValueError as exc:
+        raise OpError(str(exc)) from exc
+
+
+def resolve_parent_file(
+    parent: str, svg_path: Path, context: OpContext, preview: sync.PreviewContext
+) -> Path:
+    """The file ``parent`` names from ``svg_path``, which must exist."""
+    is_overlay = sync.is_overlay_file(svg_path, preview)
+    kind = AssetKind.OVERLAY if is_overlay else AssetKind.LAYOUT
+    try:
+        parent_path = resolve_parent_path(
+            parent, svg_path.parent, context.project_dir, context.theme, kind
+        )
+    except ValueError as exc:
+        raise OpError(str(exc)) from exc
+    if not parent_path.exists():
+        raise OpError(f"parent not found: {parent_path}")
+    return parent_path
+
+
+def with_parent(
+    root: SvgElement, svg_path: Path, parent: str, preview: sync.PreviewContext
+) -> SvgElement:
+    """``root`` set to ``parent``, with the preview layers `sync` would give it.
+
+    The layers are planned from the edited tree: the file on disk (if any) still
+    names the old parent until the change set is applied.
+    """
+    root = with_namespaces(root, {"inkflow": ns.INKFLOW})
+    root.set(ns.INKFLOW_PARENT, parent)
+    try:
+        layers = sync.plan_preview(svg_path, preview, root).layers
+    except ValueError as exc:
+        raise OpError(str(exc)) from exc
+    if has_preview_layers(root, layers):
+        return root
+    return with_preview_layers(root, layers)
+
+
 @dataclass(frozen=True)
 class ParentSetRequest:
     file: Path
@@ -148,37 +196,18 @@ def set(request: ParentSetRequest, context: OpContext) -> ChangeSet:
     bare name (three-level search), 'local:foo', 'theme:foo', 'builtin:foo',
     or a relative path.
 
-    The file is left exactly as `inkflow sync` would leave it: layout layers for
+    The file is left exactly as `inkflow svg sync` would leave it: layout layers for
     the new parent, the overlays it previews and the theme preview styles (in the
     deck's color mode; dark without a deck).
     """
     svg_path = request.file.resolve()
     if not svg_path.exists():
         raise OpError(f"file not found: {svg_path}")
-    dark_mode = context.deck is None or context.deck.effective_mode == ColorMode.DARK
-    try:
-        preview = sync.build_context(
-            context.deck, context.project_dir, context.theme, dark_mode
-        )
-        is_overlay = sync.is_overlay_file(svg_path, preview)
-        kind = AssetKind.OVERLAY if is_overlay else AssetKind.LAYOUT
-        parent_path = resolve_parent_path(
-            request.parent, svg_path.parent, context.project_dir, context.theme, kind
-        )
-        if not parent_path.exists():
-            raise OpError(f"parent not found: {parent_path}")
-
-        root = parse_svg_file(svg_path)
-        old_parent = root.get(ns.INKFLOW_PARENT)
-        root = with_namespaces(root, {"inkflow": ns.INKFLOW})
-        root.set(ns.INKFLOW_PARENT, request.parent)
-        # Planned from the edited tree: the file on disk still names the old parent
-        # until the change set is applied.
-        layers = sync.plan_preview(svg_path, preview, root).layers
-    except ValueError as exc:
-        raise OpError(str(exc)) from exc
-    if not has_preview_layers(root, layers):
-        root = with_preview_layers(root, layers)
+    preview = preview_context(context)
+    resolve_parent_file(request.parent, svg_path, context, preview)
+    root = _read(svg_path)
+    old_parent = root.get(ns.INKFLOW_PARENT)
+    root = with_parent(root, svg_path, request.parent, preview)
 
     label = context.label(svg_path)
     if old_parent in (None, request.parent):
