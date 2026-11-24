@@ -46,7 +46,7 @@ Elements you never animate do not need one.
 
 !!! tip "Naming many elements at once"
     Inkscape's Layers & Objects panel edits an element's *label*, not its `id`.
-    Label things there and run [`inkflow label2id`](inkscape.md#naming-elements-label2id)
+    Label things there and run [`inkflow svg label2id`](inkscape.md#naming-elements-label2id)
     to promote every label to an `id` in one pass.
 
 Nothing else is required.

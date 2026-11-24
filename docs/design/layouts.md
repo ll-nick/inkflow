@@ -25,7 +25,7 @@ A zone that the slide never fills is removed rather than left showing.
 !!! tip
     Inkscape's Layers & Objects panel edits an element's *label*, not its `id`.
     Label the rect `zone-content` there and run
-    [`inkflow label2id`](../authoring/inkscape.md#naming-elements-label2id).
+    [`inkflow svg label2id`](../authoring/inkscape.md#naming-elements-label2id).
 
 ### Non-rectangular zones
 
@@ -121,7 +121,7 @@ from root to leaf, behind the slide's own content.
 **The files on disk are never modified.**
 
 To see the composed result while drawing,
-run [`inkflow sync`](../authoring/inkscape.md#previewing-the-full-slide-sync).
+run [`inkflow svg sync`](../authoring/inkscape.md#previewing-the-full-slide-sync).
 
 ## Finding a layout by name
 
@@ -147,7 +147,7 @@ A prefix skips the search:
 To see what is available in your project right now:
 
 ```bash
-inkflow layouts
+inkflow layout list
 ```
 
 It prints every layout and overlay with its parent chain and its zones.
@@ -186,15 +186,15 @@ See [Themes](themes.md#built-in-layouts-recolored).
 
 ## Creating a slide from a layout
 
-`inkflow add` writes a new SVG already wired to a parent:
+`inkflow svg new` writes a new SVG already wired to a parent:
 
 ```bash
-inkflow add slides/new.svg -p content
+inkflow svg new slides/new.svg --parent content
 ```
 
-It creates the file with `inkflow:parent="content"`
-and runs `inkflow sync` so the preview layers are there when you open it.
-Omit `-p` for a blank slide with no parent.
+It creates the file with `inkflow:parent="content"` and the layout's canvas size,
+with the preview layers `inkflow svg sync` would write, so they are there when you open it.
+Omit `--parent` for a blank slide with no parent.
 
 Then add it to `deck.py`:
 

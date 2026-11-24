@@ -2,7 +2,7 @@
 
 Inkscape's Layers & Objects panel only ever edits ``inkscape:label``; the inkflow
 pipeline targets elements by ``id``. This bridges the two: name a group "headline"
-in the panel, run ``inkflow label2id``, and ``deck.py`` can animate ``#headline``
+in the panel, run ``inkflow svg label2id``, and ``deck.py`` can animate ``#headline``
 or Morph can match it across slides.
 
 A label that is already a valid XML id becomes the id verbatim; anything else is
@@ -10,7 +10,7 @@ slugified (ASCII, spaces to ``-``, other characters dropped). Labels are not
 required to be unique but ids are, so a collision is reported and skipped.
 
 Elements inside injected inkflow preview layers (the layout/overlay chrome added
-by ``inkflow sync``) are left untouched — the pipeline regenerates those ids, and
+by ``inkflow svg sync``) are left untouched — the pipeline regenerates those ids, and
 renaming an ancestor's copy here would only make the slide read as stale.
 
 Ids are rewritten by surgical text substitution rather than a full re-serialize,

@@ -107,7 +107,7 @@ theme/main.svg          ← background, brand elements (chain ends here)
 
 Inkflow resolves the full chain at build time and composites the layers in memory.
 The SVG files on disk are not modified.
-[`inkflow sync`](authoring/inkscape.md#previewing-the-full-slide-sync) can optionally write locked preview layers into each SVG
+[`inkflow svg sync`](authoring/inkscape.md#previewing-the-full-slide-sync) can optionally write locked preview layers into each SVG
 so you can see the inherited background while editing in Inkscape.
 
 ## Overlays

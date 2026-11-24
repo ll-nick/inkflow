@@ -9,9 +9,9 @@ All of them are optional, and all of them are safe to re-run.
 
 | Command | Closes the gap between |
 |---|---|
-| [`inkflow sync`](#previewing-the-full-slide-sync) | a bare slide file and the composed slide |
-| [`inkflow label2id`](#naming-elements-label2id) | Inkscape's labels and SVG ids |
-| [`inkflow colorize`](#theme-colors-in-the-editor-colorize-and-palette) | hardcoded hex fills and theme tokens |
+| [`inkflow svg sync`](#previewing-the-full-slide-sync) | a bare slide file and the composed slide |
+| [`inkflow svg label2id`](#naming-elements-label2id) | Inkscape's labels and SVG ids |
+| [`inkflow svg colorize`](#theme-colors-in-the-editor-colorize-and-palette) | hardcoded hex fills and theme tokens |
 | [`inkflow verify`](#checking-a-deck-verify) | a deck that looks fine and one that is |
 
 ## Previewing the full slide (`sync`)
@@ -21,10 +21,10 @@ The background, the frame and the zone positions all live in its ancestors,
 and the [chrome](../design/overlays.md) lives in the overlays.
 Open the file in Inkscape and you see none of it.
 
-`inkflow sync` writes them in as locked layers:
+`inkflow svg sync` writes them in as locked layers:
 
 ```bash
-inkflow sync
+inkflow svg sync
 ```
 
 Bottom to top, a synced slide holds its ancestor chain, its own content, then the overlays.
@@ -36,10 +36,11 @@ The pipeline strips them before serving, so they never reach the browser.
 To find stale files without rewriting anything:
 
 ```bash
-inkflow sync --check
+inkflow svg sync --check
 ```
 
 It exits 1 if any file needs updating, which makes it usable in CI.
+`--dry-run` lists the files it would rewrite and exits 0.
 
 ### Which overlays a file previews
 
@@ -52,12 +53,12 @@ The answer is resolved in three steps:
 2. Otherwise, what every slide backed by this file agrees on.
 3. Otherwise the deck default.
 
-`sync` prints which rule fired for each file, so the third is never silent:
+`sync` prints which rule fired for each file it rewrites, so the third is never silent:
 
 ```
-    Injected  slides/intro.svg (1 overlay layer, slides agree)
-    Injected  layouts/content.svg (1 overlay layer, deck default overlays)
-    Injected  overlays/footer.svg (overlay file)
+       Wrote  slides/intro.svg: 1 overlay layer, slides agree
+       Wrote  layouts/content.svg: 1 overlay layer, deck default overlays
+       Wrote  overlays/footer.svg: overlay file, no backdrop
 ```
 
 The third rule is a guess, and it leans toward *showing* chrome.
@@ -108,8 +109,8 @@ Picking `content` while the overlay lands on `two-cols` at runtime is fine.
 Without the attribute an overlay previews against nothing, and `sync` says so:
 
 ```
-    Injected  overlays/footer.svg (overlay file, no backdrop)
-    Injected  overlays/logo.svg (overlay file, backdrop: content)
+       Wrote  overlays/footer.svg: overlay file, no backdrop
+       Wrote  overlays/logo.svg: overlay file, backdrop: content
 ```
 
 A file counts as an overlay when it lives in an `overlays/` directory,
@@ -121,7 +122,7 @@ Theme files have no `deck.py` to consult.
 Use `--no-deck`:
 
 ```bash
-inkflow sync --no-deck layouts/*.svg
+inkflow svg sync --no-deck layouts/*.svg
 ```
 
 With no deck there is no slide-to-overlay mapping to derive,
@@ -142,8 +143,8 @@ Setting an `id` means opening the XML editor for every element.
 `label2id` promotes every label to the `id`:
 
 ```bash
-inkflow label2id slides/*.svg          # rewrite in place
-inkflow label2id -n slides/three.svg   # preview, write nothing
+inkflow svg label2id slides/*.svg          # rewrite in place
+inkflow svg label2id -n slides/three.svg   # preview, write nothing
 ```
 
 Name things in the panel as you draw, run it once, then wire up `deck.py`.
@@ -162,20 +163,20 @@ appears unstyled in the editor without help.
 
 ```bash
 # 1. Install the theme's palette as Inkscape swatches, once per machine
-inkflow palette --deck deck.py > ~/.config/inkscape/palettes/inkflow.gpl
+inkflow theme palette --deck deck.py > ~/.config/inkscape/palettes/inkflow.gpl
 
 # 2. Convert hardcoded hex fills and strokes into semantic classes
-inkflow colorize slides/*.svg
+inkflow svg colorize slides/*.svg
 
 # 3. Refresh the editor preview
-inkflow sync
+inkflow svg sync
 ```
 
 Step 3 injects hex fallbacks that Inkscape can render.
 They are stripped at serve time and never reach the browser,
 so the slide still follows the live theme and its light/dark switch.
 
-`inkflow palette` derives the swatches from the active theme,
+`inkflow theme palette` derives the swatches from the active theme,
 so a custom theme exports its own colors.
 
 ## Checking a deck (`verify`)
@@ -196,7 +197,7 @@ or an overlay that paints an opaque full-canvas rect and would hide the deck.
 **Warnings** are things that are probably wrong:
 animation steps that are not contiguous from 1,
 a zone id declared twice after composition,
-or layout layers that are stale and need `inkflow sync`.
+or layout layers that are stale and need `inkflow svg sync`.
 
 Hidden slides (`visible=False`) are skipped unless you pass `--all`.
 
@@ -212,5 +213,9 @@ from staged SVGs, plus a diff driver so `git diff` and GitHub show only visual c
 To clean files committed before the hook was in place:
 
 ```bash
-inkflow clean slides/*.svg
+inkflow svg clean slides/*.svg
 ```
+
+The hook and the diff driver call `inkflow svg clean` and `inkflow svg cleaned`.
+A clone set up by an older inkflow calls the old `inkflow clean`, which no longer exists:
+re-run `inkflow setup-git` to update both.

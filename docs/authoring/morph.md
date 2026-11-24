@@ -63,7 +63,7 @@ Morph needs stable ids across two files,
 which is exactly the thing Inkscape's UI makes awkward:
 the Layers & Objects panel edits an element's *label*, not its `id`.
 
-[`inkflow label2id`](inkscape.md#naming-elements-label2id) closes that gap.
+[`inkflow svg label2id`](inkscape.md#naming-elements-label2id) closes that gap.
 Name a group "headline" in the panel on both slides, run it, and both get `id="headline"`.
 
 ## Going backward
