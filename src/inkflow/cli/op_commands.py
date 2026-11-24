@@ -155,9 +155,9 @@ def _names_files(op: RegisteredOp, values: dict[str, object]) -> bool:
 
 
 def _context(
-    op: RegisteredOp, deck_path: Path, no_deck: bool, values: dict[str, object]
+    op: RegisteredOp, deck_path: Path | None, no_deck: bool, values: dict[str, object]
 ) -> OpContext:
-    if op.deck is DeckUse.OPTIONAL and no_deck:
+    if deck_path is None or (op.deck is DeckUse.OPTIONAL and no_deck):
         return OpContext(None, None)
     if op.deck is DeckUse.SWEEP_ONLY and _names_files(op, values):
         return OpContext(None, None)
@@ -187,6 +187,8 @@ def _json_option(text: str) -> Callable[[click.Command], click.Command]:
 
 
 def _with_deck_options(op: RegisteredOp, command: click.Command) -> click.Command:
+    if op.deck is DeckUse.NONE:
+        return command
     command = deck_option(command)
     if op.deck is DeckUse.OPTIONAL:
         command = no_deck_option(command)
@@ -195,10 +197,10 @@ def _with_deck_options(op: RegisteredOp, command: click.Command) -> click.Comman
 
 def _write_command(op: RegisteredOp) -> click.Command:
     def callback(
-        deck_path: Path,
         dry_run: bool,
         check: bool,
         as_json: bool,
+        deck_path: Path | None = None,
         no_deck: bool = False,
         **values: object,
     ) -> None:
@@ -245,7 +247,10 @@ def _write_command(op: RegisteredOp) -> click.Command:
 
 def _read_command(op: RegisteredOp) -> click.Command:
     def callback(
-        deck_path: Path, as_json: bool, no_deck: bool = False, **values: object
+        as_json: bool,
+        deck_path: Path | None = None,
+        no_deck: bool = False,
+        **values: object,
     ) -> None:
         context = _context(op, deck_path, no_deck, values)
         try:

@@ -68,6 +68,8 @@ class DeckUse(Enum):
     SWEEP_ONLY = "sweep-only"
     """Only to find the files when the request names none, so naming files works
     outside a project."""
+    NONE = "none"
+    """Never: the op works on what the request names alone."""
 
 
 @dataclass(frozen=True)
