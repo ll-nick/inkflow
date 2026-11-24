@@ -150,19 +150,19 @@ class TestLabel2IdCli:
 
     def test_writes_renamed_ids_in_place(self, tmp_path: Path) -> None:
         svg_file = self._write(tmp_path)
-        result = CliRunner().invoke(main, ["label2id", str(svg_file)])
+        result = CliRunner().invoke(main, ["svg", "label2id", str(svg_file)])
         assert result.exit_code == 0
         assert 'id="Headline-Box"' in svg_file.read_text(encoding="utf-8")
 
     def test_dry_run_does_not_write(self, tmp_path: Path) -> None:
         svg_file = self._write(tmp_path)
         original = svg_file.read_text(encoding="utf-8")
-        CliRunner().invoke(main, ["label2id", "-n", str(svg_file)])
+        CliRunner().invoke(main, ["svg", "label2id", "-n", str(svg_file)])
         assert svg_file.read_text(encoding="utf-8") == original
 
     def test_check_exits_nonzero_when_dirty(self, tmp_path: Path) -> None:
         svg_file = self._write(tmp_path)
-        result = CliRunner().invoke(main, ["label2id", "--check", str(svg_file)])
+        result = CliRunner().invoke(main, ["svg", "label2id", "--check", str(svg_file)])
         assert result.exit_code == 1
 
     def test_check_exits_zero_when_clean(self, tmp_path: Path) -> None:
@@ -171,9 +171,11 @@ class TestLabel2IdCli:
             '<svg xmlns="http://www.w3.org/2000/svg"><rect id="a"/></svg>',
             encoding="utf-8",
         )
-        result = CliRunner().invoke(main, ["label2id", "--check", str(svg_file)])
+        result = CliRunner().invoke(main, ["svg", "label2id", "--check", str(svg_file)])
         assert result.exit_code == 0
 
     def test_missing_file_errors(self, tmp_path: Path) -> None:
-        result = CliRunner().invoke(main, ["label2id", str(tmp_path / "ghost.svg")])
+        result = CliRunner().invoke(
+            main, ["svg", "label2id", str(tmp_path / "ghost.svg")]
+        )
         assert result.exit_code != 0

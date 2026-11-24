@@ -104,8 +104,12 @@ def _protect_text_whitespace(root: SvgElement) -> None:
             el.tail = el.tail if el.tail is not None else ""
 
 
-def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
-    """Cleaned SVG as a pretty-printed string. See ``clean_inkscape_tree``."""
-    root = clean_inkscape_tree(src, keep_preview)
+def serialize_cleaned(root: SvgElement) -> str:
+    """A cleaned tree as the pretty-printed text ``clean`` writes."""
     _protect_text_whitespace(root)
     return etree.tostring(root, encoding="unicode", pretty_print=True)
+
+
+def clean_inkscape_svg(src: Path, keep_preview: bool = False) -> str:
+    """Cleaned SVG as a pretty-printed string. See ``clean_inkscape_tree``."""
+    return serialize_cleaned(clean_inkscape_tree(src, keep_preview))

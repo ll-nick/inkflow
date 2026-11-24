@@ -8,7 +8,7 @@ are generated from that registry.
 
 from __future__ import annotations
 
-from inkflow.ops import parent
+from inkflow.ops import layout, parent, svg, theme
 from inkflow.ops.changeset import ChangeSet, ConflictError, FileEdit, OpError
 from inkflow.ops.registry import DeckUse, OpContext, OpResult, registered_ops
 
@@ -20,6 +20,9 @@ __all__ = [
     "OpContext",
     "OpError",
     "OpResult",
+    "layout",
     "parent",
     "registered_ops",
+    "svg",
+    "theme",
 ]

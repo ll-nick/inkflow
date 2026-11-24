@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Generic, Protocol, TypeAlias, TypeVar, cast
 
 from inkflow import sync
+from inkflow.enums import ColorMode
 from inkflow.manifest import Deck
 from inkflow.ops.changeset import ChangeSet, OpError
 from inkflow.outline import API_VERSION
@@ -68,6 +69,8 @@ class DeckUse(Enum):
     SWEEP_ONLY = "sweep-only"
     """Only to find the files when the request names none, so naming files works
     outside a project."""
+    NONE = "none"
+    """Never: the op works on what the request names alone."""
 
 
 @dataclass(frozen=True)
@@ -87,6 +90,15 @@ class OpContext:
     @property
     def theme(self) -> Theme | None:
         return self.deck.theme if self.deck is not None else None
+
+    def dark_mode(self, mode: ColorMode | None = None) -> bool:
+        """Whether to preview in dark mode: ``mode`` if given, else the deck's.
+
+        Dark without a deck, the built-in theme's default.
+        """
+        if mode is not None:
+            return mode is ColorMode.DARK
+        return self.deck is None or self.deck.effective_mode is ColorMode.DARK
 
     def label(self, path: Path) -> str:
         """A path as shown to the user: relative to the project (or cwd) when inside."""
@@ -116,7 +128,8 @@ class OpOutput(Protocol):
     """What a read op returns: a model every surface can serialize or show.
 
     ``render`` is the human form, returned rather than printed so the op stays
-    free of I/O and each surface decides where (and whether) it goes.
+    free of I/O and each surface decides where (and whether) it goes. A plain
+    ``str`` is passed on verbatim.
     """
 
     def to_json(self) -> dict[str, object]: ...

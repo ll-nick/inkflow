@@ -16,6 +16,7 @@ from click.testing import CliRunner
 from inkflow import ns
 from inkflow.cli import main
 from inkflow.cli.op_commands import _request_params
+from inkflow.enums import ColorMode
 from inkflow.ops import ChangeSet, ConflictError, DeckUse, OpContext, OpError, parent
 from inkflow.ops.changeset import file_hash
 from inkflow.ops.parent import (
@@ -248,7 +249,7 @@ class TestParentSetKeepsSync:
         runner = CliRunner()
         set_parent = ["parent", "set", "slides/01.svg", "builtin:content"]
         assert runner.invoke(main, set_parent).exit_code == 0
-        assert runner.invoke(main, ["sync"]).exit_code == 0
+        assert runner.invoke(main, ["svg", "sync"]).exit_code == 0
         return runner
 
     def test_same_parent_writes_nothing(self, runner: CliRunner) -> None:
@@ -268,7 +269,7 @@ class TestParentSetKeepsSync:
         assert 'inkflow:overlay-src="footer"' in Path("slides/01.svg").read_text(
             encoding="utf-8"
         )
-        assert runner.invoke(main, ["sync", "--check"]).exit_code == 0
+        assert runner.invoke(main, ["svg", "sync", "--check"]).exit_code == 0
 
 
 class TestParentSetCli:
@@ -533,3 +534,61 @@ class TestRequestParams:
 
         with pytest.raises(TypeError, match="clashes"):
             _request_params(Clashing)
+
+    def test_enum_is_a_choice_of_values(self) -> None:
+        @dataclass(frozen=True)
+        class Moded:
+            mode: ColorMode | None = None
+
+        (mode,) = _request_params(Moded)
+        assert isinstance(mode, click.Option)
+        assert isinstance(mode.type, click.Choice)
+        assert list(mode.type.choices) == ["dark", "light"]
+        context = click.Context(click.Command("x"))
+        assert mode.process_value(context, "light") is ColorMode.LIGHT
+        assert mode.process_value(context, None) is None
+
+    def test_enum_needs_a_default(self) -> None:
+        @dataclass(frozen=True)
+        class Required:
+            mode: ColorMode
+
+        with pytest.raises(TypeError, match="needs a default"):
+            _request_params(Required)
+
+    def test_true_bool_gets_a_negative_flag(self) -> None:
+        @dataclass(frozen=True)
+        class Negatable:
+            refs: bool = True
+
+        (refs,) = _request_params(Negatable)
+        assert isinstance(refs, click.Option)
+        assert (refs.opts, refs.secondary_opts) == (["--refs"], ["--no-refs"])
+        assert refs.default is True
+
+
+class TestCommandShape:
+    @staticmethod
+    def _options(*path: str) -> set[str]:
+        command: click.Command = main
+        for name in path:
+            assert isinstance(command, click.Group)
+            command = command.commands[name]
+        return {
+            opt
+            for param in command.params
+            if isinstance(param, click.Option)
+            for opt in param.opts
+        }
+
+    def test_deck_free_op_has_no_deck_options(self) -> None:
+        assert self._options("svg", "cleaned") == {"--json"}
+
+    def test_optional_deck_op_offers_no_deck(self) -> None:
+        assert {"--deck", "--no-deck"} <= self._options("svg", "sync")
+
+    def test_str_render_is_printed_verbatim(self) -> None:
+        # Rich would expand the tab that separates a GPL color from its name.
+        result = CliRunner().invoke(main, ["theme", "palette", "--no-deck"])
+        assert result.exit_code == 0, result.output
+        assert "\t" in result.stdout

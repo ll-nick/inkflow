@@ -6,6 +6,7 @@ from pathlib import Path
 from inkflow import sync
 from inkflow.layout import PreviewLayer
 from inkflow.manifest import Deck, Slide
+from inkflow.ops import OpContext, svg
 from inkflow.overlay import Overlay
 from inkflow.sync import PreviewRule
 
@@ -224,12 +225,12 @@ class TestBackdrop:
         assert plan.layers.behind == []
 
 
-class TestSyncSlides:
+class TestSyncOp:
     def test_slide_gets_layout_and_overlay_layers(self, tmp_path: Path) -> None:
         _project(tmp_path)
         slide = tmp_path / "slides" / "01.svg"
         deck = Deck(slides=[Slide("slides/01.svg")], overlays=[Overlay("footer")])
-        sync.sync_slides([slide], _ctx(tmp_path, deck))
+        svg.sync(svg.SvgSyncRequest((slide,)), OpContext(deck, tmp_path)).apply()
         content = slide.read_text(encoding="utf-8")
         assert "layout-src" in content
         assert "overlay-src" in content
@@ -243,6 +244,6 @@ class TestSyncSlides:
         _project(tmp_path)
         slide = tmp_path / "slides" / "01.svg"
         deck = Deck(slides=[Slide("slides/01.svg")], overlays=[Overlay("footer")])
-        sync.sync_slides([slide], _ctx(tmp_path, deck))
+        svg.sync(svg.SvgSyncRequest((slide,)), OpContext(deck, tmp_path)).apply()
         root = clean_inkscape_tree(slide)
         assert root.find('.//{http://www.w3.org/2000/svg}text[@id="footer"]') is None

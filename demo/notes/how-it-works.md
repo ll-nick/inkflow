@@ -6,5 +6,5 @@ browser.
 Last, the corner mark: a slide can opt into a shared parent layout, like master slides
 in PowerPoint, but it is never required.
 
-`inkflow sync` will inject the layout parent as static background into the slide SVG,
+`inkflow svg sync` will inject the layout parent as static background into the slide SVG,
 so you can edit the slide in your SVG editor with a preview of what the final slide will look like.

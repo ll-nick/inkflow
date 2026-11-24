@@ -1,10 +1,13 @@
 """Click commands generated from the op registry.
 
 A request field without a default becomes a positional argument, one with a
-default a ``--kebab-case`` option (a flag for ``bool``); a ``tuple[X, ...]`` field
+default a ``--kebab-case`` option (a flag for ``bool``, ``--x/--no-x`` when it
+defaults to True; a choice of values for a `StrEnum`); a ``tuple[X, ...]`` field
 is a variadic argument, required unless it defaults to ``()``. Every command gets
 ``--json`` and the deck options its `DeckUse` calls for; writes also get
-``--dry-run`` and ``--check``. A read op prints its output's ``render()`` on stdout.
+``--dry-run`` and ``--check``. A read op prints its output's ``render()`` on stdout,
+a plain ``str`` verbatim (file contents such as a palette or an SVG must survive
+byte for byte, which Rich's tab expansion and wrapping would not allow).
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ import json
 import types
 from collections.abc import Callable, Sequence
 from dataclasses import MISSING, Field, fields
+from enum import StrEnum
 from functools import cache
 from pathlib import Path
 from typing import (
@@ -84,6 +88,35 @@ def _variadic_item(annotation: object) -> object | None:
     return None
 
 
+def _enum_option(
+    field: Field[object],
+    option: str,
+    enum_type: type[StrEnum],
+    default: object,
+    help_text: str | None,
+    metavar: str | None,
+) -> click.Option:
+    def to_member(
+        _ctx: click.Context, _param: click.Parameter, value: object
+    ) -> object:
+        return None if value is None else enum_type(value)
+
+    return click.Option(
+        [option, field.name],
+        type=click.Choice([str(member) for member in enum_type.__members__.values()]),
+        default=None if default is None else str(default),
+        callback=to_member,
+        help=help_text,
+        metavar=metavar,
+    )
+
+
+def _str_enum(annotation: object) -> type[StrEnum] | None:
+    if isinstance(annotation, type) and issubclass(annotation, StrEnum):
+        return annotation
+    return None
+
+
 def _click_type(field: Field[object], base: object) -> click.ParamType[object]:
     if not isinstance(base, type) or base not in _CLICK_TYPES:
         raise TypeError(f"request field {field.name!r}: no CLI mapping for {base!r}")
@@ -104,9 +137,15 @@ def _field_param(field: Field[object], annotation: object) -> click.Parameter:
     option = "--" + field.name.replace("_", "-")
 
     if base is bool:
+        declaration = f"{option}/--no-{option[2:]}" if default is True else option
         return click.Option(
-            [option, field.name], is_flag=True, default=default, help=help_text
+            [declaration, field.name], is_flag=True, default=default, help=help_text
         )
+    enum_type = _str_enum(base)
+    if enum_type is not None:
+        if not has_default:
+            raise TypeError(f"request field {field.name!r}: an enum needs a default")
+        return _enum_option(field, option, enum_type, default, help_text, metavar)
     item = _variadic_item(base)
     if item is not None:
         if has_default and default != ():
@@ -155,9 +194,9 @@ def _names_files(op: RegisteredOp, values: dict[str, object]) -> bool:
 
 
 def _context(
-    op: RegisteredOp, deck_path: Path, no_deck: bool, values: dict[str, object]
+    op: RegisteredOp, deck_path: Path | None, no_deck: bool, values: dict[str, object]
 ) -> OpContext:
-    if op.deck is DeckUse.OPTIONAL and no_deck:
+    if deck_path is None or (op.deck is DeckUse.OPTIONAL and no_deck):
         return OpContext(None, None)
     if op.deck is DeckUse.SWEEP_ONLY and _names_files(op, values):
         return OpContext(None, None)
@@ -187,6 +226,8 @@ def _json_option(text: str) -> Callable[[click.Command], click.Command]:
 
 
 def _with_deck_options(op: RegisteredOp, command: click.Command) -> click.Command:
+    if op.deck is DeckUse.NONE:
+        return command
     command = deck_option(command)
     if op.deck is DeckUse.OPTIONAL:
         command = no_deck_option(command)
@@ -195,10 +236,10 @@ def _with_deck_options(op: RegisteredOp, command: click.Command) -> click.Comman
 
 def _write_command(op: RegisteredOp) -> click.Command:
     def callback(
-        deck_path: Path,
         dry_run: bool,
         check: bool,
         as_json: bool,
+        deck_path: Path | None = None,
         no_deck: bool = False,
         **values: object,
     ) -> None:
@@ -245,7 +286,10 @@ def _write_command(op: RegisteredOp) -> click.Command:
 
 def _read_command(op: RegisteredOp) -> click.Command:
     def callback(
-        deck_path: Path, as_json: bool, no_deck: bool = False, **values: object
+        as_json: bool,
+        deck_path: Path | None = None,
+        no_deck: bool = False,
+        **values: object,
     ) -> None:
         context = _context(op, deck_path, no_deck, values)
         try:
@@ -258,9 +302,11 @@ def _read_command(op: RegisteredOp) -> click.Command:
             payload = {"api": API_VERSION, "op": op.name, **output.to_json()}
             click.echo(json.dumps(payload, indent=2))
             return
-        output_console.print(
-            output.render(), markup=False, highlight=False, soft_wrap=True
-        )
+        rendered = output.render()
+        if isinstance(rendered, str):
+            click.echo(rendered, nl=False)
+            return
+        output_console.print(rendered, markup=False, highlight=False, soft_wrap=True)
 
     command = click.Command(
         op.verb,

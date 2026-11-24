@@ -15,12 +15,12 @@ uv run inkflow setup-git
 ```
 
 Configures two things:
-- **Pre-commit hook** (`.githooks/pre-commit`) — strips Inkscape editor metadata from staged SVGs before every commit, so viewport pan/zoom/window state never lands in history
-- **SVG diff driver** — `git diff`, `git log -p`, and GitHub's diff view show only visual changes even for SVGs that haven't been cleaned in-place
+- **Pre-commit hook** (`.githooks/pre-commit`, runs `inkflow svg clean`) — strips Inkscape editor metadata from staged SVGs before every commit, so viewport pan/zoom/window state never lands in history. setup-git rewrites a hook carrying its `Installed by` marker, so re-running it updates clones when the hook's commands change
+- **SVG diff driver** (textconv `inkflow svg cleaned`, a read op that always re-serializes so both sides of a diff are formatted alike) — `git diff`, `git log -p`, and GitHub's diff view show only visual changes even for SVGs that haven't been cleaned in-place
 
 Git won't run this automatically on clone — that's an intentional git security boundary — so it needs to be run once. After that it's invisible. (`inkflow init` already does this for a freshly created project via `git_setup.init_project_git`; `setup-git` is the manual path for existing clones and teammates.)
 
-SVG source files should be kept clean (no Inkscape metadata) in the repository. Run `uv run inkflow clean demo/slides/*.svg` to clean any files committed before the hook was in place.
+SVG source files should be kept clean (no Inkscape metadata) in the repository. Run `uv run inkflow svg clean demo/slides/*.svg` to clean any files committed before the hook was in place.
 
 ## Project layout
 
@@ -71,9 +71,9 @@ src/
     layout.py         layout chain resolution and Inkscape preview layer
                                writing. `AssetKind` (layouts/overlays) selects the searched
                                subdir, so `resolve_parent_path`/`resolve_chain` serve both
-                               namespaces with one grammar. `inject_preview_layers` (file wrapper
-                               over the pure tree op `with_preview_layers`) /
-                               `are_preview_layers_current` take a `PreviewLayers`
+                               namespaces with one grammar. `with_preview_layers` (pure tree op) /
+                               `has_preview_layers` / `are_preview_layers_current` take a
+                               `PreviewLayers`
                                (`behind` + `overlays` + css), each layer a
                                `PreviewLayer(path, ref)` — refs come from the caller since
                                a backdrop or an overlay is not named by an inkflow:parent.
@@ -117,7 +117,7 @@ src/
                                composition reader that canonicalises each SVG as it is read
     ops/              deck edits and reads behind every surface. An op takes a typed
                                request dataclass + `OpContext` (deck, project dir; both None
-                               for --no-deck). A write op returns a `ChangeSet` of
+                               for --no-deck or `DeckUse.NONE`). A write op returns a `ChangeSet` of
                                `FileEdit(path, before_hash, new_content, detail)` without
                                touching disk; `ChangeSet.apply` is the only writer (hash
                                check, staged then atomic rename). An SVG op builds it with
@@ -126,7 +126,9 @@ src/
                                serializer reproduces an editor's markup, so comparing text
                                would rewrite files a no-op never touched. A read op returns an
                                `OpOutput`: a model with `to_json()` and `render()` (the human
-                               form, returned as a Rich renderable, never printed).
+                               form, returned as a Rich renderable, never printed; a plain
+                               `str` is file content, echoed verbatim since Rich would
+                               expand tabs and wrap).
                                `registry.py`: an op module declares
                                `GROUP = register_group("noun", help)` and decorates each op
                                with `@register(GROUP, "verb", Request, Output,
@@ -135,28 +137,35 @@ src/
                                return annotation need not resolve at runtime. The name
                                `noun.verb` is derived from group + verb.
                                `DeckUse.SWEEP_ONLY` loads the deck only when no files are
-                               named; `OpContext.target_files` is the shared "no FILES
-                               sweeps the deck" rule (`sync.project_files`).
+                               named, `DeckUse.NONE` never (no deck options at all);
+                               `OpContext.target_files` is the shared "no FILES sweeps the
+                               deck" rule (`sync.project_files`), `OpContext.dark_mode` the
+                               shared --mode rule.
                                `cli/op_commands.py` generates the click command (field
                                without default → argument, with default → option, bool →
-                               flag, `tuple[X, ...]` → variadic argument; writes add
+                               flag (`--x/--no-x` when it defaults to True), `StrEnum` →
+                               choice of its values, `tuple[X, ...]` → variadic argument; writes add
                                -n/--dry-run, --check, and --json emitting an `OpResult` with
                                "api": "v0"; a read op prints `render()` through
                                `cli._common.output_console`, or `{api, op, ...}` with
                                --json). A command's result goes to stdout in either form;
                                only status lines and diagnostics use the stderr `console`.
-                               Ops so far: `parent.set`, `parent.strip`, `parent.get`
+                               Ops: `parent.{get,set,strip}` (parent.py; `with_parent` is
+                               shared with `svg.new`), `svg.{clean,cleaned,label2id,sync,
+                               colorize,new}` (svg.py), `theme.palette` (theme.py),
+                               `layout.list` (layout.py, function `list_assets`). A library
+                               function is named after its verb unless that would shadow a
+                               builtin used in the module's annotations
     cli/              CLI package (entry point inkflow.cli:main). _common.py holds the
-                               `main` group, shared options, and the Project/Target helpers;
+                               `main` group, shared options, and the Project helper;
                                commands are grouped by area: project.py (init, setup-git,
-                               completion), present.py (serve, build, export), authoring.py
-                               (clean, label2id, add, sync, layouts), op_commands.py
-                               (commands generated from the op registry; `command_group` is
-                               the shared noun group hand-written commands attach to), color.py (colorize,
-                               palette), deck.py (`deck` group: show), verify.py.
+                               completion), present.py (serve, build, export), op_commands.py
+                               (commands generated from the op registry: every file command;
+                               `command_group` is the shared noun group hand-written commands
+                               attach to), deck.py (`deck` group: show), verify.py.
                                Submodules register on `main` by import.
-    clean.py          SVG Inkscape metadata stripping (used by cli and pre-commit hook)
-    label2id.py       `inkflow label2id`: promote each element's inkscape:label to its
+    clean.py          SVG Inkscape metadata stripping (behind `svg clean`/`svg cleaned`)
+    label2id.py       `inkflow svg label2id`: promote each element's inkscape:label to its
                                SVG id (Inkscape convenience for Morph/animation targets).
                                Slugifies non-id labels, skips clashes and preview-layer
                                elements, rewrites ids by text substitution to keep diffs small
@@ -178,10 +187,9 @@ src/
     sync.py           reusable preview sync: `PreviewContext` (deck-derived data resolved
                                once per run: preview CSS, slides-by-file, overlay files),
                                `plan_preview` (the single answer to "what does this file
-                               preview", shared by `sync`, `sync --check` and `verify`),
-                               `PreviewRule` (which of the three overlay rules fired),
-                               `sync_slides`; shared by the `sync` command and `init`
-                               (run live after scaffolding)
+                               preview", shared by `svg sync`, `parent set` and `verify`),
+                               `PreviewRule` (which of the three overlay rules fired);
+                               `init` runs the `svg sync` op live after scaffolding
     logging.py        unified log sink over stdlib logging: `logger`, shared Rich
                                `console`, `report` (cargo-style status), `collect_logs`
                                (per-rebuild capture), and three independent sinks

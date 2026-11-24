@@ -316,6 +316,15 @@ def colorize_element(
     return changed
 
 
+def colorize_tree(root: SvgElement, hex_map: dict[str, list[tuple[str, str]]]) -> bool:
+    """Apply ``colorize_element`` to every element in place; True if any changed."""
+    changed = False
+    for el in root.iter():
+        if colorize_element(el, hex_map):
+            changed = True
+    return changed
+
+
 def colorize_svg(
     svg_str: str,
     hex_map: dict[str, list[tuple[str, str]]],
@@ -326,10 +335,6 @@ def colorize_svg(
     string is returned unchanged so the caller can skip the write.
     """
     root = parse_svg(svg_str)
-    changed = False
-    for el in root.iter():
-        if colorize_element(el, hex_map):
-            changed = True
-    if not changed:
+    if not colorize_tree(root, hex_map):
         return svg_str, False
     return etree.tostring(root, encoding="unicode", xml_declaration=False), True

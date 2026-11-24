@@ -225,7 +225,7 @@ class TestCleanCheckFlag:
 
         svg_file = tmp_path / "test.svg"
         svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
+        result = CliRunner().invoke(main, ["svg", "clean", "--check", str(svg_file)])
         assert result.exit_code != 0
 
     def test_exits_zero_for_already_clean_file(self, tmp_path: Path) -> None:
@@ -238,7 +238,7 @@ class TestCleanCheckFlag:
         svg_file.write_text(
             clean_inkscape_svg(svg_file, keep_preview=True), encoding="utf-8"
         )
-        result = CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
+        result = CliRunner().invoke(main, ["svg", "clean", "--check", str(svg_file)])
         assert result.exit_code == 0
 
     def test_does_not_modify_file(self, tmp_path: Path) -> None:
@@ -249,17 +249,5 @@ class TestCleanCheckFlag:
         svg_file = tmp_path / "test.svg"
         svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
         original = svg_file.read_text(encoding="utf-8")
-        CliRunner().invoke(main, ["clean", "--check", str(svg_file)])
+        CliRunner().invoke(main, ["svg", "clean", "--check", str(svg_file)])
         assert svg_file.read_text(encoding="utf-8") == original
-
-    def test_check_and_stdout_are_mutually_exclusive(self, tmp_path: Path) -> None:
-        from click.testing import CliRunner
-
-        from inkflow.cli import main
-
-        svg_file = tmp_path / "test.svg"
-        svg_file.write_text(_INKSCAPE_SVG, encoding="utf-8")
-        result = CliRunner().invoke(
-            main, ["clean", "--check", "--stdout", str(svg_file)]
-        )
-        assert result.exit_code != 0

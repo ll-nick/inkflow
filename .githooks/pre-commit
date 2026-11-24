@@ -18,6 +18,6 @@ else
 fi
 
 echo "[inkflow] cleaning staged SVGs..."
-"$INKFLOW" clean "${staged[@]}"
+"$INKFLOW" svg clean "${staged[@]}"
 
 git add "${staged[@]}"

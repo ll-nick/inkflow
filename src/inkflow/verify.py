@@ -209,13 +209,13 @@ def _check_sync(src: Path, preview: PreviewContext) -> list[Issue]:
     backed by slides that want different chrome, reporting a correctly synced file
     as stale forever.
     """
-    # Only files `inkflow sync` would actually write: a slide built straight on a
+    # Only files `inkflow svg sync` would actually write: a slide built straight on a
     # built-in or theme layout resolves outside the project, and nothing may edit
     # those, so reporting them as stale would be advice no one can follow.
     if preview.project_dir is None or not src.is_relative_to(preview.project_dir):
         return []
     if not are_preview_layers_current(src, plan_preview(src, preview).layers):
-        return [("warn", "preview layers stale — run inkflow sync")]
+        return [("warn", "preview layers stale — run inkflow svg sync")]
     return []
 
 
