@@ -128,7 +128,8 @@ class OpOutput(Protocol):
     """What a read op returns: a model every surface can serialize or show.
 
     ``render`` is the human form, returned rather than printed so the op stays
-    free of I/O and each surface decides where (and whether) it goes.
+    free of I/O and each surface decides where (and whether) it goes. A plain
+    ``str`` is passed on verbatim.
     """
 
     def to_json(self) -> dict[str, object]: ...

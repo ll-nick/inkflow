@@ -4,7 +4,9 @@ A request field without a default becomes a positional argument, one with a
 default a ``--kebab-case`` option (a flag for ``bool``); a ``tuple[X, ...]`` field
 is a variadic argument, required unless it defaults to ``()``. Every command gets
 ``--json`` and the deck options its `DeckUse` calls for; writes also get
-``--dry-run`` and ``--check``. A read op prints its output's ``render()`` on stdout.
+``--dry-run`` and ``--check``. A read op prints its output's ``render()`` on stdout,
+a plain ``str`` verbatim (file contents such as a palette or an SVG must survive
+byte for byte, which Rich's tab expansion and wrapping would not allow).
 """
 
 from __future__ import annotations
@@ -263,9 +265,11 @@ def _read_command(op: RegisteredOp) -> click.Command:
             payload = {"api": API_VERSION, "op": op.name, **output.to_json()}
             click.echo(json.dumps(payload, indent=2))
             return
-        output_console.print(
-            output.render(), markup=False, highlight=False, soft_wrap=True
-        )
+        rendered = output.render()
+        if isinstance(rendered, str):
+            click.echo(rendered, nl=False)
+            return
+        output_console.print(rendered, markup=False, highlight=False, soft_wrap=True)
 
     command = click.Command(
         op.verb,
